@@ -18,6 +18,7 @@ import 'package:dmrtd/src/proto/can_key.dart';
 import 'package:intl/intl.dart';
 
 import 'package:dmrtd/src/proto/ecdh_pace.dart';
+import 'package:mrtdeg/helpers/mrz_data.dart';
 import 'package:mrtdeg/view/scan_page.dart';
 
 class MrtdData {
@@ -288,9 +289,16 @@ class _MrtdHomePageState extends State<MrtdHomePage>
   }
 
   void _readMRZPressed() async {
-    showDialog(context: context, builder: (context) {
+    final MRZResult? mrzResult = await showDialog(context: context, builder: (context) {
       return Material(child: ScannerPage());
     });
+    if (mrzResult != null) {
+      setState(() {
+      _docNumber.text = mrzResult.documentNumber;
+      _dob.text = DateFormat.yMd().format(mrzResult.birthDate);
+      _doe.text = DateFormat.yMd().format(mrzResult.expiryDate);
+      });
+    }
   }
 
   void _buttonPressed() async {
@@ -347,9 +355,10 @@ class _MrtdHomePageState extends State<MrtdHomePage>
       });
       try {
         bool demo = false;
-        if (!demo)
+        if (!demo) {
           await _nfc.connect(
               iosAlertMessage: "Hold your phone near Biometric Passport");
+        }
 
         final passport = Passport(_nfc);
 
