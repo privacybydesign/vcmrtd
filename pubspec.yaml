@@ -31,7 +31,12 @@ dependencies:
       url: https://github.com/privacybydesign/pc-dart.git
       ref: master
   diffie_hellman: ^0.1.2
-  # crypto_keys_plus: ^0.4.0 # till cypto_keys lib is not updated
+  logger: ^2.3.0
+  mrz_parser: ^2.0.0
+  google_mlkit_text_recognition: ^0.15.0
+  camera: ^0.10.0+4
+  google_mlkit_commons: ^0.11.0
+  camera_platform_interface: ^2.2.2
 
 dev_dependencies:
   flutter:      # needed for flutter_nfc_kit
