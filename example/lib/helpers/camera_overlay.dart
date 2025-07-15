@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../custom/custom_logger_extension.dart';
 
 class MRZCameraOverlay extends StatelessWidget {
   const MRZCameraOverlay({
@@ -28,6 +29,18 @@ class MRZCameraOverlay extends StatelessWidget {
               ),
             ),
             _WhiteOverlay(rect: overlayRect),
+            Positioned(
+              top: 32,
+              left: 16,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 32),
+                onPressed: () {
+                  'Overlay closed'.logInfo();
+                  Navigator.of(context, rootNavigator: true).pop();
+                },
+                tooltip: 'Close',
+              ),
+            ),
           ],
         );
       },
