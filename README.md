@@ -1,12 +1,23 @@
-## Dart library for ICAO Machine Readable Travel Documents standard - Biometric Passport
-[![LGPL v3](https://img.shields.io/badge/License-LGPL_v3-blue.svg?style=for-the-badge)](LICENSE.LGPL)
-[![tests](https://img.shields.io/github/actions/workflow/status/ZeroPass/dmrtd/test.yml?label=Tests&branch=master&logo=github&style=for-the-badge)](https://github.com/ZeroPass/dmrtd/actions/workflows/test.yml)
+## Dart library for ICAO Machine Readable Travel Documents standard - Enhanced Biometric Passport Scanner
+This library is an enhanced implementation of the [ICAO 9303](https://www.icao.int/publications/pages/publication.aspx?docnum=9303) standard, combining the capabilities of two proven libraries to create a comprehensive solution for passport scanning and biometric data extraction.
 
-DMRTD is dart implementation of [ICAO 9303](https://www.icao.int/publications/pages/publication.aspx?docnum=9303) standard.
-Library provide APIs to send commands to and read data from MRTD.
+## About This Library
+
+We have created this new library based on the following established libraries:
+- [MRZ-Scanner-flutter](https://github.com/Krishak15/MRZ-Scanner-flutter) - for Machine Readable Zone (MRZ) scanning using Google ML Kit
+- [dmrtd](https://github.com/ZeroPass/dmrtd) - for reading biometric passport data via NFC
+
+Our enhanced implementation is specifically designed to work with passports from **Angelsaxion countries and the European Union**, providing optimized support for these regions' passport formats and security features.
+
+## Integration with Yivi
+
+This library is designed for integration with the [Yivi app](https://yivi.app) to generate passport-based credentials, enabling secure and verifiable digital identity solutions. The library provides the foundation for creating trusted digital credentials derived from physical passport data.
 
 ## Key features
-* PACE & BAC session key establishment protocol
+* **Enhanced MRZ Recognition**: Advanced Machine Readable Zone scanning using Google ML Kit with improved accuracy for EU and Angelsaxion passport formats
+* **Comprehensive NFC Reading**: Full implementation of PACE & BAC session key establishment protocols
+* **Regional Optimization**: Specifically tuned for Angelsaxion countries and EU passport standards
+* **Yivi Integration Ready**: Designed for seamless integration with Yivi credential generation
 * Reading all elementary files from MRTD, e.g.: EF.DG1, EF.DG2, EF.DG11, EF.DG12, EF.DG15 ...  
   *Note: most of files are not fully parsed yet.*
 * Executing `Active Authentication` on MRTD (i.e.: sign arbitrary data with passport)
@@ -121,6 +132,12 @@ finally {
   }
 }
 ```
+
+## Supported Regions
+
+This library has been specifically optimized for:
+- **Angelsaxion Countries**: United States, United Kingdom, Canada, Australia, New Zealand
+- **European Union**: All EU member states with enhanced support for EU passport security features
 
 ## Other documentation
 * [ICAO 9303 Specifications Common to all MRTDs](https://www.icao.int/publications/Documents/9303_p3_cons_en.pdf)
