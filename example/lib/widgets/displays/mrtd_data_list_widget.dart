@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:dmrtd/extensions.dart';
+import 'package:mrtdeg/widgets/displays/image_widget.dart';
 import '../../models/mrtd_data.dart';
 import '../../utils/formatters.dart';
 import 'access_protocol_widget.dart';
@@ -76,9 +77,15 @@ class MrtdDataListWidget extends StatelessWidget {
       ));
     }
 
+    if (mrtdData!.dg2 != null) {
+      list.add(PassportImageWidget(
+        imageType: mrtdData!.dg2!.imageType,
+        imageData : mrtdData!.dg2!.imageData!));
+    }
+
     // Data Groups 2-16
     final dataGroups = {
-      'EF.DG2': mrtdData!.dg2?.toBytes().hex(),
+      // 'EF.DG2': mrtdData!.dg2?.toBytes().hex(),
       'EF.DG3': mrtdData!.dg3?.toBytes().hex(),
       'EF.DG4': mrtdData!.dg4?.toBytes().hex(),
       'EF.DG5': mrtdData!.dg5?.toBytes().hex(),

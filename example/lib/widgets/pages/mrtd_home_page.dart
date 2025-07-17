@@ -267,6 +267,27 @@ class _MrtdHomePageState extends State<MrtdHomePage>
     );
   }
 
+  String extractImageData(String inputHex) {
+    // Find the index of the first occurrence of 'FFD8'
+    int startIndex = inputHex.indexOf('ffd8');
+    // Find the index of the first occurrence of 'FFD9'
+    int endIndex = inputHex.indexOf('ffd9');
+
+    // If both 'FFD8' and 'FFD9' are found, extract the substring between them
+    if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
+      String extractedImageData = inputHex.substring(
+          startIndex, endIndex + 4); // Include 'FFD9' in the substring
+
+      // Return the extracted image data
+      return extractedImageData;
+    } else {
+      // 'FFD8' or 'FFD9' not found, handle accordingly (e.g., return an error or the original input)
+      print("FFD8 and/or FFD9 markers not found in the input hex string.");
+      return inputHex;
+    }
+  }
+
+
   Future<void> _readDataGroups(Passport passport, MrtdData mrtdData) async {
     setState(() {
       _alertMessage = "Reading Passport Data ...";
@@ -283,6 +304,10 @@ class _MrtdHomePageState extends State<MrtdHomePage>
 
     if (mrtdData.com!.dgTags.contains(EfDG2.TAG)) {
       mrtdData.dg2 = await passport.readEfDG2();
+
+      // String? imageHex = extractImageData(mrtdData.dg2!.toBytes().hex());
+      // Uint8List? decodeImageHex =
+      //       Uint8List.fromList(List<int>.from(hex.decode(imageHex)));
     }
 
     // To read DG3 and DG4 session has to be established with CVCA certificate (not supported).
