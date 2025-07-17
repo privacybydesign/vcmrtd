@@ -234,7 +234,7 @@ class _MrtdHomePageState extends State<MrtdHomePage>
 
     _nfc.setIosAlertMessage("Trying to read EF.CardSecurity ...");
     try {
-      // mrtdData.cardSecurity = await passport.readEfCardSecurity();
+      mrtdData.cardSecurity = await passport.readEfCardSecurity();
     } on PassportError {
       // Handle card security read error
     }
