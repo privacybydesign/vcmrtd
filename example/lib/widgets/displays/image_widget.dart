@@ -1,14 +1,17 @@
 import 'package:dmrtd/dmrtd.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:expandable/expandable.dart';
 import 'package:mrtdeg/services/jpeg2000_converter.dart';
 
 class PassportImageWidget extends StatefulWidget {
+  final String header;
   final Uint8List? imageData;
   final ImageType? imageType;
 
   const PassportImageWidget({
     Key? key,
+    required this.header,
     required this.imageData,
     required this.imageType,
   }) : super(key: key);
@@ -102,6 +105,29 @@ class _PassportImageWidgetState extends State<PassportImageWidget> {
       return const Center(child: Text("No image data available."));
     }
 
+    return ExpandablePanel(
+      theme: const ExpandableThemeData(
+        headerAlignment: ExpandablePanelHeaderAlignment.center,
+        tapBodyToCollapse: true,
+        hasIcon: true,
+        iconColor: Colors.red,
+      ),
+      header: Text(widget.header),
+      collapsed: Text(
+        '',
+        softWrap: true,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
+      expanded: Container(
+        padding: const EdgeInsets.all(18),
+        color: const Color.fromARGB(255, 239, 239, 239),
+        child: _buildImageContent(),
+      ),
+    );
+  }
+
+  Widget _buildImageContent() {
     if (widget.imageType == ImageType.jpeg) {
       return Image.memory(
         widget.imageData!,
