@@ -2,7 +2,6 @@
 // ignore_for_file: prefer_adjacent_string_concatenation, prefer_interpolation_to_compose_strings
 
 import 'package:dmrtd/internal.dart';
-import 'package:expandable/expandable.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'dart:async';
@@ -20,6 +19,10 @@ import 'package:intl/intl.dart';
 import 'package:dmrtd/src/proto/ecdh_pace.dart';
 import 'package:mrtdeg/helpers/mrz_data.dart';
 import 'package:mrtdeg/view/scan_page.dart';
+import 'package:mrtdeg/widgets/mrtd_data_widget.dart';
+import 'package:mrtdeg/widgets/mrtd_access_widget.dart';
+import 'package:mrtdeg/widgets/dba_form.dart';
+import 'package:mrtdeg/widgets/pace_form.dart';
 
 class MrtdData {
   EfCardAccess? cardAccess;
@@ -66,37 +69,6 @@ final Map<DgTag, String> dgTagToString = {
   EfDG16.TAG: 'EF.DG16'
 };
 
-Widget _makeMrtdAccessDataWidget(
-    {required String header,
-    required String collapsedText,
-    required bool isPACE,
-    required bool isDBA}) {
-  return ExpandablePanel(
-      theme: const ExpandableThemeData(
-        headerAlignment: ExpandablePanelHeaderAlignment.center,
-        tapBodyToCollapse: true,
-        hasIcon: true,
-        iconColor: Colors.red,
-      ),
-      header: Text(header),
-      collapsed: Text(collapsedText,
-          softWrap: true, maxLines: 2, overflow: TextOverflow.ellipsis),
-      expanded: Container(
-          padding: const EdgeInsets.all(18),
-          color: Color.fromARGB(255, 239, 239, 239),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Text(
-              'Access protocol: ${isPACE ? "PACE" : "BAC"}',
-              //style: TextStyle(fontSize: 16.0),
-            ),
-            SizedBox(height: 8.0),
-            Text(
-              'Access key type: ${isDBA ? "DBA" : "CAN"}',
-              //style: TextStyle(fontSize: 16.0),
-            )
-          ])));
-}
 
 String formatEfCom(final EfCOM efCom) {
   var str = "version: ${efCom.version}\n"
@@ -695,189 +667,160 @@ class _MrtdHomePageState extends State<MrtdHomePage>
     return _isReading || !_isNfcAvailable;
   }
 
-  Widget _makeMrtdDataWidget(
-      {required String header,
-      required String collapsedText,
-      required dataText}) {
-    return ExpandablePanel(
-        theme: const ExpandableThemeData(
-          headerAlignment: ExpandablePanelHeaderAlignment.center,
-          tapBodyToCollapse: true,
-          hasIcon: true,
-          iconColor: Colors.red,
-        ),
-        header: Text(header),
-        collapsed: Text(collapsedText,
-            softWrap: true, maxLines: 2, overflow: TextOverflow.ellipsis),
-        expanded: Container(
-            padding: const EdgeInsets.all(18),
-            color: Color.fromARGB(255, 239, 239, 239),
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  PlatformTextButton(
-                    child: Text('Copy'),
-                    onPressed: () =>
-                        Clipboard.setData(ClipboardData(text: dataText)),
-                    padding: const EdgeInsets.all(8),
-                  ),
-                  SelectableText(dataText, textAlign: TextAlign.left)
-                ])));
-  }
 
   List<Widget> _mrtdDataWidgets() {
     List<Widget> list = [];
     if (_mrtdData == null) return list;
 
     if (_mrtdData!.isPACE != null && _mrtdData!.isDBA != null)
-      list.add(_makeMrtdAccessDataWidget(
+      list.add(MrtdAccessWidget(
           header: "Access protocol",
           collapsedText: '',
           isDBA: _mrtdData!.isDBA!,
           isPACE: _mrtdData!.isPACE!));
 
     if (_mrtdData!.cardAccess != null) {
-      list.add(_makeMrtdDataWidget(
+      list.add(MrtdDataWidget(
           header: 'EF.CardAccess',
           collapsedText: '',
           dataText: _mrtdData!.cardAccess!.toBytes().hex()));
     }
 
     if (_mrtdData!.cardSecurity != null) {
-      list.add(_makeMrtdDataWidget(
+      list.add(MrtdDataWidget(
           header: 'EF.CardSecurity',
           collapsedText: '',
           dataText: _mrtdData!.cardSecurity!.toBytes().hex()));
     }
 
     if (_mrtdData!.sod != null) {
-      list.add(_makeMrtdDataWidget(
+      list.add(MrtdDataWidget(
           header: 'EF.SOD',
           collapsedText: '',
           dataText: _mrtdData!.sod!.toBytes().hex()));
     }
 
     if (_mrtdData!.com != null) {
-      list.add(_makeMrtdDataWidget(
+      list.add(MrtdDataWidget(
           header: 'EF.COM',
           collapsedText: '',
           dataText: formatEfCom(_mrtdData!.com!)));
     }
 
     if (_mrtdData!.dg1 != null) {
-      list.add(_makeMrtdDataWidget(
+      list.add(MrtdDataWidget(
           header: 'EF.DG1',
           collapsedText: '',
           dataText: formatMRZ(_mrtdData!.dg1!.mrz)));
     }
 
     if (_mrtdData!.dg2 != null) {
-      list.add(_makeMrtdDataWidget(
+      list.add(MrtdDataWidget(
           header: 'EF.DG2',
           collapsedText: '',
           dataText: _mrtdData!.dg2!.toBytes().hex()));
     }
 
     if (_mrtdData!.dg3 != null) {
-      list.add(_makeMrtdDataWidget(
+      list.add(MrtdDataWidget(
           header: 'EF.DG3',
           collapsedText: '',
           dataText: _mrtdData!.dg3!.toBytes().hex()));
     }
 
     if (_mrtdData!.dg4 != null) {
-      list.add(_makeMrtdDataWidget(
+      list.add(MrtdDataWidget(
           header: 'EF.DG4',
           collapsedText: '',
           dataText: _mrtdData!.dg4!.toBytes().hex()));
     }
 
     if (_mrtdData!.dg5 != null) {
-      list.add(_makeMrtdDataWidget(
+      list.add(MrtdDataWidget(
           header: 'EF.DG5',
           collapsedText: '',
           dataText: _mrtdData!.dg5!.toBytes().hex()));
     }
 
     if (_mrtdData!.dg6 != null) {
-      list.add(_makeMrtdDataWidget(
+      list.add(MrtdDataWidget(
           header: 'EF.DG6',
           collapsedText: '',
           dataText: _mrtdData!.dg6!.toBytes().hex()));
     }
 
     if (_mrtdData!.dg7 != null) {
-      list.add(_makeMrtdDataWidget(
+      list.add(MrtdDataWidget(
           header: 'EF.DG7',
           collapsedText: '',
           dataText: _mrtdData!.dg7!.toBytes().hex()));
     }
 
     if (_mrtdData!.dg8 != null) {
-      list.add(_makeMrtdDataWidget(
+      list.add(MrtdDataWidget(
           header: 'EF.DG8',
           collapsedText: '',
           dataText: _mrtdData!.dg8!.toBytes().hex()));
     }
 
     if (_mrtdData!.dg9 != null) {
-      list.add(_makeMrtdDataWidget(
+      list.add(MrtdDataWidget(
           header: 'EF.DG9',
           collapsedText: '',
           dataText: _mrtdData!.dg9!.toBytes().hex()));
     }
 
     if (_mrtdData!.dg10 != null) {
-      list.add(_makeMrtdDataWidget(
+      list.add(MrtdDataWidget(
           header: 'EF.DG10',
           collapsedText: '',
           dataText: _mrtdData!.dg10!.toBytes().hex()));
     }
 
     if (_mrtdData!.dg11 != null) {
-      list.add(_makeMrtdDataWidget(
+      list.add(MrtdDataWidget(
           header: 'EF.DG11',
           collapsedText: '',
           dataText: _mrtdData!.dg11!.toBytes().hex()));
     }
 
     if (_mrtdData!.dg12 != null) {
-      list.add(_makeMrtdDataWidget(
+      list.add(MrtdDataWidget(
           header: 'EF.DG12',
           collapsedText: '',
           dataText: _mrtdData!.dg12!.toBytes().hex()));
     }
 
     if (_mrtdData!.dg13 != null) {
-      list.add(_makeMrtdDataWidget(
+      list.add(MrtdDataWidget(
           header: 'EF.DG13',
           collapsedText: '',
           dataText: _mrtdData!.dg13!.toBytes().hex()));
     }
 
     if (_mrtdData!.dg14 != null) {
-      list.add(_makeMrtdDataWidget(
+      list.add(MrtdDataWidget(
           header: 'EF.DG14',
           collapsedText: '',
           dataText: _mrtdData!.dg14!.toBytes().hex()));
     }
 
     if (_mrtdData!.dg15 != null) {
-      list.add(_makeMrtdDataWidget(
+      list.add(MrtdDataWidget(
           header: 'EF.DG15',
           collapsedText: '',
           dataText: _mrtdData!.dg15!.toBytes().hex()));
     }
 
     if (_mrtdData!.aaSig != null) {
-      list.add(_makeMrtdDataWidget(
+      list.add(MrtdDataWidget(
           header: 'Active Authentication signature',
           collapsedText: '',
           dataText: _mrtdData!.aaSig!.hex()));
     }
 
     if (_mrtdData!.dg16 != null) {
-      list.add(_makeMrtdDataWidget(
+      list.add(MrtdDataWidget(
           header: 'EF.DG16',
           collapsedText: '',
           dataText: _mrtdData!.dg16!.toBytes().hex()));
@@ -956,165 +899,83 @@ class _MrtdHomePageState extends State<MrtdHomePage>
       );
 
   Widget _buildForm(BuildContext context) {
-    return Column(children: <Widget>[
-      TabBar(
-        controller: _tabController,
-        labelColor: Colors.blue,
-        tabs: const <Widget>[
-          Tab(text: 'DBA'),
-          Tab(text: 'PACE'),
-        ],
-      ),
-      Container(
+    return Column(
+      children: [
+        TabBar(
+          controller: _tabController,
+          labelColor: Colors.blue,
+          tabs: const [
+            Tab(text: 'DBA'),
+            Tab(text: 'PACE'),
+          ],
+        ),
+        Container(
           height: 350,
-          child: TabBarView(controller: _tabController, children: <Widget>[
-            Card(
-              borderOnForeground: false,
-              elevation: 0,
-              color: Colors.white,
-              //shadowColor: Colors.white,
-              margin: const EdgeInsets.all(16.0),
-              child: Form(
-                key: _mrzData,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    TextFormField(
-                      enabled: !_disabledInput(),
-                      controller: _docNumber,
-                      decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
-                          labelText: 'Passport number',
-                          fillColor: Colors.white),
-                      inputFormatters: <TextInputFormatter>[
-                        FilteringTextInputFormatter.allow(RegExp(r'[A-Z0-9]+')),
-                        LengthLimitingTextInputFormatter(14)
-                      ],
-                      textInputAction: TextInputAction.done,
-                      textCapitalization: TextCapitalization.characters,
-                      autofocus: true,
-                      validator: (value) {
-                        if (value?.isEmpty ?? false) {
-                          return 'Please enter passport number';
-                        }
-                        return null;
-                      },
-                    ),
-                    SizedBox(height: 12),
-                    TextFormField(
-                        enabled: !_disabledInput(),
-                        controller: _dob,
-                        decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            labelText: 'Date of Birth',
-                            fillColor: Colors.white),
-                        autofocus: false,
-                        validator: (value) {
-                          if (value?.isEmpty ?? false) {
-                            return 'Please select Date of Birth';
-                          }
-                          return null;
-                        },
-                        onTap: () async {
-                          FocusScope.of(context).requestFocus(FocusNode());
-                          // Can pick date which dates 15 years back or more
-                          final now = DateTime.now();
-                          final firstDate =
-                              DateTime(now.year - 90, now.month, now.day);
-                          final lastDate =
-                              DateTime(now.year - 15, now.month, now.day);
-                          final initDate = _getDOBDate();
-                          final date = await _pickDate(context, firstDate,
-                              initDate ?? lastDate, lastDate);
-
-                          FocusScope.of(context).requestFocus(FocusNode());
-                          if (date != null) {
-                            _dob.text = date;
-                          }
-                        }),
-                    SizedBox(height: 12),
-                    TextFormField(
-                        enabled: !_disabledInput(),
-                        controller: _doe,
-                        decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            labelText: 'Date of Expiry',
-                            fillColor: Colors.white),
-                        autofocus: false,
-                        validator: (value) {
-                          if (value?.isEmpty ?? false) {
-                            return 'Please select Date of Expiry';
-                          }
-                          return null;
-                        },
-                        onTap: () async {
-                          FocusScope.of(context).requestFocus(FocusNode());
-                          // Can pick date from tomorrow and up to 10 years
-                          final now = DateTime.now();
-                          final firstDate =
-                              DateTime(now.year, now.month, now.day + 1);
-                          final lastDate =
-                              DateTime(now.year + 10, now.month + 6, now.day);
-                          final initDate = _getDOEDate();
-                          final date = await _pickDate(context, firstDate,
-                              initDate ?? firstDate, lastDate);
-
-                          FocusScope.of(context).requestFocus(FocusNode());
-                          if (date != null) {
-                            _doe.text = date;
-                          }
-                        }),
-                    SizedBox(height: 12),
-                    CheckboxListTile(
-                      title: Text('DBA with PACE'),
-                      value: _checkBoxPACE,
-                      onChanged: (newValue) {
-                        setState(() {
-                          _checkBoxPACE = !_checkBoxPACE;
-                        });
-                      },
-                    )
-                  ],
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              Card(
+                borderOnForeground: false,
+                elevation: 0,
+                color: Colors.white,
+                margin: const EdgeInsets.all(16.0),
+                child: Form(
+                  key: _mrzData,
+                  child: DbaForm(
+                    docNumberController: _docNumber,
+                    dobController: _dob,
+                    doeController: _doe,
+                    paceChecked: _checkBoxPACE,
+                    disabled: _disabledInput(),
+                    onPaceChanged: (val) {
+                      setState(() => _checkBoxPACE = !_checkBoxPACE);
+                    },
+                    onPickDob: () async {
+                      FocusScope.of(context).requestFocus(FocusNode());
+                      final now = DateTime.now();
+                      final firstDate =
+                          DateTime(now.year - 90, now.month, now.day);
+                      final lastDate =
+                          DateTime(now.year - 15, now.month, now.day);
+                      final initDate = _getDOBDate();
+                      final date = await _pickDate(
+                          context, firstDate, initDate ?? lastDate, lastDate);
+                      FocusScope.of(context).requestFocus(FocusNode());
+                      return date;
+                    },
+                    onPickDoe: () async {
+                      FocusScope.of(context).requestFocus(FocusNode());
+                      final now = DateTime.now();
+                      final firstDate =
+                          DateTime(now.year, now.month, now.day + 1);
+                      final lastDate =
+                          DateTime(now.year + 10, now.month + 6, now.day);
+                      final initDate = _getDOEDate();
+                      final date = await _pickDate(
+                          context, firstDate, initDate ?? firstDate, lastDate);
+                      FocusScope.of(context).requestFocus(FocusNode());
+                      return date;
+                    },
+                  ),
                 ),
               ),
-            ),
-            Card(
-              borderOnForeground: false,
-              elevation: 0,
-              color: Colors.white,
-              //shadowColor: Colors.white,
-              margin: const EdgeInsets.all(16.0),
-              child: Form(
-                key: _canData,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    TextFormField(
-                      enabled: !_disabledInput(),
-                      controller: _can,
-                      decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
-                          labelText: 'CAN number',
-                          fillColor: Colors.white),
-                      inputFormatters: <TextInputFormatter>[
-                        FilteringTextInputFormatter.allow(RegExp(r'[0-9]+')),
-                        LengthLimitingTextInputFormatter(6)
-                      ],
-                      textInputAction: TextInputAction.done,
-                      textCapitalization: TextCapitalization.characters,
-                      autofocus: true,
-                      validator: (value) {
-                        if (value?.isEmpty ?? false) {
-                          return 'Please enter CAN number';
-                        }
-                        return null;
-                      },
-                    ),
-                  ],
+              Card(
+                borderOnForeground: false,
+                elevation: 0,
+                color: Colors.white,
+                margin: const EdgeInsets.all(16.0),
+                child: Form(
+                  key: _canData,
+                  child: PaceForm(
+                    canController: _can,
+                    disabled: _disabledInput(),
+                  ),
                 ),
               ),
-            ),
-          ]))
-    ]);
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }
