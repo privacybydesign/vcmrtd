@@ -1,19 +1,23 @@
+// Created by Crt Vavros, copyright © 2022 ZeroPass. All rights reserved.
+// Access protocol display widget for MRTD
+
 import 'package:expandable/expandable.dart';
 import 'package:flutter/material.dart';
 
-class MrtdAccessWidget extends StatelessWidget {
+/// Widget to display MRTD access protocol information
+class AccessProtocolWidget extends StatelessWidget {
   final String header;
   final String collapsedText;
   final bool isPACE;
   final bool isDBA;
 
-  const MrtdAccessWidget({
-    super.key,
+  const AccessProtocolWidget({
+    Key? key,
     required this.header,
     required this.collapsedText,
     required this.isPACE,
     required this.isDBA,
-  });
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -37,9 +41,13 @@ class MrtdAccessWidget extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Access protocol: ${isPACE ? "PACE" : "BAC"}'),
+            Text(
+              'Access protocol: ${isPACE ? "PACE" : "BAC"}',
+            ),
             const SizedBox(height: 8.0),
-            Text('Access key type: ${isDBA ? "DBA" : "CAN"}'),
+            Text(
+              'Access key type: ${isDBA ? "DBA" : "CAN"}',
+            ),
           ],
         ),
       ),
