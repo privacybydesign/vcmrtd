@@ -7,6 +7,7 @@ import 'package:logging/logging.dart';
 import 'package:mrtdeg/helpers/mrz_data.dart';
 import 'package:mrtdeg/models/mrtd_data.dart';
 import 'package:mrtdeg/widgets/common/alert_message_widget.dart';
+import 'package:mrtdeg/widgets/common/animated_nfc_status_widget.dart';
 
 class NfcReadingScreen extends StatefulWidget {
   final MRZResult? mrzResult;
@@ -31,6 +32,8 @@ class NfcReadingScreen extends StatefulWidget {
 class _NfcReadingScreenState extends State<NfcReadingScreen> {
   final NfcProvider _nfc = NfcProvider();
   String _alertMessage = "";
+  NFCReadingState _nfcState = NFCReadingState.idle;
+  double _readingProgress = 0.0;
   final _log = Logger("mrtdeg.app");
 
   @override
@@ -40,7 +43,12 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
         title: Text('NFC Reading'),
       ),
       body: Center(
-        child: AlertMessageWidget(message: _alertMessage),
+        child: AnimatedNFCStatusWidget(
+          state: _nfcState,
+          message: _alertMessage,
+          progress: _readingProgress,
+          onRetry: _nfcState == NFCReadingState.error ? _retryNfcReading : null,
+        ),
       ),
     );
   }
@@ -79,6 +87,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
     } else {
       setState(() {
         _alertMessage = "No passport data available. Please go back and enter your passport information.";
+        _nfcState = NFCReadingState.error;
       });
       return;
     }
@@ -95,7 +104,8 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
   void _readMRTD({required AccessKey accessKey, bool isPace = false}) async {
     try {
       setState(() {
-        _alertMessage = "Waiting for Passport tag ...";
+        _alertMessage = "Hold your phone near the passport photo page";
+        _nfcState = NFCReadingState.waiting;
       });
 
       try {
@@ -108,7 +118,8 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
 
         final passport = Passport(_nfc);
         setState(() {
-          _alertMessage = "Reading Passport ...";
+          _alertMessage = "Connecting to passport...";
+          _nfcState = NFCReadingState.connecting;
         });
 
         await _performPassportReading(passport, accessKey, isPace);
@@ -148,7 +159,8 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
     mrtdData.isDBA = accessKey.PACE_REF_KEY_TAG == 0x01;
 
     setState(() {
-      _alertMessage = "Authenticating with Passport ...";
+      _alertMessage = "Authenticating with passport...";
+      _nfcState = NFCReadingState.authenticating;
     });
 
     if (isPace) {
@@ -164,7 +176,9 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
 
   Future<void> _readDataGroups(Passport passport, MrtdData mrtdData) async {
     setState(() {
-      _alertMessage = "Reading Passport Data ...";
+      _alertMessage = "Reading passport data...";
+      _nfcState = NFCReadingState.reading;
+      _readingProgress = 0.1;
     });
 
     _nfc.setIosAlertMessage("Reading EF.COM ...");
@@ -174,57 +188,71 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
 
     if (mrtdData.com!.dgTags.contains(EfDG1.TAG)) {
       mrtdData.dg1 = await passport.readEfDG1();
+      setState(() => _readingProgress = 0.2);
     }
 
     if (mrtdData.com!.dgTags.contains(EfDG2.TAG)) {
       mrtdData.dg2 = await passport.readEfDG2();
+      setState(() => _readingProgress = 0.3);
     }
 
     // To read DG3 and DG4 session has to be established with CVCA certificate (not supported).
     if (mrtdData.com!.dgTags.contains(EfDG5.TAG)) {
       mrtdData.dg5 = await passport.readEfDG5();
+      setState(() => _readingProgress = 0.4);
     }
 
     if (mrtdData.com!.dgTags.contains(EfDG6.TAG)) {
       mrtdData.dg6 = await passport.readEfDG6();
+      setState(() => _readingProgress = 0.45);
     }
 
     if (mrtdData.com!.dgTags.contains(EfDG7.TAG)) {
       mrtdData.dg7 = await passport.readEfDG7();
+      setState(() => _readingProgress = 0.5);
     }
 
     if (mrtdData.com!.dgTags.contains(EfDG8.TAG)) {
       mrtdData.dg8 = await passport.readEfDG8();
+      setState(() => _readingProgress = 0.55);
     }
 
     if (mrtdData.com!.dgTags.contains(EfDG9.TAG)) {
       mrtdData.dg9 = await passport.readEfDG9();
+      setState(() => _readingProgress = 0.6);
     }
 
     if (mrtdData.com!.dgTags.contains(EfDG10.TAG)) {
       mrtdData.dg10 = await passport.readEfDG10();
+      setState(() => _readingProgress = 0.65);
     }
 
     if (mrtdData.com!.dgTags.contains(EfDG11.TAG)) {
       mrtdData.dg11 = await passport.readEfDG11();
+      setState(() => _readingProgress = 0.7);
     }
 
     if (mrtdData.com!.dgTags.contains(EfDG12.TAG)) {
       mrtdData.dg12 = await passport.readEfDG12();
+      setState(() => _readingProgress = 0.75);
     }
 
     if (mrtdData.com!.dgTags.contains(EfDG13.TAG)) {
       mrtdData.dg13 = await passport.readEfDG13();
+      setState(() => _readingProgress = 0.8);
     }
 
     if (mrtdData.com!.dgTags.contains(EfDG14.TAG)) {
       mrtdData.dg14 = await passport.readEfDG14();
+      setState(() => _readingProgress = 0.85);
     }
 
     // Read DG15 and perform Active Authentication
     if (mrtdData.com!.dgTags.contains(EfDG15.TAG)) {
       setState(() {
-        _alertMessage = "Performing Active Authentication ...";
+        _alertMessage = "Performing security verification...";
+        _nfcState = NFCReadingState.authenticating;
+        _readingProgress = 0.9;
       });
       mrtdData.dg15 = await passport.readEfDG15();
       _nfc.setIosAlertMessage("Doing AA ...");
@@ -233,10 +261,17 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
 
     if (mrtdData.com!.dgTags.contains(EfDG16.TAG)) {
       mrtdData.dg16 = await passport.readEfDG16();
+      setState(() => _readingProgress = 0.95);
     }
 
     _nfc.setIosAlertMessage("Reading EF.SOD ...");
     mrtdData.sod = await passport.readEfSOD();
+    
+    setState(() {
+      _alertMessage = "Passport reading completed successfully!";
+      _nfcState = NFCReadingState.success;
+      _readingProgress = 1.0;
+    });
   }
 
   void _handlePassportError(Exception e) {
@@ -264,6 +299,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
 
     setState(() {
       _alertMessage = alertMsg;
+      _nfcState = NFCReadingState.error;
     });
   }
 
@@ -275,5 +311,14 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
         iosAlertMessage: "Finished",
       );
     }
+  }
+
+  void _retryNfcReading() {
+    setState(() {
+      _alertMessage = "";
+      _nfcState = NFCReadingState.idle;
+      _readingProgress = 0.0;
+    });
+    _processDBAAuthentication();
   }
 }
