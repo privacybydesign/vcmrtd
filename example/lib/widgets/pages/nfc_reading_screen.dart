@@ -15,6 +15,7 @@ class NfcReadingScreen extends StatefulWidget {
   final DateTime? manualDob;
   final DateTime? manualExpiry;
   final ValueChanged<MrtdData>? onDataRead;
+  final VoidCallback? onCancel;
 
   const NfcReadingScreen({
     Key? key, 
@@ -22,7 +23,8 @@ class NfcReadingScreen extends StatefulWidget {
     this.manualDocNumber,
     this.manualDob,
     this.manualExpiry,
-    this.onDataRead
+    this.onDataRead,
+    this.onCancel
   }) : super(key: key);
 
   @override
@@ -35,6 +37,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
   NFCReadingState _nfcState = NFCReadingState.idle;
   double _readingProgress = 0.0;
   final _log = Logger("mrtdeg.app");
+  bool _isCancelled = false;
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +48,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
           message: _alertMessage,
           progress: _readingProgress,
           onRetry: _nfcState == NFCReadingState.error ? _retryNfcReading : null,
+          onCancel: _canShowCancel() ? _handleCancellation : null,
         ),
       ),
     );
@@ -108,25 +112,32 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
       try {
         bool demo = false;
         if (!demo) {
+          if (_isCancelled) return;
           await _nfc.connect(
             iosAlertMessage: "Hold your phone near Biometric Passport",
           );
         }
 
+        if (_isCancelled) return;
         final passport = Passport(_nfc);
         setState(() {
           _alertMessage = "Connecting to passport...";
           _nfcState = NFCReadingState.connecting;
         });
 
+        if (_isCancelled) return;
         await _performPassportReading(passport, accessKey, isPace);
       } on Exception catch (e) {
-        _handlePassportError(e);
+        if (!_isCancelled) {
+          _handlePassportError(e);
+        }
       } finally {
         await _cleanupNfcConnection();
       }
     } on Exception catch (e) {
-      _log.error("Read MRTD error: $e");
+      if (!_isCancelled) {
+        _log.error("Read MRTD error: $e");
+      }
     }
   }
 
@@ -315,7 +326,34 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
       _alertMessage = "";
       _nfcState = NFCReadingState.idle;
       _readingProgress = 0.0;
+      _isCancelled = false;
     });
     _processDBAAuthentication();
+  }
+
+  bool _canShowCancel() {
+    return _nfcState == NFCReadingState.waiting ||
+           _nfcState == NFCReadingState.connecting ||
+           _nfcState == NFCReadingState.reading;
+  }
+
+  void _handleCancellation() async {
+    setState(() {
+      _isCancelled = true;
+      _nfcState = NFCReadingState.cancelling;
+      _alertMessage = "Cancelling...";
+    });
+
+    try {
+      // Cleanup NFC connection
+      await _cleanupNfcConnection();
+      
+      // Call the cancel callback to navigate back
+      widget.onCancel?.call();
+    } catch (e) {
+      _log.error("Error during cancellation: $e");
+      // Even if cleanup fails, still navigate back
+      widget.onCancel?.call();
+    }
   }
 }

@@ -11,7 +11,8 @@ enum NFCReadingState {
   authenticating,
   success,
   error,
-  idle
+  idle,
+  cancelling
 }
 
 /// Animated widget to display NFC reading status with beautiful animations
@@ -19,6 +20,7 @@ class AnimatedNFCStatusWidget extends StatefulWidget {
   final NFCReadingState state;
   final String message;
   final VoidCallback? onRetry;
+  final VoidCallback? onCancel;
   final double progress; // 0.0 to 1.0 for progress indicators
 
   const AnimatedNFCStatusWidget({
@@ -26,6 +28,7 @@ class AnimatedNFCStatusWidget extends StatefulWidget {
     required this.state,
     required this.message,
     this.onRetry,
+    this.onCancel,
     this.progress = 0.0,
   }) : super(key: key);
 
@@ -157,6 +160,9 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget>
         _secondaryController.stop();
         _shakeController.forward().then((_) => _shakeController.reverse());
         break;
+      case NFCReadingState.cancelling:
+        _secondaryController.stop();
+        break;
       case NFCReadingState.idle:
         _secondaryController.stop();
         break;
@@ -175,6 +181,8 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget>
         return const Color(0xFF4CAF50); // Green
       case NFCReadingState.error:
         return const Color(0xFFF44336); // Red
+      case NFCReadingState.cancelling:
+        return const Color(0xFFFF9800); // Orange (transitional state)
       case NFCReadingState.idle:
         return const Color(0xFF757575); // Gray
     }
@@ -194,6 +202,8 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget>
         return Icons.check_circle;
       case NFCReadingState.error:
         return Icons.error;
+      case NFCReadingState.cancelling:
+        return Icons.cancel;
       case NFCReadingState.idle:
         return Icons.nfc;
     }
@@ -318,6 +328,27 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget>
     return const SizedBox.shrink();
   }
 
+  Widget _buildCancelButton() {
+    if ((widget.state == NFCReadingState.waiting ||
+         widget.state == NFCReadingState.connecting ||
+         widget.state == NFCReadingState.reading) && 
+        widget.onCancel != null) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 16.0),
+        child: OutlinedButton.icon(
+          onPressed: widget.onCancel,
+          icon: const Icon(Icons.close),
+          label: const Text('Cancel'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFFF44336), // Material red
+            side: const BorderSide(color: Color(0xFFF44336)),
+          ),
+        ),
+      );
+    }
+    return const SizedBox.shrink();
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -344,6 +375,7 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget>
             ),
             _buildProgressIndicator(),
             _buildRetryButton(),
+            _buildCancelButton(),
           ],
         );
       },
