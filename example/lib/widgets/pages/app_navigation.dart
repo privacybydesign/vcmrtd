@@ -144,6 +144,11 @@ class _AppNavigationState extends State<AppNavigation> {
       manualDocNumber: _manualDocNumber,
       manualDob: _manualDob,
       manualExpiry: _manualExpiry,
+      onCancel: () {
+        setState(() {
+          _currentStep = 0; // Return to choice screen
+        });
+      },
       onDataRead: (MrtdData data) {
         setState(() {
           _mrtdData = data;
