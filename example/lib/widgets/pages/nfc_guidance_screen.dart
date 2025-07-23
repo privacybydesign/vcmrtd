@@ -64,64 +64,45 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
   }
 
   @override
-  Widget build(BuildContext context) {
-    return PlatformScaffold(
-      appBar: PlatformAppBar(
-        title: const Text('Position Your Phone'),
-        leading: PlatformIconButton(
-          icon: Icon(PlatformIcons(context).back),
-          onPressed: widget.onBack,
+Widget build(BuildContext context) {
+  return PlatformScaffold(
+    appBar: PlatformAppBar(
+      title: const Text('Read Passport via NFC'),
+      leading: PlatformIconButton(
+        icon: Icon(PlatformIcons(context).back),
+        onPressed: widget.onBack,
+      ),
+    ),
+    body: SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Animation area
+            SizedBox(
+              height: 300, // or use MediaQuery if dynamic height needed
+              child: AnimatedBuilder(
+                animation: _animationController,
+                builder: (context, child) {
+                  return _buildPositioningDiagram();
+                },
+              ),
+            ),
+            const SizedBox(height: 24.0),
+
+            // Instruction area
+            _buildInstructions(),
+            const SizedBox(height: 24.0),
+
+            // Button area
+            _buildButtons(),
+          ],
         ),
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Progress indicator
-              const LinearProgressIndicator(
-                value: 0.75, // Step 3 of 4
-                backgroundColor: Color(0xFFE0E0E0),
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2196F3)),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Step 3 of 4',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF666666),
-                ),
-                textAlign: TextAlign.center,
-              ),
-              
-              const SizedBox(height: 32),
-              
-              // Animation area - 60% of available space
-              Expanded(
-                flex: 6,
-                child: AnimatedBuilder(
-                  animation: _animationController,
-                  builder: (context, child) {
-                    return _buildPositioningDiagram();
-                  },
-                ),
-              ),
-              
-              // Instruction area - 30% of available space
-              Expanded(
-                flex: 3,
-                child: _buildInstructions(),
-              ),
-              
-              // Button area - 10% of available space
-              _buildButtons(),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildPositioningDiagram() {
     return Container(
