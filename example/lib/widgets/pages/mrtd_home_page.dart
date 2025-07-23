@@ -28,7 +28,6 @@ class MrtdHomePage extends StatefulWidget {
   final VoidCallback? onBackPressed;
   final MRZResult? initialMrzData;
   final bool showChoiceNavigation;
-  final bool showResultsOnly;
 
   const MrtdHomePage({
     Key? key,
@@ -36,7 +35,6 @@ class MrtdHomePage extends StatefulWidget {
     this.onBackPressed,
     this.initialMrzData,
     this.showChoiceNavigation = false,
-    this.showResultsOnly = false,
   }) : super(key: key);
 
   @override
@@ -453,7 +451,7 @@ class _MrtdHomePageState extends State<MrtdHomePage>
 
   PlatformScaffold _buildPage(BuildContext context) => PlatformScaffold(
         appBar: PlatformAppBar(
-          title: Text(widget.showResultsOnly ? 'Passport Data' : 'Enter Passport Details'),
+          title: Text('Reading data'),
           leading: widget.onBackPressed != null 
               ? PlatformIconButton(
                   icon: Icon(PlatformIcons(context).back),
@@ -472,8 +470,6 @@ class _MrtdHomePageState extends State<MrtdHomePage>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
-                    // Only show form if not in results-only mode
-                    if (!widget.showResultsOnly) ...[
                       AuthFormWidget(
                         tabController: _tabController,
                         mrzFormKey: _mrzData,
@@ -498,22 +494,11 @@ class _MrtdHomePageState extends State<MrtdHomePage>
                           widget.onNfcReadyPressed != null ? 'Continue to NFC Reading' : 'Read Passport',
                         ),
                       ),
-                      // Only show MRZ scan button if not in new navigation flow
-                      if (widget.onNfcReadyPressed == null) ...[
-                        const SizedBox(height: 20),
-                        PlatformElevatedButton(
-                          onPressed: _readMRZPressed,
-                          child: PlatformText(
-                            _isReading ? 'Reading ...' : 'Scan MRZ',
-                          ),
-                        ),
-                      ],
                       const SizedBox(height: 20),
                       NfcStatusWidget(isNfcAvailable: _isNfcAvailable),
                       const SizedBox(height: 15),
                       AlertMessageWidget(message: _alertMessage),
                       const SizedBox(height: 15),
-                    ],
                     MrtdDataListWidget(mrtdData: _mrtdData),
                   ],
                 ),

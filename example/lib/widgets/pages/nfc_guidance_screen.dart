@@ -25,7 +25,6 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
     with TickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _positionAnimation;
-  late Animation<double> _glowAnimation;
 
   @override
   void initState() {
@@ -39,20 +38,11 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
 
     _positionAnimation = Tween<double>(
       begin: 0.0,
-      end: 1.0,
+      end: 2.0,
     ).animate(CurvedAnimation(
       parent: _animationController,
       curve: Curves.easeInOut,
     ));
-
-    _glowAnimation = Tween<double>(
-      begin: 0.3,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
-
     // Start animation loop
     _animationController.repeat(reverse: true);
   }
@@ -64,45 +54,45 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
   }
 
   @override
-Widget build(BuildContext context) {
-  return PlatformScaffold(
-    appBar: PlatformAppBar(
-      title: const Text('Read Passport via NFC'),
-      leading: PlatformIconButton(
-        icon: Icon(PlatformIcons(context).back),
-        onPressed: widget.onBack,
-      ),
-    ),
-    body: SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Animation area
-            SizedBox(
-              height: 300, // or use MediaQuery if dynamic height needed
-              child: AnimatedBuilder(
-                animation: _animationController,
-                builder: (context, child) {
-                  return _buildPositioningDiagram();
-                },
-              ),
-            ),
-            const SizedBox(height: 24.0),
-
-            // Instruction area
-            _buildInstructions(),
-            const SizedBox(height: 24.0),
-
-            // Button area
-            _buildButtons(),
-          ],
+  Widget build(BuildContext context) {
+    return PlatformScaffold(
+      appBar: PlatformAppBar(
+        title: const Text('Read Passport via NFC'),
+        leading: PlatformIconButton(
+          icon: Icon(PlatformIcons(context).back),
+          onPressed: widget.onBack,
         ),
       ),
-    ),
-  );
-}
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Animation area
+              SizedBox(
+                height: 300, // or use MediaQuery if dynamic height needed
+                child: AnimatedBuilder(
+                  animation: _animationController,
+                  builder: (context, child) {
+                    return _buildPositioningDiagram();
+                  },
+                ),
+              ),
+              const SizedBox(height: 24.0),
+
+              // Instruction area
+              _buildInstructions(),
+              const SizedBox(height: 24.0),
+
+              // Button area
+              _buildButtons(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _buildPositioningDiagram() {
     return Container(
@@ -134,7 +124,7 @@ Widget build(BuildContext context) {
       width: 80, // Portrait shape (narrower than height)
       height: 160,
       decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xFF2196F3), width: 3),
+        border: Border.all(color: const Color.fromARGB(255, 0, 0, 0), width: 3),
         borderRadius: BorderRadius.circular(20),
         color: Colors.white,
       ),
@@ -146,7 +136,7 @@ Widget build(BuildContext context) {
             height: 6,
             margin: const EdgeInsets.only(top: 8),
             decoration: BoxDecoration(
-              color: const Color(0xFF2196F3),
+              color: const Color.fromARGB(255, 0, 0, 0),
               borderRadius: BorderRadius.circular(3),
             ),
           ),
@@ -266,7 +256,7 @@ Widget build(BuildContext context) {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Place your phone on the back cover of your passport',
+          'Place Your Phone on the Passport’s Photo Page',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -274,14 +264,6 @@ Widget build(BuildContext context) {
           ),
         ),
         const SizedBox(height: 8),
-        const Text(
-          'Keep the phone flat and centered over the passport',
-          style: TextStyle(
-            fontSize: 16,
-            color: Color(0xFF666666),
-          ),
-        ),
-        const SizedBox(height: 16),
 
         // Tips
         Container(
@@ -303,9 +285,13 @@ Widget build(BuildContext context) {
               ),
               SizedBox(height: 8),
               Text(
+                '• Open the passport to the photo page\n'
+                '• Check where the NFC icon is on the passport\n'
+                '• Place your phone on the section of the passport with your photo\n'
+                '• Align the phone\'s NFC area with the chip (usually near the photo)\n'
                 '• Remove any phone case if reading fails\n'
                 '• Keep both devices still during reading\n'
-                '• The process takes 10-30 seconds',
+                '• The process takes 10–30 seconds',
                 style: TextStyle(
                   fontSize: 14,
                   color: Color(0xFF6B7280),

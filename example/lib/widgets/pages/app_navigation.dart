@@ -123,8 +123,7 @@ class _AppNavigationState extends State<AppNavigation> {
         });
       },
       initialMrzData: _mrzResult,
-      showChoiceNavigation: true,
-      showResultsOnly: true,
+      showChoiceNavigation: true
     );
   }
 
