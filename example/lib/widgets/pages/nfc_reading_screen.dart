@@ -39,9 +39,6 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('NFC Reading'),
-      ),
       body: Center(
         child: AnimatedNFCStatusWidget(
           state: _nfcState,
