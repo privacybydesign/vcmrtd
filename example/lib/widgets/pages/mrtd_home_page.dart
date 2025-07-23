@@ -24,6 +24,21 @@ import '../forms/auth_form_widget.dart';
 
 /// Main page widget for MRTD application
 class MrtdHomePage extends StatefulWidget {
+  final VoidCallback? onNfcReadyPressed;
+  final VoidCallback? onBackPressed;
+  final MRZResult? initialMrzData;
+  final bool showChoiceNavigation;
+  final bool showResultsOnly;
+
+  const MrtdHomePage({
+    Key? key,
+    this.onNfcReadyPressed,
+    this.onBackPressed,
+    this.initialMrzData,
+    this.showChoiceNavigation = false,
+    this.showResultsOnly = false,
+  }) : super(key: key);
+
   @override
   State<MrtdHomePage> createState() => _MrtdHomePageState();
 }
@@ -62,6 +77,13 @@ class _MrtdHomePageState extends State<MrtdHomePage>
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
     ]);
+
+    // Pre-populate from MRZ data if provided
+    if (widget.initialMrzData != null) {
+      _docNumber.text = widget.initialMrzData!.documentNumber;
+      _dob.text = DateFormat.yMd().format(widget.initialMrzData!.birthDate);
+      _doe.text = DateFormat.yMd().format(widget.initialMrzData!.expiryDate);
+    }
 
     _initPlatformState();
 
@@ -132,6 +154,13 @@ class _MrtdHomePageState extends State<MrtdHomePage>
   }
 
   void _buttonPressed() async {
+    // If in new navigation flow, call the callback instead
+    if (widget.onNfcReadyPressed != null) {
+      widget.onNfcReadyPressed!();
+      return;
+    }
+    
+    // Otherwise use original behavior
     if (_tabController.index == 0) {
       // DBA tab
       _processDBAAuthentication();
@@ -423,7 +452,15 @@ class _MrtdHomePageState extends State<MrtdHomePage>
   }
 
   PlatformScaffold _buildPage(BuildContext context) => PlatformScaffold(
-        appBar: PlatformAppBar(title: const Text('MRTD Example App')),
+        appBar: PlatformAppBar(
+          title: Text(widget.showResultsOnly ? 'Passport Data' : 'Enter Passport Details'),
+          leading: widget.onBackPressed != null 
+              ? PlatformIconButton(
+                  icon: Icon(PlatformIcons(context).back),
+                  onPressed: widget.onBackPressed,
+                )
+              : null,
+        ),
         iosContentPadding: false,
         iosContentBottomPadding: false,
         body: Material(
@@ -435,41 +472,48 @@ class _MrtdHomePageState extends State<MrtdHomePage>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
-                    AuthFormWidget(
-                      tabController: _tabController,
-                      mrzFormKey: _mrzData,
-                      canFormKey: _canData,
-                      docNumberController: _docNumber,
-                      dobController: _dob,
-                      doeController: _doe,
-                      canController: _can,
-                      checkBoxPACE: _checkBoxPACE,
-                      inputDisabled: _disabledInput(),
-                      onPACEChanged: (value) {
-                        setState(() {
-                          _checkBoxPACE = value;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    PlatformElevatedButton(
-                      onPressed: _buttonPressed,
-                      child: PlatformText(
-                        _isReading ? 'Reading ...' : 'Read Passport',
+                    // Only show form if not in results-only mode
+                    if (!widget.showResultsOnly) ...[
+                      AuthFormWidget(
+                        tabController: _tabController,
+                        mrzFormKey: _mrzData,
+                        canFormKey: _canData,
+                        docNumberController: _docNumber,
+                        dobController: _dob,
+                        doeController: _doe,
+                        canController: _can,
+                        checkBoxPACE: _checkBoxPACE,
+                        inputDisabled: _disabledInput(),
+                        onPACEChanged: (value) {
+                          setState(() {
+                            _checkBoxPACE = value;
+                          });
+                        },
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                    PlatformElevatedButton(
-                      onPressed: _readMRZPressed,
-                      child: PlatformText(
-                        _isReading ? 'Reading ...' : 'Scan MRZ',
+                      const SizedBox(height: 20),
+                      PlatformElevatedButton(
+                        onPressed: _disabledInput() ? null : _buttonPressed,
+                        child: PlatformText(
+                          _isReading ? 'Reading ...' : 
+                          widget.onNfcReadyPressed != null ? 'Continue to NFC Reading' : 'Read Passport',
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                    NfcStatusWidget(isNfcAvailable: _isNfcAvailable),
-                    const SizedBox(height: 15),
-                    AlertMessageWidget(message: _alertMessage),
-                    const SizedBox(height: 15),
+                      // Only show MRZ scan button if not in new navigation flow
+                      if (widget.onNfcReadyPressed == null) ...[
+                        const SizedBox(height: 20),
+                        PlatformElevatedButton(
+                          onPressed: _readMRZPressed,
+                          child: PlatformText(
+                            _isReading ? 'Reading ...' : 'Scan MRZ',
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 20),
+                      NfcStatusWidget(isNfcAvailable: _isNfcAvailable),
+                      const SizedBox(height: 15),
+                      AlertMessageWidget(message: _alertMessage),
+                      const SizedBox(height: 15),
+                    ],
                     MrtdDataListWidget(mrtdData: _mrtdData),
                   ],
                 ),

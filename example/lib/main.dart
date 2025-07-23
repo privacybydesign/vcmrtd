@@ -8,6 +8,7 @@ import 'package:logging/logging.dart';
 import 'package:dmrtd/extensions.dart';
 
 import 'widgets/widgets.dart';
+import 'widgets/pages/app_navigation.dart';
 
 void main() {
   Logger.root.level = Level.ALL;
@@ -30,7 +31,7 @@ class MrtdEgApp extends StatelessWidget {
       ],
       material: (_, __) => MaterialAppData(),
       cupertino: (_, __) => CupertinoAppData(),
-      home: MrtdHomePage(),
+      home: AppNavigation(), // Changed to new navigation flow
     );
   }
 }
