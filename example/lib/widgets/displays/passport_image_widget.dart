@@ -105,29 +105,6 @@ class _PassportImageWidgetState extends State<PassportImageWidget> {
       return const Center(child: Text("No image data available."));
     }
 
-    return ExpandablePanel(
-      theme: const ExpandableThemeData(
-        headerAlignment: ExpandablePanelHeaderAlignment.center,
-        tapBodyToCollapse: true,
-        hasIcon: true,
-        iconColor: Colors.red,
-      ),
-      header: Text(widget.header),
-      collapsed: Text(
-        '',
-        softWrap: true,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-      ),
-      expanded: Container(
-        padding: const EdgeInsets.all(18),
-        color: const Color.fromARGB(255, 239, 239, 239),
-        child: _buildImageContent(),
-      ),
-    );
-  }
-
-  Widget _buildImageContent() {
     if (widget.imageType == ImageType.jpeg) {
       return Image.memory(
         widget.imageData!,

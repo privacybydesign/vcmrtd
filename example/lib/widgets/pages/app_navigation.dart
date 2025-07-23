@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:mrtdeg/helpers/mrz_data.dart';
+import 'package:mrtdeg/widgets/pages/data_screen.dart';
 import 'package:mrtdeg/widgets/pages/nfc_reading_screen.dart';
 
 import 'choice_screen.dart';
@@ -117,16 +118,13 @@ class _AppNavigationState extends State<AppNavigation> {
   }
 
   Widget _buildDataReadingScreen() {
-    return MrtdHomePage(
+    return DataScreen(
+      mrtdData: _mrtdData,
       onBackPressed: () {
         setState(() {
           _currentStep = 0; // Back to choice screen
-          _mrzResult = null;
-          _mrtdData = null;
         });
       },
-      initialMrzData: _mrzResult,
-      showChoiceNavigation: true
     );
   }
 

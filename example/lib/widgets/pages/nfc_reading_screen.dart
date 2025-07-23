@@ -7,8 +7,6 @@ import 'package:logging/logging.dart';
 import 'package:mrtdeg/helpers/mrz_data.dart';
 import 'package:mrtdeg/models/mrtd_data.dart';
 import 'package:mrtdeg/widgets/common/alert_message_widget.dart';
-import 'package:intl/intl.dart';
-import 'package:dmrtd/src/proto/can_key.dart';
 
 class NfcReadingScreen extends StatefulWidget {
   final MRZResult? mrzResult;
@@ -22,7 +20,6 @@ class NfcReadingScreen extends StatefulWidget {
 
 class _NfcReadingScreenState extends State<NfcReadingScreen> {
   final NfcProvider _nfc = NfcProvider();
-  MrtdData? _mrtdData;
   String _alertMessage = "";
   final _log = Logger("mrtdeg.app");
 
@@ -63,7 +60,6 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
   void _readMRTD({required AccessKey accessKey, bool isPace = false}) async {
     try {
       setState(() {
-        _mrtdData = null;
         _alertMessage = "Waiting for Passport tag ...";
       });
 

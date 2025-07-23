@@ -20,9 +20,7 @@ class ChoiceScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PlatformScaffold(
-      appBar: PlatformAppBar(
-        title: const Text('Pasport Reader'),
-      ),
+
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(

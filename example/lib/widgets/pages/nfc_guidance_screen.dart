@@ -368,7 +368,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
           child: const Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
             child: Text(
-              'I\'m Ready',
+              'Scan Passport',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
           ),
