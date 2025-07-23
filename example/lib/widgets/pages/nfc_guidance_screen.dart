@@ -30,13 +30,13 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
   @override
   void initState() {
     super.initState();
-    
+
     // Setup positioning animation
     _animationController = AnimationController(
       duration: const Duration(seconds: 3),
       vsync: this,
     );
-    
+
     _positionAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -44,7 +44,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
       parent: _animationController,
       curve: Curves.easeInOut,
     ));
-    
+
     _glowAnimation = Tween<double>(
       begin: 0.3,
       end: 1.0,
@@ -52,7 +52,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
       parent: _animationController,
       curve: Curves.easeInOut,
     ));
-    
+
     // Start animation loop
     _animationController.repeat(reverse: true);
   }
@@ -133,30 +133,15 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Dotted alignment guides
-          Positioned.fill(
-            child: CustomPaint(
-              painter: AlignmentGuidesPainter(),
-            ),
-          ),
-          
-          // Phone illustration (moves up and down)
-          Positioned(
-            top: 60 + (_positionAnimation.value * 20),
-            child: _buildPhoneIllustration(),
-          ),
-          
           // Passport illustration with glowing NFC indicator
           Positioned(
             bottom: 60,
             child: _buildPassportIllustration(),
           ),
-          
-          // Distance indicator
+          // Phone illustration (moves up and down)
           Positioned(
-            right: 20,
-            top: 100,
-            child: _buildDistanceIndicator(),
+            top: 60 + (_positionAnimation.value * 20),
+            child: _buildPhoneIllustration(),
           ),
         ],
       ),
@@ -165,98 +150,134 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
 
   Widget _buildPhoneIllustration() {
     return Container(
-      width: 120,
-      height: 60,
+      width: 80, // Portrait shape (narrower than height)
+      height: 160,
       decoration: BoxDecoration(
         border: Border.all(color: const Color(0xFF2196F3), width: 3),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(20),
         color: Colors.white,
       ),
-      child: const Center(
-        child: Icon(
-          Icons.smartphone,
-          color: Color(0xFF2196F3),
-          size: 30,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPassportIllustration() {
-    return Container(
-      width: 160,
-      height: 100,
-      decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xFF424242), width: 2),
-        borderRadius: BorderRadius.circular(8),
-        color: const Color(0xFFBDBDBD),
-      ),
-      child: Stack(
+      child: Column(
         children: [
-          const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'PASSPORT',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF424242),
-                  ),
-                ),
-                Text(
-                  'Back Cover',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: Color(0xFF666666),
-                  ),
-                ),
-              ],
+          // Notch (optional, to suggest speaker/camera area)
+          Container(
+            width: 40,
+            height: 6,
+            margin: const EdgeInsets.only(top: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2196F3),
+              borderRadius: BorderRadius.circular(3),
             ),
           ),
-          
-          // Glowing NFC chip indicator
-          Positioned(
-            top: 20,
-            right: 20,
-            child: Container(
-              width: 12,
-              height: 12,
-              decoration: BoxDecoration(
-                color: Colors.orange,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.orange.withOpacity(_glowAnimation.value),
-                    blurRadius: 8,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-            ),
-          ),
+          const Spacer(),
+          // You can add a blank screen or content here if desired
+          const SizedBox(height: 8),
         ],
       ),
     );
   }
 
-  Widget _buildDistanceIndicator() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2196F3),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: const Text(
-        '2-3cm',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
+  Widget _buildPassportIllustration() {
+    return RotatedBox(
+        quarterTurns: 3,
+        child: Container(
+          width: 160,
+          height: 200, // increased height to accommodate opened cover
+          child: Column(
+            children: [
+              // Top half – passport cover flipped open
+              Container(
+                height: 90,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF424242),
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(8)),
+                  border: Border.all(color: const Color(0xFF424242), width: 2),
+                ),
+                child: const Center(
+                  child: RotatedBox(
+                    quarterTurns: 2, // upside down to simulate flipping
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'PASSPORT',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Text(
+                          'Kingdom of Example',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // Bottom half – inner page with photo + info
+              Container(
+                height: 100,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFBDBDBD),
+                  borderRadius:
+                      const BorderRadius.vertical(bottom: Radius.circular(8)),
+                  border: Border.all(color: const Color(0xFF424242), width: 2),
+                ),
+                child: Row(
+                  children: [
+                    // Photo placeholder
+                    Container(
+                      width: 70,
+                      alignment: Alignment.center,
+                      child: CircleAvatar(
+                        radius: 24,
+                        backgroundColor: Colors.grey.shade300,
+                        child: Icon(
+                          Icons.person,
+                          size: 28,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                    ),
+                    // Info text
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text(
+                            'Name: John Doe',
+                            style: TextStyle(
+                                fontSize: 10, color: Color(0xFF333333)),
+                          ),
+                          Text(
+                            'Nationality: NL',
+                            style: TextStyle(
+                                fontSize: 10, color: Color(0xFF333333)),
+                          ),
+                          Text(
+                            'DOB: 01-01-1990',
+                            style: TextStyle(
+                                fontSize: 10, color: Color(0xFF333333)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ));
   }
 
   Widget _buildInstructions() {
@@ -280,7 +301,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
           ),
         ),
         const SizedBox(height: 16),
-        
+
         // Tips
         Container(
           padding: const EdgeInsets.all(16),
@@ -331,9 +352,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
             ),
           ),
         ),
-        
         const SizedBox(height: 8),
-        
         if (widget.onTroubleshooting != null)
           PlatformTextButton(
             onPressed: widget.onTroubleshooting,
@@ -348,54 +367,4 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
       ],
     );
   }
-}
-
-/// Custom painter for alignment guides (dotted lines)
-class AlignmentGuidesPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.grey[400]!
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
-
-    // Vertical center line (dotted)
-    _drawDottedLine(
-      canvas,
-      paint,
-      Offset(size.width / 2, 0),
-      Offset(size.width / 2, size.height),
-    );
-    
-    // Horizontal center line (dotted)
-    _drawDottedLine(
-      canvas,
-      paint,
-      Offset(0, size.height / 2),
-      Offset(size.width, size.height / 2),
-    );
-  }
-
-  void _drawDottedLine(Canvas canvas, Paint paint, Offset start, Offset end) {
-    const double dashLength = 8;
-    const double gapLength = 4;
-    
-    final double totalLength = (end - start).distance;
-    final int segments = (totalLength / (dashLength + gapLength)).floor();
-    
-    final Offset direction = (end - start) / totalLength;
-    
-    for (int i = 0; i < segments; i++) {
-      final double startDistance = i * (dashLength + gapLength);
-      final double endDistance = startDistance + dashLength;
-      
-      final Offset segmentStart = start + direction * startDistance;
-      final Offset segmentEnd = start + direction * endDistance;
-      
-      canvas.drawLine(segmentStart, segmentEnd, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

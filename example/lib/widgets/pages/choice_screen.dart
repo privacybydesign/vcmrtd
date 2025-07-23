@@ -21,7 +21,7 @@ class ChoiceScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return PlatformScaffold(
       appBar: PlatformAppBar(
-        title: const Text('MRTD Reader'),
+        title: const Text('Pasport Reader'),
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -29,7 +29,7 @@ class ChoiceScreen extends StatelessWidget {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF2196F3), // Primary blue
+              Color(0xFF6b6868),
               Colors.white,
             ],
             stops: [0.0, 0.3],
@@ -57,13 +57,13 @@ class ChoiceScreen extends StatelessWidget {
                           width: 80,
                           height: 80,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF2196F3).withOpacity(0.1),
+                            color: const Color(0xFF6b6868).withOpacity(0.1),
                             borderRadius: BorderRadius.circular(40),
                           ),
                           child: const Icon(
                             Icons.credit_card,
                             size: 40,
-                            color: Color(0xFF2196F3),
+                            color: Color(0xFF6b6868),
                           ),
                         ),
                         const SizedBox(height: 24),
@@ -140,7 +140,7 @@ class ChoiceScreen extends StatelessWidget {
                           child: const Text(
                             'Get help',
                             style: TextStyle(
-                              color: Color(0xFF2196F3),
+                              color: Color(0xFF6b6868),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -174,10 +174,10 @@ class ChoiceScreen extends StatelessWidget {
         onTap: onPressed,
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          height: 80,
+          height: 102,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            color: isPrimary ? const Color(0xFF2196F3) : const Color(0xFFF5F5F5),
+            color: isPrimary ? const Color(0xFF6b6868) : const Color(0xFFF5F5F5),
           ),
           child: Stack(
             children: [
@@ -191,7 +191,7 @@ class ChoiceScreen extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: isPrimary 
                             ? Colors.white.withOpacity(0.2)
-                            : const Color(0xFF2196F3).withOpacity(0.1),
+                            : const Color(0xFF6b6868).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
