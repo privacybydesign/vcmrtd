@@ -10,9 +10,19 @@ import 'package:mrtdeg/widgets/common/alert_message_widget.dart';
 
 class NfcReadingScreen extends StatefulWidget {
   final MRZResult? mrzResult;
+  final String? manualDocNumber;
+  final DateTime? manualDob;
+  final DateTime? manualExpiry;
   final ValueChanged<MrtdData>? onDataRead;
 
-  const NfcReadingScreen({Key? key, this.mrzResult, this.onDataRead}) : super(key: key);
+  const NfcReadingScreen({
+    Key? key, 
+    this.mrzResult, 
+    this.manualDocNumber,
+    this.manualDob,
+    this.manualExpiry,
+    this.onDataRead
+  }) : super(key: key);
 
   @override
   State<NfcReadingScreen> createState() => _NfcReadingScreenState();
@@ -43,15 +53,40 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
   }
 
   void _processDBAAuthentication() async {
-    bool paceMode = false; // Set to true if PACE is required
-    if (widget.mrzResult?.countryCode == "NLD") {
-      paceMode = true;
+    String docNumber;
+    DateTime birthDate;
+    DateTime expiryDate;
+    bool paceMode = false;
+
+    // Use either MRZ data or manual entry data
+    if (widget.mrzResult != null) {
+      docNumber = widget.mrzResult!.documentNumber;
+      birthDate = widget.mrzResult!.birthDate;
+      expiryDate = widget.mrzResult!.expiryDate;
+      
+      // Set PACE mode based on country code if available
+      if (widget.mrzResult!.countryCode == "NLD") {
+        paceMode = true;
+      }
+    } else if (widget.manualDocNumber != null && 
+               widget.manualDob != null && 
+               widget.manualExpiry != null) {
+      docNumber = widget.manualDocNumber!;
+      birthDate = widget.manualDob!;
+      expiryDate = widget.manualExpiry!;
+      // Default to non-PACE mode for manual entry
+      paceMode = false;
+    } else {
+      setState(() {
+        _alertMessage = "No passport data available. Please go back and enter your passport information.";
+      });
+      return;
     }
 
     final bacKeySeed = DBAKey(
-      widget.mrzResult!.documentNumber,
-      widget.mrzResult!.birthDate,
-      widget.mrzResult!.expiryDate,
+      docNumber,
+      birthDate,
+      expiryDate,
       paceMode: paceMode,
     );
     _readMRTD(accessKey: bacKeySeed, isPace: paceMode);

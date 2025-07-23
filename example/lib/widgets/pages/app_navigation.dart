@@ -8,7 +8,7 @@ import 'package:mrtdeg/widgets/pages/nfc_reading_screen.dart';
 
 import 'choice_screen.dart';
 import 'nfc_guidance_screen.dart';
-import 'mrtd_home_page.dart';
+import 'manual_entry_screen.dart';
 import 'scanner_wrapper.dart';
 import '../../models/mrtd_data.dart';
 
@@ -23,6 +23,11 @@ class _AppNavigationState extends State<AppNavigation> {
   MRZResult? _mrzResult;
   MrtdData? _mrtdData;
   bool _useManualEntry = false;
+  
+  // Manual entry data
+  String? _manualDocNumber;
+  DateTime? _manualDob;
+  DateTime? _manualExpiry;
 
   @override
   Widget build(BuildContext context) {
@@ -81,19 +86,24 @@ class _AppNavigationState extends State<AppNavigation> {
   }
 
   Widget _buildManualEntryScreen() {
-    return MrtdHomePage(
-      onNfcReadyPressed: () {
+    return ManualEntryScreen(
+      onContinue: () {
         setState(() {
           _currentStep = 2; // Go to NFC guidance
         });
       },
-      onBackPressed: () {
+      onBack: () {
         setState(() {
           _currentStep = 0; // Back to choice screen
         });
       },
-      initialMrzData: _mrzResult,
-      showChoiceNavigation: true,
+      onDataEntered: (String docNumber, DateTime dob, DateTime expiry) {
+        setState(() {
+          _manualDocNumber = docNumber;
+          _manualDob = dob;
+          _manualExpiry = expiry;
+        });
+      },
     );
   }
 
@@ -131,6 +141,9 @@ class _AppNavigationState extends State<AppNavigation> {
   Widget _buildNfcReadingScreen() {
     return NfcReadingScreen(
       mrzResult: _mrzResult,
+      manualDocNumber: _manualDocNumber,
+      manualDob: _manualDob,
+      manualExpiry: _manualExpiry,
       onDataRead: (MrtdData data) {
         setState(() {
           _mrtdData = data;
