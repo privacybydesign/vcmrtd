@@ -155,10 +155,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                       }
                       return null;
                     },
-                    suffix: Icon(
-                      PlatformIcons(context).dateTime,
-                      color: const Color(0xFF666666),
-                    ),
+
                   ),
                 ),
 
@@ -186,10 +183,6 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                       }
                       return null;
                     },
-                    suffix: Icon(
-                      PlatformIcons(context).dateTime,
-                      color: const Color(0xFF666666),
-                    ),
                   ),
                 ),
 
