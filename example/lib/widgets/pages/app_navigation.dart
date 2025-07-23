@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:mrtdeg/helpers/mrz_data.dart';
+import 'package:mrtdeg/widgets/pages/nfc_reading_screen.dart';
 
 import 'choice_screen.dart';
 import 'nfc_guidance_screen.dart';
@@ -34,7 +35,9 @@ class _AppNavigationState extends State<AppNavigation> {
       case 2:
         return _buildNfcGuidanceScreen();
       case 3:
-        return _buildResultsScreen();
+        return _buildNfcReadingScreen();
+      case 4:
+        return _buildDataReadingScreen();
       default:
         return _buildChoiceScreen();
     }
@@ -113,7 +116,7 @@ class _AppNavigationState extends State<AppNavigation> {
     );
   }
 
-  Widget _buildResultsScreen() {
+  Widget _buildDataReadingScreen() {
     return MrtdHomePage(
       onBackPressed: () {
         setState(() {
@@ -124,6 +127,18 @@ class _AppNavigationState extends State<AppNavigation> {
       },
       initialMrzData: _mrzResult,
       showChoiceNavigation: true
+    );
+  }
+
+  Widget _buildNfcReadingScreen() {
+    return NfcReadingScreen(
+      mrzResult: _mrzResult,
+      onDataRead: (MrtdData data) {
+        setState(() {
+          _mrtdData = data;
+          _currentStep = 4; // Show results
+        });
+      },
     );
   }
 

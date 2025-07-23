@@ -1,7 +1,11 @@
 // Created for UX improvement - NFC positioning guidance screen
 // Implementation based on hive design specifications
 
+import 'dart:async';
+
+import 'package:dmrtd/dmrtd.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 
 /// NFC guidance screen - helps users position phone correctly for NFC reading
@@ -25,6 +29,8 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
     with TickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _positionAnimation;
+  var _isNfcAvailable = false;
+  late Timer _timerStateUpdater;
 
   @override
   void initState() {
@@ -45,11 +51,38 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
     ));
     // Start animation loop
     _animationController.repeat(reverse: true);
+
+    _initNFCState();
+
+    // Update platform state every 3 sec
+    _timerStateUpdater = Timer.periodic(
+      const Duration(seconds: 3),
+      (Timer t) {
+        _initNFCState();
+      },
+    );
+  }
+
+  Future<void> _initNFCState() async {
+    bool isNfcAvailable;
+    try {
+      NfcStatus status = await NfcProvider.nfcStatus;
+      isNfcAvailable = status == NfcStatus.enabled;
+    } on PlatformException {
+      isNfcAvailable = false;
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      _isNfcAvailable = isNfcAvailable;
+    });
   }
 
   @override
   void dispose() {
     _animationController.dispose();
+    _timerStateUpdater.cancel();
     super.dispose();
   }
 
@@ -69,6 +102,26 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Row(
+                children: [
+                  Text(
+                    _isNfcAvailable
+                        ? 'NFC is available'
+                        : 'NFC is not available',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      color: Color(0xFF212121),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    _isNfcAvailable ? Icons.check_circle : Icons.cancel,
+                    color: _isNfcAvailable ? Colors.green : Colors.red,
+                    size: 24,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24.0),
               // Animation area
               SizedBox(
                 height: 300, // or use MediaQuery if dynamic height needed
@@ -263,6 +316,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
             color: Color(0xFF212121),
           ),
         ),
+
         const SizedBox(height: 8),
 
         // Tips
