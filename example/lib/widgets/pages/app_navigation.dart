@@ -12,6 +12,8 @@ import 'manual_entry_screen.dart';
 import 'scanner_wrapper.dart';
 import '../../models/mrtd_data.dart';
 
+enum NavigationStep { choice, mrz, manual, nfcHelp, nfcReading, results }
+
 /// Main navigation controller that manages the new UX flow
 class AppNavigation extends StatefulWidget {
   @override
@@ -19,10 +21,9 @@ class AppNavigation extends StatefulWidget {
 }
 
 class _AppNavigationState extends State<AppNavigation> {
-  int _currentStep = 0;
+  NavigationStep _currentStep = NavigationStep.choice;
   MRZResult? _mrzResult;
   MrtdData? _mrtdData;
-  bool _useManualEntry = false;
   
   // Manual entry data
   String? _manualDocNumber;
@@ -32,20 +33,18 @@ class _AppNavigationState extends State<AppNavigation> {
   @override
   Widget build(BuildContext context) {
     switch (_currentStep) {
-      case 0:
+      case NavigationStep.choice:
         return _buildChoiceScreen();
-      case 1:
-        return _useManualEntry 
-            ? _buildManualEntryScreen() 
-            : _buildMrzScannerScreen();
-      case 2:
+      case NavigationStep.mrz:
+        return _buildMrzScannerScreen();
+      case NavigationStep.manual:
+        return _buildManualEntryScreen();
+      case NavigationStep.nfcHelp:
         return _buildNfcGuidanceScreen();
-      case 3:
+      case NavigationStep.nfcReading:
         return _buildNfcReadingScreen();
-      case 4:
+      case NavigationStep.results:
         return _buildDataReadingScreen();
-      default:
-        return _buildChoiceScreen();
     }
   }
 
@@ -53,14 +52,12 @@ class _AppNavigationState extends State<AppNavigation> {
     return ChoiceScreen(
       onScanMrzPressed: () {
         setState(() {
-          _useManualEntry = false;
-          _currentStep = 1;
+          _currentStep = NavigationStep.mrz;
         });
       },
       onEnterManuallyPressed: () {
         setState(() {
-          _useManualEntry = true;
-          _currentStep = 1;
+          _currentStep = NavigationStep.manual;
         });
       },
       onHelpPressed: () {
@@ -74,12 +71,14 @@ class _AppNavigationState extends State<AppNavigation> {
       onMrzScanned: (MRZResult result) {
         setState(() {
           _mrzResult = result;
-          _currentStep = 2; // Go to NFC guidance
+          // Go to NFC guidance
+          _currentStep = NavigationStep.nfcHelp;
         });
       },
       onCancel: () {
         setState(() {
-          _currentStep = 0; // Back to choice screen
+          // Back to choice screen
+          _currentStep = NavigationStep.choice;
         });
       },
     );
@@ -89,12 +88,14 @@ class _AppNavigationState extends State<AppNavigation> {
     return ManualEntryScreen(
       onContinue: () {
         setState(() {
-          _currentStep = 2; // Go to NFC guidance
+          // Go to NFC guidance
+          _currentStep = NavigationStep.nfcHelp;
         });
       },
       onBack: () {
         setState(() {
-          _currentStep = 0; // Back to choice screen
+          // Back to choice screen
+          _currentStep = NavigationStep.choice;
         });
       },
       onDataEntered: (String docNumber, DateTime dob, DateTime expiry) {
@@ -113,12 +114,12 @@ class _AppNavigationState extends State<AppNavigation> {
         // Here we would typically start the actual NFC reading
         // For now, we'll navigate to results
         setState(() {
-          _currentStep = 3;
+          _currentStep = NavigationStep.nfcReading;
         });
       },
       onBack: () {
         setState(() {
-          _currentStep = 1; // Back to scanner/manual entry
+          _currentStep = NavigationStep.choice; // Back to scanner/manual entry
         });
       },
       onTroubleshooting: () {
@@ -132,7 +133,7 @@ class _AppNavigationState extends State<AppNavigation> {
       mrtdData: _mrtdData,
       onBackPressed: () {
         setState(() {
-          _currentStep = 0; // Back to choice screen
+          _currentStep = NavigationStep.choice; // Back to choice screen
         });
       },
     );
@@ -146,13 +147,13 @@ class _AppNavigationState extends State<AppNavigation> {
       manualExpiry: _manualExpiry,
       onCancel: () {
         setState(() {
-          _currentStep = 0; // Return to choice screen
+          _currentStep = NavigationStep.choice; // Return to choice screen
         });
       },
       onDataRead: (MrtdData data) {
         setState(() {
           _mrtdData = data;
-          _currentStep = 4; // Show results
+          _currentStep = NavigationStep.results; // Show results
         });
       },
     );
