@@ -34,17 +34,14 @@ const sidebars: SidebarsConfig = {
         // 'dmrtd/faq'
       ],
     },
-    // {
-    //   type: 'category',
-    //   label: 'Passport based Veriable Credentials',
-    //   collapsed: false,
-    //   items: [
-    //     // 'passport-vc/installation',
-    //     // 'passport-vc/usage',
-    //     // 'passport-vc/advanced-usage',
-    //     // 'passport-vc/faq'
-    //   ],
-    // },
+    {
+      type: 'category',
+      label: 'Passport based Veriable Credentials',
+      collapsed: false,
+      items: [
+        'library/support',
+      ],
+    },
     {
       type: 'category',
       label: 'Background information',
