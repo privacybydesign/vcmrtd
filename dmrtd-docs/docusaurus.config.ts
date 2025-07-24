@@ -17,7 +17,7 @@ const config: Config = {
   url: "https://privacybydesign.github.io/",
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: "/dmrtd/",
+  baseUrl: "/",
   trailingSlash: false,
   organizationName: "privacybydesign",
   projectName: "dmrtd",
@@ -25,6 +25,8 @@ const config: Config = {
 
   onBrokenLinks: "throw",
   onBrokenMarkdownLinks: "warn",
+
+  staticDirectories: ["static"],
 
   // Even if you don't use internationalization, you can use this field to set
   // useful metadata like html lang. For example, if your site is Chinese, you
