@@ -17,11 +17,13 @@ This repository contains an example app that demonstrates how to use the library
 
 Some screenshots of the example app:
 
+<p float="left"> 
 <img src="/dmrtd-docs/static/images/home.png?raw=true" width="200px" alt="Choose between MRZ or manual" />
 <img src="/dmrtd-docs/static/images/mrz.png?raw=true" width="200px" alt="MRZ scanning" />
 <img src="/dmrtd-docs/static/images/nfc.png?raw=true" width="200px" alt="NFC explanation" />
 <img src="/dmrtd-docs/static/images/reading.png?raw=true" width="200px" alt="Reading data" />
-<img src="/dmrtd-docs/static/images/results.png?raw=true" width="200px" alt="Results" />
+<img src="/dmrtd-docs/static/images/result.png?raw=true" width="200px" alt="Results" />
+</p>
 
 
 ## Usage
