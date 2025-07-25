@@ -29,9 +29,32 @@ class MrtdEgApp extends StatelessWidget {
         DefaultCupertinoLocalizations.delegate,
         DefaultWidgetsLocalizations.delegate,
       ],
-      material: (_, __) => MaterialAppData(),
-      cupertino: (_, __) => CupertinoAppData(),
-      home: AppNavigation(), // Changed to new navigation flow
+      material: (_, __) => MaterialAppData(
+        theme: ThemeData(
+          primarySwatch: Colors.indigo,
+          brightness: Brightness.light,
+          textTheme: TextTheme(
+            bodyLarge: TextStyle(fontSize: 16.0, color: Colors.black87),
+          ),
+          appBarTheme: AppBarTheme(
+            backgroundColor: Colors.indigo,
+            foregroundColor: Colors.white,
+          ),
+        ),
+        // Optional:
+        // darkTheme: ThemeData.dark(),
+        // themeMode: ThemeMode.system,
+      ),
+      cupertino: (_, __) => CupertinoAppData(
+        theme: CupertinoThemeData(
+          primaryColor: CupertinoColors.activeBlue,
+          barBackgroundColor: CupertinoColors.systemGrey6,
+          textTheme: CupertinoTextThemeData(
+            textStyle: TextStyle(fontSize: 16),
+          ),
+        ),
+      ),
+      home: AppNavigation(),
     );
   }
 }

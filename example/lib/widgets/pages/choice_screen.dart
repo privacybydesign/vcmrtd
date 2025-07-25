@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
+import 'package:mrtdeg/theme/text_styles.dart';
 
 /// Initial choice screen - user decides between Scan MRZ or Enter Manually
 class ChoiceScreen extends StatelessWidget {
@@ -67,24 +68,16 @@ class ChoiceScreen extends StatelessWidget {
                         const SizedBox(height: 24),
                         
                         // Title
-                        const Text(
+                        Text(
                           'How would you like to read your passport?',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF212121),
-                          ),
+                          style: Theme.of(context).defaultTextStyles.primaryLarge,
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 8),
-                        
                         // Subtitle
-                        const Text(
+                        Text(
                           'Choose the method that works best for you',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Color(0xFF666666),
-                          ),
+                          style: Theme.of(context).defaultTextStyles.hint,
                           textAlign: TextAlign.center,
                         ),
                       ],
