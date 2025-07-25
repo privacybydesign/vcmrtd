@@ -3,7 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:dmrtd/extensions.dart';
-import 'package:mrtdeg/widgets/displays/image_widget.dart';
+import 'package:mrtdeg/widgets/displays/passport_image_widget.dart';
 import '../../models/mrtd_data.dart';
 import '../../utils/formatters.dart';
 import 'access_protocol_widget.dart';
@@ -132,14 +132,6 @@ class MrtdDataListWidget extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(
-            mrtdData != null ? "Passport Data:" : "",
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 15.0,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
           Padding(
             padding: const EdgeInsets.only(
               left: 16.0,

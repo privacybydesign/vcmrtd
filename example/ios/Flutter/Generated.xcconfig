@@ -1,14 +1,15 @@
 // This is a generated file; do not edit or check into version control.
-FLUTTER_ROOT=C:\Tools\Flutter\flutter
-FLUTTER_APPLICATION_PATH=C:\Code\yivi\dmrtd\example
+FLUTTER_ROOT=/Users/wensink/flutter
+FLUTTER_APPLICATION_PATH=/Users/wensink/dev/yivi-experiments/dmrtd/example
 COCOAPODS_PARALLEL_CODE_SIGN=true
-FLUTTER_TARGET=lib\main.dart
+FLUTTER_TARGET=/Users/wensink/dev/yivi-experiments/dmrtd/example/lib/main.dart
 FLUTTER_BUILD_DIR=build
 FLUTTER_BUILD_NAME=1.2.2
 FLUTTER_BUILD_NUMBER=1.2.2
 EXCLUDED_ARCHS[sdk=iphonesimulator*]=i386
 EXCLUDED_ARCHS[sdk=iphoneos*]=armv7
+DART_DEFINES=RkxVVFRFUl9WRVJTSU9OPTMuMzIuNg==,RkxVVFRFUl9DSEFOTkVMPVt1c2VyLWJyYW5jaF0=,RkxVVFRFUl9HSVRfVVJMPXVua25vd24gc291cmNl,RkxVVFRFUl9GUkFNRVdPUktfUkVWSVNJT049MDc3YjRhNGNlMQ==,RkxVVFRFUl9FTkdJTkVfUkVWSVNJT049NzJmMmIxOGJiMA==,RkxVVFRFUl9EQVJUX1ZFUlNJT049My44LjE=
 DART_OBFUSCATION=false
 TRACK_WIDGET_CREATION=true
 TREE_SHAKE_ICONS=false
-PACKAGE_CONFIG=.dart_tool/package_config.json
+PACKAGE_CONFIG=/Users/wensink/dev/yivi-experiments/dmrtd/example/.dart_tool/package_config.json
