@@ -75,7 +75,5 @@ class CanKey extends AccessKey {
   String toString() {
     _log.warning("CanKeys.toString() called. This is very sensitive data. Do not use in production!");
     return "CanKeys; CAN: ${_can.hex()}";
-    return super.toString();
   }
-
 }

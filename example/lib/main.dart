@@ -7,7 +7,6 @@ import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:logging/logging.dart';
 import 'package:dmrtd/extensions.dart';
 
-import 'widgets/widgets.dart';
 import 'widgets/pages/app_navigation.dart';
 
 void main() {

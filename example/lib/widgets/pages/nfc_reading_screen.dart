@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:mrtdeg/helpers/mrz_data.dart';
 import 'package:mrtdeg/models/mrtd_data.dart';
-import 'package:mrtdeg/widgets/common/alert_message_widget.dart';
 import 'package:mrtdeg/widgets/common/animated_nfc_status_widget.dart';
 
 class NfcReadingScreen extends StatefulWidget {

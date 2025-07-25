@@ -1,6 +1,3 @@
-// Created by Crt Vavros, copyright � 2022 ZeroPass. All rights reserved.
-// Enhanced MRTD data display screen with personal and security sections
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
@@ -9,9 +6,7 @@ import 'package:dmrtd/dmrtd.dart';
 import 'package:dmrtd/extensions.dart';
 
 import '../../models/mrtd_data.dart';
-import '../../utils/formatters.dart';
 import '../displays/passport_image_widget.dart';
-import '../displays/access_protocol_widget.dart';
 
 /// Enhanced data screen with personal and security sections
 class DataScreen extends StatefulWidget {

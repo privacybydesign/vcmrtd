@@ -2,7 +2,6 @@
 // ignore_for_file: constant_identifier_names
 
 import 'dart:core';
-import 'dart:convert';
 import 'dart:typed_data';
 import 'package:dmrtd/dmrtd.dart';
 import 'package:dmrtd/extensions.dart';

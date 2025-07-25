@@ -227,8 +227,8 @@ class DHPace {
       throw DHPaceError("DHPace.setEphemeralKeyPair; Ephemeral public key is null. Generate key pair first.");
     }
 
-    _log.debug("DHPace.setEphemeralKeyPair; Generated public key: ${ephemeralPublicKey}");
-    _log.sdVerbose("DHPace.setEphemeralKeyPair; Generated public/private key: ${ephemeralPublicKey}");
+    _log.debug("DHPace.setEphemeralKeyPair; Generated public key: $ephemeralPublicKey");
+    _log.sdVerbose("DHPace.setEphemeralKeyPair; Generated public/private key: $ephemeralPublicKey");
   }
 
   PublicKeyPACEdH getPubKey(){

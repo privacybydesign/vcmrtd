@@ -87,23 +87,11 @@ class Passport {
   /// Note: Might not be available if PACE is not supported
   Future<EfCardAccess> readEfCardAccess() async {
     _log.debug("Reading EF.CardAccess");
-    //
-    bool demo = false;
 
-    Uint8List data;
-    if (demo){
-      data =
-      Uint8List.fromList([49, 20, 48, 18, 6, 10, 4, 0, 127, 0, 7, 2, 2, 4, 2, 2, 2, 1, 2, 2, 1, 12]);//[49, 20, 48, 18, 6, 10, 4, 0, 127, 0, 7, 2, 2, 4, 2, 2, 2, 1, 2, 2, 1, 12]
-      // same data in hex format: 31 14 30 12 6 a 4 0 7f 0 7 2 2 4 2 2   2 1 2   2 1 c
+    await _selectMF();
     return EfCardAccess.fromBytes(
-        data);
-    }
-    else {
-      await _selectMF();
-      return EfCardAccess.fromBytes(
-          await _exec(() => _api.readFileBySFI(EfCardAccess.SFI))
-      );
-    }
+        await _exec(() => _api.readFileBySFI(EfCardAccess.SFI))
+    );
 
 
   }

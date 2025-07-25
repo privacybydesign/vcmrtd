@@ -44,8 +44,6 @@ class AESCipher {
         return 24;
       case KEY_LENGTH.s256:
         return 32;
-      default:
-        throw AESCipherError("Invalid key size. Must be 16, 24, or 32 bytes.");
     }
   }
 
@@ -118,12 +116,14 @@ class AESCipher {
     }
 
     var cipher;
-    if (mode == BLOCK_CIPHER_MODE.CBC)
+    if (mode == BLOCK_CIPHER_MODE.CBC) {
       cipher = CBCBlockCipher(_factory())
         ..init(false, ParametersWithIV(KeyParameter(key), iv));
-    else
+    }
+    else {
       cipher = ECBBlockCipher(_factory())..init(false, KeyParameter(key));
       return Uint8List.fromList(_processBlocks(cipher:cipher, data:data).toList());
+    }
   }
 
   Uint8List _processBlocks({required BlockCipher cipher, required Uint8List data}) {
@@ -180,10 +180,6 @@ class AESChiperSelector{
       case KEY_LENGTH.s256:
         _log.finer("AES chiper with 256-bit key size selected.");
         return AESCipher256();
-
-      default:
-        _log.error("AESChiperSelector; Size is not supported.");
-        throw AESCipherError("AESChiperSelector; Size is not supported.");
     }
   }
 }
