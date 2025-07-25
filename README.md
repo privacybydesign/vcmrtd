@@ -13,10 +13,9 @@ The goal is to incorporate this library into the [Yivi app](https://github.com/p
 We documented the example app, library and background information in this repository. The documentation is published using Github Pages and can be visited [here](https://privacybydesign.github.io/dmrtd).
 
 ## Example App
-This respotitory contains an example app that demonstrates how to use the library to read and verify MRTD data. The app is built using Flutter and can be run on both Android and iOS devices.
+This repository contains an example app that demonstrates how to use the library to read and verify MRTD data. The app is built using Flutter and can be run on both Android and iOS devices.
 
 Some screenshots of the example app:
-![Alt text](/dmrtd-docs/static/images/home.png?raw=true "Home Screen")
 <img src="/dmrtd-docs/static/images/screenshot1.png?raw=true" width="200px" alt="Screenshot 1" />
 
 
