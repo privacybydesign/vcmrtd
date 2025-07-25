@@ -10,12 +10,14 @@ class ChoiceScreen extends StatelessWidget {
   final VoidCallback onScanMrzPressed;
   final VoidCallback onEnterManuallyPressed;
   final VoidCallback? onHelpPressed;
+  final VoidCallback? onDeepLinkDemoPressed;
 
   const ChoiceScreen({
     Key? key,
     required this.onScanMrzPressed,
     required this.onEnterManuallyPressed,
     this.onHelpPressed,
+    this.onDeepLinkDemoPressed,
   }) : super(key: key);
 
   @override
@@ -126,15 +128,33 @@ class ChoiceScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        PlatformTextButton(
-                          onPressed: onHelpPressed,
-                          child: const Text(
-                            'Get help',
-                            style: TextStyle(
-                              color: Color(0xFF6b6868),
-                              fontWeight: FontWeight.w600,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            PlatformTextButton(
+                              onPressed: onHelpPressed,
+                              child: const Text(
+                                'Get help',
+                                style: TextStyle(
+                                  color: Color(0xFF6b6868),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ),
-                          ),
+                            if (onDeepLinkDemoPressed != null) ...[
+                              const Text(' • '),
+                              PlatformTextButton(
+                                onPressed: onDeepLinkDemoPressed,
+                                child: const Text(
+                                  'Deep Link Demo',
+                                  style: TextStyle(
+                                    color: Color(0xFF2196F3),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ),

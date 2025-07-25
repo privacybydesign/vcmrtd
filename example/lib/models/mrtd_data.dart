@@ -30,8 +30,23 @@ class MrtdData {
   bool? isPACE;
   bool? isDBA;
   
+  // Nonce enhancement tracking
+  bool? isNonceEnhanced;
+  String? sessionId;
+  DateTime? authTimestamp;
+  
   /// Constructor
-  MrtdData();
+  MrtdData() {
+    authTimestamp = DateTime.now();
+  }
+  
+  /// Constructor with nonce enhancement
+  MrtdData.withNonceEnhancement({
+    required this.sessionId,
+    this.isNonceEnhanced = true,
+  }) {
+    authTimestamp = DateTime.now();
+  }
   
   /// Check if any data is available
   bool get hasData => 
@@ -56,4 +71,25 @@ class MrtdData {
     dg15 != null ||
     dg16 != null ||
     aaSig != null;
+    
+  /// Check if nonce enhancement was used
+  bool get wasNonceEnhanced => isNonceEnhanced == true;
+  
+  /// Get authentication method description
+  String get authenticationMethod {
+    final paceText = isPACE == true ? 'PACE' : 'BAC';
+    final nonceText = wasNonceEnhanced ? 'Nonce-Enhanced ' : '';
+    return '$nonceText$paceText';
+  }
+  
+  /// Get security level description
+  String get securityLevel {
+    if (wasNonceEnhanced) {
+      return 'High (Nonce-Enhanced)';
+    } else if (isPACE == true) {
+      return 'Medium (PACE)';
+    } else {
+      return 'Standard (BAC)';
+    }
+  }
 }

@@ -1,5 +1,6 @@
 package com.example.mrtdeg
 
+import android.content.Intent
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugins.GeneratedPluginRegistrant
@@ -9,9 +10,14 @@ import android.content.Context
 import com.example.mrtdeg.ImageUtil
 
 class MainActivity : FlutterActivity() {
+    private lateinit var deepLinkPlugin: DeepLinkPlugin
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         GeneratedPluginRegistrant.registerWith(flutterEngine)
+
+        // Initialize deep link plugin
+        deepLinkPlugin = DeepLinkPlugin()
+        flutterEngine.plugins.add(deepLinkPlugin)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "image_channel")
             .setMethodCallHandler { call, result ->
@@ -26,5 +32,12 @@ class MainActivity : FlutterActivity() {
                     result.notImplemented()
                 }
             }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (::deepLinkPlugin.isInitialized) {
+            deepLinkPlugin.onNewIntent(intent)
+        }
     }
 }

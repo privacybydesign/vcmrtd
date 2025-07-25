@@ -8,18 +8,58 @@ import 'package:logging/logging.dart';
 import 'package:dmrtd/extensions.dart';
 
 import 'widgets/pages/app_navigation.dart';
+import 'models/authentication_context.dart';
+import 'services/universal_link_handler.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
   Logger.root.level = Level.ALL;
   Logger.root.logSensitiveData = true;
   Logger.root.onRecord.listen((record) {
     print(
         '${record.loggerName} ${record.level.name}: ${record.time}: ${record.message}');
   });
-  runApp(MrtdEgApp());
+  
+  // Initialize universal link handler
+  final linkHandler = UniversalLinkHandler();
+  await linkHandler.initialize();
+  
+  runApp(MrtdEgApp(linkHandler: linkHandler));
 }
 
-class MrtdEgApp extends StatelessWidget {
+class MrtdEgApp extends StatefulWidget {
+  final UniversalLinkHandler linkHandler;
+
+  const MrtdEgApp({Key? key, required this.linkHandler}) : super(key: key);
+
+  @override
+  State<MrtdEgApp> createState() => _MrtdEgAppState();
+}
+
+class _MrtdEgAppState extends State<MrtdEgApp> {
+  AuthenticationContext? _initialAuthContext;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // Check if we have an initial authentication context
+    _initialAuthContext = widget.linkHandler.currentAuthContext;
+    
+    // Listen for authentication context changes
+    widget.linkHandler.authContextStream.listen((context) {
+      if (mounted) {
+        // Handle incoming universal links while app is running
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => AppNavigation(initialAuthContext: context),
+          ),
+        );
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return PlatformApp(
@@ -32,10 +72,10 @@ class MrtdEgApp extends StatelessWidget {
         theme: ThemeData(
           primarySwatch: Colors.indigo,
           brightness: Brightness.light,
-          textTheme: TextTheme(
+          textTheme: const TextTheme(
             bodyLarge: TextStyle(fontSize: 16.0, color: Colors.black87),
           ),
-          appBarTheme: AppBarTheme(
+          appBarTheme: const AppBarTheme(
             backgroundColor: Colors.indigo,
             foregroundColor: Colors.white,
           ),
@@ -45,7 +85,7 @@ class MrtdEgApp extends StatelessWidget {
         // themeMode: ThemeMode.system,
       ),
       cupertino: (_, __) => CupertinoAppData(
-        theme: CupertinoThemeData(
+        theme: const CupertinoThemeData(
           primaryColor: CupertinoColors.activeBlue,
           barBackgroundColor: CupertinoColors.systemGrey6,
           textTheme: CupertinoTextThemeData(
@@ -53,7 +93,7 @@ class MrtdEgApp extends StatelessWidget {
           ),
         ),
       ),
-      home: AppNavigation(),
+      home: AppNavigation(initialAuthContext: _initialAuthContext),
     );
   }
 }

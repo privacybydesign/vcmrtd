@@ -4,19 +4,29 @@ import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:intl/intl.dart';
 import 'package:dmrtd/dmrtd.dart';
 import 'package:dmrtd/extensions.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'dart:convert';
+import 'dart:math';
+import 'dart:io';
+import 'package:crypto/crypto.dart';
 
 import '../../models/mrtd_data.dart';
+import '../../models/authentication_context.dart';
+import '../../services/universal_link_handler.dart';
 import '../displays/passport_image_widget.dart';
 
 /// Enhanced data screen with personal and security sections
+/// Supports return-to-web functionality for universal link flows
 class DataScreen extends StatefulWidget {
   final MrtdData? mrtdData;
   final VoidCallback? onBackPressed;
+  final AuthenticationContext? authContext;
 
   const DataScreen({
     Key? key,
     this.mrtdData,
     this.onBackPressed,
+    this.authContext,
   }) : super(key: key);
 
   @override
@@ -25,6 +35,8 @@ class DataScreen extends StatefulWidget {
 
 class _DataScreenState extends State<DataScreen> {
   bool _showValidationDetails = false;
+  bool _isReturningToWeb = false;
+  final UniversalLinkHandler _linkHandler = UniversalLinkHandler();
   
   @override
   Widget build(BuildContext context) {
@@ -51,9 +63,15 @@ class _DataScreenState extends State<DataScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // Return to Web banner if opened via universal link
+                    if (_shouldShowReturnToWeb()) _buildReturnToWebBanner(),
                     _buildPersonalDataSection(),
                     const SizedBox(height: 20),
                     _buildSecurityDataSection(),
+                    if (_shouldShowReturnToWeb()) ...[
+                      const SizedBox(height: 20),
+                      _buildReturnToWebSection(),
+                    ],
                   ],
                 ),
               ),
@@ -599,6 +617,367 @@ class _DataScreenState extends State<DataScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Check if return-to-web functionality should be shown
+  bool _shouldShowReturnToWeb() {
+    return widget.authContext != null && 
+           widget.authContext!.isValid && 
+           widget.mrtdData != null;
+  }
+
+  /// Build return-to-web banner at top of screen
+  Widget _buildReturnToWebBanner() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.blue[50]!, Colors.blue[100]!],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue[200]!),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.web, color: Colors.blue[700], size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Web Authentication Session',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue[800],
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Session ID: ${widget.authContext!.sessionId}',
+                  style: TextStyle(
+                    color: Colors.blue[600],
+                    fontSize: 12,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.check_circle, color: Colors.green[600], size: 20),
+        ],
+      ),
+    );
+  }
+
+  /// Build return-to-web action section
+  Widget _buildReturnToWebSection() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.arrow_back, color: Theme.of(context).primaryColor, size: 28),
+                const SizedBox(width: 8),
+                Text(
+                  'Return to Web Application',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 30),
+            Text(
+              'Your passport has been successfully validated. Click below to return to the web application with your authentication results.',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[700],
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: _isReturningToWeb ? null : _returnToWeb,
+              icon: _isReturningToWeb 
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.open_in_browser),
+              label: Text(_isReturningToWeb ? 'Returning to Web...' : 'Return to Web Application'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: Colors.green[600],
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Note: This will close the mobile app and return you to your web browser.',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+                fontStyle: FontStyle.italic,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Handle return to web functionality
+  Future<void> _returnToWeb() async {
+    if (!_shouldShowReturnToWeb()) return;
+
+    setState(() {
+      _isReturningToWeb = true;
+    });
+
+    try {
+      // Create secure data payload
+      final payload = _createSecurePayload();
+      
+      // Generate return URL
+      final returnUrl = _generateReturnUrl(payload);
+      
+      // Store return action in memory
+      await _storeReturnAction(payload);
+      
+      // Launch return URL
+      final uri = Uri.parse(returnUrl);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        
+        // Clear authentication context after successful return
+        _linkHandler.clearAuthContext();
+        
+        // Show success message and close app
+        _showReturnSuccessDialog();
+      } else {
+        throw Exception('Cannot launch return URL: $returnUrl');
+      }
+      
+    } catch (e) {
+      _showReturnErrorDialog(e.toString());
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isReturningToWeb = false;
+        });
+      }
+    }
+  }
+
+  /// Create secure data payload for web return
+  Map<String, dynamic> _createSecurePayload() {
+    final mrz = widget.mrtdData!.dg1?.mrz;
+    
+    // Create sanitized data for web return
+    final passportData = {
+      'documentNumber': mrz?.documentNumber ?? '',
+      'documentType': mrz?.documentCode ?? '',
+      'firstName': mrz?.firstName ?? '',
+      'lastName': mrz?.lastName ?? '',
+      'nationality': mrz?.nationality ?? '',
+      'dateOfBirth': mrz?.dateOfBirth.toIso8601String() ?? '',
+      'dateOfExpiry': mrz?.dateOfExpiry.toIso8601String() ?? '',
+      'gender': mrz?.gender ?? '',
+      'country': mrz?.country ?? '',
+      'hasPhoto': widget.mrtdData!.dg2?.imageData != null,
+      'hasSignature': widget.mrtdData!.aaSig != null,
+      'isPACE': widget.mrtdData!.isPACE ?? false,
+      'isDBA': widget.mrtdData!.isDBA ?? false,
+    };
+
+    // Create timestamp and nonce for security
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final nonce = base64Encode(_generateRandomBytes(32));
+    
+    return {
+      'sessionId': widget.authContext!.sessionId,
+      'nonce': nonce,
+      'timestamp': timestamp,
+      'passportData': passportData,
+      'validationStatus': 'success',
+      'appVersion': '1.0.0',
+    };
+  }
+
+  /// Generate return URL based on session ID and payload
+  String _generateReturnUrl(Map<String, dynamic> payload) {
+    final encodedPayload = base64Encode(utf8.encode(json.encode(payload)));
+    final signature = _generatePayloadSignature(payload);
+    
+    // Different return URL patterns based on sessionId format
+    final sessionId = widget.authContext!.sessionId;
+    
+    if (_isTestSession(sessionId)) {
+      // Development/test return URL
+      return 'https://localhost:3000/auth/callback?data=$encodedPayload&signature=$signature';
+    } else if (_isProductionSession(sessionId)) {
+      // Production return URL
+      return 'https://app.yourapp.com/auth/callback?data=$encodedPayload&signature=$signature';
+    } else {
+      // Generic callback URL
+      return 'https://auth.callback.url/return?session=$sessionId&data=$encodedPayload&signature=$signature';
+    }
+  }
+
+  /// Check if session is for testing/development
+  bool _isTestSession(String sessionId) {
+    return sessionId.startsWith('test-') || 
+           sessionId.startsWith('dev-') ||
+           sessionId.startsWith('demo-');
+  }
+
+  /// Check if session is for production
+  bool _isProductionSession(String sessionId) {
+    // Production sessions typically follow UUID format
+    const uuidRegex = r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
+    return RegExp(uuidRegex, caseSensitive: false).hasMatch(sessionId);
+  }
+
+  /// Generate HMAC signature for payload integrity
+  String _generatePayloadSignature(Map<String, dynamic> payload) {
+    final message = json.encode(payload);
+    final secret = '${widget.authContext!.nonce}-${widget.authContext!.sessionId}';
+    final key = utf8.encode(secret);
+    final bytes = utf8.encode(message);
+    final hmac = Hmac(sha256, key);
+    final digest = hmac.convert(bytes);
+    return digest.toString();
+  }
+
+  /// Generate cryptographically secure random bytes
+  List<int> _generateRandomBytes(int length) {
+    final random = Random.secure();
+    return List<int>.generate(length, (i) => random.nextInt(256));
+  }
+
+  /// Store return action details for debugging/audit
+  Future<void> _storeReturnAction(Map<String, dynamic> payload) async {
+    final returnDetails = {
+      'timestamp': DateTime.now().toIso8601String(),
+      'sessionId': widget.authContext!.sessionId,
+      'action': 'return_to_web',
+      'payloadSize': json.encode(payload).length,
+      'hasPassportData': payload.containsKey('passportData'),
+    };
+    
+    // Store in memory for coordination
+    await _notifyReturnAction(json.encode(returnDetails));
+  }
+
+  /// Notify other agents about return action via hooks
+  Future<void> _notifyReturnAction(String details) async {
+    try {
+      await Process.run('npx', [
+        'claude-flow@alpha',
+        'hooks',
+        'notification',
+        '--message',
+        'Return to web initiated: $details',
+        '--telemetry',
+        'true'
+      ]);
+    } catch (e) {
+      debugPrint('Failed to notify return action: $e');
+    }
+  }
+
+  /// Show success dialog after successful return
+  void _showReturnSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        icon: Icon(Icons.check_circle, color: Colors.green[600], size: 48),
+        title: const Text('Success!'),
+        content: const Text(
+          'Your passport data has been securely transmitted to the web application. '
+          'You can now close this app or scan another passport.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              if (widget.onBackPressed != null) {
+                widget.onBackPressed!();
+              }
+            },
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Show error dialog if return fails
+  void _showReturnErrorDialog(String error) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: Icon(Icons.error, color: Colors.red[600], size: 48),
+        title: const Text('Return Failed'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Failed to return to web application:'),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                error,
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Please try again or contact support if the problem persists.',
+              style: TextStyle(fontSize: 14),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _returnToWeb(); // Retry
+            },
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -6,6 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:mrtdeg/helpers/mrz_data.dart';
 import 'package:mrtdeg/models/mrtd_data.dart';
+import 'package:mrtdeg/models/authentication_context.dart';
+import 'package:mrtdeg/models/nonce_enhanced_dba_key.dart';
+import 'package:mrtdeg/services/universal_link_handler.dart';
+import 'package:mrtdeg/services/nonce_validation_service.dart';
 import 'package:mrtdeg/widgets/common/animated_nfc_status_widget.dart';
 
 class NfcReadingScreen extends StatefulWidget {
@@ -15,6 +19,7 @@ class NfcReadingScreen extends StatefulWidget {
   final DateTime? manualExpiry;
   final ValueChanged<MrtdData>? onDataRead;
   final VoidCallback? onCancel;
+  final AuthenticationContext? authContext;
 
   const NfcReadingScreen({
     Key? key, 
@@ -23,7 +28,8 @@ class NfcReadingScreen extends StatefulWidget {
     this.manualDob,
     this.manualExpiry,
     this.onDataRead,
-    this.onCancel
+    this.onCancel,
+    this.authContext,
   }) : super(key: key);
 
   @override
@@ -37,6 +43,10 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
   double _readingProgress = 0.0;
   final _log = Logger("mrtdeg.app");
   bool _isCancelled = false;
+  final UniversalLinkHandler _linkHandler = UniversalLinkHandler();
+  final NonceValidationService _nonceValidator = NonceValidationService();
+  AuthenticationContext? _effectiveAuthContext;
+  bool _nonceValidationPassed = false;
 
   @override
   Widget build(BuildContext context) {
@@ -56,6 +66,18 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
   @override
   void initState() {
     super.initState();
+    
+    // Determine effective authentication context
+    _effectiveAuthContext = widget.authContext ?? _linkHandler.currentAuthContext;
+    
+    if (_effectiveAuthContext != null) {
+      _log.info("Using authentication context: ${_effectiveAuthContext!.sessionId}");
+      if (!_effectiveAuthContext!.isValid) {
+        _log.warning("Authentication context is invalid or expired");
+      }
+    } else {
+      _log.info("No authentication context available, using standard flow");
+    }
 
     _processDBAAuthentication();
   }
@@ -92,12 +114,36 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
       return;
     }
 
-    final bacKeySeed = DBAKey(
-      docNumber,
-      birthDate,
-      expiryDate,
-      paceMode: paceMode,
-    );
+    // Create nonce-enhanced DBA key if authentication context is available
+    final AccessKey bacKeySeed;
+    if (_effectiveAuthContext != null && _effectiveAuthContext!.isValid) {
+      _log.info("Creating nonce-enhanced DBA key with session: ${_effectiveAuthContext!.sessionId}");
+      bacKeySeed = NonceEnhancedDBAKey(
+        docNumber,
+        birthDate,
+        expiryDate,
+        paceMode: paceMode,
+        authContext: _effectiveAuthContext,
+      );
+      
+      // Validate authentication context before proceeding
+      if (bacKeySeed is NonceEnhancedDBAKey && !bacKeySeed.validateAuthContext()) {
+        setState(() {
+          _alertMessage = "Authentication session has expired. Please restart the process.";
+          _nfcState = NFCReadingState.error;
+        });
+        return;
+      }
+    } else {
+      _log.info("Creating standard DBA key");
+      bacKeySeed = DBAKey(
+        docNumber,
+        birthDate,
+        expiryDate,
+        paceMode: paceMode,
+      );
+    }
+    
     _readMRTD(accessKey: bacKeySeed, isPace: paceMode);
   }
 
@@ -125,6 +171,20 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
         });
 
         if (_isCancelled) return;
+        
+        // Log authentication method being used
+        if (accessKey is NonceEnhancedDBAKey && accessKey.hasNonceEnhancement) {
+          _log.info("Performing nonce-enhanced passport authentication");
+          setState(() {
+            _alertMessage = "Performing secure nonce-enhanced authentication...";
+          });
+        } else {
+          _log.info("Performing standard passport authentication");
+          setState(() {
+            _alertMessage = "Performing standard authentication...";
+          });
+        }
+        
         await _performPassportReading(passport, accessKey, isPace);
       } on Exception catch (e) {
         if (!_isCancelled) {
@@ -161,12 +221,28 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
       // Handle card security read error
     }
 
-    _nfc.setIosAlertMessage("Initiating session with PACE...");
+    // Enhanced authentication messaging based on nonce availability
+    final isNonceEnhanced = accessKey is NonceEnhancedDBAKey && accessKey.hasNonceEnhancement;
+    final authMessage = isNonceEnhanced 
+        ? "Initiating secure nonce-enhanced session..."
+        : "Initiating session with PACE...";
+    
+    _nfc.setIosAlertMessage(authMessage);
     mrtdData.isPACE = isPace;
     mrtdData.isDBA = accessKey.PACE_REF_KEY_TAG == 0x01;
+    
+    // Store nonce information in mrtdData for tracking
+    if (isNonceEnhanced) {
+      final nonceKey = accessKey as NonceEnhancedDBAKey;
+      mrtdData.sessionId = nonceKey.sessionId;
+      mrtdData.isNonceEnhanced = true;
+      _log.info("Passport reading with nonce enhancement active");
+    }
 
     setState(() {
-      _alertMessage = "Authenticating with passport...";
+      _alertMessage = isNonceEnhanced 
+          ? "Secure nonce-enhanced authentication in progress..."
+          : "Authenticating with passport...";
       _nfcState = NFCReadingState.authenticating;
     });
 
@@ -203,8 +279,12 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
       setState(() => _readingProgress = 0.3);
     }
 
-    // To read DG3 and DG4 session has to be established with CVCA certificate (not supported).
+      // To read DG3 and DG4 session has to be established with CVCA certificate (not supported).
     if (mrtdData.com!.dgTags.contains(EfDG5.TAG)) {
+      // Add nonce verification for sensitive data groups if enhanced mode
+      if (mrtdData.isNonceEnhanced == true) {
+        _log.debug("Reading DG5 with nonce-enhanced security validation");
+      }
       mrtdData.dg5 = await passport.readEfDG5();
       setState(() => _readingProgress = 0.4);
     }
@@ -257,13 +337,25 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
     // Read DG15 and perform Active Authentication
     if (mrtdData.com!.dgTags.contains(EfDG15.TAG)) {
       setState(() {
-        _alertMessage = "Performing security verification...";
+        _alertMessage = mrtdData.isNonceEnhanced == true 
+            ? "Performing nonce-enhanced security verification..."
+            : "Performing security verification...";
         _nfcState = NFCReadingState.authenticating;
         _readingProgress = 0.9;
       });
       mrtdData.dg15 = await passport.readEfDG15();
-      _nfc.setIosAlertMessage("Doing AA ...");
-      mrtdData.aaSig = await passport.activeAuthenticate(Uint8List(8));
+      
+      // Use nonce-enhanced challenge if available
+      Uint8List challenge = Uint8List(8);
+      if (mrtdData.isNonceEnhanced == true && accessKey is NonceEnhancedDBAKey) {
+        challenge = accessKey.generateNonceChallenge(challenge);
+        _log.debug("Using nonce-enhanced active authentication challenge");
+      }
+      
+      _nfc.setIosAlertMessage(mrtdData.isNonceEnhanced == true 
+          ? "Performing nonce-enhanced AA..."
+          : "Doing AA ...");
+      mrtdData.aaSig = await passport.activeAuthenticate(challenge);
     }
 
     if (mrtdData.com!.dgTags.contains(EfDG16.TAG)) {
@@ -274,11 +366,20 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
     _nfc.setIosAlertMessage("Reading EF.SOD ...");
     mrtdData.sod = await passport.readEfSOD();
     
+    // Final success message based on authentication method
+    final successMessage = mrtdData.isNonceEnhanced == true 
+        ? "Secure nonce-enhanced passport reading completed!"
+        : "Passport reading completed successfully!";
+    
     setState(() {
-      _alertMessage = "Passport reading completed successfully!";
+      _alertMessage = successMessage;
       _nfcState = NFCReadingState.success;
       _readingProgress = 1.0;
     });
+    
+    if (mrtdData.isNonceEnhanced == true) {
+      _log.info("Nonce-enhanced passport authentication completed successfully");
+    }
   }
 
   void _handlePassportError(Exception e) {
