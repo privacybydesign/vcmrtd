@@ -1,7 +1,10 @@
 ## Dart Library for Verifiable Credentials from Machine Readable Travel Documents (MRTD) 
 This Dart library provides functionality to read and verify Machine Readable Travel Documents (MRTD) such as ePassports and eID cards. It supports Basic Access Control (BAC), Active Authentication (AA), and other protocols defined by ICAO standards.
 
-This library orginally forked from [dmrtd](https://github.com/ZeroPass/dmrtd) and is maintained by the [Yivi team](https://yivi.app). We broke the upstream fork because we are planning to add the following features:
+> [!NOTE]  
+> This library orginally forked from [dmrtd](https://github.com/ZeroPass/dmrtd). This library is maintained by the [Yivi team](https://yivi.app).
+
+We broke the upstream fork because we are planning to add the following features:
 - [x] MRZ parsing using OCR.
 - [ ] Passive Authentication (PA), validating signatures against country CA certificates.
 - [ ] Support for Anglo Saxion countries (like USA, UK) and EU.
@@ -27,6 +30,9 @@ Some screenshots of the example app:
 
 
 ## Usage
+
+todo
+
 
 ## License
 Since this project builds upon the work of [dmrtd](https://github.com/ZeroPass/dmrtd), it is subject to the same licensing terms.
