@@ -17,6 +17,7 @@ This respotitory contains an example app that demonstrates how to use the librar
 
 Some screenshots of the example app:
 ![Alt text](/dmrtd-docs/static/images/home.png?raw=true "Home Screen")
+<img src="/dmrtd-docs/static/images/screenshot1.png?raw=true" width="200px" alt="Screenshot 1" />
 
 
 ## Usage
