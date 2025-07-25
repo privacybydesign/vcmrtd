@@ -20,19 +20,16 @@ If an attacker only cloned the data onto another chip, they would not have the o
 
 **When/How it’s run**: Typically, if AA is supported, the inspection system will do it right after BAC and before reading too many files (or at least before concluding the session). For example, an order might be: BAC -> read DG1/DG2 -> do AA -> then proceed. It doesn’t strictly have to be before reading, but since AA doesn’t require reading any more files (just uses DG15), it’s efficient to do it early. Doing it after reading doesn’t add benefit because if a clone was present, all data read was from clone already. Some systems might even do AA after reading to cross-check, but logically sooner is better.
 
-**Result interpretation**: If AA fails (invalid signature), the passport should be considered a likely clone or defective. In an official setting, that would trigger an alert for the officer to examine further. For our library, we might have a function like performActiveAuthentication() that returns true/false or throws if it fails. It would require that we have done BAC (to get secure messaging and access to DG15 and to send the challenge APDU). 
-
 **Cloning and relay**: Note that AA can be defeated by a relay attack: An attacker with a cloned chip could secretly communicate with the genuine passport in the victim’s pocket over some channel (like using two radio devices). The clone, when asked to do AA, relays the challenge to the genuine passport (which is perhaps close by) and relays back the signature. This way the clone chip itself doesn’t need the private key; it just “asks” the real one over the air. This is a man-in-the-middle attack and has been demonstrated (known as the “ghost and leech” attack). Such an attack is high-tech and requires the genuine passport to be in range (and BAC keys known, etc.), but it’s theoretically possible. It shows that even AA isn’t foolproof if someone can proxy the communication (which BAC was supposed to prevent by requiring physical proximity to see MRZ, but if the attacker has that, they might as well just steal the passport outright!). Nonetheless, it’s a noted vulnerability in research.
 
-**Library implementation**: For AA, the library should:
-- Expose whether AA is supported (i.e., check if DG15 is present).
-- Provide a method to perform it. Under the hood, the library would generate a random challenge (8 bytes), perhaps the chip might also generate one internally when we call INTERNAL AUTH (some chips require sending just the challenge, others might want a template).
-- Send the challenge via an APDU (usually INS = 0x88 for INTERNAL AUTH).
-- Parse the response (which could be just a signature, or signature + chip random if the protocol includes it).
-- Use a crypto library to verify the signature with the public key from DG15.
+**Library implementation**:
+```dart
+final passport = Passport(_nfc);
+// Assuming you have a passport object with methods to read DG15 and perform AA
 
-It must be done over secure messaging (because some chips won’t even allow INTERNAL AUTH unless BAC is done).
+// Read the public key from DG15
+final dg15 = await passport.readEfDG15();
 
-**Conclusion on AA**: Active Authentication adds security by linking the data to a physical chip. It was optional and not uniformly adopted. Where present, it’s a useful anti-cloning check. However, with the advent of Chip Authentication, AA is declining in relevance. A developer should still handle it since older passports (mid-2000s to 2010s from some countries like UK, USA, etc.) use AA (the US passport, for example, did not implement AA in its first version, but some others did). The documentation should clarify if a country is known to not use AA (like Germany), so developers don’t expect DG15 always.
-
-**References**: The above is corroborated by Riha’s explanation of AA and the note about countries not implementing it for privacy.
+// Perform Active Authentication note the challenge size is typically 8 bytes
+final aaSig = await passport.activeAuthenticate(Uint8List(8));
+```
