@@ -16,7 +16,12 @@ We documented the example app, library and background information in this reposi
 This repository contains an example app that demonstrates how to use the library to read and verify MRTD data. The app is built using Flutter and can be run on both Android and iOS devices.
 
 Some screenshots of the example app:
-<img src="/dmrtd-docs/static/images/home.png?raw=true" width="200px" alt="Screenshot 1" />
+
+<img src="/dmrtd-docs/static/images/home.png?raw=true" width="200px" alt="Choose between MRZ or manual" />
+<img src="/dmrtd-docs/static/images/mrz.png?raw=true" width="200px" alt="MRZ scanning" />
+<img src="/dmrtd-docs/static/images/nfc.png?raw=true" width="200px" alt="NFC explanation" />
+<img src="/dmrtd-docs/static/images/reading.png?raw=true" width="200px" alt="Reading data" />
+<img src="/dmrtd-docs/static/images/results.png?raw=true" width="200px" alt="Results" />
 
 
 ## Usage
