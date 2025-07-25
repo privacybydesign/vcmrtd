@@ -16,7 +16,7 @@ We documented the example app, library and background information in this reposi
 This repository contains an example app that demonstrates how to use the library to read and verify MRTD data. The app is built using Flutter and can be run on both Android and iOS devices.
 
 Some screenshots of the example app:
-<img src="/dmrtd-docs/static/images/screenshot1.png?raw=true" width="200px" alt="Screenshot 1" />
+<img src="/dmrtd-docs/static/images/home.png?raw=true" width="200px" alt="Screenshot 1" />
 
 
 ## Usage
