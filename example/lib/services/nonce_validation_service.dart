@@ -4,6 +4,7 @@
 import 'dart:collection';
 import 'package:logging/logging.dart';
 import 'package:crypto/crypto.dart';
+import 'package:dmrtd/extensions.dart';
 
 import '../models/authentication_context.dart';
 

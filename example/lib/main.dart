@@ -48,12 +48,12 @@ class _MrtdEgAppState extends State<MrtdEgApp> {
     _initialAuthContext = widget.linkHandler.currentAuthContext;
     
     // Listen for authentication context changes
-    widget.linkHandler.authContextStream.listen((context) {
+    widget.linkHandler.authContextStream.listen((authContext) {
       if (mounted) {
         // Handle incoming universal links while app is running
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (context) => AppNavigation(initialAuthContext: context),
+            builder: (context) => AppNavigation(initialAuthContext: authContext),
           ),
         );
       }

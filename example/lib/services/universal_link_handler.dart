@@ -99,24 +99,24 @@ class UniversalLinkHandler {
     return uri.toString();
   }
 
-  /// Launch a URL (for external authentication flows)
-  Future<bool> launchUrl(String url) async {
-    try {
-      final uri = Uri.parse(url);
-      final launched = await launchUrl(uri);
+  // /// Launch a URL (for external authentication flows)
+  // Future<bool> launchUrl(String url) async {
+  //   try {
+  //     final uri = Uri.parse(url);
+  //     final launched = await launchUrl(uri);
       
-      if (launched) {
-        _logger.info('Successfully launched URL: $url');
-      } else {
-        _logger.warning('Failed to launch URL: $url');
-      }
+  //     if (launched) {
+  //       _logger.info('Successfully launched URL: $url');
+  //     } else {
+  //       _logger.warning('Failed to launch URL: $url');
+  //     }
       
-      return launched;
-    } catch (e) {
-      _logger.severe('Error launching URL: $e');
-      return false;
-    }
-  }
+  //     return launched;
+  //   } catch (e) {
+  //     _logger.severe('Error launching URL: $e');
+  //     return false;
+  //   }
+  // }
 
   /// Clear current authentication context
   void clearAuthContext() {

@@ -116,14 +116,13 @@ class AESCipher {
     }
 
     var cipher;
-    if (mode == BLOCK_CIPHER_MODE.CBC) {
+    if (mode == BLOCK_CIPHER_MODE.CBC)
       cipher = CBCBlockCipher(_factory())
         ..init(false, ParametersWithIV(KeyParameter(key), iv));
-    }
-    else {
+    else
+
       cipher = ECBBlockCipher(_factory())..init(false, KeyParameter(key));
       return Uint8List.fromList(_processBlocks(cipher:cipher, data:data).toList());
-    }
   }
 
   Uint8List _processBlocks({required BlockCipher cipher, required Uint8List data}) {

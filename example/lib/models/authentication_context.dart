@@ -24,7 +24,7 @@ class AuthenticationContext {
   }
 
   /// Extract additional data from parameters (excluding sessionId and nonce)
-  static Map<String, dynamic> _extractAdditionalData(Map<String, String> params) {
+  static Map<String, dynamic>? _extractAdditionalData(Map<String, String> params) {
     final additionalData = Map<String, dynamic>.from(params);
     additionalData.remove('sessionId');
     additionalData.remove('nonce');
