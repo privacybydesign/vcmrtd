@@ -51,7 +51,8 @@ const sidebars: SidebarsConfig = {
         'info/bac',
         'info/pace',
         'info/pa',
-        'info/standards'
+        'info/standards',
+        'info/pki',
       ],
     }
   ],
