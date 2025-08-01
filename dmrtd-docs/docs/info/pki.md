@@ -37,14 +37,20 @@ Manually strip the outer [APPLICATION 23] tag
 0:d=0  hl=4 l=2659 cons: appl [ 23 ]
 4:d=1  hl=4 l=2655 cons:  SEQUENCE
 ```
-`dd if=EF.SOD of=EF.SOD.cms bs=1 skip=4`
+```
+dd if=EF.SOD of=EF.SOD.cms bs=1 skip=4
+```
 
 ## Extract the Document Signer Certificate
+```
 openssl cms -inform DER -in EF.SOD.cms -verify -noverify -out /dev/null -certsout dsc.pem
 openssl x509 -in dsc.pem -text -noout
+```
 
 ## Convert the Document Signer Certificate to a CER file
+```
 openssl x509 -in dsc.pem -outform DER -out dsc.cer
+```
 
 ## Get the CSCA's
 1. Download the Masterlist file here https://www.npkd.nl/index.html
@@ -66,6 +72,12 @@ dsc.pem: OK
 ```
 openssl cms -inform DER -in EF.SOD.cms -verify -noverify -out lds_content.der
 ```
+
+## Verify data integrity
+```
+openssl asn1parse -in lds_content.der -inform DER -i
+```
+
 
 ## Verify EF.SOD signature
 ```

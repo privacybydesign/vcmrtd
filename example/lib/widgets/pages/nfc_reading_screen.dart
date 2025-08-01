@@ -5,7 +5,9 @@ import 'package:dmrtd/extensions.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:mrtdeg/helpers/mrz_data.dart';
+import 'package:mrtdeg/models/data_group_config.dart';
 import 'package:mrtdeg/models/mrtd_data.dart';
+import 'package:mrtdeg/models/passport_result.dart';
 import 'package:mrtdeg/widgets/common/animated_nfc_status_widget.dart';
 
 class NfcReadingScreen extends StatefulWidget {
@@ -16,15 +18,15 @@ class NfcReadingScreen extends StatefulWidget {
   final ValueChanged<MrtdData>? onDataRead;
   final VoidCallback? onCancel;
 
-  const NfcReadingScreen({
-    Key? key, 
-    this.mrzResult, 
-    this.manualDocNumber,
-    this.manualDob,
-    this.manualExpiry,
-    this.onDataRead,
-    this.onCancel
-  }) : super(key: key);
+  const NfcReadingScreen(
+      {Key? key,
+      this.mrzResult,
+      this.manualDocNumber,
+      this.manualDob,
+      this.manualExpiry,
+      this.onDataRead,
+      this.onCancel})
+      : super(key: key);
 
   @override
   State<NfcReadingScreen> createState() => _NfcReadingScreenState();
@@ -71,14 +73,14 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
       docNumber = widget.mrzResult!.documentNumber;
       birthDate = widget.mrzResult!.birthDate;
       expiryDate = widget.mrzResult!.expiryDate;
-      
+
       // Set PACE mode based on country code if available
       if (widget.mrzResult!.countryCode == "NLD") {
         paceMode = true;
       }
-    } else if (widget.manualDocNumber != null && 
-               widget.manualDob != null && 
-               widget.manualExpiry != null) {
+    } else if (widget.manualDocNumber != null &&
+        widget.manualDob != null &&
+        widget.manualExpiry != null) {
       docNumber = widget.manualDocNumber!;
       birthDate = widget.manualDob!;
       expiryDate = widget.manualExpiry!;
@@ -86,7 +88,8 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
       paceMode = false;
     } else {
       setState(() {
-        _alertMessage = "No passport data available. Please go back and enter your passport information.";
+        _alertMessage =
+            "No passport data available. Please go back and enter your passport information.";
         _nfcState = NFCReadingState.error;
       });
       return;
@@ -176,109 +179,235 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
       await passport.startSession(accessKey as DBAKey);
     }
 
-    await _readDataGroups(passport, mrtdData);
+    final passportData = await _readDataGroups(passport, mrtdData);
+    final json = passportData.toJsonString();
+    _log.info("Passport data read successfully: $json");
 
     widget.onDataRead?.call(mrtdData);
   }
 
-  Future<void> _readDataGroups(Passport passport, MrtdData mrtdData) async {
+  Future<PassportDataResult> _readDataGroups(
+      Passport passport, MrtdData mrtdData) async {
     setState(() {
       _alertMessage = "Reading passport data...";
       _nfcState = NFCReadingState.reading;
       _readingProgress = 0.1;
     });
 
-    _nfc.setIosAlertMessage("Reading EF.COM ...");
-    mrtdData.com = await passport.readEfCOM();
+    try {
+      // Read EF.COM first
+      _nfc.setIosAlertMessage("Reading EF.COM ...");
+      mrtdData.com = await passport.readEfCOM();
 
-    _nfc.setIosAlertMessage("Reading Data Groups");
+      // Configure data groups with their read functions and progress increments
+      final dataGroupConfigs = [
+        DataGroupConfig(
+          tag: EfDG1.TAG,
+          name: "DG1",
+          progressIncrement: 0.1,
+          readFunction: (p) async {
+            final dg = await p.readEfDG1();
+            mrtdData.dg1 = dg;
+            return dg;
+          },
+        ),
+        DataGroupConfig(
+          tag: EfDG2.TAG,
+          name: "DG2",
+          progressIncrement: 0.1,
+          readFunction: (p) async {
+            final dg = await p.readEfDG2();
+            mrtdData.dg2 = dg;
+            return dg;
+          },
+        ),
+        DataGroupConfig(
+          tag: EfDG5.TAG,
+          name: "DG5",
+          progressIncrement: 0.1,
+          readFunction: (p) async {
+            final dg = await p.readEfDG5();
+            mrtdData.dg5 = dg;
+            return dg;
+          },
+        ),
+        DataGroupConfig(
+          tag: EfDG6.TAG,
+          name: "DG6",
+          progressIncrement: 0.05,
+          readFunction: (p) async {
+            final dg = await p.readEfDG6();
+            mrtdData.dg6 = dg;
+            return dg;
+          },
+        ),
+        DataGroupConfig(
+          tag: EfDG7.TAG,
+          name: "DG7",
+          progressIncrement: 0.05,
+          readFunction: (p) async {
+            final dg = await p.readEfDG7();
+            mrtdData.dg7 = dg;
+            return dg;
+          },
+        ),
+        DataGroupConfig(
+          tag: EfDG8.TAG,
+          name: "DG8",
+          progressIncrement: 0.05,
+          readFunction: (p) async {
+            final dg = await p.readEfDG8();
+            mrtdData.dg8 = dg;
+            return dg;
+          },
+        ),
+        DataGroupConfig(
+          tag: EfDG9.TAG,
+          name: "DG9",
+          progressIncrement: 0.05,
+          readFunction: (p) async {
+            final dg = await p.readEfDG9();
+            mrtdData.dg9 = dg;
+            return dg;
+          },
+        ),
+        DataGroupConfig(
+          tag: EfDG10.TAG,
+          name: "DG10",
+          progressIncrement: 0.05,
+          readFunction: (p) async {
+            final dg = await p.readEfDG10();
+            mrtdData.dg10 = dg;
+            return dg;
+          },
+        ),
+        DataGroupConfig(
+          tag: EfDG11.TAG,
+          name: "DG11",
+          progressIncrement: 0.05,
+          readFunction: (p) async {
+            final dg = await p.readEfDG11();
+            mrtdData.dg11 = dg;
+            return dg;
+          },
+        ),
+        DataGroupConfig(
+          tag: EfDG12.TAG,
+          name: "DG12",
+          progressIncrement: 0.05,
+          readFunction: (p) async {
+            final dg = await p.readEfDG12();
+            mrtdData.dg12 = dg;
+            return dg;
+          },
+        ),
+        DataGroupConfig(
+          tag: EfDG13.TAG,
+          name: "DG13",
+          progressIncrement: 0.05,
+          readFunction: (p) async {
+            final dg = await p.readEfDG13();
+            mrtdData.dg13 = dg;
+            return dg;
+          },
+        ),
+        DataGroupConfig(
+          tag: EfDG14.TAG,
+          name: "DG14",
+          progressIncrement: 0.05,
+          readFunction: (p) async {
+            final dg = await p.readEfDG14();
+            mrtdData.dg14 = dg;
+            return dg;
+          },
+        ),
+        DataGroupConfig(
+          tag: EfDG16.TAG,
+          name: "DG16",
+          progressIncrement: 0.05,
+          readFunction: (p) async {
+            final dg = await p.readEfDG16();
+            mrtdData.dg16 = dg;
+            return dg;
+          },
+        ),
+      ];
 
-    if (mrtdData.com!.dgTags.contains(EfDG1.TAG)) {
-      mrtdData.dg1 = await passport.readEfDG1();
-      setState(() => _readingProgress = 0.2);
-    }
+      _nfc.setIosAlertMessage("Reading Data Groups");
 
-    if (mrtdData.com!.dgTags.contains(EfDG2.TAG)) {
-      mrtdData.dg2 = await passport.readEfDG2();
-      setState(() => _readingProgress = 0.3);
-    }
+      final Map<String, String> dataGroups = {};
+      double currentProgress = 0.2;
 
-    // To read DG3 and DG4 session has to be established with CVCA certificate (not supported).
-    if (mrtdData.com!.dgTags.contains(EfDG5.TAG)) {
-      mrtdData.dg5 = await passport.readEfDG5();
-      setState(() => _readingProgress = 0.4);
-    }
+      // Process each data group
+      for (final config in dataGroupConfigs) {
+        if (mrtdData.com!.dgTags.contains(config.tag)) {
+          try {
+            final dgData = await config.readFunction(passport);
 
-    if (mrtdData.com!.dgTags.contains(EfDG6.TAG)) {
-      mrtdData.dg6 = await passport.readEfDG6();
-      setState(() => _readingProgress = 0.45);
-    }
+            // Convert data group to hex string
+            final hexData = dgData.toBytes().hex();
+            if (hexData.isNotEmpty) {
+              dataGroups[config.name] = hexData;
+            }
+          } catch (e) {
+            _log.warning("Failed to read ${config.name}: $e");
+            // Continue with other data groups even if one fails
+          }
+        }
 
-    if (mrtdData.com!.dgTags.contains(EfDG7.TAG)) {
-      mrtdData.dg7 = await passport.readEfDG7();
-      setState(() => _readingProgress = 0.5);
-    }
+        currentProgress += config.progressIncrement;
+        setState(() => _readingProgress = currentProgress.clamp(0.0, 0.9));
+      }
 
-    if (mrtdData.com!.dgTags.contains(EfDG8.TAG)) {
-      mrtdData.dg8 = await passport.readEfDG8();
-      setState(() => _readingProgress = 0.55);
-    }
+      // Handle DG15 and Active Authentication separately
+      if (mrtdData.com!.dgTags.contains(EfDG15.TAG)) {
+        setState(() {
+          _alertMessage = "Performing security verification...";
+          _nfcState = NFCReadingState.authenticating;
+          _readingProgress = 0.9;
+        });
 
-    if (mrtdData.com!.dgTags.contains(EfDG9.TAG)) {
-      mrtdData.dg9 = await passport.readEfDG9();
-      setState(() => _readingProgress = 0.6);
-    }
+        try {
+          mrtdData.dg15 = await passport.readEfDG15();
+          if (mrtdData.dg15 != null) {
+            final hexData = mrtdData.dg15!.toBytes().hex();
+            if (hexData.isNotEmpty) {
+              dataGroups["DG15"] = hexData;
+            }
+          }
 
-    if (mrtdData.com!.dgTags.contains(EfDG10.TAG)) {
-      mrtdData.dg10 = await passport.readEfDG10();
-      setState(() => _readingProgress = 0.65);
-    }
+          _nfc.setIosAlertMessage("Doing AA ...");
+          mrtdData.aaSig = await passport.activeAuthenticate(Uint8List(8));
+        } catch (e) {
+          _log.warning("Failed to read DG15 or perform AA: $e");
+        }
+      }
 
-    if (mrtdData.com!.dgTags.contains(EfDG11.TAG)) {
-      mrtdData.dg11 = await passport.readEfDG11();
-      setState(() => _readingProgress = 0.7);
-    }
+      // Read EF.SOD
+      _nfc.setIosAlertMessage("Reading EF.SOD ...");
+      mrtdData.sod = await passport.readEfSOD();
 
-    if (mrtdData.com!.dgTags.contains(EfDG12.TAG)) {
-      mrtdData.dg12 = await passport.readEfDG12();
-      setState(() => _readingProgress = 0.75);
-    }
+      final efSodHex = mrtdData.sod?.toBytes().hex() ?? '';
+      _log.info("EF.SOD: $efSodHex");
 
-    if (mrtdData.com!.dgTags.contains(EfDG13.TAG)) {
-      mrtdData.dg13 = await passport.readEfDG13();
-      setState(() => _readingProgress = 0.8);
-    }
-
-    if (mrtdData.com!.dgTags.contains(EfDG14.TAG)) {
-      mrtdData.dg14 = await passport.readEfDG14();
-      setState(() => _readingProgress = 0.85);
-    }
-
-    // Read DG15 and perform Active Authentication
-    if (mrtdData.com!.dgTags.contains(EfDG15.TAG)) {
       setState(() {
-        _alertMessage = "Performing security verification...";
-        _nfcState = NFCReadingState.authenticating;
-        _readingProgress = 0.9;
+        _alertMessage = "Passport reading completed successfully!";
+        _nfcState = NFCReadingState.success;
+        _readingProgress = 1.0;
       });
-      mrtdData.dg15 = await passport.readEfDG15();
-      _nfc.setIosAlertMessage("Doing AA ...");
-      mrtdData.aaSig = await passport.activeAuthenticate(Uint8List(8));
-    }
 
-    if (mrtdData.com!.dgTags.contains(EfDG16.TAG)) {
-      mrtdData.dg16 = await passport.readEfDG16();
-      setState(() => _readingProgress = 0.95);
+      return PassportDataResult(
+        dataGroups: dataGroups,
+        efSod: efSodHex,
+      );
+    } catch (e) {
+      _log.severe("Error reading passport data: $e");
+      setState(() {
+        _alertMessage = "Failed to read passport data";
+        _nfcState = NFCReadingState.error;
+      });
+      rethrow;
     }
-
-    _nfc.setIosAlertMessage("Reading EF.SOD ...");
-    mrtdData.sod = await passport.readEfSOD();
-    
-    setState(() {
-      _alertMessage = "Passport reading completed successfully!";
-      _nfcState = NFCReadingState.success;
-      _readingProgress = 1.0;
-    });
   }
 
   void _handlePassportError(Exception e) {
@@ -332,8 +461,8 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
 
   bool _canShowCancel() {
     return _nfcState == NFCReadingState.waiting ||
-           _nfcState == NFCReadingState.connecting ||
-           _nfcState == NFCReadingState.reading;
+        _nfcState == NFCReadingState.connecting ||
+        _nfcState == NFCReadingState.reading;
   }
 
   void _handleCancellation() async {
@@ -346,7 +475,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
     try {
       // Cleanup NFC connection
       await _cleanupNfcConnection();
-      
+
       // Call the cancel callback to navigate back
       widget.onCancel?.call();
     } catch (e) {
