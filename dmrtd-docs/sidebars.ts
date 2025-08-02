@@ -40,6 +40,7 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       items: [
         'library/support',
+        'library/flow',
       ],
     },
     {
