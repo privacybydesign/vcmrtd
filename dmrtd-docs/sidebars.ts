@@ -40,6 +40,7 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       items: [
         'library/support',
+        'library/flow',
       ],
     },
     {
@@ -51,7 +52,8 @@ const sidebars: SidebarsConfig = {
         'info/bac',
         'info/pace',
         'info/pa',
-        'info/standards'
+        'info/standards',
+        'info/pki',
       ],
     }
   ],
