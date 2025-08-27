@@ -12,7 +12,6 @@ import 'package:crypto/crypto.dart';
 
 import '../../models/mrtd_data.dart';
 import '../../models/authentication_context.dart';
-import '../../services/universal_link_handler.dart';
 import '../displays/passport_image_widget.dart';
 
 /// Enhanced data screen with personal and security sections
@@ -36,7 +35,6 @@ class DataScreen extends StatefulWidget {
 class _DataScreenState extends State<DataScreen> {
   bool _showValidationDetails = false;
   bool _isReturningToWeb = false;
-  final UniversalLinkHandler _linkHandler = UniversalLinkHandler();
   
   @override
   Widget build(BuildContext context) {
@@ -765,9 +763,6 @@ class _DataScreenState extends State<DataScreen> {
       final uri = Uri.parse(returnUrl);
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
-        
-        // Clear authentication context after successful return
-        _linkHandler.clearAuthContext();
         
         // Show success message and close app
         _showReturnSuccessDialog();
