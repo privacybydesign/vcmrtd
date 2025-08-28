@@ -14,11 +14,19 @@ class PassportDataResult {
     this.nonce
   });
 
+  String _bytesToHex(Uint8List bytes) {
+    final StringBuffer buffer = StringBuffer();
+    for (final b in bytes) {
+      buffer.write(b.toRadixString(16).padLeft(2, '0'));
+    }
+    return buffer.toString();
+  }
+
   Map<String, dynamic> toJson() => {
     'data_groups': dataGroups,
     'ef_sod': efSod,
-    'nonce': nonce,
-    'sessionId': sessionId
+    'nonce': nonce != null ? _bytesToHex(nonce!) : null,
+    'session_id': sessionId
   };
 
   String toJsonString() => jsonEncode(toJson());
