@@ -104,12 +104,14 @@ private extension DeepLinkPlugin {
             }
         }
         
-        // For HTTPS scheme, check domain and path
+        // For HTTPS scheme, allow either existing mrtd.app/validate or
+        // the new passport-issuer.staging.yivi.app/start-app
         if scheme == "https" {
-            guard url.host == "mrtd.app",
-                  url.path.hasPrefix("/validate") else {
-                return false
-            }
+            let host = url.host ?? ""
+            let path = url.path
+            let isMrtdValidate = (host == "mrtd.app" && path.hasPrefix("/validate"))
+            let isPassportIssuerStart = (host == "passport-issuer.staging.yivi.app" && path.hasPrefix("/start-app"))
+            guard isMrtdValidate || isPassportIssuerStart else { return false }
         }
         
         // Extract query parameters
@@ -118,34 +120,34 @@ private extension DeepLinkPlugin {
             return false
         }
         
-        // Check required parameters
-        let requiredParams = ["sessionId", "nonce", "timestamp", "signature"]
+        // Build param dictionary
         let paramDict = Dictionary(uniqueKeysWithValues: queryItems.map { ($0.name, $0.value) })
-        
+
+        // For new start-app flow: only require sessionId and nonce for now
+        if url.host == "passport-issuer.staging.yivi.app" && url.path.hasPrefix("/start-app") {
+            guard let sessionId = paramDict["sessionId"], !sessionId.isEmpty,
+                  let nonce = paramDict["nonce"], !nonce.isEmpty else { return false }
+            // Light format checks
+            guard sessionId.range(of: "[0-9A-Fa-f-]{10,}", options: .regularExpression) != nil else { return false }
+            guard nonce.range(of: "[A-Za-z0-9-_+/]+=*", options: .regularExpression) != nil else { return false }
+            return true
+        }
+
+        // Legacy validate flow: require all parameters
+        let requiredParams = ["sessionId", "nonce", "timestamp", "signature"]
         for param in requiredParams {
-            guard let value = paramDict[param], !value.isEmpty else {
-                return false
-            }
+            guard let value = paramDict[param], !value.isEmpty else { return false }
         }
-        
+
         // Validate sessionId format (UUID)
-        guard let sessionId = paramDict["sessionId"],
-              isValidUUID(sessionId) else {
-            return false
-        }
-        
+        guard let sessionId = paramDict["sessionId"], isValidUUID(sessionId) else { return false }
+
         // Validate timestamp format
-        guard let timestampString = paramDict["timestamp"],
-              let _ = Int64(timestampString) else {
-            return false
-        }
-        
+        guard let timestampString = paramDict["timestamp"], Int64(timestampString) != nil else { return false }
+
         // Basic nonce validation (should be Base64)
-        guard let nonce = paramDict["nonce"],
-              isValidBase64(nonce) else {
-            return false
-        }
-        
+        guard let nonce = paramDict["nonce"], isValidBase64(nonce) else { return false }
+
         return true
     }
     

@@ -70,7 +70,7 @@
 	<!-- Associated Domains for Universal Links -->
 	<key>com.apple.developer.associated-domains</key>
 	<array>
-		<string>applinks:mrtd.app</string>
+		<string>applinks:passport-issuer.staging.yivi.app</string>
 	</array>
 </dict>
 </plist>
