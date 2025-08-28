@@ -6,16 +6,21 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:logging/logging.dart';
 import 'package:dmrtd/extensions.dart';
+import 'package:vcmrtd/services/deeplink_service.dart';
 
 import 'widgets/pages/app_navigation.dart';
 
-void main() {
+final deepLinkService = DeepLinkService();
+
+void main() async {
   Logger.root.level = Level.ALL;
   Logger.root.logSensitiveData = true;
   Logger.root.onRecord.listen((record) {
     print(
         '${record.loggerName} ${record.level.name}: ${record.time}: ${record.message}');
   });
+  WidgetsFlutterBinding.ensureInitialized();
+  await deepLinkService.init();
   runApp(VcMrtdApp());
 }
 
@@ -53,7 +58,7 @@ class VcMrtdApp extends StatelessWidget {
           ),
         ),
       ),
-      home: AppNavigation(),
+      home: AppNavigation(deepLinkService: deepLinkService),
     );
   }
 }

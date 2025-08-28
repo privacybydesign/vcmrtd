@@ -93,9 +93,9 @@ class DeepLinkPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         if (!uri.path.orEmpty().startsWith("/start-app")) return false
 
         val sessionId = uri.getQueryParameter("sessionId")
-        val nonceId = uri.getQueryParameter("nonceId")
+        val nonce = uri.getQueryParameter("nonce")
 
-        return !sessionId.isNullOrEmpty() && !nonceId.isNullOrEmpty()
+        return !sessionId.isNullOrEmpty() && !nonce.isNullOrEmpty()
     }
 
     private fun processDeepLink(url: String): Boolean {

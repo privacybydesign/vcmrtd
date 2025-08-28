@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
-import 'package:intl/intl.dart';
 import 'package:dmrtd/dmrtd.dart';
 import 'package:dmrtd/extensions.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -9,24 +8,30 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:io';
 import 'package:crypto/crypto.dart';
+import 'package:vcmrtd/models/passport_result.dart';
+import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
 
 import '../../models/mrtd_data.dart';
-import '../../models/authentication_context.dart';
 import '../displays/passport_image_widget.dart';
 
 /// Enhanced data screen with personal and security sections
 /// Supports return-to-web functionality for universal link flows
 class DataScreen extends StatefulWidget {
-  final MrtdData? mrtdData;
-  final VoidCallback? onBackPressed;
-  final AuthenticationContext? authContext;
+  final MrtdData mrtdData;
+  final PassportDataResult passportDataResult;
+  final VoidCallback onBackPressed;
+  final String? sessionId;
+  final Uint8List? nonce;
 
-  const DataScreen({
-    Key? key,
-    this.mrtdData,
-    this.onBackPressed,
-    this.authContext,
-  }) : super(key: key);
+  const DataScreen(
+      {Key? key,
+      required this.mrtdData,
+      required this.onBackPressed,
+      required this.passportDataResult,
+      this.sessionId,
+      this.nonce})
+      : super(key: key);
 
   @override
   State<DataScreen> createState() => _DataScreenState();
@@ -35,44 +40,34 @@ class DataScreen extends StatefulWidget {
 class _DataScreenState extends State<DataScreen> {
   bool _showValidationDetails = false;
   bool _isReturningToWeb = false;
-  
+
   @override
   Widget build(BuildContext context) {
     return PlatformScaffold(
       appBar: PlatformAppBar(
-        title: const Text('Passport Data'),
-        leading: widget.onBackPressed != null
-            ? PlatformIconButton(
-                icon: Icon(PlatformIcons(context).back),
-                onPressed: widget.onBackPressed,
-              )
-            : null,
-      ),
+          title: const Text('Passport Data'),
+          leading: PlatformIconButton(
+            icon: Icon(PlatformIcons(context).back),
+            onPressed: widget.onBackPressed,
+          )),
       body: SafeArea(
-        child: widget.mrtdData == null
-            ? const Center(
-                child: Text(
-                  'No passport data available',
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
-                ),
-              )
-            : SingleChildScrollView(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Return to Web banner if opened via universal link
-                    if (_shouldShowReturnToWeb()) _buildReturnToWebBanner(),
-                    _buildPersonalDataSection(),
-                    const SizedBox(height: 20),
-                    _buildSecurityDataSection(),
-                    if (_shouldShowReturnToWeb()) ...[
-                      const SizedBox(height: 20),
-                      _buildReturnToWebSection(),
-                    ],
-                  ],
-                ),
-              ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Return to Web banner if opened via universal link
+              if (widget.sessionId != null) _buildReturnToWebBanner(),
+              _buildPersonalDataSection(),
+              const SizedBox(height: 20),
+              _buildSecurityDataSection(),
+              if (widget.sessionId != null) ...[
+                const SizedBox(height: 20),
+                _buildReturnToWebSection(),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -88,14 +83,15 @@ class _DataScreenState extends State<DataScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.person, color: Theme.of(context).primaryColor, size: 28),
+                Icon(Icons.person,
+                    color: Theme.of(context).primaryColor, size: 28),
                 const SizedBox(width: 8),
                 Text(
                   'Personal Information',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).primaryColor,
-                  ),
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).primaryColor,
+                      ),
                 ),
               ],
             ),
@@ -108,9 +104,10 @@ class _DataScreenState extends State<DataScreen> {
   }
 
   Widget _buildPersonalContent() {
-    if (widget.mrtdData?.dg1?.mrz == null && widget.mrtdData?.dg2 == null) {
+    if (widget.mrtdData.dg1?.mrz == null && widget.mrtdData.dg2 == null) {
       return const Center(
-        child: Text('No personal data available', style: TextStyle(color: Colors.grey)),
+        child: Text('No personal data available',
+            style: TextStyle(color: Colors.grey)),
       );
     }
 
@@ -132,7 +129,7 @@ class _DataScreenState extends State<DataScreen> {
   }
 
   Widget _buildProfilePicture() {
-    if (widget.mrtdData?.dg2?.imageData == null) {
+    if (widget.mrtdData.dg2?.imageData == null) {
       return Container(
         width: 120,
         height: 150,
@@ -177,9 +174,9 @@ class _DataScreenState extends State<DataScreen> {
   }
 
   Widget _buildPassportImage() {
-    if (widget.mrtdData!.dg2!.imageType == ImageType.jpeg) {
+    if (widget.mrtdData.dg2!.imageType == ImageType.jpeg) {
       return Image.memory(
-        widget.mrtdData!.dg2!.imageData!,
+        widget.mrtdData.dg2!.imageData!,
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) => Container(
           color: Colors.grey[200],
@@ -207,19 +204,22 @@ class _DataScreenState extends State<DataScreen> {
   }
 
   Widget _buildBasicInfo() {
-    final mrz = widget.mrtdData?.dg1?.mrz;
+    final mrz = widget.mrtdData.dg1?.mrz;
     if (mrz == null) {
-      return const Text('No MRZ data available', style: TextStyle(color: Colors.grey));
+      return const Text('No MRZ data available',
+          style: TextStyle(color: Colors.grey));
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildInfoRow('Full Name', '${mrz.firstName} ${mrz.lastName}', Icons.person_outline),
+        _buildInfoRow('Full Name', '${mrz.firstName} ${mrz.lastName}',
+            Icons.person_outline),
         const SizedBox(height: 12),
         _buildInfoRow('Nationality', mrz.nationality, Icons.flag_outlined),
         const SizedBox(height: 12),
-        _buildInfoRow('Document', '${mrz.documentCode} ${mrz.documentNumber}', Icons.document_scanner_outlined),
+        _buildInfoRow('Document', '${mrz.documentCode} ${mrz.documentNumber}',
+            Icons.document_scanner_outlined),
         const SizedBox(height: 12),
         _buildInfoRow('Gender', mrz.gender, Icons.person_pin_outlined),
       ],
@@ -227,7 +227,7 @@ class _DataScreenState extends State<DataScreen> {
   }
 
   Widget _buildDetailedInfo() {
-    final mrz = widget.mrtdData?.dg1?.mrz;
+    final mrz = widget.mrtdData.dg1?.mrz;
     if (mrz == null) return const SizedBox.shrink();
 
     return Container(
@@ -262,17 +262,20 @@ class _DataScreenState extends State<DataScreen> {
           Row(
             children: [
               Expanded(
-                child: _buildInfoRow('Country', mrz.country, Icons.public_outlined),
+                child: _buildInfoRow(
+                    'Country', mrz.country, Icons.public_outlined),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: _buildInfoRow('Version', mrz.version.name, Icons.info_outline),
+                child: _buildInfoRow(
+                    'Version', mrz.version.name, Icons.info_outline),
               ),
             ],
           ),
           if (mrz.optionalData.isNotEmpty) ...[
             const SizedBox(height: 12),
-            _buildInfoRow('Optional Data', mrz.optionalData, Icons.data_object_outlined),
+            _buildInfoRow(
+                'Optional Data', mrz.optionalData, Icons.data_object_outlined),
           ],
         ],
       ),
@@ -290,14 +293,15 @@ class _DataScreenState extends State<DataScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.security, color: Theme.of(context).colorScheme.secondary, size: 28),
+                Icon(Icons.security,
+                    color: Theme.of(context).colorScheme.secondary, size: 28),
                 const SizedBox(width: 8),
                 Text(
                   'Security Information',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.secondary,
-                  ),
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.secondary,
+                      ),
                 ),
               ],
             ),
@@ -322,8 +326,9 @@ class _DataScreenState extends State<DataScreen> {
   }
 
   Widget _buildAccessProtocolInfo() {
-    if (widget.mrtdData?.isPACE == null || widget.mrtdData?.isDBA == null) {
-      return const Text('No access protocol information available', style: TextStyle(color: Colors.grey));
+    if (widget.mrtdData.isPACE == null || widget.mrtdData.isDBA == null) {
+      return const Text('No access protocol information available',
+          style: TextStyle(color: Colors.grey));
     }
 
     return Container(
@@ -348,24 +353,25 @@ class _DataScreenState extends State<DataScreen> {
           Row(
             children: [
               Icon(
-                widget.mrtdData!.isPACE! ? Icons.check_circle : Icons.cancel,
-                color: widget.mrtdData!.isPACE! ? Colors.green : Colors.grey,
+                widget.mrtdData.isPACE! ? Icons.check_circle : Icons.cancel,
+                color: widget.mrtdData.isPACE! ? Colors.green : Colors.grey,
                 size: 20,
               ),
               const SizedBox(width: 8),
-              Text('PACE: ${widget.mrtdData!.isPACE! ? 'Enabled' : 'Disabled'}'),
+              Text(
+                  'PACE: ${widget.mrtdData!.isPACE! ? 'Enabled' : 'Disabled'}'),
             ],
           ),
           const SizedBox(height: 4),
           Row(
             children: [
               Icon(
-                widget.mrtdData!.isDBA! ? Icons.check_circle : Icons.cancel,
-                color: widget.mrtdData!.isDBA! ? Colors.green : Colors.grey,
+                widget.mrtdData.isDBA! ? Icons.check_circle : Icons.cancel,
+                color: widget.mrtdData.isDBA! ? Colors.green : Colors.grey,
                 size: 20,
               ),
               const SizedBox(width: 8),
-              Text('DBA: ${widget.mrtdData!.isDBA! ? 'Enabled' : 'Disabled'}'),
+              Text('DBA: ${widget.mrtdData.isDBA! ? 'Enabled' : 'Disabled'}'),
             ],
           ),
         ],
@@ -374,9 +380,9 @@ class _DataScreenState extends State<DataScreen> {
   }
 
   Widget _buildSignatureValidation() {
-    final hasSignature = widget.mrtdData?.aaSig != null;
-    final hasSOD = widget.mrtdData?.sod != null;
-    
+    final hasSignature = widget.mrtdData.aaSig != null;
+    final hasSOD = widget.mrtdData.sod != null;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -426,8 +432,10 @@ class _DataScreenState extends State<DataScreen> {
                 _showValidationDetails = !_showValidationDetails;
               });
             },
-            icon: Icon(_showValidationDetails ? Icons.expand_less : Icons.expand_more),
-            label: Text(_showValidationDetails ? 'Hide Details' : 'Show Details'),
+            icon: Icon(
+                _showValidationDetails ? Icons.expand_less : Icons.expand_more),
+            label:
+                Text(_showValidationDetails ? 'Hide Details' : 'Show Details'),
           ),
           if (_showValidationDetails) _buildValidationDetails(),
         ],
@@ -450,7 +458,8 @@ class _DataScreenState extends State<DataScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
-              Text(description, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+              Text(description,
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12)),
             ],
           ),
         ),
@@ -470,8 +479,9 @@ class _DataScreenState extends State<DataScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (widget.mrtdData?.aaSig != null) ...[
-            Text('Active Authentication Signature:', style: TextStyle(fontWeight: FontWeight.bold)),
+          if (widget.mrtdData.aaSig != null) ...[
+            Text('Active Authentication Signature:',
+                style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
             Container(
               padding: const EdgeInsets.all(8),
@@ -483,16 +493,19 @@ class _DataScreenState extends State<DataScreen> {
                 children: [
                   Expanded(
                     child: Text(
-                      widget.mrtdData!.aaSig!.hex().substring(0, 32) + '...',
-                      style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                      widget.mrtdData.aaSig!.hex().substring(0, 32) + '...',
+                      style: const TextStyle(
+                          fontFamily: 'monospace', fontSize: 12),
                     ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.copy, size: 16),
                     onPressed: () {
-                      Clipboard.setData(ClipboardData(text: widget.mrtdData!.aaSig!.hex()));
+                      Clipboard.setData(
+                          ClipboardData(text: widget.mrtdData!.aaSig!.hex()));
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Signature copied to clipboard')),
+                        const SnackBar(
+                            content: Text('Signature copied to clipboard')),
                       );
                     },
                   ),
@@ -501,11 +514,14 @@ class _DataScreenState extends State<DataScreen> {
             ),
             const SizedBox(height: 12),
           ],
-          if (widget.mrtdData?.sod != null) ...[
-            Text('Document Security Object (SOD):', style: TextStyle(fontWeight: FontWeight.bold)),
+          if (widget.mrtdData.sod != null) ...[
+            Text('Document Security Object (SOD):',
+                style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            Text('Hash algorithm validation: Passed', style: TextStyle(color: Colors.green[700])),
-            Text('Data integrity: Verified', style: TextStyle(color: Colors.green[700])),
+            Text('Hash algorithm validation: Passed',
+                style: TextStyle(color: Colors.green[700])),
+            Text('Data integrity: Verified',
+                style: TextStyle(color: Colors.green[700])),
           ],
         ],
       ),
@@ -514,21 +530,35 @@ class _DataScreenState extends State<DataScreen> {
 
   Widget _buildSecurityDetails() {
     final availableElements = <String>[];
-    
-    if (widget.mrtdData?.cardAccess != null) availableElements.add('EF.CardAccess');
-    if (widget.mrtdData?.cardSecurity != null) availableElements.add('EF.CardSecurity');
-    if (widget.mrtdData?.com != null) availableElements.add('EF.COM');
-    if (widget.mrtdData?.sod != null) availableElements.add('EF.SOD');
-    
+
+    if (widget.mrtdData.cardAccess != null) {
+      availableElements.add('EF.CardAccess');
+    }
+    if (widget.mrtdData.cardSecurity != null) {
+      availableElements.add('EF.CardSecurity');
+    }
+    if (widget.mrtdData.com != null) availableElements.add('EF.COM');
+    if (widget.mrtdData.sod != null) availableElements.add('EF.SOD');
+
     // Count available data groups
     int dgCount = 0;
     final dgs = [
-      widget.mrtdData?.dg1, widget.mrtdData?.dg2, widget.mrtdData?.dg3,
-      widget.mrtdData?.dg4, widget.mrtdData?.dg5, widget.mrtdData?.dg6,
-      widget.mrtdData?.dg7, widget.mrtdData?.dg8, widget.mrtdData?.dg9,
-      widget.mrtdData?.dg10, widget.mrtdData?.dg11, widget.mrtdData?.dg12,
-      widget.mrtdData?.dg13, widget.mrtdData?.dg14, widget.mrtdData?.dg15,
-      widget.mrtdData?.dg16,
+      widget.mrtdData.dg1,
+      widget.mrtdData.dg2,
+      widget.mrtdData.dg3,
+      widget.mrtdData.dg4,
+      widget.mrtdData.dg5,
+      widget.mrtdData.dg6,
+      widget.mrtdData.dg7,
+      widget.mrtdData.dg8,
+      widget.mrtdData.dg9,
+      widget.mrtdData.dg10,
+      widget.mrtdData.dg11,
+      widget.mrtdData.dg12,
+      widget.mrtdData.dg13,
+      widget.mrtdData.dg14,
+      widget.mrtdData.dg15,
+      widget.mrtdData.dg16,
     ];
     for (var dg in dgs) {
       if (dg != null) dgCount++;
@@ -573,11 +603,14 @@ class _DataScreenState extends State<DataScreen> {
             Wrap(
               spacing: 8,
               runSpacing: 4,
-              children: availableElements.map((element) => Chip(
-                label: Text(element, style: const TextStyle(fontSize: 12)),
-                backgroundColor: Colors.blue[100],
-                labelStyle: TextStyle(color: Colors.blue[800]),
-              )).toList(),
+              children: availableElements
+                  .map((element) => Chip(
+                        label:
+                            Text(element, style: const TextStyle(fontSize: 12)),
+                        backgroundColor: Colors.blue[100],
+                        labelStyle: TextStyle(color: Colors.blue[800]),
+                      ))
+                  .toList(),
             ),
           ],
         ],
@@ -618,13 +651,6 @@ class _DataScreenState extends State<DataScreen> {
     );
   }
 
-  /// Check if return-to-web functionality should be shown
-  bool _shouldShowReturnToWeb() {
-    return widget.authContext != null && 
-           widget.authContext!.isValid && 
-           widget.mrtdData != null;
-  }
-
   /// Build return-to-web banner at top of screen
   Widget _buildReturnToWebBanner() {
     return Container(
@@ -657,7 +683,7 @@ class _DataScreenState extends State<DataScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Session ID: ${widget.authContext!.sessionId}',
+                  'Session IID: ${widget.sessionId}',
                   style: TextStyle(
                     color: Colors.blue[600],
                     fontSize: 12,
@@ -685,14 +711,15 @@ class _DataScreenState extends State<DataScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.arrow_back, color: Theme.of(context).primaryColor, size: 28),
+                Icon(Icons.arrow_back,
+                    color: Theme.of(context).primaryColor, size: 28),
                 const SizedBox(width: 8),
                 Text(
-                  'Return to Web Application',
+                  'Return to Passport Issuer',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).primaryColor,
-                  ),
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).primaryColor,
+                      ),
                 ),
               ],
             ),
@@ -708,14 +735,16 @@ class _DataScreenState extends State<DataScreen> {
             const SizedBox(height: 20),
             ElevatedButton.icon(
               onPressed: _isReturningToWeb ? null : _returnToWeb,
-              icon: _isReturningToWeb 
+              icon: _isReturningToWeb
                   ? const SizedBox(
                       width: 16,
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.open_in_browser),
-              label: Text(_isReturningToWeb ? 'Returning to Web...' : 'Return to Web Application'),
+              label: Text(_isReturningToWeb
+                  ? 'Returning to Web...'
+                  : 'Return to Web Application'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 backgroundColor: Colors.green[600],
@@ -743,7 +772,7 @@ class _DataScreenState extends State<DataScreen> {
 
   /// Handle return to web functionality
   Future<void> _returnToWeb() async {
-    if (!_shouldShowReturnToWeb()) return;
+    if (widget.sessionId == null) return;
 
     setState(() {
       _isReturningToWeb = true;
@@ -751,25 +780,25 @@ class _DataScreenState extends State<DataScreen> {
 
     try {
       // Create secure data payload
-      final payload = _createSecurePayload();
-      
+      final payload = widget.passportDataResult.toJson();
+
+      final responseBody = await _getIrmaSession(payload);
+
       // Generate return URL
-      final returnUrl = _generateReturnUrl(payload);
-      
-      // Store return action in memory
-      await _storeReturnAction(payload);
-      
+      final irmaServerUrlParam = base64Encode(utf8.encode(responseBody["irma_server_url"]));
+      final jwtUrlParam = base64Encode(utf8.encode(responseBody["jwt"]));
+      final returnUrl = _generateReturnUrl(irmaServerUrlParam, jwtUrlParam);
+
       // Launch return URL
       final uri = Uri.parse(returnUrl);
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
-        
+
         // Show success message and close app
         _showReturnSuccessDialog();
       } else {
         throw Exception('Cannot launch return URL: $returnUrl');
       }
-      
     } catch (e) {
       _showReturnErrorDialog(e.toString());
     } finally {
@@ -781,121 +810,25 @@ class _DataScreenState extends State<DataScreen> {
     }
   }
 
-  /// Create secure data payload for web return
-  Map<String, dynamic> _createSecurePayload() {
-    final mrz = widget.mrtdData!.dg1?.mrz;
-    
-    // Create sanitized data for web return
-    final passportData = {
-      'documentNumber': mrz?.documentNumber ?? '',
-      'documentType': mrz?.documentCode ?? '',
-      'firstName': mrz?.firstName ?? '',
-      'lastName': mrz?.lastName ?? '',
-      'nationality': mrz?.nationality ?? '',
-      'dateOfBirth': mrz?.dateOfBirth.toIso8601String() ?? '',
-      'dateOfExpiry': mrz?.dateOfExpiry.toIso8601String() ?? '',
-      'gender': mrz?.gender ?? '',
-      'country': mrz?.country ?? '',
-      'hasPhoto': widget.mrtdData!.dg2?.imageData != null,
-      'hasSignature': widget.mrtdData!.aaSig != null,
-      'isPACE': widget.mrtdData!.isPACE ?? false,
-      'isDBA': widget.mrtdData!.isDBA ?? false,
-    };
+  Future<dynamic> _getIrmaSession(Map<String, dynamic> payload) async {
+    final String jsonPayload = json.encode(payload);
+    final storeResp = await http.post(
+      Uri.parse('https://passport-issuer.staging.yivi.app/api/verify-and-issue'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonPayload,
+    );
+    if (storeResp.statusCode != 200) {
+      throw Exception(
+          'Store failed: ${storeResp.statusCode} ${storeResp.body}');
+    }
 
-    // Create timestamp and nonce for security
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final nonce = base64Encode(_generateRandomBytes(32));
-    
-    return {
-      'sessionId': widget.authContext!.sessionId,
-      'nonce': nonce,
-      'timestamp': timestamp,
-      'passportData': passportData,
-      'validationStatus': 'success',
-      'appVersion': '1.0.0',
-    };
+    return json.decode(storeResp.body);
   }
 
   /// Generate return URL based on session ID and payload
-  String _generateReturnUrl(Map<String, dynamic> payload) {
-    final encodedPayload = base64Encode(utf8.encode(json.encode(payload)));
-    final signature = _generatePayloadSignature(payload);
-    
-    // Different return URL patterns based on sessionId format
-    final sessionId = widget.authContext!.sessionId;
-    
-    if (_isTestSession(sessionId)) {
-      // Development/test return URL
-      return 'https://localhost:3000/auth/callback?data=$encodedPayload&signature=$signature';
-    } else if (_isProductionSession(sessionId)) {
-      // Production return URL
-      return 'https://app.yourapp.com/auth/callback?data=$encodedPayload&signature=$signature';
-    } else {
-      // Generic callback URL
-      return 'https://auth.callback.url/return?session=$sessionId&data=$encodedPayload&signature=$signature';
-    }
-  }
-
-  /// Check if session is for testing/development
-  bool _isTestSession(String sessionId) {
-    return sessionId.startsWith('test-') || 
-           sessionId.startsWith('dev-') ||
-           sessionId.startsWith('demo-');
-  }
-
-  /// Check if session is for production
-  bool _isProductionSession(String sessionId) {
-    // Production sessions typically follow UUID format
-    const uuidRegex = r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
-    return RegExp(uuidRegex, caseSensitive: false).hasMatch(sessionId);
-  }
-
-  /// Generate HMAC signature for payload integrity
-  String _generatePayloadSignature(Map<String, dynamic> payload) {
-    final message = json.encode(payload);
-    final secret = '${widget.authContext!.nonce}-${widget.authContext!.sessionId}';
-    final key = utf8.encode(secret);
-    final bytes = utf8.encode(message);
-    final hmac = Hmac(sha256, key);
-    final digest = hmac.convert(bytes);
-    return digest.toString();
-  }
-
-  /// Generate cryptographically secure random bytes
-  List<int> _generateRandomBytes(int length) {
-    final random = Random.secure();
-    return List<int>.generate(length, (i) => random.nextInt(256));
-  }
-
-  /// Store return action details for debugging/audit
-  Future<void> _storeReturnAction(Map<String, dynamic> payload) async {
-    final returnDetails = {
-      'timestamp': DateTime.now().toIso8601String(),
-      'sessionId': widget.authContext!.sessionId,
-      'action': 'return_to_web',
-      'payloadSize': json.encode(payload).length,
-      'hasPassportData': payload.containsKey('passportData'),
-    };
-    
-    // Store in memory for coordination
-    await _notifyReturnAction(json.encode(returnDetails));
-  }
-
-  /// Notify other agents about return action via hooks
-  Future<void> _notifyReturnAction(String details) async {
-    try {
-      await Process.run('npx', [
-        'claude-flow@alpha',
-        'hooks',
-        'notification',
-        '--message',
-        'Return to web initiated: $details',
-        '--telemetry',
-        'true'
-      ]);
-    } catch (e) {
-      debugPrint('Failed to notify return action: $e');
-    }
+  String _generateReturnUrl(String irmaServerUrl, String jwt) {
+    // Generic callback URL
+    return 'https://passport-issuer.staging.yivi.app/callback?jwt=$jwt&irmaServerUrl=$irmaServerUrl';
   }
 
   /// Show success dialog after successful return
@@ -914,9 +847,7 @@ class _DataScreenState extends State<DataScreen> {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              if (widget.onBackPressed != null) {
-                widget.onBackPressed!();
-              }
+              widget.onBackPressed();
             },
             child: const Text('Continue'),
           ),

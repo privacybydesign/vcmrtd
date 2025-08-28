@@ -1,8 +1,14 @@
 // Created for UX improvement - Main navigation controller
 // Handles the new flow: Choice Screen -> Scanner/Manual -> NFC Guidance -> Results
 
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:vcmrtd/helpers/mrz_data.dart';
+import 'package:vcmrtd/models/passport_result.dart';
+import 'package:vcmrtd/services/deeplink_service.dart';
+import 'package:vcmrtd/utils/nonce.dart';
 import 'package:vcmrtd/widgets/pages/data_screen.dart';
 import 'package:vcmrtd/widgets/pages/nfc_reading_screen.dart';
 
@@ -16,6 +22,9 @@ enum NavigationStep { choice, mrz, manual, nfcHelp, nfcReading, results }
 
 /// Main navigation controller that manages the new UX flow
 class AppNavigation extends StatefulWidget {
+  const AppNavigation({super.key, required this.deepLinkService});
+  final DeepLinkService deepLinkService;
+
   @override
   State<AppNavigation> createState() => _AppNavigationState();
 }
@@ -24,11 +33,45 @@ class _AppNavigationState extends State<AppNavigation> {
   NavigationStep _currentStep = NavigationStep.choice;
   MRZResult? _mrzResult;
   MrtdData? _mrtdData;
-  
+  PassportDataResult? _passportDataResult;
+
+  StreamSubscription? _sub;
+  String? _sessionId;
+  Uint8List? _nonce;
+
   // Manual entry data
   String? _manualDocNumber;
   DateTime? _manualDob;
   DateTime? _manualExpiry;
+
+  @override
+  void initState() {
+    super.initState();
+    _sub = widget.deepLinkService.stream.listen((data) async {
+      try {
+          // Convert string to 8 bytes nonce
+        final parsed = stringToUint8List(data.nonce);
+
+        setState(() {
+          _sessionId = data.sessionId;
+          _nonce = parsed;
+        });
+        
+          
+      } on ArgumentError {
+        // Show warning invalid nonce.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('⚠️ Invalid nonce received'),
+              backgroundColor: Colors.redAccent,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -130,9 +173,18 @@ class _AppNavigationState extends State<AppNavigation> {
 
   Widget _buildDataReadingScreen() {
     return DataScreen(
-      mrtdData: _mrtdData,
+      mrtdData: _mrtdData!,
+      passportDataResult: _passportDataResult!,
+      sessionId: _sessionId,
+      nonce: _nonce,
       onBackPressed: () {
         setState(() {
+          _nonce = null;
+          _sessionId = null;
+          _manualDocNumber = null;
+          _manualDob = null;
+          _mrtdData = null;
+          _mrzResult = null;
           _currentStep = NavigationStep.choice; // Back to choice screen
         });
       },
@@ -145,18 +197,27 @@ class _AppNavigationState extends State<AppNavigation> {
       manualDocNumber: _manualDocNumber,
       manualDob: _manualDob,
       manualExpiry: _manualExpiry,
+      sessionId: _sessionId,
+      nonce: _nonce,
       onCancel: () {
         setState(() {
           _currentStep = NavigationStep.choice; // Return to choice screen
         });
       },
-      onDataRead: (MrtdData data) {
+      onDataRead: (MrtdData data, PassportDataResult passportDataResult) {
         setState(() {
           _mrtdData = data;
+          _passportDataResult = passportDataResult;
           _currentStep = NavigationStep.results; // Show results
         });
       },
     );
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
   }
 
   void _showHelpDialog() {
@@ -210,7 +271,8 @@ class _AppNavigationState extends State<AppNavigation> {
               Text('• Make sure NFC is enabled in your phone settings'),
               Text('• Remove any thick phone case or metal objects'),
               Text('• Try different positions on the passport back cover'),
-              Text('• Ensure the passport has an electronic chip (newer passports)'),
+              Text(
+                  '• Ensure the passport has an electronic chip (newer passports)'),
               Text('• Keep both devices completely still during reading'),
             ],
           ),

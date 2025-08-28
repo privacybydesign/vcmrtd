@@ -15,7 +15,9 @@ class NfcReadingScreen extends StatefulWidget {
   final String? manualDocNumber;
   final DateTime? manualDob;
   final DateTime? manualExpiry;
-  final ValueChanged<MrtdData>? onDataRead;
+  final String? sessionId;
+  final Uint8List? nonce;
+  final Function(MrtdData, PassportDataResult)? onDataRead;
   final VoidCallback? onCancel;
 
   const NfcReadingScreen(
@@ -24,6 +26,8 @@ class NfcReadingScreen extends StatefulWidget {
       this.manualDocNumber,
       this.manualDob,
       this.manualExpiry,
+      this.sessionId,
+      this.nonce,
       this.onDataRead,
       this.onCancel})
       : super(key: key);
@@ -179,11 +183,8 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
       await passport.startSession(accessKey as DBAKey);
     }
 
-    final passportData = await _readDataGroups(passport, mrtdData);
-    final json = passportData.toJsonString();
-    _log.info("Passport data read successfully: $json");
-
-    widget.onDataRead?.call(mrtdData);
+    final passportDataResult = await _readDataGroups(passport, mrtdData);
+    widget.onDataRead?.call(mrtdData, passportDataResult);
   }
 
   Future<PassportDataResult> _readDataGroups(
@@ -360,7 +361,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
       }
 
       // Handle DG15 and Active Authentication separately
-      if (mrtdData.com!.dgTags.contains(EfDG15.TAG)) {
+      if (widget.sessionId != null && widget.nonce != null && mrtdData.com!.dgTags.contains(EfDG15.TAG)) {
         setState(() {
           _alertMessage = "Performing security verification...";
           _nfcState = NFCReadingState.authenticating;
@@ -377,7 +378,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
           }
 
           _nfc.setIosAlertMessage("Doing AA ...");
-          mrtdData.aaSig = await passport.activeAuthenticate(Uint8List(8));
+          mrtdData.aaSig = await passport.activeAuthenticate(widget.nonce!);
         } catch (e) {
           _log.warning("Failed to read DG15 or perform AA: $e");
         }
@@ -399,6 +400,8 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
       return PassportDataResult(
         dataGroups: dataGroups,
         efSod: efSodHex,
+        nonce: widget.nonce,
+        sessionId: widget.sessionId
       );
     } catch (e) {
       _log.severe("Error reading passport data: $e");
