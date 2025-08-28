@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../custom/custom_logger_extension.dart';
-import '../controllers/mrz_controller.dart';
-import '../helpers/mrz_scanner.dart';
+import '../../custom/custom_logger_extension.dart';
+import '../../controllers/mrz_controller.dart';
+import '../../helpers/mrz_scanner.dart';
 
 class ScannerPage extends StatefulWidget {
   const ScannerPage({super.key});

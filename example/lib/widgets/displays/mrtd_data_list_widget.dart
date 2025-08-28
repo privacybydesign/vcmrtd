@@ -3,7 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:dmrtd/extensions.dart';
-import 'package:mrtdeg/widgets/displays/passport_image_widget.dart';
+import 'package:vcmrtd/widgets/displays/passport_image_widget.dart';
 import '../../models/mrtd_data.dart';
 import '../../utils/formatters.dart';
 import 'access_protocol_widget.dart';

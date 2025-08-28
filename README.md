@@ -29,9 +29,15 @@ Some screenshots of the example app:
 </p>
 
 
-## Usage
+## Development
+Make sure your local Android keystore certificate SHA256 fingerpint is added to the Android AssetsLinks in the `go-passport-issuer`.
+One can simpy retrieve the SHA265 hash with the following command:
 
-todo
+```sh
+keytool -list -v -alias androiddebugkey -keystore ~/.android/debug.keystore -storepass android -keypass android
+```
+
+The SHA256 hash should be available here: 
 
 
 ## License
