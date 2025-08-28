@@ -1,4 +1,4 @@
-package com.example.mrtdeg
+package app.yivi.vcmrtd
 
 import android.content.Intent
 import io.flutter.embedding.android.FlutterActivity
@@ -7,7 +7,7 @@ import io.flutter.plugins.GeneratedPluginRegistrant
 import io.flutter.plugin.common.MethodChannel
 
 import android.content.Context
-import com.example.mrtdeg.ImageUtil
+import app.yivi.vcmrtd.ImageUtil
 
 class MainActivity : FlutterActivity() {
     private lateinit var deepLinkPlugin: DeepLinkPlugin

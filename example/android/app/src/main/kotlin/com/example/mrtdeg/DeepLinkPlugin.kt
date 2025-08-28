@@ -1,4 +1,4 @@
-package com.example.mrtdeg
+package app.yivi.vcmrtd
 
 import android.content.Intent
 import android.net.Uri

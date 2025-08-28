@@ -16,10 +16,10 @@ void main() {
     print(
         '${record.loggerName} ${record.level.name}: ${record.time}: ${record.message}');
   });
-  runApp(MrtdEgApp());
+  runApp(VcMrtdApp());
 }
 
-class MrtdEgApp extends StatelessWidget {
+class VcMrtdApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PlatformApp(

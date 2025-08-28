@@ -4,11 +4,11 @@ import 'package:dmrtd/dmrtd.dart';
 import 'package:dmrtd/extensions.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
-import 'package:mrtdeg/helpers/mrz_data.dart';
-import 'package:mrtdeg/models/data_group_config.dart';
-import 'package:mrtdeg/models/mrtd_data.dart';
-import 'package:mrtdeg/models/passport_result.dart';
-import 'package:mrtdeg/widgets/common/animated_nfc_status_widget.dart';
+import 'package:vcmrtd/helpers/mrz_data.dart';
+import 'package:vcmrtd/models/data_group_config.dart';
+import 'package:vcmrtd/models/mrtd_data.dart';
+import 'package:vcmrtd/models/passport_result.dart';
+import 'package:vcmrtd/widgets/common/animated_nfc_status_widget.dart';
 
 class NfcReadingScreen extends StatefulWidget {
   final MRZResult? mrzResult;
@@ -37,7 +37,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
   String _alertMessage = "";
   NFCReadingState _nfcState = NFCReadingState.idle;
   double _readingProgress = 0.0;
-  final _log = Logger("mrtdeg.app");
+  final _log = Logger("vcmrtd.app");
   bool _isCancelled = false;
 
   @override

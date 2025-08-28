@@ -2,9 +2,9 @@
 // Handles the new flow: Choice Screen -> Scanner/Manual -> NFC Guidance -> Results
 
 import 'package:flutter/material.dart';
-import 'package:mrtdeg/helpers/mrz_data.dart';
-import 'package:mrtdeg/widgets/pages/data_screen.dart';
-import 'package:mrtdeg/widgets/pages/nfc_reading_screen.dart';
+import 'package:vcmrtd/helpers/mrz_data.dart';
+import 'package:vcmrtd/widgets/pages/data_screen.dart';
+import 'package:vcmrtd/widgets/pages/nfc_reading_screen.dart';
 
 import 'choice_screen.dart';
 import 'nfc_guidance_screen.dart';

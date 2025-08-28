@@ -2,10 +2,10 @@
 // Provides callbacks for the scanner page to integrate with navigation
 
 import 'package:flutter/material.dart';
-import 'package:mrtdeg/helpers/mrz_data.dart';
+import 'package:vcmrtd/helpers/mrz_data.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 
-import '../../view/scan_page.dart';
+import 'scan_screen.dart';
 
 /// Wrapper around ScannerPage to handle navigation callbacks
 class ScannerWrapper extends StatefulWidget {
