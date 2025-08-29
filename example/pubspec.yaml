@@ -35,6 +35,7 @@ dependencies:
   logging: ^1.0.2
   url_launcher: ^6.2.4
   crypto: ^3.0.3
+  http: ^1.5.0
 
 dev_dependencies:
   flutter_lints: ^2.0.1

@@ -42,11 +42,10 @@ import Foundation
     }
 }
 
-// MARK: - Application Delegate Methods
 extension DeepLinkPlugin {
     
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Handle launch via URL scheme
+        // Handle launch via URL scheme (custom schemes)
         if let url = launchOptions?[.url] as? URL {
             handleURL(url)
         }
@@ -57,9 +56,8 @@ extension DeepLinkPlugin {
         return handleURL(url)
     }
     
-    // iOS 13+ Scene Delegate support
+    // iOS 13+ Scene Delegate support (Universal Links)
     func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
-        // Handle Universal Links
         if userActivity.activityType == NSUserActivityTypeBrowsingWeb,
            let url = userActivity.webpageURL {
             return handleURL(url)
@@ -68,14 +66,13 @@ extension DeepLinkPlugin {
     }
 }
 
-// MARK: - Deep Link Processing
 private extension DeepLinkPlugin {
     
     func handleURL(_ url: URL) -> Bool {
         let urlString = url.absoluteString
         
-        guard isValidMrtdURL(url) else {
-            NSLog("Invalid MRTD URL: \(urlString)")
+        guard isValidURL(url) else {
+            NSLog("Invalid URL: \(urlString)")
             return false
         }
         
@@ -90,100 +87,51 @@ private extension DeepLinkPlugin {
         return true
     }
     
-    func isValidMrtdURL(_ url: URL) -> Bool {
-        // Check scheme
-        guard let scheme = url.scheme,
-              (scheme == "mrtd" || scheme == "https") else {
-            return false
-        }
+    func isValidURL(_ url: URL) -> Bool {
+        // Require HTTPS
+        guard url.scheme == "https" else { return false }
         
-        // For MRTD scheme, check host
-        if scheme == "mrtd" {
-            guard url.host == "validate" else {
-                return false
-            }
-        }
-        
-        // For HTTPS scheme, check domain and path
-        if scheme == "https" {
-            guard url.host == "mrtd.app",
-                  url.path.hasPrefix("/validate") else {
-                return false
-            }
-        }
+        // Require host/path to match start-app endpoint
+        let host = url.host ?? ""
+        let path = url.path
+        guard host == "passport-issuer.staging.yivi.app",
+              path.hasPrefix("/start-app") else { return false }
         
         // Extract query parameters
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-              let queryItems = components.queryItems else {
-            return false
+              let queryItems = components.queryItems,
+              !queryItems.isEmpty else { return false }
+        
+        var params: [String: String] = [:]
+        for item in queryItems {
+            if let value = item.value { params[item.name] = value }
         }
         
-        // Check required parameters
-        let requiredParams = ["sessionId", "nonce", "timestamp", "signature"]
-        let paramDict = Dictionary(uniqueKeysWithValues: queryItems.map { ($0.name, $0.value) })
-        
-        for param in requiredParams {
-            guard let value = paramDict[param], !value.isEmpty else {
-                return false
-            }
-        }
-        
-        // Validate sessionId format (UUID)
-        guard let sessionId = paramDict["sessionId"],
-              isValidUUID(sessionId) else {
-            return false
-        }
-        
-        // Validate timestamp format
-        guard let timestampString = paramDict["timestamp"],
-              let _ = Int64(timestampString) else {
-            return false
-        }
-        
-        // Basic nonce validation (should be Base64)
-        guard let nonce = paramDict["nonce"],
-              isValidBase64(nonce) else {
-            return false
-        }
+        // Validate required params
+        guard let sessionId = params["sessionId"], isValidSessionId(sessionId),
+              let nonce = params["nonce"], isValidNonce(nonce) else { return false }
         
         return true
     }
     
     func processDeepLink(url: String) -> Bool {
-        guard let urlObj = URL(string: url) else {
-            return false
-        }
-        
-        guard isValidMrtdURL(urlObj) else {
-            return false
-        }
+        guard let urlObj = URL(string: url) else { return false }
+        guard isValidURL(urlObj) else { return false }
         
         // Log security event
         NSLog("Processing valid MRTD deep link: \(urlObj.host ?? "unknown")")
-        
-        // Additional security checks could be performed here
-        // such as rate limiting, certificate validation, etc.
-        
         return true
     }
     
     // MARK: - Validation Helpers
     
-    func isValidUUID(_ uuid: String) -> Bool {
-        let uuidRegex = "^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$"
-        let predicate = NSPredicate(format: "SELF MATCHES[c] %@", uuidRegex)
-        return predicate.evaluate(with: uuid)
+    /// 32-char alphanumeric (not a UUID)
+    func isValidSessionId(_ sessionId: String) -> Bool {
+        return sessionId.range(of: "^[A-Za-z0-9]{32}$", options: .regularExpression) != nil
     }
     
-    func isValidBase64(_ string: String) -> Bool {
-        // Basic Base64 validation
-        let base64Regex = "^[A-Za-z0-9+/]*={0,2}$"
-        let predicate = NSPredicate(format: "SELF MATCHES %@", base64Regex)
-        guard predicate.evaluate(with: string) else {
-            return false
-        }
-        
-        // Try to decode to verify it's valid Base64
-        return Data(base64Encoded: string) != nil
+    /// 16-char hexadecimal
+    func isValidNonce(_ nonce: String) -> Bool {
+        return nonce.range(of: "^[0-9a-fA-F]{16}$", options: .regularExpression) != nil
     }
 }

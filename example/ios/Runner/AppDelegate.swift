@@ -27,7 +27,9 @@ import UIKit
         options: [UIApplication.OpenURLOptionsKey: Any] = [:]
     ) -> Bool {
         // Let the deep link plugin handle first
-        if url.scheme == "mrtd" || (url.scheme == "https" && url.host == "mrtd.app") {
+        if url.scheme == "mrtd" ||
+           (url.scheme == "https" && url.host == "mrtd.app") ||
+           (url.scheme == "https" && url.host == "passport-issuer.staging.yivi.app") {
             // The plugin will handle this through its delegate methods
             return super.application(app, open: url, options: options)
         }
@@ -43,7 +45,8 @@ import UIKit
     ) -> Bool {
         if userActivity.activityType == NSUserActivityTypeBrowsingWeb,
            let url = userActivity.webpageURL,
-           url.host == "mrtd.app" && url.path.hasPrefix("/validate") {
+           ((url.host == "mrtd.app" && url.path.hasPrefix("/validate")) ||
+            (url.host == "passport-issuer.staging.yivi.app" && url.path.hasPrefix("/start-app"))) {
             // The plugin will handle this through its delegate methods
             return super.application(application, continue: userActivity, restorationHandler: restorationHandler)
         }
