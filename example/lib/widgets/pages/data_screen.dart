@@ -846,7 +846,6 @@ class _DataScreenState extends State<DataScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop();
               widget.onBackPressed();
             },
             child: const Text('Continue'),

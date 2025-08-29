@@ -178,6 +178,7 @@ class _AppNavigationState extends State<AppNavigation> {
       sessionId: _sessionId,
       nonce: _nonce,
       onBackPressed: () {
+        Navigator.of(context).pop();
         setState(() {
           _nonce = null;
           _sessionId = null;
