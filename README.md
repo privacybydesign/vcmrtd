@@ -4,7 +4,7 @@ This Dart library and sample app enable reading and verifying Machine Readable T
 It interfaces with the [go-passport-issuer](https://github.com/privacybydesign/go-passport-issuer), which retrieves passport data, performs Passive Authentication (PA), and converts the data into Verifiable Credentials (VCs) used in the Yivi ecosystem.
 
 > [!WARNING]  
-> The library and app are currently under construction and mainly tested with Dutch passports.
+> The library and app are currently under construction and is primarily tested with Dutch passports.
 
 > [!NOTE]  
 > This library is orginally forked from [dmrtd](https://github.com/ZeroPass/dmrtd) repository, but has been significantly modified and improved by the Yivi team.
