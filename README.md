@@ -13,7 +13,7 @@ We broke the upstream fork because we are planning to add the following features
 The goal is to incorporate this library into the [Yivi app](https://github.com/privacybydesign/irmamobile) to allow users to verify their ePassports and eID cards, and to create verifiable credentials from the data.
 
 ## Documentation
-We documented the example app, library and background information in this repository. The documentation is published using Github Pages and can be visited [here](https://privacybydesign.github.io/dmrtd).
+We documented the example app, library and background information in this repository. The documentation is published using Github Pages and can be visited [here](https://privacybydesign.github.io/vcmrtd).
 
 ## Example App
 This repository contains an example app that demonstrates how to use the library to read and verify MRTD data. The app is built using Flutter and can be run on both Android and iOS devices.
