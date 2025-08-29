@@ -6,12 +6,14 @@ class PassportDataResult {
   final String efSod;
   final String? sessionId;
   final Uint8List? nonce;
+  final Uint8List? signature;
 
   PassportDataResult({
     required this.dataGroups,
     required this.efSod,
     this.sessionId,
-    this.nonce
+    this.nonce,
+    this.signature
   });
 
   String _bytesToHex(Uint8List bytes) {

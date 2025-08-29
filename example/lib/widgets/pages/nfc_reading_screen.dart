@@ -375,12 +375,12 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
             if (hexData.isNotEmpty) {
               dataGroups["DG15"] = hexData;
             }
+            _nfc.setIosAlertMessage("Doing AA ...");
+            mrtdData.aaSig = await passport.activeAuthenticate(widget.nonce!);
           }
-
-          _nfc.setIosAlertMessage("Doing AA ...");
-          mrtdData.aaSig = await passport.activeAuthenticate(widget.nonce!);
+          _log.info("No DG15 found, skipping AA");
         } catch (e) {
-          _log.warning("Failed to read DG15 or perform AA: $e");
+          _log.warning("Failed to perform AA: $e");
         }
       }
 
@@ -401,7 +401,8 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
         dataGroups: dataGroups,
         efSod: efSodHex,
         nonce: widget.nonce,
-        sessionId: widget.sessionId
+        sessionId: widget.sessionId,
+        signature :  mrtdData.aaSig,
       );
     } catch (e) {
       _log.severe("Error reading passport data: $e");
