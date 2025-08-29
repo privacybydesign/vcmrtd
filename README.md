@@ -6,12 +6,15 @@ It interfaces with the [go-passport-issuer](https://github.com/privacybydesign/g
 > [!NOTE]  
 > The library and app are currently under construction and mainly tested with Dutch passports.
 
+> [!NOTE]  
+> This library is orginally forked from [dmrtd](https://github.com/ZeroPass/dmrtd) repository, but has been significantly modified and improved by the Yivi team.
+
 ## Documentation
 This repository includes documentation for the library, the example app, and background information.
-Published documentation is available via GitHub Pages: privacybydesign.github.io/vcmrtd.
+Published documentation is available via GitHub Pages: [privacybydesign.github.io/vcmrtd](https://privacybydesign.github.io/vcmrtd)
 
 ## Example App
-This repository contains an example app that demonstrates how to use the library to read and verify MRTD data. The app is built using Flutter and can be run on both Android and iOS devices.
+This repository contains an example app that demonstrates how to use the library to read and verify MRTD data. The app is built using Flutter and can be run on both Android and iOS devices. It can be run with or without Veriable Credential generation.
 
 Some screenshots of the example app:
 
@@ -34,8 +37,7 @@ keytool -list -v -alias androiddebugkey -keystore ~/.android/debug.keystore -sto
 
 The SHA256 hash should be available here: 
 
-
 ## License
-Since this project builds upon the work of [dmrtd](https://github.com/ZeroPass/dmrtd), it is subject to the same licensing terms.
+Copyright (C) 2025 Yivi B.V. vcmrtd is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
-This project is licensed under the terms of the GNU Lesser General Public License (LGPL) for open-source use and a Commercial License for proprietary use. See the LICENSE.LGPL and LICENSE.COMMERCIAL files for details.
+This project builds upon the work of [dmrtd](https://github.com/ZeroPass/dmrtd), we hard forked it for our own use and made significant improvements. dmrtd is also licensed under the GNU General Public License v3.
