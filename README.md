@@ -1,19 +1,14 @@
-## Dart Library for Verifiable Credentials from Machine Readable Travel Documents (MRTD) 
-This Dart library provides functionality to read and verify Machine Readable Travel Documents (MRTD) such as ePassports and eID cards. It supports Basic Access Control (BAC), Active Authentication (AA), and other protocols defined by ICAO standards.
+## Verifiable Credentials from Machine Readable Travel Documents (MRTD) 
+This Dart library and sample app enable reading and verifying Machine Readable Travel Documents (MRTD) such as ePassports and eID cards using a mobile phone.
+
+It interfaces with the [go-passport-issuer](https://github.com/privacybydesign/go-passport-issuer), which retrieves passport data, performs Passive Authentication (PA), and converts the data into Verifiable Credentials (VCs) used in the Yivi ecosystem.
 
 > [!NOTE]  
-> This library orginally forked from [dmrtd](https://github.com/ZeroPass/dmrtd). This library is maintained by the [Yivi team](https://yivi.app).
-
-We broke the upstream fork because we are planning to add the following features:
-- [x] MRZ parsing using OCR.
-- [ ] Passive Authentication (PA), validating signatures against country CA certificates.
-- [ ] Support for Anglo Saxion countries (like USA, UK) and EU.
-- [ ] Creating of Verifiable Credentials (VC) from MRTD data, such as `SD-JWT VC` and `Idemix crendentials`.
-
-The goal is to incorporate this library into the [Yivi app](https://github.com/privacybydesign/irmamobile) to allow users to verify their ePassports and eID cards, and to create verifiable credentials from the data.
+> The library and app are currently under construction and mainly tested with Dutch passports.
 
 ## Documentation
-We documented the example app, library and background information in this repository. The documentation is published using Github Pages and can be visited [here](https://privacybydesign.github.io/vcmrtd).
+This repository includes documentation for the library, the example app, and background information.
+Published documentation is available via GitHub Pages: privacybydesign.github.io/vcmrtd.
 
 ## Example App
 This repository contains an example app that demonstrates how to use the library to read and verify MRTD data. The app is built using Flutter and can be run on both Android and iOS devices.
