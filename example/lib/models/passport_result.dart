@@ -28,7 +28,8 @@ class PassportDataResult {
     'data_groups': dataGroups,
     'ef_sod': efSod,
     'nonce': nonce != null ? _bytesToHex(nonce!) : null,
-    'session_id': sessionId
+    'session_id': sessionId,
+    'signature' : signature
   };
 
   String toJsonString() => jsonEncode(toJson());
