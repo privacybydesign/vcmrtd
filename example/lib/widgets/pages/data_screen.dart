@@ -782,14 +782,20 @@ class _DataScreenState extends State<DataScreen> {
       // Create secure data payload
       final payload = widget.passportDataResult.toJson();
 
-      final responseBody = await _getIrmaSession(payload);
+      // Get the signed IRMA JWt from the passport issuer
+      final responseBody = await _getIrmaSessionJwt(payload);
+      final irmaServerUrlParam = responseBody["irma_server_url"];
+      final jwtUrlParam = responseBody["jwt"];
 
-      // Generate return URL
-      final irmaServerUrlParam = base64Encode(utf8.encode(responseBody["irma_server_url"]));
-      final jwtUrlParam = base64Encode(utf8.encode(responseBody["jwt"]));
-      final returnUrl = _generateReturnUrl(irmaServerUrlParam, jwtUrlParam);
+      // Start the session
+      final sessionResponseBody = await _startIrmaSession(jwtUrlParam, irmaServerUrlParam);
+      final sessionPtr = sessionResponseBody["sessionPtr"];
+      final urlEncodedSessionPtr = Uri.encodeFull(jsonEncode(sessionPtr));
 
-      // Launch return URL
+      // Open the session using a universal link in the Yivi app.
+      final returnUrl = _generateUniversalLink(urlEncodedSessionPtr);
+
+      // Open the universal link.
       final uri = Uri.parse(returnUrl);
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -810,7 +816,7 @@ class _DataScreenState extends State<DataScreen> {
     }
   }
 
-  Future<dynamic> _getIrmaSession(Map<String, dynamic> payload) async {
+  Future<dynamic> _getIrmaSessionJwt(Map<String, dynamic> payload) async {
     final String jsonPayload = json.encode(payload);
     final storeResp = await http.post(
       Uri.parse('https://passport-issuer.staging.yivi.app/api/verify-and-issue'),
@@ -825,10 +831,24 @@ class _DataScreenState extends State<DataScreen> {
     return json.decode(storeResp.body);
   }
 
+  Future<dynamic> _startIrmaSession(String jwt, String irmaServerUrl) async {
+    // Start the IRMA session
+    final response = await http.post(
+      Uri.parse('$irmaServerUrl/session'),
+      body: jwt,
+    );
+    if (response.statusCode != 200) {
+      throw Exception(
+          'Store failed: ${response.statusCode} ${response.body}');
+    }
+
+    return json.decode(response.body);
+  }
+
   /// Generate return URL based on session ID and payload
-  String _generateReturnUrl(String irmaServerUrl, String jwt) {
+  String _generateUniversalLink(String urlEncodedSessionPtr) {
     // Generic callback URL
-    return 'https://passport-issuer.staging.yivi.app/callback?jwt=$jwt&irmaServerUrl=$irmaServerUrl';
+    return 'https://open.yivi.app/-/session#$urlEncodedSessionPtr';
   }
 
   /// Show success dialog after successful return
