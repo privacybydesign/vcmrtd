@@ -401,7 +401,8 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
         dataGroups: dataGroups,
         efSod: efSodHex,
         nonce: widget.nonce,
-        sessionId: widget.sessionId
+        sessionId: widget.sessionId,
+        aaSignature: mrtdData.aaSig
       );
     } catch (e) {
       _log.severe("Error reading passport data: $e");
