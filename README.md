@@ -1,7 +1,12 @@
 ## Verifiable Credentials from Machine Readable Travel Documents (MRTD) 
 This Dart library and sample app enable reading and verifying Machine Readable Travel Documents (MRTD) such as ePassports and eID cards using a mobile phone.
 
-It interfaces with the [go-passport-issuer](https://github.com/privacybydesign/go-passport-issuer), which retrieves passport data, performs Passive Authentication (PA), and converts the data into Verifiable Credentials (VCs) used in the Yivi ecosystem.
+It interfaces with the [go-passport-issuer](https://github.com/privacybydesign/go-passport-issuer) backend, which utilizes the [gmrtd](https://github.com/gmrtd/gmrtd) Go library for low-level MRTD operations. The backend performs both Passive Authentication (PA) and Active Authentication (AA) to verify document authenticity and prevent cloning, then converts the verified data into Verifiable Credentials (VCs) used in the Yivi ecosystem.
+
+### Authentication Implementation
+- **Passive Authentication (PA)**: Verifies data integrity and authenticity through digital signatures from the issuing authority
+- **Active Authentication (AA)**: Prevents chip cloning by challenging the passport's unique cryptographic keys
+- **Masterlist Support**: Includes support for Dutch and German Certificate Authority masterlists for comprehensive document verification
 
 > [!WARNING]  
 > The library and app are currently under construction and is primarily tested with Dutch passports.
