@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Veriable Credentials from MRTD</string>
+	<string>Passport Reader</string>
 	<key>NSCameraUsageDescription</key>
 	<string>The camera will be used for scanning your passport</string>
 	<key>CFBundleExecutable</key>
