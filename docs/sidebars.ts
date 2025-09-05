@@ -41,6 +41,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'library/support',
         'library/flow',
+        'library/api',
       ],
     },
     {
