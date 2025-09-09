@@ -13,7 +13,7 @@ dependency_overrides:
       ref: master
 
 dependencies:
-  archive: ^3.6.1
+  archive: ^4.0.2
   collection: ^1.19.0
   convert: ^3.1.2
   crypto: ^3.0.6
