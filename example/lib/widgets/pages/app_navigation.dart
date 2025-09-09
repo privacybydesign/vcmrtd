@@ -5,12 +5,12 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:vcmrtd/helpers/mrz_data.dart';
-import 'package:vcmrtd/models/passport_result.dart';
-import 'package:vcmrtd/services/deeplink_service.dart';
-import 'package:vcmrtd/utils/nonce.dart';
-import 'package:vcmrtd/widgets/pages/data_screen.dart';
-import 'package:vcmrtd/widgets/pages/nfc_reading_screen.dart';
+import 'package:vcmrtdapp/helpers/mrz_data.dart';
+import 'package:vcmrtdapp/models/passport_result.dart';
+import 'package:vcmrtdapp/services/deeplink_service.dart';
+import 'package:vcmrtdapp/utils/nonce.dart';
+import 'package:vcmrtdapp/widgets/pages/data_screen.dart';
+import 'package:vcmrtdapp/widgets/pages/nfc_reading_screen.dart';
 
 import 'choice_screen.dart';
 import 'nfc_guidance_screen.dart';

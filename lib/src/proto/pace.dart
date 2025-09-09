@@ -2,24 +2,24 @@
 import 'dart:typed_data';
 
 import 'package:collection/collection.dart';
-import 'package:dmrtd/extensions.dart';
-import 'package:dmrtd/src/lds/asn1ObjectIdentifiers.dart';
-import 'package:dmrtd/src/proto/public_key_pace.dart';
-import 'package:dmrtd/src/crypto/kdf.dart';
-import 'package:dmrtd/src/crypto/aes.dart';
-import 'package:dmrtd/src/crypto/iso9797.dart';
-import 'package:dmrtd/src/proto/ssc.dart';
-import "package:dmrtd/src/proto/des_smcipher.dart";
-import 'package:dmrtd/src/proto/mrtd_sm.dart';
-import 'package:dmrtd/src/crypto/des.dart';
+import 'package:vcmrtd/extensions.dart';
+import 'package:vcmrtd/src/lds/asn1ObjectIdentifiers.dart';
+import 'package:vcmrtd/src/proto/public_key_pace.dart';
+import 'package:vcmrtd/src/crypto/kdf.dart';
+import 'package:vcmrtd/src/crypto/aes.dart';
+import 'package:vcmrtd/src/crypto/iso9797.dart';
+import 'package:vcmrtd/src/proto/ssc.dart';
+import "package:vcmrtd/src/proto/des_smcipher.dart";
+import 'package:vcmrtd/src/proto/mrtd_sm.dart';
+import 'package:vcmrtd/src/crypto/des.dart';
 
 import 'package:logging/logging.dart';
 import 'package:pointycastle/ecc/api.dart';
 
-import "package:dmrtd/src/extension/logging_apis.dart";
-import "package:dmrtd/src/lds/tlv.dart";
-import "package:dmrtd/src/proto/iso7816/icc.dart";
-import 'package:dmrtd/src/lds/efcard_access.dart';
+import "package:vcmrtd/src/extension/logging_apis.dart";
+import "package:vcmrtd/src/lds/tlv.dart";
+import "package:vcmrtd/src/proto/iso7816/icc.dart";
+import 'package:vcmrtd/src/lds/efcard_access.dart';
 
 import '../lds/tlvSet.dart';
 import '../utils.dart';

@@ -1,6 +1,6 @@
 // Created by Crt Vavros, copyright © 2022 ZeroPass. All rights reserved.
-import 'package:dmrtd/extensions.dart';
-import 'package:dmrtd/src/proto/ssc.dart';
+import 'package:vcmrtd/extensions.dart';
+import 'package:vcmrtd/src/proto/ssc.dart';
 import 'package:test/test.dart';
 
 void main() {

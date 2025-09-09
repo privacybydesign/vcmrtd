@@ -4,8 +4,8 @@
 import 'dart:typed_data';
 import 'package:test/test.dart';
 
-import 'package:dmrtd/src/crypto/des.dart';
-import 'package:dmrtd/src/extension/string_apis.dart';
+import 'package:vcmrtd/src/crypto/des.dart';
+import 'package:vcmrtd/src/extension/string_apis.dart';
 
 void main() {
   final zeroIV = Uint8List(DESedeCipher.blockSize);

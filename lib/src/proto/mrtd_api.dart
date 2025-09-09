@@ -14,7 +14,7 @@ import '../lds/tlv.dart';
 import '../lds/efcard_access.dart';
 import '../utils.dart';
 
-import 'package:dmrtd/extensions.dart';
+import 'package:vcmrtd/extensions.dart';
 import 'package:logging/logging.dart';
 
 import 'pace.dart';

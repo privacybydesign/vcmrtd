@@ -3,7 +3,7 @@
 
 import 'dart:typed_data';
 import 'dg.dart';
-import 'package:dmrtd/dmrtd.dart';
+import 'package:vcmrtd/vcmrtd.dart';
 
 class EfDG15 extends DataGroup {
   static const FID = 0x010F;

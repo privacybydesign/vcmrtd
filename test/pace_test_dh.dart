@@ -1,21 +1,21 @@
 //  Created by Nejc Skerjanc, copyright © 2023 ZeroPass. All rights reserved.
 import 'dart:typed_data';
 
-import 'package:dmrtd/extensions.dart';
-import 'package:dmrtd/src/lds/asn1ObjectIdentifiers.dart';
-import 'package:dmrtd/src/lds/substruct/paceCons.dart';
-import 'package:dmrtd/src/proto/dh_pace.dart';
-import 'package:dmrtd/src/proto/iso7816/iso7816.dart';
-import 'package:dmrtd/src/proto/pace.dart';
-import 'package:dmrtd/src/proto/public_key_pace.dart';
-import 'package:dmrtd/src/utils.dart';
+import 'package:vcmrtd/extensions.dart';
+import 'package:vcmrtd/src/lds/asn1ObjectIdentifiers.dart';
+import 'package:vcmrtd/src/lds/substruct/paceCons.dart';
+import 'package:vcmrtd/src/proto/dh_pace.dart';
+import 'package:vcmrtd/src/proto/iso7816/iso7816.dart';
+import 'package:vcmrtd/src/proto/pace.dart';
+import 'package:vcmrtd/src/proto/public_key_pace.dart';
+import 'package:vcmrtd/src/utils.dart';
 import 'package:test/test.dart';
-import 'package:dmrtd/src/extension/string_apis.dart';
-import 'package:dmrtd/src/proto/iso7816/command_apdu.dart';
-import 'package:dmrtd/src/proto/dba_key.dart';
-import 'package:dmrtd/src/crypto/kdf.dart';
-import 'package:dmrtd/src/crypto/aes.dart';
-import 'package:dmrtd/src/lds/efcard_access.dart';
+import 'package:vcmrtd/src/extension/string_apis.dart';
+import 'package:vcmrtd/src/proto/iso7816/command_apdu.dart';
+import 'package:vcmrtd/src/proto/dba_key.dart';
+import 'package:vcmrtd/src/crypto/kdf.dart';
+import 'package:vcmrtd/src/crypto/aes.dart';
+import 'package:vcmrtd/src/lds/efcard_access.dart';
 
 
 void main(){

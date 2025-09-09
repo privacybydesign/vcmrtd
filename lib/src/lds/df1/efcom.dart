@@ -3,7 +3,7 @@
 
 import 'dart:core';
 import 'dart:typed_data';
-import 'package:dmrtd/extensions.dart';
+import 'package:vcmrtd/extensions.dart';
 
 import 'dg.dart';
 import '../ef.dart';

@@ -3,9 +3,9 @@
 
 import 'dart:typed_data';
 
-import 'package:dmrtd/extensions.dart';
-import "package:dmrtd/src/lds/df1/dg.dart";
-import "package:dmrtd/src/extension/logging_apis.dart";
+import 'package:vcmrtd/extensions.dart';
+import "package:vcmrtd/src/lds/df1/dg.dart";
+import "package:vcmrtd/src/extension/logging_apis.dart";
 import 'package:logging/logging.dart';
 import 'package:pointycastle/asn1.dart';
 

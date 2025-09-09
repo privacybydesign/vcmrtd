@@ -2,7 +2,7 @@
 // MRTD data model for passport reading
 
 import 'dart:typed_data';
-import 'package:dmrtd/dmrtd.dart';
+import 'package:vcmrtd/vcmrtd.dart';
 
 /// Data model for MRTD passport information
 class MrtdData {

@@ -1,4 +1,4 @@
-import 'package:dmrtd/dmrtd.dart';
+import 'package:vcmrtd/vcmrtd.dart';
 
 class DataGroupConfig {
   final dynamic tag;

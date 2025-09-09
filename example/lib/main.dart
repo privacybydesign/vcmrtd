@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:logging/logging.dart';
-import 'package:dmrtd/extensions.dart';
-import 'package:vcmrtd/services/deeplink_service.dart';
+import 'package:vcmrtd/extensions.dart';
+import 'package:vcmrtdapp/services/deeplink_service.dart';
 
 import 'widgets/pages/app_navigation.dart';
 

@@ -2,11 +2,11 @@
 
 import "dart:typed_data";
 
-import "package:dmrtd/extensions.dart";
-import "package:dmrtd/src/crypto/crypto_utils.dart";
-import "package:dmrtd/src/proto/public_key_pace.dart";
-import "package:dmrtd/src/utils.dart";
-import "package:dmrtd/src/extension/logging_apis.dart";
+import "package:vcmrtd/extensions.dart";
+import "package:vcmrtd/src/crypto/crypto_utils.dart";
+import "package:vcmrtd/src/proto/public_key_pace.dart";
+import "package:vcmrtd/src/utils.dart";
+import "package:vcmrtd/src/extension/logging_apis.dart";
 import 'package:pointycastle/export.dart';
 import "package:logging/logging.dart";
 import "package:pointycastle/api.dart";

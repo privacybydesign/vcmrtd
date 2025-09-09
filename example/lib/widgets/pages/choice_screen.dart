@@ -3,7 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
-import 'package:vcmrtd/theme/text_styles.dart';
+import 'package:vcmrtdapp/theme/text_styles.dart';
 
 /// Initial choice screen - user decides between Scan MRZ or Enter Manually
 class ChoiceScreen extends StatelessWidget {

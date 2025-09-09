@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
-import 'package:dmrtd/src/extension/logging_apis.dart';
+import 'package:vcmrtd/src/extension/logging_apis.dart';
 import 'package:meta/meta.dart';
 import "package:logging/logging.dart";
 

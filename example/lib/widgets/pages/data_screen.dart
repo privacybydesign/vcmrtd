@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
-import 'package:dmrtd/dmrtd.dart';
-import 'package:dmrtd/extensions.dart';
+import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtd/extensions.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
 import 'dart:math';
 import 'dart:io';
 import 'package:crypto/crypto.dart';
-import 'package:vcmrtd/models/passport_result.dart';
+import 'package:vcmrtdapp/models/passport_result.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 

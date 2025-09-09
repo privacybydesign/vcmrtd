@@ -133,3 +133,7 @@ hive-mind-prompt-*.txt
 memory/
 CLAUDE.md
 .roomodes
+
+docs/.docusaurus/
+docs/build/
+/docs/node_modules/

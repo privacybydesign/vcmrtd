@@ -1,4 +1,4 @@
-name: vcmrtd
+name: vcmrtdapp
 description: Veriable Credentials derived from Machine Readable Travel Documents
 
 # The following defines the version and build number for your application.
@@ -19,7 +19,7 @@ environment:
 publish_to: none
 
 dependencies:
-  dmrtd:
+  vcmrtd:
     path: ../
   flutter:
     sdk: flutter
@@ -36,6 +36,11 @@ dependencies:
   url_launcher: ^6.2.4
   crypto: ^3.0.3
   http: ^1.5.0
+  mrz_parser: ^2.0.0
+  google_mlkit_text_recognition: ^0.15.0
+  camera: ^0.10.0+4
+  google_mlkit_commons: ^0.11.0
+  camera_platform_interface: ^2.2.2
 
 dev_dependencies:
   flutter_lints: ^2.0.1
