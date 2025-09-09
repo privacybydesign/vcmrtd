@@ -788,7 +788,8 @@ class _DataScreenState extends State<DataScreen> {
       final jwtUrlParam = responseBody["jwt"];
 
       // Start the session
-      final sessionResponseBody = await _startIrmaSession(jwtUrlParam, irmaServerUrlParam);
+      final sessionResponseBody =
+          await _startIrmaSession(jwtUrlParam, irmaServerUrlParam);
       final sessionPtr = sessionResponseBody["sessionPtr"];
       final urlEncodedSessionPtr = Uri.encodeFull(jsonEncode(sessionPtr));
 
@@ -819,7 +820,8 @@ class _DataScreenState extends State<DataScreen> {
   Future<dynamic> _getIrmaSessionJwt(Map<String, dynamic> payload) async {
     final String jsonPayload = json.encode(payload);
     final storeResp = await http.post(
-      Uri.parse('https://passport-issuer.staging.yivi.app/api/verify-and-issue'),
+      Uri.parse(
+          'https://passport-issuer.staging.yivi.app/api/verify-and-issue'),
       headers: {'Content-Type': 'application/json'},
       body: jsonPayload,
     );
@@ -838,8 +840,7 @@ class _DataScreenState extends State<DataScreen> {
       body: jwt,
     );
     if (response.statusCode != 200) {
-      throw Exception(
-          'Store failed: ${response.statusCode} ${response.body}');
+      throw Exception('Store failed: ${response.statusCode} ${response.body}');
     }
 
     return json.decode(response.body);
@@ -848,7 +849,7 @@ class _DataScreenState extends State<DataScreen> {
   /// Generate return URL based on session ID and payload
   String _generateUniversalLink(String urlEncodedSessionPtr) {
     // Generic callback URL
-    return 'https://open.yivi.app/-/session#$urlEncodedSessionPtr';
+    return 'https://open.staging.yivi.app/-/session#$urlEncodedSessionPtr';
   }
 
   /// Show success dialog after successful return
