@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:dmrtd/dmrtd.dart';
 import 'package:dmrtd/extensions.dart';
 import 'package:logging/logging.dart';
+import 'package:flutter/services.dart';
 
 import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
 
@@ -29,12 +30,14 @@ class NfcProvider extends ComProvider {
   /// On iOS, sets NFC reader session alert message.
   Future<void> setIosAlertMessage(String message) async {
     if (Platform.isIOS) {
+      _log.fine('iOS alert message: ' + message);
       return await FlutterNfcKit.setIosAlertMessage(message);
     }
   }
 
   static Future<NfcStatus> get nfcStatus async {
     NFCAvailability a = await FlutterNfcKit.nfcAvailability;
+    _log.fine('NFC availability: ' + a.toString());
     switch (a) {
       case NFCAvailability.disabled:
         return NfcStatus.disabled;
@@ -52,8 +55,10 @@ class NfcProvider extends ComProvider {
     }
 
     try {
+      final Duration effTimeout = timeout ?? this.timeout;
+      _log.info('Starting NFC poll (timeout=${effTimeout.inSeconds}s, iOS msg="$iosAlertMessage")');
       _tag = await FlutterNfcKit.poll(
-        timeout: timeout ?? this.timeout,
+        timeout: effTimeout,
         iosAlertMessage: iosAlertMessage,
         readIso14443A: true,
         readIso14443B: true,
@@ -63,7 +68,13 @@ class NfcProvider extends ComProvider {
         _log.info("Ignoring non ISO-7816 tag: ${_tag!.type}");
         return await disconnect();
       }
+      _log.info('NFC tag connected: type=${_tag!.type}');
     } on Exception catch (e) {
+      if (e is PlatformException) {
+        _log.severe('NFC connect PlatformException code=${e.code} message=${e.message} details=${e.details}');
+        throw NfcProviderError('PlatformException(code=${e.code}, message=${e.message}, details=${e.details})');
+      }
+      _log.severe('NFC connect exception: ' + e.toString());
       throw NfcProviderError.fromException(e);
     }
   }
@@ -75,9 +86,15 @@ class NfcProvider extends ComProvider {
       _log.debug("Disconnecting");
       try {
         _tag = null;
+        _log.fine('Finishing NFC session (iosAlertMessage=$iosAlertMessage, iosErrorMessage=$iosErrorMessage)');
         return await FlutterNfcKit.finish(
           iosAlertMessage: iosAlertMessage, iosErrorMessage: iosErrorMessage);
       } on Exception catch(e) {
+        if (e is PlatformException) {
+          _log.warning('NFC finish PlatformException code=${e.code} message=${e.message} details=${e.details}');
+          throw NfcProviderError('PlatformException(code=${e.code}, message=${e.message}, details=${e.details})');
+        }
+        _log.warning('NFC finish exception: ' + e.toString());
         throw NfcProviderError.fromException(e);
       }
     }
@@ -92,8 +109,21 @@ class NfcProvider extends ComProvider {
   Future<Uint8List> transceive(final Uint8List data,
       {Duration? timeout}) async {
     try {
-      return await FlutterNfcKit.transceive(data, timeout: timeout ?? this.timeout);
+      final Duration effTimeout = timeout ?? this.timeout;
+      final String apdu = data.hex();
+      final String apduShort = apdu.length > 64 ? apdu.substring(0, 64) + '…' : apdu;
+      _log.finer('APDU >> (${data.length} bytes, timeout=${effTimeout.inSeconds}s): $apduShort');
+      final Uint8List rsp = await FlutterNfcKit.transceive(data, timeout: effTimeout);
+      final String rspHex = rsp.hex();
+      final String rspShort = rspHex.length > 64 ? rspHex.substring(0, 64) + '…' : rspHex;
+      _log.finer('APDU << (${rsp.length} bytes): $rspShort');
+      return rsp;
     } on Exception catch(e) {
+      if (e is PlatformException) {
+        _log.severe('APDU PlatformException code=${e.code} message=${e.message} details=${e.details}');
+        throw NfcProviderError('PlatformException(code=${e.code}, message=${e.message}, details=${e.details})');
+      }
+      _log.severe('APDU exception: ' + e.toString());
       throw NfcProviderError.fromException(e);
     }
   }

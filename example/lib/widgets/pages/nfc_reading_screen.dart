@@ -4,6 +4,7 @@ import 'package:dmrtd/dmrtd.dart';
 import 'package:dmrtd/extensions.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
+import 'package:flutter/services.dart';
 import 'package:vcmrtd/helpers/mrz_data.dart';
 import 'package:vcmrtd/models/data_group_config.dart';
 import 'package:vcmrtd/models/mrtd_data.dart';
@@ -43,17 +44,34 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
   double _readingProgress = 0.0;
   final _log = Logger("vcmrtd.app");
   bool _isCancelled = false;
+  // Diagnostics
+  bool _showDiagnostics = true; // show by default for easier debugging
+  String? _diagErrorType;
+  String? _diagErrorCode;
+  String? _diagErrorMessage;
+  String? _diagErrorDetails;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: AnimatedNFCStatusWidget(
-          state: _nfcState,
-          message: _alertMessage,
-          progress: _readingProgress,
-          onRetry: _nfcState == NFCReadingState.error ? _retryNfcReading : null,
-          onCancel: _canShowCancel() ? _handleCancellation : null,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedNFCStatusWidget(
+              state: _nfcState,
+              message: _alertMessage,
+              progress: _readingProgress,
+              onRetry:
+                  _nfcState == NFCReadingState.error ? _retryNfcReading : null,
+              onCancel: _canShowCancel() ? _handleCancellation : null,
+            ),
+            if (_nfcState == NFCReadingState.error && _showDiagnostics)
+              Padding(
+                padding: const EdgeInsets.only(top: 16.0, left: 24, right: 24),
+                child: _buildDiagnosticsCard(),
+              ),
+          ],
         ),
       ),
     );
@@ -417,15 +435,33 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
     final se = e.toString().toLowerCase();
     String alertMsg = "An error has occurred while reading Passport!";
 
-    if (e is PassportError) {
+    // Capture diagnostics
+    _diagErrorType = e.runtimeType.toString();
+    _diagErrorCode = null;
+    _diagErrorMessage = e.toString();
+    _diagErrorDetails = null;
+
+    if (e is PlatformException) {
+      _log.severe('PlatformException(code=${e.code}, message=${e.message}, details=${e.details})');
+      _diagErrorCode = e.code.toString();
+      _diagErrorMessage = e.message ?? e.toString();
+      _diagErrorDetails = e.details?.toString();
+      final msg = (e.message ?? '').toLowerCase();
+      final det = (e.details ?? '').toString().toLowerCase();
+      if (msg.contains('invalidated') || det.contains('invalidated')) {
+        alertMsg = "NFC session invalidated. Keep the phone steady, ensure the app stays in the foreground, and try again.";
+      } else if (msg.contains('busy') || det.contains('busy')) {
+        alertMsg = "NFC is busy. Wait a few seconds and retry.";
+      } else if (msg.contains('not permitted') || det.contains('entitlement')) {
+        alertMsg = "NFC not permitted. Check iOS entitlements and signing (NFC capability).";
+      }
+    } else if (e is PassportError) {
       if (se.contains("security status not satisfied")) {
-        alertMsg =
-            "Failed to initiate session with passport.\nCheck input data!";
+        alertMsg = "Failed to initiate session with passport.\nCheck input data!";
       }
       _log.error("PassportError: ${e.message}");
     } else {
-      _log.error(
-          "An exception was encountered while trying to read Passport: $e");
+      _log.error("An exception was encountered while trying to read Passport: $e");
     }
 
     if (se.contains('timeout')) {
@@ -440,6 +476,58 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
       _alertMessage = alertMsg;
       _nfcState = NFCReadingState.error;
     });
+  }
+
+  Widget _buildDiagnosticsCard() {
+    final StringBuffer sb = StringBuffer();
+    sb.writeln('Type: ${_diagErrorType ?? '-'}');
+    if (_diagErrorCode != null) sb.writeln('Code: $_diagErrorCode');
+    if (_diagErrorMessage != null) sb.writeln('Message: $_diagErrorMessage');
+    if (_diagErrorDetails != null) sb.writeln('Details: $_diagErrorDetails');
+    final text = sb.toString().trim();
+
+    return Card(
+      color: const Color(0xFFF8F8F8),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Diagnostics (iOS NFC)',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              text.isEmpty ? 'No diagnostics available' : text,
+              style: const TextStyle(fontSize: 12, color: Colors.black87),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () async {
+                    await Clipboard.setData(ClipboardData(text: text));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Diagnostics copied')),
+                    );
+                  },
+                  child: const Text('Copy'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    setState(() => _showDiagnostics = false);
+                  },
+                  child: const Text('Hide'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _cleanupNfcConnection() async {
