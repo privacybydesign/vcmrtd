@@ -131,7 +131,11 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
           _nfcState = NFCReadingState.connecting;
         });
 
-        if (_isCancelled) return;
+        if (_isCancelled) {
+          debugPrint("session _isCancelled");
+          return;
+        }
+
         await _performPassportReading(passport, accessKey, isPace);
       } on Exception catch (e) {
         if (!_isCancelled) {
@@ -152,22 +156,28 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
     AccessKey accessKey,
     bool isPace,
   ) async {
+    debugPrint("_performPassportReading()");
     _nfc.setIosAlertMessage("Trying to read EF.CardAccess ...");
     final mrtdData = MrtdData();
 
     try {
       mrtdData.cardAccess = await passport.readEfCardAccess();
-    } on PassportError {
+    } catch (e) {
+      debugPrint("readEfCardAccess PassportError: $e");
       // Handle card access read error
     }
 
+    debugPrint("Trying to read EF.CardSecurity ...");
     _nfc.setIosAlertMessage("Trying to read EF.CardSecurity ...");
     try {
       mrtdData.cardSecurity = await passport.readEfCardSecurity();
-    } on PassportError {
+      debugPrint("done read readEfCardSecurity");
+    } catch (e) {
+      debugPrint("readEfCardSecurity PassportError: $e");
       // Handle card security read error
     }
 
+    debugPrint("Initiating session with PACE...");
     _nfc.setIosAlertMessage("Initiating session with PACE...");
     mrtdData.isPACE = isPace;
     mrtdData.isDBA = accessKey.PACE_REF_KEY_TAG == 0x01;
@@ -177,12 +187,15 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
       _nfcState = NFCReadingState.authenticating;
     });
 
+    debugPrint("isPace: $isPace");
     if (isPace) {
       await passport.startSessionPACE(accessKey, mrtdData.cardAccess!);
     } else {
       await passport.startSession(accessKey as DBAKey);
     }
 
+
+    debugPrint("");
     final passportDataResult = await _readDataGroups(passport, mrtdData);
     widget.onDataRead?.call(mrtdData, passportDataResult);
   }
@@ -361,7 +374,9 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
       }
 
       // Handle DG15 and Active Authentication separately
-      if (widget.sessionId != null && widget.nonce != null && mrtdData.com!.dgTags.contains(EfDG15.TAG)) {
+      if (widget.sessionId != null &&
+          widget.nonce != null &&
+          mrtdData.com!.dgTags.contains(EfDG15.TAG)) {
         setState(() {
           _alertMessage = "Performing security verification...";
           _nfcState = NFCReadingState.authenticating;
@@ -398,11 +413,10 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
       });
 
       return PassportDataResult(
-        dataGroups: dataGroups,
-        efSod: efSodHex,
-        nonce: widget.nonce,
-        sessionId: widget.sessionId
-      );
+          dataGroups: dataGroups,
+          efSod: efSodHex,
+          nonce: widget.nonce,
+          sessionId: widget.sessionId);
     } catch (e) {
       _log.severe("Error reading passport data: $e");
       setState(() {

@@ -47,6 +47,14 @@
 	<true/>
 	<key>NFCReaderUsageDescription</key>
 	<string>This app uses NFC to read biometric passports.</string>
+	<key>com.apple.developer.nfc.readersession.iso7816.select-identifiers</key>
+	<array>
+		<string>A00000000386980701</string>
+	</array>
+	<key>com.apple.developer.nfc.readersession.felica.systemcodes</key>
+	<array>
+		<string>8008</string>
+	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>The camera will be used for scanning your passport</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
