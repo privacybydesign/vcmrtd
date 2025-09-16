@@ -17,10 +17,10 @@ const config: Config = {
   url: "https://privacybydesign.github.io/",
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: "/dmrtd/",
+  baseUrl: "/vcmrtd/",
   trailingSlash: false,
   organizationName: "privacybydesign",
-  projectName: "dmrtd",
+  projectName: "vcmrtd",
   deploymentBranch: "gh-pages",
 
   onBrokenLinks: "throw",
