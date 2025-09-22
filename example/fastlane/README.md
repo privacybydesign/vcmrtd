@@ -37,7 +37,7 @@ Generated certificates and the provisioning profiles linked it are valid for one
 provisioning profiles you might want to refresh the provisioning profiles throughout the year to add or
 remove devices. More information about adding and updating ad-hoc provisioning profiles can be found [here](#ad-hoc-provisioning-profiles).
 
- 1. Go to the ./fastlane directory in irmamobile
+ 1. Go to the ./example/fastlane directory
  2. Run `mkdir -p ./profiles && cd ./profiles`
  3. Choose a name for your new certificate, i.e. `KEY_NAME=ios_distribution` or `KEY_NAME=ios_development`
  4. Run the following and follow the instructions:
@@ -73,7 +73,7 @@ remove devices. More information about adding and updating ad-hoc provisioning p
 
 When generating distribution certificates for CI platforms, it's recommended to protect the certificate bundle as a secret in
 protected deployment environments. In this way, you prevent that development builds get signed. For more information about the
-secrets in our GitHub Actions workflows, please check the [workflow README](../.github/workflows/README.md).
+secrets in our GitHub Actions workflows, please check the [workflow README](../../.github/workflows/README.md).
 
 Don't forget to delete the local file copies after you've uploaded the profiles and certificates to your CI's secret vault.
 
@@ -163,14 +163,6 @@ This key is also used to sign the app bundle's code transparency file.
 
 The `flavor` parameter accepts the values `alpha` or `beta`.
 
-### android_build_irmagobridge
-
-```sh
-[bundle exec] fastlane android_build_irmagobridge
-```
-
-Builds the irmagobridge for Android.
-
 ### android_build_apk
 
 ```sh
@@ -179,7 +171,6 @@ Builds the irmagobridge for Android.
 
 Builds the Android APK for the requested flavor. Only a universal build is included. Check the `android_build`
 or the `android_build_appbundle` action if you want to build for the Google Play Store.
-This action assumes the `android_build_irmagobridge` action has been run first.
 The Android APK is written to the `build` directory (so `fastlane/build` from the repository's root).
 
 Optionally, you can specify the key properties of the signing key that should be used.
@@ -197,7 +188,6 @@ The `flavor` parameter accepts the values `alpha` or `beta`.
 ```
 
 Builds the Android AAB for the requested flavor.
-This action assumes the `android_build_irmagobridge` action has been run first.
 Check the `android_build` action if you want to do a full build.
 The AAB is written to the `build` directory (so `fastlane/build` from the repository's root).
 
@@ -210,16 +200,6 @@ This key is also used to sign the app bundle's code transparency file.
 
 The `flavor` parameter accepts the values `alpha` or `beta`.
 
-### android_build_integration_test
-
-```sh
-[bundle exec] fastlane android_build_integration_test
-```
-
-Builds the APKs for Android instrumentation testing to run the Flutter integration tests on Android natively.
-This action assumes the `android_build_irmagobridge` action has been run first.
-The APKs are written to the `build` directory (so `fastlane/build` from the repository's root).
-
 ### ios_build
 
 ```sh
@@ -230,22 +210,13 @@ Builds an iOS IPA file for the requested flavor.
 
 For all extra parameters, please check the [documentation of `ios_build_app`](#iosbuildapp).
 
-### ios_build_irmagobridge
-
-```sh
-[bundle exec] fastlane ios_build_irmagobridge
-```
-
-Builds the irmagobridge for iOS.
-
 ### ios_build_app
 
 ```sh
 [bundle exec] fastlane ios_build_app flavor:<VALUE> sentry_dsn:<VALUE>
 ```
 
-Builds an iOS IPA file for requested flavor. This action
-assumes the `ios_build_irmagobridge` action has been run first.
+Builds an iOS IPA file for requested flavor.
 The signed iOS IPA file is written to the `build` directory (so `fastlane/build` from the repository's root).
 
 Optionally, you can specify the paths to the app provisioning profile and the corresponding PKCS#12 certificate bundle
@@ -266,31 +237,6 @@ The `flavor` parameter accepts the values `alpha` or `beta`.
 
 The `alpha` flavor expects an ad-hoc provisioning profile and the `beta` flavor an app-store provisioning profile.
 More information on how to achieve app provisioning profiles can be found [above](#apple-provisioning-profiles).
-
-### ios_build_integration_test
-
-```sh
-[bundle exec] fastlane ios_build_integration_test
-```
-
-Builds the iOS XCTests to run the Flutter integration tests on iOS natively.
-All files are bundled together in a ZIP.
-This action assumes the `ios_build_irmagobridge` action has been run first.
-The ZIP is written to the `build` directory (so `fastlane/build` from the repository's root).
-
-Optionally, you can specify the paths to the app provisioning profile and the corresponding PKCS#12 certificate bundle
-that should be used to provision and sign the build. If the given path is relative, then it is evaluated using the
-fastlane directory as base (so `./fastlane` from the repository's root).
-
-```sh
-[bundle exec] fastlane ios_build_integration_test provisioning_profile_path:<VALUE> certificate_path:<VALUE> certificate_password:<VALUE>
-```
-
-If the certificate bundle contains a development certificate, then the code sign identity should explicitly be set to `iPhone Developer`.
-
-```sh
-[bundle exec] fastlane ios_build_integration_test code_signing_identity:"iPhone Developer" provisioning_profile_path:<VALUE> certificate_path:<VALUE> certificate_password:<VALUE>
-```
 
 ----
 

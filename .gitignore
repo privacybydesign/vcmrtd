@@ -1,3 +1,5 @@
+rubyvendor/
+
 example/fastlane/.env.default
 example/fastlane/build
 example/fastlane/profiles
