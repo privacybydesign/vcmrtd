@@ -106,11 +106,11 @@ lane :ios_build_app do |options|
   case options[:flavor]
   when "alpha"
     display_name = "[placeholder]"
-    app_identifier = "foundation.privacybydesign.[placeholder].alpha"
+    app_identifier = "foundation.privacybydesign.vcmrtd.alpha"
     export_method = "ad-hoc"
   when "beta"
     display_name = "[placeholder]"
-    app_identifier = "foundation.privacybydesign.[placeholder]"
+    app_identifier = "foundation.privacybydesign.vcmrtd"
     export_method = "app-store"
   else
     raise "Unsupported flavor"
@@ -202,13 +202,13 @@ private_lane :set_provisioning_profile do |options|
     set_info_plist_value(
       path: "ios/Runner/Flutter-Build-IPA.plist",
       key: "provisioningProfiles",
-      subkey: "foundation.privacybydesign.[placeholder]",
+      subkey: "foundation.privacybydesign.vcmrtd",
       value: uuid
     )
     set_info_plist_value(
       path: "ios/Runner/Flutter-Build-IPA.plist",
       key: "provisioningProfiles",
-      subkey: "foundation.privacybydesign.[placeholder].alpha",
+      subkey: "foundation.privacybydesign.vcmrtd.alpha",
       value: uuid
     )
   end
