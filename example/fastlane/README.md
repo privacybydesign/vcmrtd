@@ -21,8 +21,7 @@ corresponding PKCS#12 certificate bundle. Therefore, these actions require the p
 
 There are two types of certificate bundles: development certificates and distribution certificates.
 Development certificates are bound to individual developers and can be used to build for the developer's own iOS device.
-The distribution certificate belongs to the organization and is needed for ad-hoc and app store builds.
-For integration tests builds that you want to upload to Google Firebase, using a development certificate is sufficient.
+The distribution certificate belongs to the organization and is needed for app store builds.
 
 Note: provisioning profiles can only be used to sign app builds. To upload the builds to Apple,
 you additionally need your personal App Store Connect account with the right permissions.
@@ -31,23 +30,19 @@ Uploading can be done using [Transporter for MacOS](https://apps.apple.com/us/ap
 ## Generating new certificates
 Below we describe how to generate these assets. For distribution certificates, this can only be done by users with the
 'Admin' role or the 'App Manager' role with access to certificates, identifiers and profiles in Apple App Store Connect.
-For development certificates, the 'Developer' role with access to certificates, identifiers and profiles fulfills.
 
-Generated certificates and the provisioning profiles linked it are valid for one year. For ad-hoc
-provisioning profiles you might want to refresh the provisioning profiles throughout the year to add or
-remove devices. More information about adding and updating ad-hoc provisioning profiles can be found [here](#ad-hoc-provisioning-profiles).
+Generated certificates and the provisioning profiles linked it are valid for one year.
 
  1. Go to the ./example/fastlane directory
  2. Run `mkdir -p ./profiles && cd ./profiles`
- 3. Choose a name for your new certificate, i.e. `KEY_NAME=ios_distribution` or `KEY_NAME=ios_development`
+ 3. Choose a name for your new certificate, i.e. `KEY_NAME=ios_distribution`
  4. Run the following and follow the instructions:
     ```
     openssl req -nodes -newkey rsa:2048 -keyout $KEY_NAME.key -out $KEY_NAME.csr
     ```
     There are no strict requirements about which values to use for the CSR-fields.
  5. Upload the CSR to Apple: go to https://developer.apple.com/account/resources/certificates/list, press the '+' sign
-    and choose "iOS Distribution (App Store and Ad Hoc)" for a distribution certificate or "iOS App Development"
-    for a development certificate.
+    and choose "iOS Distribution (App Store and Ad Hoc)" for a distribution certificate.
  6. When finished, download the .cer file and save it to the directory created in step 2 as `$KEY_NAME.cer`
  7. Convert the .cer file to a .pem file:
     ```
@@ -77,43 +72,11 @@ secrets in our GitHub Actions workflows, please check the [workflow README](../.
 
 Don't forget to delete the local file copies after you've uploaded the profiles and certificates to your CI's secret vault.
 
-## Ad-hoc provisioning profiles
-Ad-hoc provisioning profiles are needed when you want to distribute a build of your app without uploading it to Apple.
-This can be useful for early testing. For ad-hoc app distribution on iOS you need to add a whitelist of UDIDs on which
-the build may be installed. If you want to add extra devices, you need to make a new app build.
-
-Ad-hoc provisioning profiles are required when using Google Firebase App Distribution to spread
-development builds to your team.
-
-For ad-hoc provisioning profiles you need an underlying Apple distribution certificate. Check the [instructions above](#generating-new-certificates)
-how to generate this. You can add new or renew existing ad-hoc provisioning profiles with an existing Apple distribution certificate.
-
-Below we describe how you can (re)new ad-hoc provisioning profiles.
-
- 1. Go to developer.apple.com and login using your Apple Account. This can only be done by users with the 'Admin' role
-    or the 'App Manager' role with access to certificates, identifiers and profiles in Apple App Store Connect.
- 2. Select 'Devices'.
- 3. Ensure all devices you want to build for are present in the overview. This can be realised in different ways.
-    Missing users can be added as a user the organization's Apple Developer Account. The devices linked to the Apple
-    accounts of all members will appear in the overview automatically. It is also possible to add devices manually using
-    the device's UDID. For this, press the '+' sign. You then need to enter the UDIDs of the devices you want to add.
-    This can either be done manually using the fields on the left or in batches using 'Register Multiple Devices' on the
-    right. Google Firebase App Distribution automatically collects the UDID of all devices in the distribution list.
-    The list with UDIDs can be downloaded there as CSV for uploading via 'Register Multiple Devices'. Users can also manually
-    find their UDID using the [Apple Configurator](https://support.apple.com/nl-nl/apple-configurator) tool.
- 4. Select the 'Profiles' tab on the left.
- 5. Select the ad-hoc provisioning profile you want to edit or make a new one by pressing the '+' sign.
- 6. In case you choose to edit an existing profile, press 'Edit'.
- 7. Select all devices you want to the profile and confirm.
- 8. Download the new provisioning profile. Existing profiles are not updated automatically. The new profile should
-    be downloaded and installed again on all relevant places. When you use the provisioning profile in CI platforms,
-    then you should update the corresponding secret in your CI's secret vault.
-
 # Android signing/upload keys
 The artifacts produced by the `android_build_apk` and the `android_build_appbundle` actions need to be signed in order
 to distribute them. For the Google Play Store, you need an app bundle signed with the right upload key.
 The corresponding certificate needs to be registered with Google. This upload key is also used as signing key for
-Android Code Transparency. For ad-hoc APKs, artifacts are signed using regular APK signing.
+Android Code Transparency.
 The `android_build_apk` and the `android_build_appbundle` actions have built-in support for signing.
 The key should be given as Java Keystore and can be passed using the `keystore_path`, `key_alias`, `keystore_password`
 and `key_password` parameters.
@@ -148,46 +111,42 @@ Checks whether all unit tests pass.
 ### android_build
 
 ```sh
-[bundle exec] fastlane android_build flavor:<VALUE> sentry_dsn:<VALUE>
+[bundle exec] fastlane android_build
 ```
 
-Builds the Android AAB for the requested flavor.
+Builds the Android AAB.
 The AAB is written to the `build` directory (so `fastlane/build` from the repository's root).
 
 Optionally, you can specify the key properties of the upload key that should be used to sign the build.
 This key is also used to sign the app bundle's code transparency file.
 
 ```sh
-[bundle exec] fastlane android_build flavor:<VALUE> sentry_dsn:<VALUE> keystore_path:<VALUE> key_alias:<VALUE> keystore_password:<VALUE> key_password:<VALUE>
+[bundle exec] fastlane android_build keystore_path:<VALUE> key_alias:<VALUE> keystore_password:<VALUE> key_password:<VALUE>
 ```
-
-The `flavor` parameter accepts the values `alpha` or `beta`.
 
 ### android_build_apk
 
 ```sh
-[bundle exec] fastlane android_build_apk flavor:<VALUE> sentry_dsn:<VALUE>
+[bundle exec] fastlane android_build_apk
 ```
 
-Builds the Android APK for the requested flavor. Only a universal build is included. Check the `android_build`
+Builds the Android APK. Only a universal build is included. Check the `android_build`
 or the `android_build_appbundle` action if you want to build for the Google Play Store.
 The Android APK is written to the `build` directory (so `fastlane/build` from the repository's root).
 
 Optionally, you can specify the key properties of the signing key that should be used.
 
 ```sh
-[bundle exec] fastlane android_build_apk flavor:<VALUE> sentry_dsn:<VALUE> keystore_path:<VALUE> key_alias:<VALUE> keystore_password:<VALUE> key_password:<VALUE>
+[bundle exec] fastlane android_build_apk keystore_path:<VALUE> key_alias:<VALUE> keystore_password:<VALUE> key_password:<VALUE>
 ```
-
-The `flavor` parameter accepts the values `alpha` or `beta`.
 
 ### android_build_appbundle
 
 ```sh
-[bundle exec] fastlane android_build_appbundle flavor:<VALUE> sentry_dsn:<VALUE>
+[bundle exec] fastlane android_build_appbundle
 ```
 
-Builds the Android AAB for the requested flavor.
+Builds the Android AAB.
 Check the `android_build` action if you want to do a full build.
 The AAB is written to the `build` directory (so `fastlane/build` from the repository's root).
 
@@ -195,28 +154,26 @@ Optionally, you can specify the key properties of the upload key that should be 
 This key is also used to sign the app bundle's code transparency file.
 
 ```sh
-[bundle exec] fastlane android_build_appbundle flavor:<VALUE> sentry_dsn:<VALUE> keystore_path:<VALUE> key_alias:<VALUE> keystore_password:<VALUE> key_password:<VALUE>
+[bundle exec] fastlane android_build_appbundle keystore_path:<VALUE> key_alias:<VALUE> keystore_password:<VALUE> key_password:<VALUE>
 ```
-
-The `flavor` parameter accepts the values `alpha` or `beta`.
 
 ### ios_build
 
 ```sh
-[bundle exec] fastlane ios_build flavor:<VALUE> sentry_dsn:<VALUE>
+[bundle exec] fastlane ios_build
 ```
 
-Builds an iOS IPA file for the requested flavor.
+Builds an iOS IPA file.
 
 For all extra parameters, please check the [documentation of `ios_build_app`](#iosbuildapp).
 
 ### ios_build_app
 
 ```sh
-[bundle exec] fastlane ios_build_app flavor:<VALUE> sentry_dsn:<VALUE>
+[bundle exec] fastlane ios_build_app
 ```
 
-Builds an iOS IPA file for requested flavor.
+Builds an iOS IPA file.
 The signed iOS IPA file is written to the `build` directory (so `fastlane/build` from the repository's root).
 
 Optionally, you can specify the paths to the app provisioning profile and the corresponding PKCS#12 certificate bundle
@@ -224,18 +181,9 @@ that should be used to provision and sign the build. If the given path is relati
 fastlane directory as base (so `./fastlane` from the repository's root).
 
 ```sh
-[bundle exec] fastlane ios_build_app flavor:<VALUE> provisioning_profile_path:<VALUE> certificate_path:<VALUE> certificate_password:<VALUE>
+[bundle exec] fastlane ios_build_app provisioning_profile_path:<VALUE> certificate_path:<VALUE> certificate_password:<VALUE>
 ```
 
-If the certificate bundle contains a development certificate, then the code sign identity should explicitly be set to `iPhone Developer`.
-
-```sh
-[bundle exec] fastlane ios_build_integration_test code_signing_identity:"iPhone Developer" provisioning_profile_path:<VALUE> certificate_path:<VALUE> certificate_password:<VALUE>
-```
-
-The `flavor` parameter accepts the values `alpha` or `beta`.
-
-The `alpha` flavor expects an ad-hoc provisioning profile and the `beta` flavor an app-store provisioning profile.
 More information on how to achieve app provisioning profiles can be found [above](#apple-provisioning-profiles).
 
 ----

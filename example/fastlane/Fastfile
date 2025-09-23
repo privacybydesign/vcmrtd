@@ -27,7 +27,7 @@ end
 
 lane :android_build do |options|
   android_build_appbundle(
-    flavor: options[:flavor],
+    flavor: "beta",
     keystore_path: options[:keystore_path],
     keystore_password: options[:keystore_password],
     key_alias: options[:key_alias],
@@ -38,28 +38,28 @@ end
 lane :android_build_apk do |options|
   android_build_app(
     build_type: "apk",
-    flavor: options[:flavor],
+    flavor: "beta",
     keystore_path: options[:keystore_path],
     keystore_password: options[:keystore_password],
     key_alias: options[:key_alias],
     key_password: options[:key_password]
   )
   Dir.chdir("..") do
-    sh("cp ./build/app/outputs/apk/#{options[:flavor]}/release/*.apk ./fastlane/build/")
+    sh("cp ./build/app/outputs/apk/beta/release/*.apk ./fastlane/build/")
   end
 end
 
 lane :android_build_appbundle do |options|
   android_build_app(
     build_type: "appbundle",
-    flavor: options[:flavor],
+    flavor: "beta",
     keystore_path: options[:keystore_path],
     keystore_password: options[:keystore_password],
     key_alias: options[:key_alias],
     key_password: options[:key_password]
   )
   Dir.chdir("..") do
-    sh("cp ./build/app/outputs/bundle/#{options[:flavor]}Release/*.aab ./fastlane/build/")
+    sh("cp ./build/app/outputs/bundle/betaRelease/*.aab ./fastlane/build/")
   end
 end
 
@@ -69,9 +69,8 @@ private_lane :android_build_app do |options|
   # In Fastlane it's not possible to mask secrets in the command, while showing the shell output of the command.
   # Therefore, we use environment variables to hide parameter values.
   puts "In the following command, parameter values are hidden using environment variables."
-  cmd = "flutter build $FASTLANE_BUILD_TYPE --flavor $FASTLANE_FLAVOR --release"
+  cmd = "flutter build $FASTLANE_BUILD_TYPE --flavor beta --release"
   ENV["FASTLANE_BUILD_TYPE"] = options[:build_type]
-  ENV["FASTLANE_FLAVOR"] = options[:flavor]
   if options[:keystore_path]
     ENV["FASTLANE_KEYSTORE_PATH"] = File.absolute_path(options[:keystore_path])
     ENV["FASTLANE_KEYSTORE_PASSWORD"] = options[:keystore_password]
@@ -88,7 +87,7 @@ end
 
 lane :ios_build do |options|
   ios_build_app(
-    flavor: options[:flavor],
+    flavor: "beta",
     certificate_path: options[:certificate_path],
     certificate_password: options[:certificate_password],
     provisioning_profile_path: options[:provisioning_profile_path],
@@ -101,20 +100,10 @@ lane :ios_build_app do |options|
   app_identifier = ""
   export_method = ""
 
-  # When a distribution certificate is set, we assume that alpha builds are meant for ad hoc distribution
-  # and beta builds for app store distribution.
-  case options[:flavor]
-  when "alpha"
-    display_name = "[placeholder]"
-    app_identifier = "foundation.privacybydesign.vcmrtd.alpha"
-    export_method = "ad-hoc"
-  when "beta"
-    display_name = "[placeholder]"
-    app_identifier = "foundation.privacybydesign.vcmrtd"
-    export_method = "app-store"
-  else
-    raise "Unsupported flavor"
-  end
+  display_name = "[placeholder]"
+  app_identifier = "foundation.privacybydesign.vcmrtd"
+  export_method = "app-store"
+
   if options[:code_signing_identity]&.include?("Developer")
     export_method = "development"
   end
@@ -147,7 +136,7 @@ lane :ios_build_app do |options|
 
   Dir.chdir("..") do
     sh("flutter", "build", "ipa", "--release", "--export-options-plist", "./ios/Runner/Flutter-Build-IPA.plist")
-    sh("cp ./build/ios/ipa/*.ipa ./fastlane/build/app-#{options[:flavor]}-ios-#{export_method}.ipa")
+    sh("cp ./build/ios/ipa/*.ipa ./fastlane/build/app-beta-ios-#{export_method}.ipa")
   end
 end
 

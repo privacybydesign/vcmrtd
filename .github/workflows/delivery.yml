@@ -9,106 +9,6 @@ on:
 concurrency: ${{ github.ref }}
 
 jobs:
-  build-app-ios-alpha:
-    # Ad Hoc builds do not require unique build numbers, so we can build this on every push.
-    runs-on: macos-15 # MacOS version is pinned, because it determines which XCode version is used.
-    environment: ad-hoc-alpha
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          submodules: true
-      - name: Setup build environment
-        uses: ./.github/actions/setup-build-environment
-      - name: Decode binary environment secrets
-        env:
-          APPLE_DISTRIBUTION_CERTIFICATE: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE }}
-          APPLE_PROVISIONING_PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
-        run: |
-          mkdir -p ./fastlane/profiles
-          echo $APPLE_DISTRIBUTION_CERTIFICATE | base64 --decode > ./fastlane/profiles/apple_distribution.p12
-          echo $APPLE_PROVISIONING_PROFILE | base64 --decode > ./fastlane/profiles/ad_hoc_alpha.mobileprovision
-      - name: Build app
-        run: >
-          bundle exec fastlane ios_build_app
-          flavor:alpha
-          code_signing_identity:"iPhone Distribution"
-          certificate_path:profiles/apple_distribution.p12
-          certificate_password:${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD }}
-          provisioning_profile_path:profiles/ad_hoc_alpha.mobileprovision
-      - uses: actions/upload-artifact@v4
-        with:
-          name: app-alpha-ios
-          path: ./fastlane/build/*.ipa
-  build-app-android-alpha:
-    runs-on: ubuntu-latest
-    environment: android-alpha
-    # For now, we also build the beta flavor using the alpha secrets to enable ad-hoc distribution of the
-    # beta flavor Android app. This is needed, because the irma-frontend-packages use the app identifier of the
-    # beta flavor Android app in the intent:// links.
-    strategy:
-      matrix:
-        flavor: [alpha, beta]
-        type: [apk, appbundle]
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          submodules: true
-      - name: Setup build environment
-        uses: ./.github/actions/setup-build-environment
-      - name: Decode binary environment secrets
-        env:
-          ANDROID_SIGNING_KEYSTORE: ${{ secrets.ANDROID_SIGNING_KEYSTORE }}
-        run: |
-          mkdir -p ./fastlane/profiles
-          echo $ANDROID_SIGNING_KEYSTORE | base64 --decode > ./fastlane/profiles/keystore.jks
-      - name: Build app
-        run: >
-          bundle exec fastlane android_build_${{ matrix.type }}
-          flavor:${{ matrix.flavor }}
-          keystore_path:profiles/keystore.jks
-          key_alias:android-signing-alpha
-          keystore_password:${{ secrets.ANDROID_SIGNING_KEYSTORE_PASSWORD }}
-          key_password:${{ secrets.ANDROID_SIGNING_KEYSTORE_PASSWORD }}
-      - uses: actions/upload-artifact@v4
-        with:
-          name: app-alpha-android-${{ matrix.flavor }}-${{ matrix.type }}
-          path: |
-            ./fastlane/build/*.apk
-            ./fastlane/build/*.aab
-  bundle-app-alpha:
-    runs-on: ubuntu-latest
-    needs:
-      - build-app-ios-alpha
-      - build-app-android-alpha
-    steps:
-      - name: Download app-alpha-ios artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: app-alpha-ios
-      # Check the comment above in the build-app-android-alpha job spec why the beta is also present here.
-      - name: Download app-alpha-android-alpha-apk artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: app-alpha-android-alpha-apk
-      - name: Download app-alpha-android-alpha-appbundle artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: app-alpha-android-alpha-appbundle
-      - name: Download app-alpha-android-beta-apk artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: app-alpha-android-beta-apk
-      - name: Download app-alpha-android-beta-appbundle artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: app-alpha-android-beta-appbundle
-      - name: Bundle all artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-bundle-alpha
-          path: .
   version-check:
     runs-on: ubuntu-latest
     needs: bundle-app-alpha
@@ -129,7 +29,6 @@ jobs:
     runs-on: macos-15 # MacOS version is pinned, because it determines which XCode version is used.
     needs: version-check
     if: needs.version-check.outputs.version-changed == 'true'
-    environment: app-store-beta
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -162,7 +61,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: version-check
     if: needs.version-check.outputs.version-changed == 'true'
-    environment: android-beta
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
