@@ -57,9 +57,6 @@ sdkmanager --sdk_root="$ANDROID_HOME" \
   "cmdline-tools;latest" \
   "ndk;$ANDROID_NDK_VERSION" \
   "cmake;3.10.2.4988404" \
-  "platforms;android-32" \
-  "platforms;android-33" \
-  "platforms;android-34" \
   "platforms;android-35" \
   "platforms;android-36" \
   "build-tools;35.0.1" \
