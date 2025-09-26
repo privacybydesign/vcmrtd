@@ -50,7 +50,7 @@ jobs:
           submodules: true
       - name: Setup build environment
         uses: ./.github/actions/setup-build-environment
-      - run: flutter build apk --flavor alpha -t lib/main_prototypes.dart
+      - run: flutter build apk --flavor alpha -t lib/main.dart
       - uses: actions/upload-artifact@v4
         with:
           name: prototypes-alpha-android
