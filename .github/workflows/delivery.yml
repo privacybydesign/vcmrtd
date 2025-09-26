@@ -85,7 +85,7 @@ jobs:
         run: >
           bundle exec fastlane android_build_appbundle
           keystore_path:profiles/keystore.jks
-          key_alias:android-play-store-upload-key
+          key_alias:vcmrtd-upload-key
           keystore_password:${{ secrets.ANDROID_SIGNING_KEYSTORE_PASSWORD }}
           key_password:${{ secrets.ANDROID_SIGNING_KEYSTORE_PASSWORD }}
       - uses: actions/upload-artifact@v4
