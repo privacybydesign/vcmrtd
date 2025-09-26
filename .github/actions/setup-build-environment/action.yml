@@ -1,5 +1,5 @@
 name: Setup build environment
-description: This action installs all build tools needed for [placeholder] and caches the result to speed up future runs.
+description: This action installs all build tools needed for vcmrdt and caches the result to speed up future runs.
 runs:
   using: composite
   steps:

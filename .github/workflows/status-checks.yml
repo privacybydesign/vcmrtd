@@ -17,6 +17,9 @@ jobs:
   # prevent that the setup-build-environment action runs in parallel.
   lint:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./example
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -25,6 +28,9 @@ jobs:
       - run: bundle exec fastlane lint
   unit-test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./example
     needs: lint
     steps:
       - name: Check out repository
@@ -34,6 +40,9 @@ jobs:
       - run: bundle exec fastlane unit_test
   build-prototypes-android:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./example
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
