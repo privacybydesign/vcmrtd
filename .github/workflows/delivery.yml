@@ -52,7 +52,6 @@ jobs:
       - name: Build app
         run: >
           bundle exec fastlane ios_build_app
-          flavor:beta
           code_signing_identity:"iPhone Distribution"
           certificate_path:profiles/apple_distribution.p12
           certificate_password:${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD }}
@@ -85,7 +84,6 @@ jobs:
       - name: Build app
         run: >
           bundle exec fastlane android_build_appbundle
-          flavor:beta
           keystore_path:profiles/keystore.jks
           key_alias:android-play-store-upload-key
           keystore_password:${{ secrets.ANDROID_SIGNING_KEYSTORE_PASSWORD }}

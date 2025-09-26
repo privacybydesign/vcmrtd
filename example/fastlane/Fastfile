@@ -27,7 +27,6 @@ end
 
 lane :android_build do |options|
   android_build_appbundle(
-    flavor: "beta",
     keystore_path: options[:keystore_path],
     keystore_password: options[:keystore_password],
     key_alias: options[:key_alias],
@@ -38,28 +37,26 @@ end
 lane :android_build_apk do |options|
   android_build_app(
     build_type: "apk",
-    flavor: "beta",
     keystore_path: options[:keystore_path],
     keystore_password: options[:keystore_password],
     key_alias: options[:key_alias],
     key_password: options[:key_password]
   )
   Dir.chdir("..") do
-    sh("cp ./build/app/outputs/apk/beta/release/*.apk ./fastlane/build/")
+    sh("cp ./build/app/outputs/apk/release/*.apk ./fastlane/build/")
   end
 end
 
 lane :android_build_appbundle do |options|
   android_build_app(
     build_type: "appbundle",
-    flavor: "beta",
     keystore_path: options[:keystore_path],
     keystore_password: options[:keystore_password],
     key_alias: options[:key_alias],
     key_password: options[:key_password]
   )
   Dir.chdir("..") do
-    sh("cp ./build/app/outputs/bundle/betaRelease/*.aab ./fastlane/build/")
+    sh("cp ./build/app/outputs/bundle/release/*.aab ./fastlane/build/")
   end
 end
 
@@ -69,7 +66,7 @@ private_lane :android_build_app do |options|
   # In Fastlane it's not possible to mask secrets in the command, while showing the shell output of the command.
   # Therefore, we use environment variables to hide parameter values.
   puts "In the following command, parameter values are hidden using environment variables."
-  cmd = "flutter build $FASTLANE_BUILD_TYPE --flavor beta --release"
+  cmd = "flutter build $FASTLANE_BUILD_TYPE --release"
   ENV["FASTLANE_BUILD_TYPE"] = options[:build_type]
   if options[:keystore_path]
     ENV["FASTLANE_KEYSTORE_PATH"] = File.absolute_path(options[:keystore_path])
@@ -87,7 +84,6 @@ end
 
 lane :ios_build do |options|
   ios_build_app(
-    flavor: "beta",
     certificate_path: options[:certificate_path],
     certificate_password: options[:certificate_password],
     provisioning_profile_path: options[:provisioning_profile_path],
@@ -192,12 +188,6 @@ private_lane :set_provisioning_profile do |options|
       path: "ios/Runner/Flutter-Build-IPA.plist",
       key: "provisioningProfiles",
       subkey: "foundation.privacybydesign.vcmrtd",
-      value: uuid
-    )
-    set_info_plist_value(
-      path: "ios/Runner/Flutter-Build-IPA.plist",
-      key: "provisioningProfiles",
-      subkey: "foundation.privacybydesign.vcmrtd.alpha",
       value: uuid
     )
   end
