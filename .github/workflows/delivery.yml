@@ -5,6 +5,7 @@ name: Delivery
 on:
   push:
     branches: [master]
+  workflow_run:
 
 concurrency: ${{ github.ref }}
 
