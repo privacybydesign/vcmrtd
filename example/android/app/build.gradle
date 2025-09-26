@@ -72,7 +72,12 @@ android {
         }
         if (project.hasProperty("keyStoreFile")) {
             codeTransparency {
-                signing signingConfigs.release
+                signing {
+                    storeFile file(project.property("keyStoreFile"))
+                    storePassword project.property("keyStorePassword")
+                    keyAlias project.property("keyAlias")
+                    keyPassword project.property("keyPassword")
+                }
             }
         }
     }
