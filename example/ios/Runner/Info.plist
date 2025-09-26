@@ -52,7 +52,7 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>app.yivi.vcmrtd.deeplink</string>
+			<string>foundation.privacybydesign.vcmrtd.deeplink</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>mrtd</string>
@@ -60,7 +60,7 @@
 		</dict>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>app.yivi.vcmrtd.https</string>
+			<string>foundation.privacybydesign.vcmrtd.https</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>https</string>

@@ -1,4 +1,4 @@
-package app.yivi.vcmrtd
+package foundation.privacybydesign.vcmrtd
 
 import android.content.Intent
 import android.net.Uri
