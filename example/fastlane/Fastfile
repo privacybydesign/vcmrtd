@@ -92,10 +92,6 @@ lane :ios_build do |options|
 end
 
 lane :ios_build_app do |options|
-  display_name = ""
-  app_identifier = ""
-  export_method = ""
-
   display_name = "Yivi Passport"
   app_identifier = "foundation.privacybydesign.vcmrtd"
   export_method = "app-store"
