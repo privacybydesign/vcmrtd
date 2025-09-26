@@ -19,6 +19,7 @@ runs:
         key: ruby-${{ runner.os }}-${{ hashFiles('example/Gemfile.lock') }}
     - run: bundle install
       shell: bash
+      working-directory: ./example
     - name: Set environment variables
       run: |
         ANDROID_HOME=~/android-sdk
@@ -44,13 +45,16 @@ runs:
       if: runner.os == 'Linux'
       run: ./ci_scripts/install_android_sdk.sh
       shell: bash
+      working-directory: ./example
     - name: Ensure Flutter is installed
       run: ./ci_scripts/install_flutter.sh
       shell: bash
+      working-directory: ./example
     - name: Use correct Xcode version
       if: runner.os == 'macOS'
       run: sudo xcode-select --switch /Applications/Xcode_16.4.app
       shell: bash
+      working-directory: ./example
     - name: Check Cocoapods cache
       id: cocoapods-cache
       if: runner.os == 'macOS'
@@ -63,8 +67,8 @@ runs:
         key: cocoapods-${{ runner.os }}-${{ hashFiles('example/Gemfile.lock', 'example/pubspec.lock', 'example/ios/Podfile.lock') }}
     - name: Pre-install Cocoapods to fill cache
       if: runner.os == 'macOS' && steps.cocoapods-cache.outputs.cache-hit != 'true'
-      working-directory: ./example
       run: |
         flutter pub get
         cd ios && pod install
       shell: bash
+      working-directory: ./example
