@@ -26,18 +26,21 @@ jobs:
       - name: Setup build environment
         uses: ./.github/actions/setup-build-environment
       - run: bundle exec fastlane lint
-  unit-test:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./example
-    needs: lint
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-      - name: Setup build environment
-        uses: ./.github/actions/setup-build-environment
-      - run: bundle exec fastlane unit_test
+
+  # We can enable this once we have tests.
+  # unit-test:
+  #   runs-on: ubuntu-latest
+  #   defaults:
+  #     run:
+  #       working-directory: ./example
+  #   needs: lint
+  #   steps:
+  #     - name: Check out repository
+  #       uses: actions/checkout@v4
+  #     - name: Setup build environment
+  #       uses: ./.github/actions/setup-build-environment
+  #     - run: bundle exec fastlane unit_test
+
   build-prototypes-android:
     runs-on: ubuntu-latest
     defaults:
@@ -50,7 +53,7 @@ jobs:
           submodules: true
       - name: Setup build environment
         uses: ./.github/actions/setup-build-environment
-      - run: flutter build apk --flavor alpha -t lib/main.dart
+      - run: flutter build apk -t lib/main.dart
       - uses: actions/upload-artifact@v4
         with:
           name: prototypes-alpha-android
