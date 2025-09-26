@@ -10,18 +10,28 @@ class ChoiceScreen extends StatelessWidget {
   final VoidCallback onScanMrzPressed;
   final VoidCallback onEnterManuallyPressed;
   final VoidCallback? onHelpPressed;
+  final VoidCallback? onBack;
 
   const ChoiceScreen({
     Key? key,
     required this.onScanMrzPressed,
     required this.onEnterManuallyPressed,
     this.onHelpPressed,
+    this.onBack,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return PlatformScaffold(
-
+      appBar: onBack != null
+          ? PlatformAppBar(
+              title: const Text('Select Passport Flow'),
+              leading: PlatformIconButton(
+                icon: Icon(PlatformIcons(context).back),
+                onPressed: onBack,
+              ),
+            )
+          : null,
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -66,7 +76,6 @@ class ChoiceScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 24),
-                        
                         // Title
                         Text(
                           'How would you like to read your passport?',
@@ -84,9 +93,6 @@ class ChoiceScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                
-                const SizedBox(height: 32),
-                
                 // Primary option - Scan MRZ (Recommended)
                 _buildOptionButton(
                   context: context,
@@ -97,9 +103,7 @@ class ChoiceScreen extends StatelessWidget {
                   isRecommended: true,
                   onPressed: onScanMrzPressed,
                 ),
-                
                 const SizedBox(height: 16),
-                
                 // Secondary option - Enter Manually
                 _buildOptionButton(
                   context: context,
@@ -110,9 +114,7 @@ class ChoiceScreen extends StatelessWidget {
                   isRecommended: false,
                   onPressed: onEnterManuallyPressed,
                 ),
-                
                 const SizedBox(height: 32),
-                
                 // Help section
                 if (onHelpPressed != null)
                   Center(
@@ -180,14 +182,15 @@ class ChoiceScreen extends StatelessWidget {
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: isPrimary 
+                        color: isPrimary
                             ? Colors.white.withOpacity(0.2)
                             : const Color(0xFF6b6868).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
                         icon,
-                        color: isPrimary ? Colors.white : const Color(0xFF2196F3),
+                        color:
+                            isPrimary ? Colors.white : const Color(0xFF2196F3),
                         size: 24,
                       ),
                     ),
@@ -210,7 +213,7 @@ class ChoiceScreen extends StatelessWidget {
                             subtitle,
                             style: TextStyle(
                               fontSize: 14,
-                              color: isPrimary 
+                              color: isPrimary
                                   ? Colors.white.withOpacity(0.8)
                                   : const Color(0xFF666666),
                             ),
@@ -223,7 +226,6 @@ class ChoiceScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              
               // Recommended badge
               if (isRecommended)
                 Positioned(
