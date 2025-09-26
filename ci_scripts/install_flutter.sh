@@ -41,6 +41,10 @@ if ! [ -x "$(command -v "flutter")" ]; then
   popd
 fi
 
+pushd example
+
 flutter config --no-analytics
 flutter doctor -v
 flutter precache
+
+popd

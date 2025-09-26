@@ -45,16 +45,13 @@ runs:
       if: runner.os == 'Linux'
       run: ./ci_scripts/install_android_sdk.sh
       shell: bash
-      working-directory: ./example
     - name: Ensure Flutter is installed
       run: ./ci_scripts/install_flutter.sh
       shell: bash
-      working-directory: ./example
     - name: Use correct Xcode version
       if: runner.os == 'macOS'
       run: sudo xcode-select --switch /Applications/Xcode_16.4.app
       shell: bash
-      working-directory: ./example
     - name: Check Cocoapods cache
       id: cocoapods-cache
       if: runner.os == 'macOS'
