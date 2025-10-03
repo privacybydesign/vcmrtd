@@ -4,7 +4,7 @@ name: Delivery
 
 on:
   push:
-    branches: [master, chore/build-pipeline]
+    branches: [master]
 
 concurrency: ${{ github.ref }}
 
