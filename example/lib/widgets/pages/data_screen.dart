@@ -5,9 +5,6 @@ import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtd/extensions.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
-import 'dart:math';
-import 'dart:io';
-import 'package:crypto/crypto.dart';
 import 'package:vcmrtdapp/models/passport_result.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
@@ -160,7 +157,7 @@ class _DataScreenState extends State<DataScreen> {
         border: Border.all(color: Colors.grey[300]!),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -193,8 +190,8 @@ class _DataScreenState extends State<DataScreen> {
             children: [
               PassportImageWidget(
                 header: 'test',
-                imageData: widget.mrtdData!.dg2!.imageData!,
-                imageType: widget.mrtdData!.dg2!.imageType,
+                imageData: widget.mrtdData.dg2!.imageData!,
+                imageType: widget.mrtdData.dg2!.imageType,
               ),
             ],
           ),
@@ -359,7 +356,7 @@ class _DataScreenState extends State<DataScreen> {
               ),
               const SizedBox(width: 8),
               Text(
-                  'PACE: ${widget.mrtdData!.isPACE! ? 'Enabled' : 'Disabled'}'),
+                  'PACE: ${widget.mrtdData.isPACE! ? 'Enabled' : 'Disabled'}'),
             ],
           ),
           const SizedBox(height: 4),
@@ -493,7 +490,7 @@ class _DataScreenState extends State<DataScreen> {
                 children: [
                   Expanded(
                     child: Text(
-                      widget.mrtdData.aaSig!.hex().substring(0, 32) + '...',
+                      '${widget.mrtdData.aaSig!.hex().substring(0, 32)}...',
                       style: const TextStyle(
                           fontFamily: 'monospace', fontSize: 12),
                     ),
@@ -502,7 +499,7 @@ class _DataScreenState extends State<DataScreen> {
                     icon: const Icon(Icons.copy, size: 16),
                     onPressed: () {
                       Clipboard.setData(
-                          ClipboardData(text: widget.mrtdData!.aaSig!.hex()));
+                          ClipboardData(text: widget.mrtdData.aaSig!.hex()));
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                             content: Text('Signature copied to clipboard')),

@@ -25,7 +25,7 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-  flutter_platform_widgets: ^7.0.1
+  flutter_platform_widgets: ^9.0.0
   #intl: ^0.20.1
 
   # The following adds the Cupertino Icons font to your application.
@@ -38,15 +38,17 @@ dependencies:
   http: ^1.5.0
   mrz_parser: ^2.0.0
   google_mlkit_text_recognition: ^0.15.0
-  camera: ^0.10.0+4
+  camera: ^0.11.2
   google_mlkit_commons: ^0.11.0
   camera_platform_interface: ^2.2.2
+  intl: ^0.20.2
+  logger: ^2.6.1
 
 dev_dependencies:
-  flutter_lints: ^2.0.1
+  flutter_lints: ^6.0.0
   flutter_test:
     sdk: flutter
-  lints: ^2.0.0
+  lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
 
 flutter_launcher_icons:

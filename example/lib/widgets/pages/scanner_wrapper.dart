@@ -27,12 +27,15 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) async {
+        if (didPop) {
+          return;
+        }
         if (!_hasNavigated) {
           widget.onCancel();
         }
-        return false;
       },
       child: PlatformScaffold(
         body: ScannerPageDialog(
@@ -82,7 +85,7 @@ class _ScannerPageDialogState extends State<ScannerPageDialog> {
         child: ScannerPage(),
       ),
     );
-    
+
     widget.onResult(result);
   }
 

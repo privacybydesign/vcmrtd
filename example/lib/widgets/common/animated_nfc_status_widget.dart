@@ -41,7 +41,7 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget>
   late AnimationController _primaryController;
   late AnimationController _secondaryController;
   late AnimationController _shakeController;
-  
+
   late Animation<double> _scaleAnimation;
   late Animation<double> _rotationAnimation;
   late Animation<double> _pulseAnimation;
@@ -51,25 +51,25 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget>
   @override
   void initState() {
     super.initState();
-    
+
     // Primary controller for state transitions and scale effects
     _primaryController = AnimationController(
       duration: const Duration(milliseconds: 500),
       vsync: this,
     );
-    
+
     // Secondary controller for continuous animations (pulse, rotation)
     _secondaryController = AnimationController(
       duration: const Duration(seconds: 2),
       vsync: this,
     );
-    
+
     // Shake controller for error states
     _shakeController = AnimationController(
       duration: const Duration(milliseconds: 500),
       vsync: this,
     );
-    
+
     _initializeAnimations();
     _updateAnimationState();
   }
@@ -83,7 +83,7 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget>
       parent: _primaryController,
       curve: Curves.elasticOut,
     ));
-    
+
     // Rotation animation for loading states
     _rotationAnimation = Tween<double>(
       begin: 0.0,
@@ -92,7 +92,7 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget>
       parent: _secondaryController,
       curve: Curves.linear,
     ));
-    
+
     // Pulse animation for waiting states
     _pulseAnimation = Tween<double>(
       begin: 0.8,
@@ -101,7 +101,7 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget>
       parent: _secondaryController,
       curve: Curves.easeInOut,
     ));
-    
+
     // Shake animation for error states
     _shakeAnimation = Tween<double>(
       begin: -10.0,
@@ -110,7 +110,7 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget>
       parent: _shakeController,
       curve: Curves.bounceOut,
     ));
-    
+
     // Color animation for state changes
     _colorAnimation = ColorTween(
       begin: Colors.grey,
@@ -138,11 +138,11 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget>
       parent: _primaryController,
       curve: Curves.easeInOut,
     ));
-    
+
     // Reset and start primary animation for state change
     _primaryController.reset();
     _primaryController.forward();
-    
+
     // Handle continuous animations based on state
     switch (widget.state) {
       case NFCReadingState.waiting:
@@ -262,7 +262,7 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget>
           height: 120,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: (_colorAnimation.value ?? _getStateColor()).withOpacity(0.1),
+            color: (_colorAnimation.value ?? _getStateColor()).withValues(alpha: 0.1),
             border: Border.all(
               color: _colorAnimation.value ?? _getStateColor(),
               width: 2,
@@ -288,7 +288,7 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget>
           children: [
             LinearProgressIndicator(
               value: widget.progress > 0 ? widget.progress : null,
-              backgroundColor: _getStateColor().withOpacity(0.2),
+              backgroundColor: _getStateColor().withValues(alpha: 0.2),
               valueColor: AlwaysStoppedAnimation<Color>(_getStateColor()),
             ),
             if (widget.progress > 0)
@@ -331,7 +331,7 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget>
   Widget _buildCancelButton() {
     if ((widget.state == NFCReadingState.waiting ||
          widget.state == NFCReadingState.connecting ||
-         widget.state == NFCReadingState.reading) && 
+         widget.state == NFCReadingState.reading) &&
         widget.onCancel != null) {
       return Padding(
         padding: const EdgeInsets.only(top: 16.0),
