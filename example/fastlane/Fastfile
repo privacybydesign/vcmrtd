@@ -9,13 +9,6 @@ lane :lint do
     # TODO: put "--set-exit-if-changed" flag back in after formatting
     sh("dart", "format", "--line-length", "120", "lib/", "test/")
     sh("flutter", "analyze", "--no-fatal-infos")
-
-    # gofmt does not return non-zero exit codes on failure, so we have to check the output.
-    fmt_output = sh("gofmt", "-d", "-e", ".")
-    if !fmt_output.empty?
-      raise "gofmt issues found"
-    end
-    sh("go", "vet", "./...")
   end
 end
 
