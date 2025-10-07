@@ -39,7 +39,11 @@ class DataScreen extends StatefulWidget {
 
 class _DataScreenState extends State<DataScreen> {
   bool _showValidationDetails = false;
-  bool _isReturningToWeb = false;
+  bool _isReturningToIssue = false;
+  bool _isReturningToVerify = false;
+  bool? _isExpired;
+  bool? _authenticContent;
+  bool? _authenticChip;
 
   @override
   Widget build(BuildContext context) {
@@ -60,10 +64,16 @@ class _DataScreenState extends State<DataScreen> {
               if (widget.sessionId != null) _buildReturnToWebBanner(),
               _buildPersonalDataSection(),
               const SizedBox(height: 20),
-              _buildSecurityDataSection(),
+              _buildSecurityContent(),
+              const SizedBox(height: 20),
               if (widget.sessionId != null) ...[
                 const SizedBox(height: 20),
-                _buildReturnToWebSection(),
+                if (_isExpired == null && _authenticChip == null && _authenticContent == null)
+                  _buildReturnToWebSection()
+                else ...[
+                  const SizedBox(height: 20),
+                  _buildVerifyResultSection(),
+                ],
               ],
             ],
           ),
@@ -282,43 +292,12 @@ class _DataScreenState extends State<DataScreen> {
     );
   }
 
-  Widget _buildSecurityDataSection() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.security,
-                    color: Theme.of(context).colorScheme.secondary, size: 28),
-                const SizedBox(width: 8),
-                Text(
-                  'Security Information',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.secondary,
-                      ),
-                ),
-              ],
-            ),
-            const Divider(height: 30),
-            _buildSecurityContent(),
-          ],
-        ),
-      ),
-    );
-  }
+
 
   Widget _buildSecurityContent() {
     return Column(
       children: [
         _buildAccessProtocolInfo(),
-        const SizedBox(height: 20),
-        _buildSignatureValidation(),
         const SizedBox(height: 20),
         _buildSecurityDetails(),
       ],
@@ -379,93 +358,6 @@ class _DataScreenState extends State<DataScreen> {
     );
   }
 
-  Widget _buildSignatureValidation() {
-    final hasSignature = widget.mrtdData.aaSig != null;
-    final hasSOD = widget.mrtdData.sod != null;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: hasSignature ? Colors.green[50] : Colors.orange[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: hasSignature ? Colors.green[200]! : Colors.orange[200]!,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                hasSignature ? Icons.verified : Icons.warning,
-                color: hasSignature ? Colors.green[700] : Colors.orange[700],
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Signature Validation',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: hasSignature ? Colors.green[800] : Colors.orange[800],
-                  fontSize: 16,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildValidationItem(
-            'Active Authentication',
-            hasSignature,
-            hasSignature ? 'Signature verified' : 'No signature available',
-          ),
-          const SizedBox(height: 8),
-          _buildValidationItem(
-            'Document Security Object',
-            hasSOD,
-            hasSOD ? 'SOD present and valid' : 'No SOD available',
-          ),
-          const SizedBox(height: 12),
-          TextButton.icon(
-            onPressed: () {
-              setState(() {
-                _showValidationDetails = !_showValidationDetails;
-              });
-            },
-            icon: Icon(
-                _showValidationDetails ? Icons.expand_less : Icons.expand_more),
-            label:
-                Text(_showValidationDetails ? 'Hide Details' : 'Show Details'),
-          ),
-          if (_showValidationDetails) _buildValidationDetails(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildValidationItem(String title, bool isValid, String description) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          isValid ? Icons.check_circle_outline : Icons.error_outline,
-          color: isValid ? Colors.green : Colors.red,
-          size: 18,
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
-              Text(description,
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildValidationDetails() {
     return Container(
@@ -715,7 +607,7 @@ class _DataScreenState extends State<DataScreen> {
                     color: Theme.of(context).primaryColor, size: 28),
                 const SizedBox(width: 8),
                 Text(
-                  'Return to Passport Issuer',
+                  'Passport Issuer services',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: Theme.of(context).primaryColor,
@@ -725,7 +617,7 @@ class _DataScreenState extends State<DataScreen> {
             ),
             const Divider(height: 30),
             Text(
-              'Your passport has been successfully validated. Click below to return to the web application with your authentication results.',
+              'You have two options. You can continue to Yivi app to get this data verified and issued to Yivi. Or you can do the verification only flow.',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey[700],
@@ -734,17 +626,39 @@ class _DataScreenState extends State<DataScreen> {
             ),
             const SizedBox(height: 20),
             ElevatedButton.icon(
-              onPressed: _isReturningToWeb ? null : _returnToWeb,
-              icon: _isReturningToWeb
+              onPressed: _isReturningToIssue ? null : _returnToWeb,
+              icon: _isReturningToIssue
                   ? const SizedBox(
                       width: 16,
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.open_in_browser),
-              label: Text(_isReturningToWeb
-                  ? 'Returning to Web...'
-                  : 'Return to Web Application'),
+              label: Text(_isReturningToIssue
+                  ? 'Redirecting...'
+                  : 'Issue a Credential with Yivi'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: Colors.green[600],
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: _isReturningToVerify ? null : _returnToVerify,
+              icon: _isReturningToVerify
+                  ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+                  : const Icon(Icons.open_in_browser),
+              label: Text(_isReturningToVerify
+                  ? 'Redirecting...'
+                  : 'Verify via our API'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 backgroundColor: Colors.green[600],
@@ -756,7 +670,7 @@ class _DataScreenState extends State<DataScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Note: This will close the mobile app and return you to your web browser.',
+              'Note: This may close the mobile app and return you to your web browser.',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.grey[600],
@@ -770,12 +684,116 @@ class _DataScreenState extends State<DataScreen> {
     );
   }
 
+  Widget _buildVerifyResultSection() {
+    String yn(bool? v) => v == null ? '-' : (v ? 'Yes' : 'No');
+
+
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.assignment_turned_in,
+                    color: Colors.teal[700], size: 28),
+                const SizedBox(width: 8),
+                Text(
+                  'Verification Result',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.teal[700],
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 30),
+            _buildReadOnlyTextBox(
+              label: 'Expired Document',
+              value: yn(_isExpired),
+            ),
+            const SizedBox(height: 12),
+            _buildReadOnlyTextBox(
+              label: 'Authentic Chip',
+              value: yn(_authenticChip),
+            ),
+            const SizedBox(height: 12),
+            _buildReadOnlyTextBox(
+              label: 'Authentic Content',
+              value: yn(_authenticContent),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  Widget _buildReadOnlyTextBox({
+    required String label,
+    required String value,
+    bool isError = false,
+  }) {
+    return TextField(
+      controller: TextEditingController(text: value),
+      readOnly: true,
+      decoration: InputDecoration(
+        labelText: label,
+        filled: true,
+        fillColor: isError ? Colors.red[50] : Colors.grey[50],
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: isError ? Colors.red[200]! : Colors.grey[300]!),
+        ),
+        prefixIcon: Icon(
+          isError ? Icons.error_outline : Icons.info_outline,
+          color: isError ? Colors.red[400] : Colors.grey[600],
+        ),
+      ),
+    );
+  }
+  Future<void> _returnToVerify() async {
+    if (widget.sessionId == null) return;
+    setState(() {
+      _isReturningToVerify = true;
+
+    });
+
+    try
+      {
+        final payload = widget.passportDataResult.toJson();
+        final String jsonPayload = json.encode(payload);
+
+        final response = await http.post(
+          Uri.parse(
+              'https://passport-issuer.staging.yivi.app/api/verify-passport'),
+          headers: {'Content-Type': 'application/json'},
+          body:  jsonPayload,
+        );
+        final Map<String, dynamic> responseBody = jsonDecode(response.body);
+
+
+        setState(() {
+          _isExpired = responseBody['is_expired'] as bool?;
+          _authenticChip = responseBody['authentic_chip'] as bool?;
+          _authenticContent = responseBody['authentic_content'] as bool?;
+          _isReturningToVerify = false;
+
+        });
+      }
+      catch (e) {
+        _showReturnErrorDialog(e.toString());
+      }
+
+  }
   /// Handle return to web functionality
   Future<void> _returnToWeb() async {
     if (widget.sessionId == null) return;
 
     setState(() {
-      _isReturningToWeb = true;
+      _isReturningToIssue = true;
     });
 
     try {
@@ -811,7 +829,7 @@ class _DataScreenState extends State<DataScreen> {
     } finally {
       if (mounted) {
         setState(() {
-          _isReturningToWeb = false;
+          _isReturningToIssue = false;
         });
       }
     }
