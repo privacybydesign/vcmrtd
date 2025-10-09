@@ -31,7 +31,7 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.all(14.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -53,10 +53,11 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
                   context: context,
                   title: 'Driving Licence',
                   subtitle:
-                      'Use a machine readable driving licence ',
+                      'Use a machine readable driving licence. Currently works primarily with Dutch licences.',
                   icon: Icons.directions_car,
                   accentColor: const Color(0xFF2196F3),
                   onTap: onDrivingLicenceSelected,
+
                 ),
               ],
             ),
@@ -123,7 +124,7 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          height: 110,
+          height: 122,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             color: Colors.white,
@@ -168,7 +169,7 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
                               fontSize: 14,
                               color: Color(0xFF666666),
                             ),
-                            maxLines: 2,
+                            maxLines: 3,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ],
