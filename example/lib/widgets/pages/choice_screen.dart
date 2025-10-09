@@ -8,12 +8,14 @@ import 'package:vcmrtdapp/theme/text_styles.dart';
 /// Initial choice screen - user decides between Scan MRZ or Enter Manually
 class ChoiceScreen extends StatelessWidget {
   final VoidCallback onScanMrzPressed;
+  final VoidCallback onScanDriverLicensePressed;
   final VoidCallback onEnterManuallyPressed;
   final VoidCallback? onHelpPressed;
 
   const ChoiceScreen({
     Key? key,
     required this.onScanMrzPressed,
+    required this.onScanDriverLicensePressed,
     required this.onEnterManuallyPressed,
     this.onHelpPressed,
   }) : super(key: key);
@@ -97,9 +99,22 @@ class ChoiceScreen extends StatelessWidget {
                   isRecommended: true,
                   onPressed: onScanMrzPressed,
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
+                // Secondary option - Scan Driver's License
+                _buildOptionButton(
+                  context: context,
+                  title: 'Scan Driver\'s License',
+                  subtitle: 'Scan the MRZ code on your driver\'s license',
+                  icon: Icons.credit_card,
+                  isPrimary: false,
+                  isRecommended: false,
+                  onPressed: onScanDriverLicensePressed,
+                ),
+
+                const SizedBox(height: 16),
+
                 // Secondary option - Enter Manually
                 _buildOptionButton(
                   context: context,

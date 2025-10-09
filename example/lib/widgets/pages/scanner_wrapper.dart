@@ -6,16 +6,19 @@ import 'package:vcmrtdapp/helpers/mrz_data.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 
 import 'scan_screen.dart';
+import '../../helpers/mrz_scanner.dart';
 
 /// Wrapper around ScannerPage to handle navigation callbacks
 class ScannerWrapper extends StatefulWidget {
-  final Function(MRZResult) onMrzScanned;
+  final Function(dynamic) onMrzScanned;
   final VoidCallback onCancel;
+  final DocumentType documentType;
 
   const ScannerWrapper({
     Key? key,
     required this.onMrzScanned,
     required this.onCancel,
+    this.documentType = DocumentType.passport,
   }) : super(key: key);
 
   @override
@@ -36,7 +39,8 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
       },
       child: PlatformScaffold(
         body: ScannerPageDialog(
-          onResult: (MRZResult? result) {
+          documentType: widget.documentType,
+          onResult: (dynamic result) {
             if (!_hasNavigated) {
               _hasNavigated = true;
               if (result != null) {
@@ -54,11 +58,13 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
 
 /// Custom dialog wrapper to catch the MRZ result
 class ScannerPageDialog extends StatefulWidget {
-  final Function(MRZResult?) onResult;
+  final Function(dynamic) onResult;
+  final DocumentType documentType;
 
   const ScannerPageDialog({
     Key? key,
     required this.onResult,
+    this.documentType = DocumentType.passport,
   }) : super(key: key);
 
   @override
@@ -75,14 +81,14 @@ class _ScannerPageDialogState extends State<ScannerPageDialog> {
   }
 
   void _showScannerDialog() async {
-    final result = await showDialog<MRZResult>(
+    final result = await showDialog<dynamic>(
       context: context,
       barrierDismissible: false,
       builder: (context) => Material(
-        child: ScannerPage(),
+        child: ScannerPage(documentType: widget.documentType),
       ),
     );
-    
+
     widget.onResult(result);
   }
 

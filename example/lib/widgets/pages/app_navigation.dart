@@ -17,8 +17,9 @@ import 'nfc_guidance_screen.dart';
 import 'manual_entry_screen.dart';
 import 'scanner_wrapper.dart';
 import '../../models/mrtd_data.dart';
+import '../../helpers/mrz_scanner.dart';
 
-enum NavigationStep { choice, mrz, manual, nfcHelp, nfcReading, results }
+enum NavigationStep { choice, mrz, driverLicense, manual, nfcHelp, nfcReading, results }
 
 /// Main navigation controller that manages the new UX flow
 class AppNavigation extends StatefulWidget {
@@ -31,7 +32,7 @@ class AppNavigation extends StatefulWidget {
 
 class _AppNavigationState extends State<AppNavigation> {
   NavigationStep _currentStep = NavigationStep.choice;
-  MRZResult? _mrzResult;
+  dynamic _mrzResult;
   MrtdData? _mrtdData;
   PassportDataResult? _passportDataResult;
 
@@ -80,6 +81,8 @@ class _AppNavigationState extends State<AppNavigation> {
         return _buildChoiceScreen();
       case NavigationStep.mrz:
         return _buildMrzScannerScreen();
+      case NavigationStep.driverLicense:
+        return _buildDriverLicenseScannerScreen();
       case NavigationStep.manual:
         return _buildManualEntryScreen();
       case NavigationStep.nfcHelp:
@@ -98,6 +101,11 @@ class _AppNavigationState extends State<AppNavigation> {
           _currentStep = NavigationStep.mrz;
         });
       },
+      onScanDriverLicensePressed: () {
+        setState(() {
+          _currentStep = NavigationStep.driverLicense;
+        });
+      },
       onEnterManuallyPressed: () {
         setState(() {
           _currentStep = NavigationStep.manual;
@@ -111,7 +119,26 @@ class _AppNavigationState extends State<AppNavigation> {
 
   Widget _buildMrzScannerScreen() {
     return ScannerWrapper(
-      onMrzScanned: (MRZResult result) {
+      onMrzScanned: (dynamic result) {
+        setState(() {
+          _mrzResult = result;
+          // Go to NFC guidance
+          _currentStep = NavigationStep.nfcHelp;
+        });
+      },
+      onCancel: () {
+        setState(() {
+          // Back to choice screen
+          _currentStep = NavigationStep.choice;
+        });
+      },
+    );
+  }
+
+  Widget _buildDriverLicenseScannerScreen() {
+    return ScannerWrapper(
+      documentType: DocumentType.driverLicense,
+      onMrzScanned: (dynamic result) {
         setState(() {
           _mrzResult = result;
           // Go to NFC guidance
