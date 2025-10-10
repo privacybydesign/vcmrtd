@@ -6,16 +6,23 @@ import 'package:vcmrtdapp/helpers/mrz_data.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 
 import 'scan_screen.dart';
+import '../../helpers/mrz_scanner.dart';
 
 /// Wrapper around ScannerPage to handle navigation callbacks
 class ScannerWrapper extends StatefulWidget {
-  final Function(MRZResult) onMrzScanned;
+  final Function(dynamic) onMrzScanned;
+  final VoidCallback onManualEntry;
   final VoidCallback onCancel;
+  final VoidCallback onBack;
+  final DocumentType documentType;
 
   const ScannerWrapper({
     Key? key,
     required this.onMrzScanned,
+    required this.onManualEntry,
     required this.onCancel,
+    required this.onBack,
+    this.documentType = DocumentType.passport,
   }) : super(key: key);
 
   @override
@@ -24,75 +31,123 @@ class ScannerWrapper extends StatefulWidget {
 
 class _ScannerWrapperState extends State<ScannerWrapper> {
   bool _hasNavigated = false;
+  String _getDocumentTypeName() {
+    switch (widget.documentType) {
+      case DocumentType.passport:
+        return 'Passport';
+      case DocumentType.driverLicense:
+        return 'Driver\'s Licence';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        if (!_hasNavigated) {
-          widget.onCancel();
-        }
-        return false;
-      },
-      child: PlatformScaffold(
-        body: ScannerPageDialog(
-          onResult: (MRZResult? result) {
-            if (!_hasNavigated) {
-              _hasNavigated = true;
-              if (result != null) {
-                widget.onMrzScanned(result);
-              } else {
-                widget.onCancel();
+    return PlatformScaffold(
+      material: (_, __) => MaterialScaffoldData(
+        backgroundColor: Colors.black,
+        extendBody: true,
+      ),
+      cupertino: (_, __) => CupertinoPageScaffoldData(
+        backgroundColor: Colors.black,
+      ),
+      appBar: PlatformAppBar(
+        backgroundColor: Colors.black,
+        title: Text('Scan ${_getDocumentTypeName()}'),
+        leading: PlatformIconButton(
+          icon: Icon(PlatformIcons(context).back),
+          onPressed: widget.onBack,
+        ),
+      ),
+      body: Stack(
+        children: [
+          ScannerPage(
+            documentType: widget.documentType,
+            onSuccess: (dynamic result) {
+              if (!_hasNavigated) {
+                _hasNavigated = true;
+                if (result != null) {
+                  widget.onMrzScanned(result);
+                } else {
+                  widget.onCancel();
+                }
               }
-            }
-          },
+            },
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _buildBottomControls(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOverlayCard(BuildContext context) {
+    return Card(
+      color: Colors.transparent,
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(0.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children:  [
+            Text(
+              'Position the ${_getDocumentTypeName()}',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Text(
+              'Align the Machine Readable Zone (MRZ) with the frame at the bottom of the screen. Hold steady until scanning completes.',
+              style: TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+          ],
         ),
       ),
     );
   }
-}
 
-/// Custom dialog wrapper to catch the MRZ result
-class ScannerPageDialog extends StatefulWidget {
-  final Function(MRZResult?) onResult;
-
-  const ScannerPageDialog({
-    Key? key,
-    required this.onResult,
-  }) : super(key: key);
-
-  @override
-  State<ScannerPageDialog> createState() => _ScannerPageDialogState();
-}
-
-class _ScannerPageDialogState extends State<ScannerPageDialog> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _showScannerDialog();
-    });
-  }
-
-  void _showScannerDialog() async {
-    final result = await showDialog<MRZResult>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Material(
-        child: ScannerPage(),
-      ),
-    );
-    
-    widget.onResult(result);
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildBottomControls(BuildContext context) {
     return Container(
-      color: Colors.black,
-      child: const Center(
-        child: CircularProgressIndicator(
-          color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(30, 24, 24, 32),
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildOverlayCard(context),
+            const SizedBox(height: 20),
+            PlatformElevatedButton(
+              onPressed: () {
+                widget.onManualEntry();
+              },
+              material: (_, __) => MaterialElevatedButtonData(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black,
+                ),
+              ),
+              cupertino: (_, __) => CupertinoElevatedButtonData(
+                color: Colors.white,
+              ),
+              child:  Text(
+                'Enter ${_getDocumentTypeName()} details manually',
+                style: TextStyle(color: Colors.black),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+          ],
         ),
       ),
     );

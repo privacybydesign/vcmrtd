@@ -29,18 +29,6 @@ class MRZCameraOverlay extends StatelessWidget {
               ),
             ),
             _WhiteOverlay(rect: overlayRect),
-            Positioned(
-              top: 32,
-              left: 16,
-              child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white, size: 32),
-                onPressed: () {
-                  'Overlay closed'.logInfo();
-                  Navigator.of(context, rootNavigator: true).pop();
-                },
-                tooltip: 'Close',
-              ),
-            ),
           ],
         );
       },
@@ -56,7 +44,7 @@ class MRZCameraOverlay extends StatelessWidget {
       height = size.height * 0.75;
       width = height * _documentFrameRatio;
     }
-    final topOffset = (size.height - height) / 2;
+    final topOffset = (size.height - height) / 2 - 60.0;
     final leftOffset = (size.width - width) / 2;
 
     final rect = RRect.fromLTRBR(leftOffset, topOffset, leftOffset + width,

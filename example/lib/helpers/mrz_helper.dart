@@ -2,8 +2,24 @@ import '../custom/custom_logger_extension.dart';
 
 class MRZHelper {
   static List<String>? getFinalListToParse(List<String> ableToScanTextList) {
+    if (ableToScanTextList.isEmpty) {
+      return null;
+    }
+
+    // Check for driver's license (starts with D1, D2, or DL)
+    String firstLine = ableToScanTextList.first;
+    if (firstLine.length >= 2) {
+      String firstTwoChars = firstLine.substring(0, 2);
+      List<String> driverLicenseTypes = ['D1', 'D2', 'DL'];
+      if (driverLicenseTypes.contains(firstTwoChars)) {
+        "Driver's License MRZ detected".logInfo();
+        return [...ableToScanTextList];
+      }
+    }
+
+    // Check for passport/visa (requires at least 2 lines)
     if (ableToScanTextList.length < 2) {
-      // minimum length of any MRZ format is 2 lines
+      // minimum length of passport MRZ format is 2 lines
       return null;
     }
     int lineLength = ableToScanTextList.first.length;

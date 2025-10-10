@@ -11,14 +11,23 @@ import 'package:vcmrtdapp/services/deeplink_service.dart';
 import 'package:vcmrtdapp/utils/nonce.dart';
 import 'package:vcmrtdapp/widgets/pages/data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_reading_screen.dart';
+import 'package:vcmrtdapp/widgets/pages/scanner_wrapper.dart';
 
-import 'choice_screen.dart';
+import 'document_selection_screen.dart';
+import 'driving_licence_screen.dart';
 import 'nfc_guidance_screen.dart';
 import 'manual_entry_screen.dart';
-import 'scanner_wrapper.dart';
 import '../../models/mrtd_data.dart';
 
-enum NavigationStep { choice, mrz, manual, nfcHelp, nfcReading, results }
+enum NavigationStep {
+  documentType,
+  passportMrz,
+  edlMrz,
+  manual,
+  nfcHelp,
+  nfcReading,
+  results,
+}
 
 /// Main navigation controller that manages the new UX flow
 class AppNavigation extends StatefulWidget {
@@ -30,8 +39,8 @@ class AppNavigation extends StatefulWidget {
 }
 
 class _AppNavigationState extends State<AppNavigation> {
-  NavigationStep _currentStep = NavigationStep.choice;
-  MRZResult? _mrzResult;
+  NavigationStep _currentStep = NavigationStep.documentType;
+  dynamic _mrzResult;
   MrtdData? _mrtdData;
   PassportDataResult? _passportDataResult;
 
@@ -49,15 +58,13 @@ class _AppNavigationState extends State<AppNavigation> {
     super.initState();
     _sub = widget.deepLinkService.stream.listen((data) async {
       try {
-          // Convert string to 8 bytes nonce
+        // Convert string to 8 bytes nonce
         final parsed = stringToUint8List(data.nonce);
 
         setState(() {
           _sessionId = data.sessionId;
           _nonce = parsed;
         });
-        
-          
       } on ArgumentError {
         // Show warning invalid nonce.
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -76,10 +83,10 @@ class _AppNavigationState extends State<AppNavigation> {
   @override
   Widget build(BuildContext context) {
     switch (_currentStep) {
-      case NavigationStep.choice:
-        return _buildChoiceScreen();
-      case NavigationStep.mrz:
-        return _buildMrzScannerScreen();
+      case NavigationStep.documentType:
+        return _buildDocumentSelectionScreen();
+      case NavigationStep.passportMrz:
+        return _buildPassportScannerScreen();
       case NavigationStep.manual:
         return _buildManualEntryScreen();
       case NavigationStep.nfcHelp:
@@ -88,30 +95,31 @@ class _AppNavigationState extends State<AppNavigation> {
         return _buildNfcReadingScreen();
       case NavigationStep.results:
         return _buildDataReadingScreen();
+      case NavigationStep.edlMrz:
+        return _buildDrivingLicenceScannerScreen();
     }
   }
 
-  Widget _buildChoiceScreen() {
-    return ChoiceScreen(
-      onScanMrzPressed: () {
+  Widget _buildDocumentSelectionScreen() {
+    return DocumentTypeSelectionScreen(
+      onPassportSelected: () {
         setState(() {
-          _currentStep = NavigationStep.mrz;
+          _resetPassportFlow();
+          _currentStep = NavigationStep.passportMrz;
         });
       },
-      onEnterManuallyPressed: () {
+      onDrivingLicenceSelected: () {
         setState(() {
-          _currentStep = NavigationStep.manual;
+          _resetPassportFlow();
+          _currentStep = NavigationStep.edlMrz;
         });
-      },
-      onHelpPressed: () {
-        _showHelpDialog();
       },
     );
   }
 
-  Widget _buildMrzScannerScreen() {
+  Widget _buildPassportScannerScreen() {
     return ScannerWrapper(
-      onMrzScanned: (MRZResult result) {
+      onMrzScanned: (dynamic result) {
         setState(() {
           _mrzResult = result;
           // Go to NFC guidance
@@ -121,7 +129,18 @@ class _AppNavigationState extends State<AppNavigation> {
       onCancel: () {
         setState(() {
           // Back to choice screen
-          _currentStep = NavigationStep.choice;
+          _currentStep = NavigationStep.documentType;
+        });
+      },
+      onManualEntry: () {
+        setState(() {
+          _currentStep = NavigationStep.manual;
+        });
+      },
+      onBack: () {
+        setState(() {
+          // Back to MRZ scanner
+          _currentStep = NavigationStep.documentType;
         });
       },
     );
@@ -137,8 +156,8 @@ class _AppNavigationState extends State<AppNavigation> {
       },
       onBack: () {
         setState(() {
-          // Back to choice screen
-          _currentStep = NavigationStep.choice;
+          // Back to MRZ scanner
+          _currentStep = NavigationStep.passportMrz;
         });
       },
       onDataEntered: (String docNumber, DateTime dob, DateTime expiry) {
@@ -162,7 +181,8 @@ class _AppNavigationState extends State<AppNavigation> {
       },
       onBack: () {
         setState(() {
-          _currentStep = NavigationStep.choice; // Back to scanner/manual entry
+          _currentStep =
+              NavigationStep.passportMrz; // Back to scanner/manual entry
         });
       },
       onTroubleshooting: () {
@@ -180,13 +200,9 @@ class _AppNavigationState extends State<AppNavigation> {
       onBackPressed: () {
         Navigator.of(context).pop();
         setState(() {
-          _nonce = null;
-          _sessionId = null;
-          _manualDocNumber = null;
-          _manualDob = null;
-          _mrtdData = null;
-          _mrzResult = null;
-          _currentStep = NavigationStep.choice; // Back to choice screen
+          _resetPassportFlow(clearSession: true);
+          _currentStep =
+              NavigationStep.documentType; // Back to doc type selection
         });
       },
     );
@@ -202,7 +218,7 @@ class _AppNavigationState extends State<AppNavigation> {
       nonce: _nonce,
       onCancel: () {
         setState(() {
-          _currentStep = NavigationStep.choice; // Return to choice screen
+          _currentStep = NavigationStep.passportMrz; // Return to scanner screen
         });
       },
       onDataRead: (MrtdData data, PassportDataResult passportDataResult) {
@@ -210,6 +226,35 @@ class _AppNavigationState extends State<AppNavigation> {
           _mrtdData = data;
           _passportDataResult = passportDataResult;
           _currentStep = NavigationStep.results; // Show results
+        });
+      },
+    );
+  }
+
+  Widget _buildDrivingLicenceScannerScreen() {
+    return ScannerWrapper(
+      documentType: DocumentType.driverLicense,
+      onMrzScanned: (dynamic result) {
+        setState(() {
+          _mrzResult = result;
+          // Go to NFC guidance
+          _currentStep = NavigationStep.nfcHelp;
+        });
+      },
+      onCancel: () {
+        setState(() {
+          // Back to choice screen
+          _currentStep = NavigationStep.documentType;
+        });
+      },
+      onManualEntry: () {
+        setState(() {
+          _currentStep = NavigationStep.manual;
+        });
+      },
+      onBack: () {
+        setState(() {
+          _currentStep = NavigationStep.documentType;
         });
       },
     );
@@ -286,5 +331,19 @@ class _AppNavigationState extends State<AppNavigation> {
         );
       },
     );
+  }
+
+  void _resetPassportFlow({bool clearSession = false}) {
+    _mrzResult = null;
+    _mrtdData = null;
+    _passportDataResult = null;
+    _manualDocNumber = null;
+    _manualDob = null;
+    _manualExpiry = null;
+
+    if (clearSession) {
+      _nonce = null;
+      _sessionId = null;
+    }
   }
 }
