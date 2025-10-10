@@ -40,7 +40,7 @@ class AppNavigation extends StatefulWidget {
 
 class _AppNavigationState extends State<AppNavigation> {
   NavigationStep _currentStep = NavigationStep.documentType;
-  MRZResult? _mrzResult;
+  dynamic _mrzResult;
   MrtdData? _mrtdData;
   PassportDataResult? _passportDataResult;
 
