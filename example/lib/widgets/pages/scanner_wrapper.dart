@@ -7,6 +7,8 @@ import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 
 import 'scan_screen.dart';
 import '../../helpers/mrz_scanner.dart';
+import '../../helpers/document_type_extract.dart';
+
 
 /// Wrapper around ScannerPage to handle navigation callbacks
 class ScannerWrapper extends StatefulWidget {
@@ -31,14 +33,7 @@ class ScannerWrapper extends StatefulWidget {
 
 class _ScannerWrapperState extends State<ScannerWrapper> {
   bool _hasNavigated = false;
-  String _getDocumentTypeName() {
-    switch (widget.documentType) {
-      case DocumentType.passport:
-        return 'Passport';
-      case DocumentType.driverLicense:
-        return 'Driver\'s Licence';
-    }
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +47,7 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
       ),
       appBar: PlatformAppBar(
         backgroundColor: Colors.black,
-        title: Text('Scan ${_getDocumentTypeName()}'),
+        title: Text('Scan ${widget.documentType.displayName}'),
         leading: PlatformIconButton(
           icon: Icon(PlatformIcons(context).back),
           onPressed: widget.onBack,
@@ -96,7 +91,7 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children:  [
             Text(
-              'Position the ${_getDocumentTypeName()}',
+              'Position the ${widget.documentType.displayName}',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -141,7 +136,7 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
                 color: Colors.white,
               ),
               child:  Text(
-                'Enter ${_getDocumentTypeName()} details manually',
+                'Enter ${widget.documentType.displayName} details manually',
                 style: TextStyle(color: Colors.black),
               ),
             ),

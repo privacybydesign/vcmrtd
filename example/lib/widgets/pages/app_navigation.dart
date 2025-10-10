@@ -43,7 +43,7 @@ class _AppNavigationState extends State<AppNavigation> {
   dynamic _mrzResult;
   MrtdData? _mrtdData;
   PassportDataResult? _passportDataResult;
-
+  DocumentType? _currentDocumentType;
   StreamSubscription? _sub;
   String? _sessionId;
   Uint8List? _nonce;
@@ -134,6 +134,7 @@ class _AppNavigationState extends State<AppNavigation> {
       },
       onManualEntry: () {
         setState(() {
+          _currentDocumentType = DocumentType.passport;
           _currentStep = NavigationStep.manual;
         });
       },
@@ -148,24 +149,42 @@ class _AppNavigationState extends State<AppNavigation> {
 
   Widget _buildManualEntryScreen() {
     return ManualEntryScreen(
+      documentType: _currentDocumentType ?? DocumentType.passport,
       onContinue: () {
         setState(() {
-          // Go to NFC guidance
           _currentStep = NavigationStep.nfcHelp;
         });
       },
       onBack: () {
         setState(() {
-          // Back to MRZ scanner
-          _currentStep = NavigationStep.passportMrz;
+          _currentStep = _currentDocumentType == DocumentType.driverLicense
+              ? NavigationStep.edlMrz
+              : NavigationStep.passportMrz;
         });
       },
+      // Passport callback
       onDataEntered: (String docNumber, DateTime dob, DateTime expiry) {
         setState(() {
           _manualDocNumber = docNumber;
           _manualDob = dob;
           _manualExpiry = expiry;
         });
+      },
+      // Driver's license callback
+      onMrzEntered: (String mrzString) {
+        try {
+          final result = DriverLicenseParser.parse([mrzString]);
+          setState(() {
+            _mrzResult = result;
+          });
+        } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Invalid MRZ format: $e'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
       },
     );
   }
@@ -249,6 +268,7 @@ class _AppNavigationState extends State<AppNavigation> {
       },
       onManualEntry: () {
         setState(() {
+          _currentDocumentType = DocumentType.driverLicense;
           _currentStep = NavigationStep.manual;
         });
       },
