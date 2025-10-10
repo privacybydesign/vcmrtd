@@ -11,13 +11,12 @@ import 'package:vcmrtdapp/services/deeplink_service.dart';
 import 'package:vcmrtdapp/utils/nonce.dart';
 import 'package:vcmrtdapp/widgets/pages/data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_reading_screen.dart';
+import 'package:vcmrtdapp/widgets/pages/scanner_wrapper.dart';
 
 import 'document_selection_screen.dart';
 import 'driving_licence_screen.dart';
-import 'eDL_scan_screen.dart';
 import 'nfc_guidance_screen.dart';
 import 'manual_entry_screen.dart';
-import 'passport_scan_screen.dart';
 import '../../models/mrtd_data.dart';
 
 enum NavigationStep {
@@ -87,7 +86,7 @@ class _AppNavigationState extends State<AppNavigation> {
       case NavigationStep.documentType:
         return _buildDocumentSelectionScreen();
       case NavigationStep.passportMrz:
-        return _buildPassportMrzScannerScreen();
+        return _buildPassportScannerScreen();
       case NavigationStep.manual:
         return _buildManualEntryScreen();
       case NavigationStep.nfcHelp:
@@ -97,7 +96,7 @@ class _AppNavigationState extends State<AppNavigation> {
       case NavigationStep.results:
         return _buildDataReadingScreen();
       case NavigationStep.edlMrz:
-        return _buildDrivingLicenceScanner();
+        return _buildDrivingLicenceScannerScreen();
     }
   }
 
@@ -118,13 +117,19 @@ class _AppNavigationState extends State<AppNavigation> {
     );
   }
 
-  Widget _buildPassportMrzScannerScreen() {
-    return PassportScanScreen(
-      onMrzScanned: (MRZResult result) {
+  Widget _buildPassportScannerScreen() {
+    return ScannerWrapper(
+      onMrzScanned: (dynamic result) {
         setState(() {
           _mrzResult = result;
           // Go to NFC guidance
           _currentStep = NavigationStep.nfcHelp;
+        });
+      },
+      onCancel: () {
+        setState(() {
+          // Back to choice screen
+          _currentStep = NavigationStep.documentType;
         });
       },
       onManualEntry: () {
@@ -134,7 +139,7 @@ class _AppNavigationState extends State<AppNavigation> {
       },
       onBack: () {
         setState(() {
-          _resetPassportFlow();
+          // Back to MRZ scanner
           _currentStep = NavigationStep.documentType;
         });
       },
@@ -176,7 +181,8 @@ class _AppNavigationState extends State<AppNavigation> {
       },
       onBack: () {
         setState(() {
-          _currentStep = NavigationStep.passportMrz; // Back to scanner/manual entry
+          _currentStep =
+              NavigationStep.passportMrz; // Back to scanner/manual entry
         });
       },
       onTroubleshooting: () {
@@ -195,7 +201,8 @@ class _AppNavigationState extends State<AppNavigation> {
         Navigator.of(context).pop();
         setState(() {
           _resetPassportFlow(clearSession: true);
-          _currentStep = NavigationStep.documentType; // Back to doc type selection
+          _currentStep =
+              NavigationStep.documentType; // Back to doc type selection
         });
       },
     );
@@ -224,14 +231,32 @@ class _AppNavigationState extends State<AppNavigation> {
     );
   }
 
-  Widget _buildDrivingLicenceScanner() {
-    return EdlScanScreen(
-      onBack: () {
+  Widget _buildDrivingLicenceScannerScreen() {
+    return ScannerWrapper(
+      documentType: DocumentType.driverLicense,
+      onMrzScanned: (dynamic result) {
         setState(() {
-          _resetPassportFlow();
+          _mrzResult = result;
+          // Go to NFC guidance
+          _currentStep = NavigationStep.nfcHelp;
+        });
+      },
+      onCancel: () {
+        setState(() {
+          // Back to choice screen
           _currentStep = NavigationStep.documentType;
         });
-      }, onMrzScanned: (MRZResult value) {  }, onManualEntry: () {  },
+      },
+      onManualEntry: () {
+        setState(() {
+          _currentStep = NavigationStep.manual;
+        });
+      },
+      onBack: () {
+        setState(() {
+          _currentStep = NavigationStep.documentType;
+        });
+      },
     );
   }
 

@@ -30,7 +30,6 @@ class MRZScannerState extends State<MRZScanner> {
   bool _isBusy = false;
   List result = [];
 
-  void resetScanning() => _isBusy = false;
   void dataScanned() => _isBusy = true; //to avoid continuous scanning even after data is received
 
   @override
