@@ -15,6 +15,8 @@ class NfcReadingScreen extends StatefulWidget {
   final String? manualDocNumber;
   final DateTime? manualDob;
   final DateTime? manualExpiry;
+  final DocumentType documentType;
+  final Document? document;
   final String? sessionId;
   final Uint8List? nonce;
   final Function(MrtdData, PassportDataResult)? onDataRead;
@@ -26,6 +28,8 @@ class NfcReadingScreen extends StatefulWidget {
       this.manualDocNumber,
       this.manualDob,
       this.manualExpiry,
+      required this.documentType,
+      this.document,
       this.sessionId,
       this.nonce,
       this.onDataRead,
@@ -125,14 +129,14 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
         }
 
         if (_isCancelled) return;
-        final passport = Passport(_nfc);
+        final Document document = widget.documentType == DocumentType.passport ? Passport(_nfc) : DrivingLicence(_nfc);
         setState(() {
           _alertMessage = "Connecting to passport...";
           _nfcState = NFCReadingState.connecting;
         });
 
         if (_isCancelled) return;
-        await _performPassportReading(passport, accessKey, isPace);
+        await _performDocumentReading(document, accessKey, isPace);
       } on Exception catch (e) {
         if (!_isCancelled) {
           _handlePassportError(e);
@@ -147,8 +151,8 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
     }
   }
 
-  Future<void> _performPassportReading(
-    Passport passport,
+  Future<void> _performDocumentReading(
+    Document document,
     AccessKey accessKey,
     bool isPace,
   ) async {
@@ -156,15 +160,15 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
     final mrtdData = MrtdData();
 
     try {
-      mrtdData.cardAccess = await passport.readEfCardAccess();
-    } on PassportError {
+      mrtdData.cardAccess = await document.readEfCardAccess();
+    } on DocumentError {
       // Handle card access read error
     }
 
     _nfc.setIosAlertMessage("Trying to read EF.CardSecurity ...");
     try {
-      mrtdData.cardSecurity = await passport.readEfCardSecurity();
-    } on PassportError {
+      mrtdData.cardSecurity = await document.readEfCardSecurity();
+    } on DocumentError {
       // Handle card security read error
     }
 
@@ -178,17 +182,17 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
     });
 
     if (isPace) {
-      await passport.startSessionPACE(accessKey, mrtdData.cardAccess!);
+      await document.startSessionPACE(accessKey, mrtdData.cardAccess!);
     } else {
-      await passport.startSession(accessKey as DBAKey);
+      await document.startSession(accessKey as DBAKey);
     }
 
-    final passportDataResult = await _readDataGroups(passport, mrtdData);
+    final passportDataResult = await _readDataGroups(document, mrtdData);
     widget.onDataRead?.call(mrtdData, passportDataResult);
   }
 
   Future<PassportDataResult> _readDataGroups(
-      Passport passport, MrtdData mrtdData) async {
+      Document document, MrtdData mrtdData) async {
     setState(() {
       _alertMessage = "Reading passport data...";
       _nfcState = NFCReadingState.reading;
@@ -198,7 +202,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
     try {
       // Read EF.COM first
       _nfc.setIosAlertMessage("Reading EF.COM ...");
-      mrtdData.com = await passport.readEfCOM();
+      mrtdData.com = await document.readEfCOM();
 
       // Configure data groups with their read functions and progress increments
       final dataGroupConfigs = [
@@ -217,7 +221,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
           name: "DG2",
           progressIncrement: 0.1,
           readFunction: (p) async {
-            final dg = await p.readEfDG2();
+            final dg = await (p as Passport).readEfDG2();
             mrtdData.dg2 = dg;
             return dg;
           },
@@ -227,7 +231,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
           name: "DG5",
           progressIncrement: 0.1,
           readFunction: (p) async {
-            final dg = await p.readEfDG5();
+            final dg = await (p as Passport).readEfDG5();
             mrtdData.dg5 = dg;
             return dg;
           },
@@ -237,7 +241,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
           name: "DG6",
           progressIncrement: 0.05,
           readFunction: (p) async {
-            final dg = await p.readEfDG6();
+            final dg = await (p as Passport).readEfDG6();
             mrtdData.dg6 = dg;
             return dg;
           },
@@ -247,7 +251,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
           name: "DG7",
           progressIncrement: 0.05,
           readFunction: (p) async {
-            final dg = await p.readEfDG7();
+            final dg = await (p as Passport).readEfDG7();
             mrtdData.dg7 = dg;
             return dg;
           },
@@ -257,7 +261,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
           name: "DG8",
           progressIncrement: 0.05,
           readFunction: (p) async {
-            final dg = await p.readEfDG8();
+            final dg = await (p as Passport).readEfDG8();
             mrtdData.dg8 = dg;
             return dg;
           },
@@ -267,7 +271,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
           name: "DG9",
           progressIncrement: 0.05,
           readFunction: (p) async {
-            final dg = await p.readEfDG9();
+            final dg = await (p as Passport).readEfDG9();
             mrtdData.dg9 = dg;
             return dg;
           },
@@ -277,7 +281,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
           name: "DG10",
           progressIncrement: 0.05,
           readFunction: (p) async {
-            final dg = await p.readEfDG10();
+            final dg = await (p as Passport).readEfDG10();
             mrtdData.dg10 = dg;
             return dg;
           },
@@ -287,7 +291,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
           name: "DG11",
           progressIncrement: 0.05,
           readFunction: (p) async {
-            final dg = await p.readEfDG11();
+            final dg = await (p as Passport).readEfDG11();
             mrtdData.dg11 = dg;
             return dg;
           },
@@ -297,7 +301,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
           name: "DG12",
           progressIncrement: 0.05,
           readFunction: (p) async {
-            final dg = await p.readEfDG12();
+            final dg = await (p as Passport).readEfDG12();
             mrtdData.dg12 = dg;
             return dg;
           },
@@ -307,7 +311,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
           name: "DG13",
           progressIncrement: 0.05,
           readFunction: (p) async {
-            final dg = await p.readEfDG13();
+            final dg = await (p as Passport).readEfDG13();
             mrtdData.dg13 = dg;
             return dg;
           },
@@ -317,7 +321,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
           name: "DG14",
           progressIncrement: 0.05,
           readFunction: (p) async {
-            final dg = await p.readEfDG14();
+            final dg = await (p as Passport).readEfDG14();
             mrtdData.dg14 = dg;
             return dg;
           },
@@ -327,7 +331,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
           name: "DG16",
           progressIncrement: 0.05,
           readFunction: (p) async {
-            final dg = await p.readEfDG16();
+            final dg = await (p as Passport).readEfDG16();
             mrtdData.dg16 = dg;
             return dg;
           },
@@ -343,7 +347,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
       for (final config in dataGroupConfigs) {
         if (mrtdData.com!.dgTags.contains(config.tag)) {
           try {
-            final dgData = await config.readFunction(passport);
+            final dgData = await config.readFunction(document);
 
             // Convert data group to hex string
             final hexData = dgData.toBytes().hex();
@@ -369,7 +373,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
         });
 
         try {
-          mrtdData.dg15 = await passport.readEfDG15();
+          mrtdData.dg15 = await (document as Passport).readEfDG15();
           if (mrtdData.dg15 != null) {
             final hexData = mrtdData.dg15!.toBytes().hex();
             if (hexData.isNotEmpty) {
@@ -378,7 +382,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
           }
 
           _nfc.setIosAlertMessage("Doing AA ...");
-          mrtdData.aaSig = await passport.activeAuthenticate(widget.nonce!);
+          mrtdData.aaSig = await document.activeAuthenticate(widget.nonce!);
         } catch (e) {
           _log.warning("Failed to read DG15 or perform AA: $e");
         }
@@ -386,7 +390,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
 
       // Read EF.SOD
       _nfc.setIosAlertMessage("Reading EF.SOD ...");
-      mrtdData.sod = await passport.readEfSOD();
+      mrtdData.sod = await document.readEfSOD();
 
       final efSodHex = mrtdData.sod?.toBytes().hex() ?? '';
       _log.info("EF.SOD: $efSodHex");
@@ -418,7 +422,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
     final se = e.toString().toLowerCase();
     String alertMsg = "An error has occurred while reading Passport!";
 
-    if (e is PassportError) {
+    if (e is DocumentError) {
       if (se.contains("security status not satisfied")) {
         alertMsg =
             "Failed to initiate session with passport.\nCheck input data!";

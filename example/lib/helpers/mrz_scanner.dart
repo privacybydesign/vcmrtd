@@ -4,8 +4,8 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import 'package:mrz_parser/mrz_parser.dart';
 import 'camera_viewfinder.dart';
 import 'mrz_helper.dart';
+import 'package:vcmrtd/vcmrtd.dart';
 
-enum DocumentType { passport, driverLicense }
 
 class MRZScanner extends StatefulWidget {
   const MRZScanner({
@@ -51,7 +51,7 @@ class MRZScannerState extends State<MRZScanner> {
   void _parseScannedText(List<String> lines) {
     try {
       final dynamic data;
-      if (widget.documentType == DocumentType.driverLicense) {
+      if (widget.documentType == DocumentType.driverLicence) {
         data = DriverLicenseParser.parse(lines);
       } else {
         data = MRZParser.parse(lines);

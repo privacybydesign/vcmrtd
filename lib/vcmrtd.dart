@@ -26,13 +26,14 @@ export 'src/lds/df1/efdg15.dart';
 export 'src/lds/df1/efdg16.dart';
 export 'src/lds/df1/efsod.dart';
 
+export 'src/types/data.dart';
 export 'src/lds/ef.dart';
 export 'src/lds/efcard_access.dart';
 export 'src/lds/efcard_security.dart';
 export 'src/lds/mrz.dart';
 export 'src/lds/tlv.dart';
 
-export 'src/passport.dart';
+export 'src/document.dart';
 
 export 'src/proto/dba_key.dart';
 export 'src/proto/access_key.dart';

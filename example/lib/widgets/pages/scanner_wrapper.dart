@@ -8,6 +8,7 @@ import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'scan_screen.dart';
 import '../../helpers/mrz_scanner.dart';
 import '../../helpers/document_type_extract.dart';
+import 'package:vcmrtd/vcmrtd.dart';
 
 
 /// Wrapper around ScannerPage to handle navigation callbacks

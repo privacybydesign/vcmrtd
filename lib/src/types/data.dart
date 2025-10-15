@@ -7,6 +7,10 @@ import 'dart:typed_data';
 /// Structure:
 ///   [Tag, Length, Value]
 ///
+enum DocumentType {
+  passport,
+  driverLicence,
+}
 
 class DataRowException implements Exception {
   final String message;

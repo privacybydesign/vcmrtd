@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:vcmrtd/extensions.dart';
+import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtdapp/widgets/displays/passport_image_widget.dart';
 import '../../models/mrtd_data.dart';
 import '../../utils/formatters.dart';
@@ -73,7 +74,7 @@ class MrtdDataListWidget extends StatelessWidget {
       list.add(MrtdDataWidget(
         header: 'EF.DG1',
         collapsedText: '',
-        dataText: formatMRZ(mrtdData!.dg1!.mrz),
+        dataText: formatMRZ((mrtdData!.dg1! as PassportDG1).mrz),
       ));
     }
 

@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 
 import '../../helpers/mrz_scanner.dart';
 import '../../helpers/document_type_extract.dart';
+import 'package:vcmrtd/vcmrtd.dart';
 
 /// Simple manual entry screen for passport data
 class ManualEntryScreen extends StatefulWidget {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:vcmrtd/vcmrtd.dart';
 import 'dart:convert';
 import 'package:vcmrtdapp/models/passport_result.dart';
 import 'package:http/http.dart' as http;
@@ -16,14 +17,14 @@ import '../../services/api_service.dart';
 import 'data_screen_widgets/verify_result.dart';
 
 
-class DataScreen extends StatefulWidget {
+class PassportDataScreen extends StatefulWidget {
   final MrtdData mrtdData;
   final PassportDataResult passportDataResult;
   final VoidCallback onBackPressed;
   final String? sessionId;
   final Uint8List? nonce;
 
-  const DataScreen(
+  const PassportDataScreen(
       {Key? key,
       required this.mrtdData,
       required this.onBackPressed,
@@ -33,10 +34,10 @@ class DataScreen extends StatefulWidget {
       : super(key: key);
 
   @override
-  State<DataScreen> createState() => _DataScreenState();
+  State<PassportDataScreen> createState() => _PassportDataScreenState();
 }
 
-class _DataScreenState extends State<DataScreen> {
+class _PassportDataScreenState extends State<PassportDataScreen> {
   final _apiService = ApiService();
   bool _isReturningToIssue = false;
   bool _isReturningToVerify = false;
@@ -63,7 +64,7 @@ class _DataScreenState extends State<DataScreen> {
               if (widget.sessionId != null)
                 WebBanner(sessionId: widget.sessionId),
               PersonalDataSection(
-                  mrz: widget.mrtdData.dg1!.mrz, dg2: widget.mrtdData.dg2!),
+                  mrz: (widget.mrtdData.dg1! as PassportDG1).mrz, dg2: widget.mrtdData.dg2!),
               const SizedBox(height: 20),
               SecurityContent(mrtdData: widget.mrtdData),
               const SizedBox(height: 20),

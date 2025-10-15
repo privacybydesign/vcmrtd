@@ -9,15 +9,17 @@ import 'package:vcmrtdapp/helpers/mrz_data.dart';
 import 'package:vcmrtdapp/models/passport_result.dart';
 import 'package:vcmrtdapp/services/deeplink_service.dart';
 import 'package:vcmrtdapp/utils/nonce.dart';
-import 'package:vcmrtdapp/widgets/pages/data_screen.dart';
+import 'package:vcmrtdapp/widgets/pages/passport_data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_reading_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/scanner_wrapper.dart';
 
 import 'document_selection_screen.dart';
+import 'driving_licence_data_screen.dart';
 import 'driving_licence_screen.dart';
 import 'nfc_guidance_screen.dart';
 import 'manual_entry_screen.dart';
 import '../../models/mrtd_data.dart';
+import 'package:vcmrtd/vcmrtd.dart';
 
 enum NavigationStep {
   documentType,
@@ -106,12 +108,14 @@ class _AppNavigationState extends State<AppNavigation> {
         setState(() {
           _resetPassportFlow();
           _currentStep = NavigationStep.passportMrz;
+          _currentDocumentType = DocumentType.passport;
         });
       },
       onDrivingLicenceSelected: () {
         setState(() {
           _resetPassportFlow();
           _currentStep = NavigationStep.edlMrz;
+          _currentDocumentType = DocumentType.driverLicence;
         });
       },
     );
@@ -157,7 +161,7 @@ class _AppNavigationState extends State<AppNavigation> {
       },
       onBack: () {
         setState(() {
-          _currentStep = _currentDocumentType == DocumentType.driverLicense
+          _currentStep = _currentDocumentType == DocumentType.driverLicence
               ? NavigationStep.edlMrz
               : NavigationStep.passportMrz;
         });
@@ -211,7 +215,8 @@ class _AppNavigationState extends State<AppNavigation> {
   }
 
   Widget _buildDataReadingScreen() {
-    return DataScreen(
+    if (_currentDocumentType == DocumentType.passport) {
+      return PassportDataScreen(
       mrtdData: _mrtdData!,
       passportDataResult: _passportDataResult!,
       sessionId: _sessionId,
@@ -220,11 +225,26 @@ class _AppNavigationState extends State<AppNavigation> {
         Navigator.of(context).pop();
         setState(() {
           _resetPassportFlow(clearSession: true);
+          _currentDocumentType = DocumentType.passport;
           _currentStep =
               NavigationStep.documentType; // Back to doc type selection
+
         });
       },
     );
+  } else {
+      return DrivingLicenceDataScreen(      mrtdData: _mrtdData!,
+        onBackPressed: () {
+          Navigator.of(context).pop();
+          setState(() {
+            _currentDocumentType = DocumentType.driverLicence;
+            _currentStep =
+                NavigationStep.documentType;
+          });
+        },
+      );
+
+    }
   }
 
   Widget _buildNfcReadingScreen() {
@@ -246,13 +266,13 @@ class _AppNavigationState extends State<AppNavigation> {
           _passportDataResult = passportDataResult;
           _currentStep = NavigationStep.results; // Show results
         });
-      },
+      }, documentType: _currentDocumentType ?? DocumentType.passport,
     );
   }
 
   Widget _buildDrivingLicenceScannerScreen() {
     return ScannerWrapper(
-      documentType: DocumentType.driverLicense,
+      documentType: DocumentType.driverLicence,
       onMrzScanned: (dynamic result) {
         setState(() {
           _mrzResult = result;
@@ -268,7 +288,7 @@ class _AppNavigationState extends State<AppNavigation> {
       },
       onManualEntry: () {
         setState(() {
-          _currentDocumentType = DocumentType.driverLicense;
+          _currentDocumentType = DocumentType.driverLicence;
           _currentStep = NavigationStep.manual;
         });
       },
