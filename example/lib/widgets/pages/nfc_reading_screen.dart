@@ -4,6 +4,7 @@ import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtd/extensions.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
+import 'package:vcmrtdapp/helpers/document_type_extract.dart';
 import 'package:vcmrtdapp/helpers/mrz_data.dart';
 import 'package:vcmrtdapp/models/data_group_config.dart';
 import 'package:vcmrtdapp/models/mrtd_data.dart';
@@ -95,12 +96,10 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
       docNumber = widget.manualDocNumber!;
       birthDate = widget.manualDob!;
       expiryDate = widget.manualExpiry!;
-      // Default to non-PACE mode for manual entry
-      paceMode = false;
     } else {
       setState(() {
         _alertMessage =
-            "No passport data available. Please go back and enter your passport information.";
+            "No ${widget.documentType.displayName} data available. Please go back and enter your passport information.";
         _nfcState = NFCReadingState.error;
       });
       return;
@@ -118,7 +117,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
   void _readMRTD({required AccessKey accessKey, bool isPace = false}) async {
     try {
       setState(() {
-        _alertMessage = "Hold your phone near the passport photo page";
+        _alertMessage = "Hold your phone near the ${widget.documentType.displayName} photo page";
         _nfcState = NFCReadingState.waiting;
       });
 
@@ -127,7 +126,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
         if (!demo) {
           if (_isCancelled) return;
           await _nfc.connect(
-            iosAlertMessage: "Hold your phone near Biometric Passport",
+            iosAlertMessage: "Hold your phone near Biometric ${widget.documentType.displayName}",
           );
         }
 
@@ -136,7 +135,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
             ? Passport(_nfc)
             : DrivingLicence(_nfc);
         setState(() {
-          _alertMessage = "Connecting to passport...";
+          _alertMessage = "Connecting to ${widget.documentType.displayNameLowerCase}...";
           _nfcState = NFCReadingState.connecting;
         });
 
@@ -182,7 +181,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
     mrtdData.isDBA = accessKey.PACE_REF_KEY_TAG == 0x01;
 
     setState(() {
-      _alertMessage = "Authenticating with passport...";
+      _alertMessage = "Authenticating with ${widget.documentType.displayNameLowerCase}...";
       _nfcState = NFCReadingState.authenticating;
     });
 
@@ -199,7 +198,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
   Future<DataResult> _readDataGroups(
       Document document, MrtdData mrtdData) async {
     setState(() {
-      _alertMessage = "Reading passport data...";
+      _alertMessage = "Reading ${widget.documentType.displayNameLowerCase} data...";
       _nfcState = NFCReadingState.reading;
       _readingProgress = 0.1;
     });
@@ -404,7 +403,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
       _log.info("EF.SOD: $efSodHex");
 
       setState(() {
-        _alertMessage = "Passport reading completed successfully!";
+        _alertMessage = "${widget.documentType.displayName} reading completed successfully!";
         _nfcState = NFCReadingState.success;
         _readingProgress = 1.0;
       });
@@ -416,7 +415,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
           sessionId: widget.sessionId,
           aaSignature: mrtdData.aaSig);
     } catch (e) {
-      _log.severe("Error reading passport data: $e");
+      _log.severe("Error reading ${widget.documentType.displayNameLowerCase} data: $e");
       setState(() {
         _alertMessage = "Failed to read passport data";
         _nfcState = NFCReadingState.error;
@@ -427,12 +426,12 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
 
   void _handlePassportError(Exception e) {
     final se = e.toString().toLowerCase();
-    String alertMsg = "An error has occurred while reading Passport!";
+    String alertMsg = "An error has occurred while reading ${widget.documentType.displayNameLowerCase}!";
 
     if (e is DocumentError) {
       if (se.contains("security status not satisfied")) {
         alertMsg =
-            "Failed to initiate session with passport.\nCheck input data!";
+            "Failed to initiate session with ${widget.documentType.displayNameLowerCase}.\nCheck input data!";
       }
       _log.error("PassportError: ${e.message}");
     } else {
@@ -441,7 +440,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
     }
 
     if (se.contains('timeout')) {
-      alertMsg = "Timeout while waiting for Passport tag";
+      alertMsg = "Timeout while waiting for ${widget.documentType.displayNameLowerCase} tag";
     } else if (se.contains("tag was lost")) {
       alertMsg = "Tag was lost. Please try again!";
     } else if (se.contains("invalidated by user")) {

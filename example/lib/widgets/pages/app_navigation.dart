@@ -179,7 +179,7 @@ class _AppNavigationState extends State<AppNavigation> {
         try {
           final result = DriverLicenseParser.parse([mrzString]);
           setState(() {
-            _mrzResult = result;
+            _manualDocNumber = result.documentNumber;
           });
         } catch (e) {
           ScaffoldMessenger.of(context).showSnackBar(
