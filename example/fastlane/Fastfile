@@ -1,0 +1,183 @@
+before_all do
+  skip_docs()
+  # Ensure that build and profiles directories are present in fastlane directory.
+  sh("mkdir -p ./build/ ./profiles/")
+end
+
+lane :lint do
+  Dir.chdir("..") do
+    # TODO: put "--set-exit-if-changed" flag back in after formatting
+    sh("dart", "format", "--line-length", "120", "lib/", "test/")
+    sh("flutter", "analyze", "--no-fatal-infos")
+  end
+end
+
+lane :unit_test do
+  Dir.chdir("..") do
+    sh("flutter", "test")
+  end
+end
+
+lane :android_build do |options|
+  android_build_appbundle(
+    keystore_path: options[:keystore_path],
+    keystore_password: options[:keystore_password],
+    key_alias: options[:key_alias],
+    key_password: options[:key_password]
+  )
+end
+
+lane :android_build_apk do |options|
+  android_build_app(
+    build_type: "apk",
+    keystore_path: options[:keystore_path],
+    keystore_password: options[:keystore_password],
+    key_alias: options[:key_alias],
+    key_password: options[:key_password]
+  )
+  Dir.chdir("..") do
+    sh("cp ./build/app/outputs/apk/release/*.apk ./fastlane/build/")
+  end
+end
+
+lane :android_build_appbundle do |options|
+  android_build_app(
+    build_type: "appbundle",
+    keystore_path: options[:keystore_path],
+    keystore_password: options[:keystore_password],
+    key_alias: options[:key_alias],
+    key_password: options[:key_password]
+  )
+  Dir.chdir("..") do
+    sh("cp ./build/app/outputs/bundle/release/*.aab ./fastlane/build/")
+  end
+end
+
+private_lane :android_build_app do |options|
+  commit = last_git_commit()
+
+  # In Fastlane it's not possible to mask secrets in the command, while showing the shell output of the command.
+  # Therefore, we use environment variables to hide parameter values.
+  puts "In the following command, parameter values are hidden using environment variables."
+  cmd = "flutter build $FASTLANE_BUILD_TYPE --release"
+  ENV["FASTLANE_BUILD_TYPE"] = options[:build_type]
+  if options[:keystore_path]
+    ENV["FASTLANE_KEYSTORE_PATH"] = File.absolute_path(options[:keystore_path])
+    ENV["FASTLANE_KEYSTORE_PASSWORD"] = options[:keystore_password]
+    ENV["FASTLANE_KEY_ALIAS"] = options[:key_alias]
+    ENV["FASTLANE_KEY_PASSWORD"] = options[:key_password]
+    cmd += " -PkeyStoreFile=$FASTLANE_KEYSTORE_PATH -PkeyStorePassword=$FASTLANE_KEYSTORE_PASSWORD"
+    cmd += " -PkeyAlias=$FASTLANE_KEY_ALIAS -PkeyPassword=$FASTLANE_KEY_PASSWORD"
+  end
+
+  Dir.chdir("..") do
+    sh(cmd)
+  end
+end
+
+lane :ios_build do |options|
+  ios_build_app(
+    certificate_path: options[:certificate_path],
+    certificate_password: options[:certificate_password],
+    provisioning_profile_path: options[:provisioning_profile_path],
+    code_signing_identity: options[:code_signing_identity]
+  )
+end
+
+lane :ios_build_app do |options|
+  display_name = "Yivi Passport"
+  app_identifier = "foundation.privacybydesign.vcmrtd"
+  export_method = "app-store"
+
+  if options[:code_signing_identity]&.include?("Developer")
+    export_method = "development"
+  end
+
+  update_app_identifier(
+    xcodeproj: "ios/Runner.xcodeproj",
+    plist_path: "Runner/Info.plist",
+    app_identifier: app_identifier
+  )
+  update_info_plist(
+    xcodeproj: "ios/Runner.xcodeproj",
+    plist_path: "Runner/Info.plist",
+    display_name: display_name
+  )
+  commit = last_git_commit()
+
+  set_provisioning_profile(
+    provisioning_profile_path: options[:provisioning_profile_path],
+    certificate_path: options[:certificate_path],
+    certificate_password: options[:certificate_password],
+    code_signing_identity: options[:code_signing_identity]
+  )
+
+  # Set export method in plist file.
+  set_info_plist_value(
+    path: "ios/Runner/Flutter-Build-IPA.plist",
+    key: "method",
+    value: export_method
+  )
+
+  Dir.chdir("..") do
+    sh("flutter", "build", "ipa", "--release", "--export-options-plist", "./ios/Runner/Flutter-Build-IPA.plist")
+    sh("cp ./build/ios/ipa/*.ipa ./fastlane/build/app-beta-ios-#{export_method}.ipa")
+  end
+end
+
+private_lane :set_provisioning_profile do |options|
+  # When a certificate path is given, we ensure it is properly installed.
+  if options[:certificate_path]
+    keychain_path = File.absolute_path("profiles/fastlane.keychain")
+    certificate_password = options[:certificate_password] || ""
+    create_keychain(
+      path: keychain_path,
+      password: certificate_password,
+      unlock: true,
+      timeout: 600
+    )
+    import_certificate(
+      certificate_path: File.absolute_path(options[:certificate_path]),
+      certificate_password: certificate_password,
+      keychain_path: keychain_path,
+      keychain_password: certificate_password
+    )
+  end
+
+  # When a provisioning profile is given, we ensure it is installed and selected in the project.
+  # Otherwise, we use the profile that is currently selected in XCode.
+  if options[:provisioning_profile_path]
+    provisioning_profile_path = File.absolute_path(options[:provisioning_profile_path])
+
+    # Get uuid of provisioning profile
+    uuid_regex = /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/
+    uuid = ""
+    File.open(provisioning_profile_path, "r:BINARY") do |file|
+      file.each_line do |line|
+        encoded_line = line.encode("UTF-8", invalid: :replace, undef: :replace)
+        match_data = encoded_line.match(uuid_regex)
+        if match_data
+          uuid = match_data[0]
+          break
+        end
+      end
+    end
+
+    install_provisioning_profile(
+      path: provisioning_profile_path
+    )
+    update_project_provisioning(
+      xcodeproj: "ios/Runner.xcodeproj",
+      profile: provisioning_profile_path,
+      target_filter: "^Runner$",
+      code_signing_identity: options[:code_signing_identity] || "iPhone Distribution"
+    )
+    # Set uuid in plist file for flutter
+    set_info_plist_value(
+      path: "ios/Runner/Flutter-Build-IPA.plist",
+      key: "provisioningProfiles",
+      subkey: "foundation.privacybydesign.vcmrtd",
+      value: uuid
+    )
+  end
+end

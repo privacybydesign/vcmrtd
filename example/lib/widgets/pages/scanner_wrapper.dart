@@ -94,7 +94,7 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
-          children:  [
+          children: [
             Text(
               'Position the ${_getDocumentTypeName()}',
               style: TextStyle(
@@ -140,13 +140,12 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
               cupertino: (_, __) => CupertinoElevatedButtonData(
                 color: Colors.white,
               ),
-              child:  Text(
+              child: Text(
                 'Enter ${_getDocumentTypeName()} details manually',
                 style: TextStyle(color: Colors.black),
               ),
             ),
             const SizedBox(height: 12),
-
           ],
         ),
       ),

@@ -50,13 +50,6 @@ class PersonalDataSection extends StatelessWidget {
   }
 
   Widget _buildPersonalContent() {
-    if (mrz == null && dg2 == null) {
-      return const Center(
-        child: Text('No personal data available',
-            style: TextStyle(color: Colors.grey)),
-      );
-    }
-
     return Column(
       children: [
         // Profile picture and basic info
@@ -76,11 +69,6 @@ class PersonalDataSection extends StatelessWidget {
   }
 
   Widget _buildBasicInfo() {
-    if (mrz == null) {
-      return const Text('No MRZ data available',
-          style: TextStyle(color: Colors.grey));
-    }
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -108,8 +96,6 @@ class PersonalDataSection extends StatelessWidget {
   }
 
   Widget _buildDetailedInfo() {
-    if (mrz == null) return const SizedBox.shrink();
-
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(

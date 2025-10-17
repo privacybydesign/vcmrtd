@@ -73,7 +73,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                           width: 60,
                           height: 60,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF6b6868).withOpacity(0.1),
+                            color: const Color(0xFF6b6868).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(30),
                           ),
                           child: const Icon(
@@ -194,9 +194,9 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                     padding: const EdgeInsets.all(12),
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
+                      color: Colors.red.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.red.withOpacity(0.3)),
+                      border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       children: [
@@ -294,7 +294,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF6b6868).withOpacity(0.1),
+                    color: const Color(0xFF6b6868).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
@@ -324,15 +324,15 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
 
   Future<void> _selectDate(BuildContext context, {required bool isDateOfBirth}) async {
     final DateTime now = DateTime.now();
-    final DateTime initialDate = isDateOfBirth 
+    final DateTime initialDate = isDateOfBirth
         ? DateTime(now.year - 30, now.month, now.day)
         : DateTime(now.year + 10, now.month, now.day);
-    
-    final DateTime firstDate = isDateOfBirth 
+
+    final DateTime firstDate = isDateOfBirth
         ? DateTime(1900)
         : now;
-    
-    final DateTime lastDate = isDateOfBirth 
+
+    final DateTime lastDate = isDateOfBirth
         ? now
         : DateTime(2050);
 
