@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
-import 'package:vcmrtd/vcmrtd.dart';
-import 'package:vcmrtd/extensions.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
 import 'package:vcmrtdapp/models/passport_result.dart';
-import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 
-import '../../models/mrtd_data.dart';
-import '../displays/passport_image_widget.dart';
+import '../../widgets/pages/data_screen_widgets/personal_data_section.dart';
+import '../../widgets/pages/data_screen_widgets/security_content.dart';
+import '../../widgets/pages/data_screen_widgets/return_to_web.dart';
+import '../../widgets/pages/data_screen_widgets/web_banner.dart';
 
-/// Enhanced data screen with personal and security sections
-/// Supports return-to-web functionality for universal link flows
+import '../../models/mrtd_data.dart';
+import '../../services/api_service.dart';
+import 'data_screen_widgets/verify_result.dart';
+
+
 class DataScreen extends StatefulWidget {
   final MrtdData mrtdData;
   final PassportDataResult passportDataResult;
@@ -35,8 +37,12 @@ class DataScreen extends StatefulWidget {
 }
 
 class _DataScreenState extends State<DataScreen> {
-  bool _showValidationDetails = false;
-  bool _isReturningToWeb = false;
+  final _apiService = ApiService();
+  bool _isReturningToIssue = false;
+  bool _isReturningToVerify = false;
+  bool? _isExpired;
+  bool? _authenticContent;
+  bool? _authenticChip;
 
   @override
   Widget build(BuildContext context) {
@@ -54,725 +60,74 @@ class _DataScreenState extends State<DataScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Return to Web banner if opened via universal link
-              if (widget.sessionId != null) _buildReturnToWebBanner(),
-              _buildPersonalDataSection(),
+              if (widget.sessionId != null)
+                WebBanner(sessionId: widget.sessionId),
+              PersonalDataSection(
+                  mrz: widget.mrtdData.dg1!.mrz, dg2: widget.mrtdData.dg2!),
               const SizedBox(height: 20),
-              _buildSecurityDataSection(),
+              SecurityContent(mrtdData: widget.mrtdData),
+              const SizedBox(height: 20),
               if (widget.sessionId != null) ...[
                 const SizedBox(height: 20),
-                _buildReturnToWebSection(),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPersonalDataSection() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.person,
-                    color: Theme.of(context).primaryColor, size: 28),
-                const SizedBox(width: 8),
-                Text(
-                  'Personal Information',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).primaryColor,
-                      ),
-                ),
-              ],
-            ),
-            const Divider(height: 30),
-            _buildPersonalContent(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPersonalContent() {
-    if (widget.mrtdData.dg1?.mrz == null && widget.mrtdData.dg2 == null) {
-      return const Center(
-        child: Text('No personal data available',
-            style: TextStyle(color: Colors.grey)),
-      );
-    }
-
-    return Column(
-      children: [
-        // Profile picture and basic info
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildProfilePicture(),
-            const SizedBox(width: 20),
-            Expanded(child: _buildBasicInfo()),
-          ],
-        ),
-        const SizedBox(height: 20),
-        _buildDetailedInfo(),
-      ],
-    );
-  }
-
-  Widget _buildProfilePicture() {
-    if (widget.mrtdData.dg2?.imageData == null) {
-      return Container(
-        width: 120,
-        height: 150,
-        decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey[300]!),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.person, size: 50, color: Colors.grey[400]),
-            const SizedBox(height: 8),
-            Text(
-              'No Photo',
-              style: TextStyle(color: Colors.grey[600], fontSize: 12),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Container(
-      width: 120,
-      height: 160,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[300]!),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: _buildPassportImage(),
-      ),
-    );
-  }
-
-  Widget _buildPassportImage() {
-    if (widget.mrtdData.dg2!.imageType == ImageType.jpeg) {
-      return Image.memory(
-        widget.mrtdData.dg2!.imageData!,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => Container(
-          color: Colors.grey[200],
-          child: const Center(child: Icon(Icons.error, color: Colors.red)),
-        ),
-      );
-    } else {
-      // For JPEG2000, use the existing PassportImageWidget logic
-      return Container(
-        color: Colors.grey[200],
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              PassportImageWidget(
-                header: 'test',
-                imageData: widget.mrtdData.dg2!.imageData!,
-                imageType: widget.mrtdData.dg2!.imageType,
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-  }
-
-  Widget _buildBasicInfo() {
-    final mrz = widget.mrtdData.dg1?.mrz;
-    if (mrz == null) {
-      return const Text('No MRZ data available',
-          style: TextStyle(color: Colors.grey));
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildInfoRow('Full Name', '${mrz.firstName} ${mrz.lastName}',
-            Icons.person_outline),
-        const SizedBox(height: 12),
-        _buildInfoRow('Nationality', mrz.nationality, Icons.flag_outlined),
-        const SizedBox(height: 12),
-        _buildInfoRow('Document', '${mrz.documentCode} ${mrz.documentNumber}',
-            Icons.document_scanner_outlined),
-        const SizedBox(height: 12),
-        _buildInfoRow('Gender', mrz.gender, Icons.person_pin_outlined),
-      ],
-    );
-  }
-
-  Widget _buildDetailedInfo() {
-    final mrz = widget.mrtdData.dg1?.mrz;
-    if (mrz == null) return const SizedBox.shrink();
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: _buildInfoRow(
-                  'Date of Birth',
-                  DateFormat.yMMMd().format(mrz.dateOfBirth),
-                  Icons.cake_outlined,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildInfoRow(
-                  'Expiry Date',
-                  DateFormat.yMMMd().format(mrz.dateOfExpiry),
-                  Icons.event_outlined,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildInfoRow(
-                    'Country', mrz.country, Icons.public_outlined),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildInfoRow(
-                    'Version', mrz.version.name, Icons.info_outline),
-              ),
-            ],
-          ),
-          if (mrz.optionalData.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            _buildInfoRow(
-                'Optional Data', mrz.optionalData, Icons.data_object_outlined),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSecurityDataSection() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.security,
-                    color: Theme.of(context).colorScheme.secondary, size: 28),
-                const SizedBox(width: 8),
-                Text(
-                  'Security Information',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.secondary,
-                      ),
-                ),
-              ],
-            ),
-            const Divider(height: 30),
-            _buildSecurityContent(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSecurityContent() {
-    return Column(
-      children: [
-        _buildAccessProtocolInfo(),
-        const SizedBox(height: 20),
-        _buildSignatureValidation(),
-        const SizedBox(height: 20),
-        _buildSecurityDetails(),
-      ],
-    );
-  }
-
-  Widget _buildAccessProtocolInfo() {
-    if (widget.mrtdData.isPACE == null || widget.mrtdData.isDBA == null) {
-      return const Text('No access protocol information available',
-          style: TextStyle(color: Colors.grey));
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.blue[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.blue[200]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Access Protocol',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.blue[800],
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(
-                widget.mrtdData.isPACE! ? Icons.check_circle : Icons.cancel,
-                color: widget.mrtdData.isPACE! ? Colors.green : Colors.grey,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                  'PACE: ${widget.mrtdData.isPACE! ? 'Enabled' : 'Disabled'}'),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Icon(
-                widget.mrtdData.isDBA! ? Icons.check_circle : Icons.cancel,
-                color: widget.mrtdData.isDBA! ? Colors.green : Colors.grey,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text('DBA: ${widget.mrtdData.isDBA! ? 'Enabled' : 'Disabled'}'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSignatureValidation() {
-    final hasSignature = widget.mrtdData.aaSig != null;
-    final hasSOD = widget.mrtdData.sod != null;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: hasSignature ? Colors.green[50] : Colors.orange[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: hasSignature ? Colors.green[200]! : Colors.orange[200]!,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                hasSignature ? Icons.verified : Icons.warning,
-                color: hasSignature ? Colors.green[700] : Colors.orange[700],
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Signature Validation',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: hasSignature ? Colors.green[800] : Colors.orange[800],
-                  fontSize: 16,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildValidationItem(
-            'Active Authentication',
-            hasSignature,
-            hasSignature ? 'Signature verified' : 'No signature available',
-          ),
-          const SizedBox(height: 8),
-          _buildValidationItem(
-            'Document Security Object',
-            hasSOD,
-            hasSOD ? 'SOD present and valid' : 'No SOD available',
-          ),
-          const SizedBox(height: 12),
-          TextButton.icon(
-            onPressed: () {
-              setState(() {
-                _showValidationDetails = !_showValidationDetails;
-              });
-            },
-            icon: Icon(
-                _showValidationDetails ? Icons.expand_less : Icons.expand_more),
-            label:
-                Text(_showValidationDetails ? 'Hide Details' : 'Show Details'),
-          ),
-          if (_showValidationDetails) _buildValidationDetails(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildValidationItem(String title, bool isValid, String description) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          isValid ? Icons.check_circle_outline : Icons.error_outline,
-          color: isValid ? Colors.green : Colors.red,
-          size: 18,
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
-              Text(description,
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildValidationDetails() {
-    return Container(
-      margin: const EdgeInsets.only(top: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (widget.mrtdData.aaSig != null) ...[
-            Text('Active Authentication Signature:',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '${widget.mrtdData.aaSig!.hex().substring(0, 32)}...',
-                      style: const TextStyle(
-                          fontFamily: 'monospace', fontSize: 12),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.copy, size: 16),
-                    onPressed: () {
-                      Clipboard.setData(
-                          ClipboardData(text: widget.mrtdData.aaSig!.hex()));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Signature copied to clipboard')),
-                      );
-                    },
-                  ),
+                if (_isExpired == null &&
+                    _authenticChip == null &&
+                    _authenticContent == null)
+                  ReturnToWebSection(
+                    isReturningToIssue: _isReturningToIssue,
+                    isReturningToVerify: _isReturningToVerify,
+                    onIssuePressed: _returnToIssue,
+                    onVerifyPressed: _returnToVerify,
+                  )
+                else ...[
+                  const SizedBox(height: 20),
+                  VerifyResultSection(
+                      isExpired: _isExpired!,
+                      authenticChip: _authenticChip!,
+                      authenticContent: _authenticContent!),
                 ],
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
-          if (widget.mrtdData.sod != null) ...[
-            Text('Document Security Object (SOD):',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            Text('Hash algorithm validation: Passed',
-                style: TextStyle(color: Colors.green[700])),
-            Text('Data integrity: Verified',
-                style: TextStyle(color: Colors.green[700])),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSecurityDetails() {
-    final availableElements = <String>[];
-
-    if (widget.mrtdData.cardAccess != null) {
-      availableElements.add('EF.CardAccess');
-    }
-    if (widget.mrtdData.cardSecurity != null) {
-      availableElements.add('EF.CardSecurity');
-    }
-    if (widget.mrtdData.com != null) availableElements.add('EF.COM');
-    if (widget.mrtdData.sod != null) availableElements.add('EF.SOD');
-
-    // Count available data groups
-    int dgCount = 0;
-    final dgs = [
-      widget.mrtdData.dg1,
-      widget.mrtdData.dg2,
-      widget.mrtdData.dg3,
-      widget.mrtdData.dg4,
-      widget.mrtdData.dg5,
-      widget.mrtdData.dg6,
-      widget.mrtdData.dg7,
-      widget.mrtdData.dg8,
-      widget.mrtdData.dg9,
-      widget.mrtdData.dg10,
-      widget.mrtdData.dg11,
-      widget.mrtdData.dg12,
-      widget.mrtdData.dg13,
-      widget.mrtdData.dg14,
-      widget.mrtdData.dg15,
-      widget.mrtdData.dg16,
-    ];
-    for (var dg in dgs) {
-      if (dg != null) dgCount++;
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Available Security Elements',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[800],
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Icon(Icons.folder_open, color: Colors.blue[600], size: 20),
-              const SizedBox(width: 8),
-              Text('Security Files: ${availableElements.length}'),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(Icons.dataset, color: Colors.green[600], size: 20),
-              const SizedBox(width: 8),
-              Text('Data Groups: $dgCount/16'),
-            ],
-          ),
-          if (availableElements.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: availableElements
-                  .map((element) => Chip(
-                        label:
-                            Text(element, style: const TextStyle(fontSize: 12)),
-                        backgroundColor: Colors.blue[100],
-                        labelStyle: TextStyle(color: Colors.blue[800]),
-                      ))
-                  .toList(),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value, IconData icon) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 16, color: Colors.grey[600]),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Build return-to-web banner at top of screen
-  Widget _buildReturnToWebBanner() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.blue[50]!, Colors.blue[100]!],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blue[200]!),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.web, color: Colors.blue[700], size: 24),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Web Authentication Session',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue[800],
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Session IID: ${widget.sessionId}',
-                  style: TextStyle(
-                    color: Colors.blue[600],
-                    fontSize: 12,
-                    fontFamily: 'monospace',
-                  ),
-                ),
               ],
-            ),
+            ],
           ),
-          Icon(Icons.check_circle, color: Colors.green[600], size: 20),
-        ],
+        ),
       ),
     );
   }
 
-  /// Build return-to-web action section
-  Widget _buildReturnToWebSection() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.arrow_back,
-                    color: Theme.of(context).primaryColor, size: 28),
-                const SizedBox(width: 8),
-                Text(
-                  'Return to Passport Issuer',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).primaryColor,
-                      ),
-                ),
-              ],
-            ),
-            const Divider(height: 30),
-            Text(
-              'Your passport has been successfully validated. Click below to return to the web application with your authentication results.',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[700],
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: _isReturningToWeb ? null : _returnToWeb,
-              icon: _isReturningToWeb
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.open_in_browser),
-              label: Text(_isReturningToWeb
-                  ? 'Returning to Web...'
-                  : 'Return to Web Application'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Colors.green[600],
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Note: This will close the mobile app and return you to your web browser.',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-                fontStyle: FontStyle.italic,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
+  Future<void> _returnToVerify() async {
+    if (widget.sessionId == null) return;
+    setState(() {
+      _isReturningToVerify = true;
+    });
+
+    try {
+      final payload = widget.passportDataResult.toJson();
+      final String jsonPayload = json.encode(payload);
+
+      final response = await http.post(
+        Uri.parse(
+            'https://passport-issuer.staging.yivi.app/api/verify-passport'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonPayload,
+      );
+      final Map<String, dynamic> responseBody = jsonDecode(response.body);
+
+      setState(() {
+        _isExpired = responseBody['is_expired'] as bool?;
+        _authenticChip = responseBody['authentic_chip'] as bool?;
+        _authenticContent = responseBody['authentic_content'] as bool?;
+        _isReturningToVerify = false;
+      });
+    } catch (e) {
+      _showReturnErrorDialog(e.toString());
+    }
   }
 
   /// Handle return to web functionality
-  Future<void> _returnToWeb() async {
+  Future<void> _returnToIssue() async {
     if (widget.sessionId == null) return;
 
     setState(() {
-      _isReturningToWeb = true;
+      _isReturningToIssue = true;
     });
 
     try {
@@ -780,18 +135,18 @@ class _DataScreenState extends State<DataScreen> {
       final payload = widget.passportDataResult.toJson();
 
       // Get the signed IRMA JWt from the passport issuer
-      final responseBody = await _getIrmaSessionJwt(payload);
+      final responseBody = await _apiService.getIrmaSessionJwt(payload);
       final irmaServerUrlParam = responseBody["irma_server_url"];
       final jwtUrlParam = responseBody["jwt"];
 
       // Start the session
       final sessionResponseBody =
-          await _startIrmaSession(jwtUrlParam, irmaServerUrlParam);
+          await _apiService.startIrmaSession(jwtUrlParam, irmaServerUrlParam);
       final sessionPtr = sessionResponseBody["sessionPtr"];
       final urlEncodedSessionPtr = Uri.encodeFull(jsonEncode(sessionPtr));
 
       // Open the session using a universal link in the Yivi app.
-      final returnUrl = _generateUniversalLink(urlEncodedSessionPtr);
+      final returnUrl = _apiService.generateUniversalLink(urlEncodedSessionPtr);
 
       // Open the universal link.
       final uri = Uri.parse(returnUrl);
@@ -808,45 +163,10 @@ class _DataScreenState extends State<DataScreen> {
     } finally {
       if (mounted) {
         setState(() {
-          _isReturningToWeb = false;
+          _isReturningToIssue = false;
         });
       }
     }
-  }
-
-  Future<dynamic> _getIrmaSessionJwt(Map<String, dynamic> payload) async {
-    final String jsonPayload = json.encode(payload);
-    final storeResp = await http.post(
-      Uri.parse(
-          'https://passport-issuer.staging.yivi.app/api/verify-and-issue'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonPayload,
-    );
-    if (storeResp.statusCode != 200) {
-      throw Exception(
-          'Store failed: ${storeResp.statusCode} ${storeResp.body}');
-    }
-
-    return json.decode(storeResp.body);
-  }
-
-  Future<dynamic> _startIrmaSession(String jwt, String irmaServerUrl) async {
-    // Start the IRMA session
-    final response = await http.post(
-      Uri.parse('$irmaServerUrl/session'),
-      body: jwt,
-    );
-    if (response.statusCode != 200) {
-      throw Exception('Store failed: ${response.statusCode} ${response.body}');
-    }
-
-    return json.decode(response.body);
-  }
-
-  /// Generate return URL based on session ID and payload
-  String _generateUniversalLink(String urlEncodedSessionPtr) {
-    // Generic callback URL
-    return 'https://open.staging.yivi.app/-/session#$urlEncodedSessionPtr';
   }
 
   /// Show success dialog after successful return
@@ -915,7 +235,7 @@ class _DataScreenState extends State<DataScreen> {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              _returnToWeb(); // Retry
+              _returnToIssue(); // Retry
             },
             child: const Text('Retry'),
           ),

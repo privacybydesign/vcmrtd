@@ -5,16 +5,20 @@ import 'package:mrz_parser/mrz_parser.dart';
 import 'camera_viewfinder.dart';
 import 'mrz_helper.dart';
 
+enum DocumentType { passport, driverLicense }
+
 class MRZScanner extends StatefulWidget {
   const MRZScanner({
     Key? controller,
     required this.onSuccess,
     this.initialDirection = CameraLensDirection.back,
     this.showOverlay = true,
+    this.documentType = DocumentType.passport,
   }) : super(key: controller);
-  final Function(MRZResult mrzResult, List<String> lines) onSuccess;
+  final Function(dynamic mrzResult, List<String> lines) onSuccess;
   final CameraLensDirection initialDirection;
   final bool showOverlay;
+  final DocumentType documentType;
   @override
   // ignore: library_private_types_in_public_api
   MRZScannerState createState() => MRZScannerState();
@@ -26,7 +30,6 @@ class MRZScannerState extends State<MRZScanner> {
   bool _isBusy = false;
   List result = [];
 
-  void resetScanning() => _isBusy = false;
   void dataScanned() => _isBusy = true; //to avoid continuous scanning even after data is received
 
   @override
@@ -47,7 +50,12 @@ class MRZScannerState extends State<MRZScanner> {
 
   void _parseScannedText(List<String> lines) {
     try {
-      final data = MRZParser.parse(lines);
+      final dynamic data;
+      if (widget.documentType == DocumentType.driverLicense) {
+        data = DriverLicenseParser.parse(lines);
+      } else {
+        data = MRZParser.parse(lines);
+      }
       _isBusy = true;
 
       widget.onSuccess(data, lines);
