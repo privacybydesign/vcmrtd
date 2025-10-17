@@ -16,7 +16,6 @@ import '../../models/mrtd_data.dart';
 import '../../services/api_service.dart';
 import 'data_screen_widgets/verify_result.dart';
 
-
 class PassportDataScreen extends StatefulWidget {
   final MrtdData mrtdData;
   final PassportDataResult passportDataResult;
@@ -64,7 +63,7 @@ class _PassportDataScreenState extends State<PassportDataScreen> {
               if (widget.sessionId != null)
                 WebBanner(sessionId: widget.sessionId),
               PersonalDataSection(
-                  mrz: (widget.mrtdData.dg1! as PassportDG1).mrz, dg2: widget.mrtdData.dg2!),
+                  mrz: widget.mrtdData.dg1!.passportMrz, dg2: widget.mrtdData.dg2!),
               const SizedBox(height: 20),
               SecurityContent(mrtdData: widget.mrtdData),
               const SizedBox(height: 20),
