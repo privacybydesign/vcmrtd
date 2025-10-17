@@ -44,7 +44,7 @@ class _AppNavigationState extends State<AppNavigation> {
   NavigationStep _currentStep = NavigationStep.documentType;
   dynamic _mrzResult;
   MrtdData? _mrtdData;
-  PassportDataResult? _passportDataResult;
+  DataResult? _documentDataResult;
   DocumentType? _currentDocumentType;
   StreamSubscription? _sub;
   String? _sessionId;
@@ -217,33 +217,31 @@ class _AppNavigationState extends State<AppNavigation> {
   Widget _buildDataReadingScreen() {
     if (_currentDocumentType == DocumentType.passport) {
       return PassportDataScreen(
-      mrtdData: _mrtdData!,
-      passportDataResult: _passportDataResult!,
-      sessionId: _sessionId,
-      nonce: _nonce,
-      onBackPressed: () {
-        Navigator.of(context).pop();
-        setState(() {
-          _resetPassportFlow(clearSession: true);
-          _currentDocumentType = DocumentType.passport;
-          _currentStep =
-              NavigationStep.documentType; // Back to doc type selection
-
-        });
-      },
-    );
-  } else {
-      return DrivingLicenceDataScreen(      mrtdData: _mrtdData!,
+        mrtdData: _mrtdData!,
+        passportDataResult: _documentDataResult!,
+        sessionId: _sessionId,
+        nonce: _nonce,
+        onBackPressed: () {
+          Navigator.of(context).pop();
+          setState(() {
+            _resetPassportFlow(clearSession: true);
+            _currentDocumentType = DocumentType.passport;
+            _currentStep =
+                NavigationStep.documentType; // Back to doc type selection
+          });
+        },
+      );
+    } else {
+      return DrivingLicenceDataScreen(
+        mrtdData: _mrtdData!,
         onBackPressed: () {
           Navigator.of(context).pop();
           setState(() {
             _currentDocumentType = DocumentType.driverLicence;
-            _currentStep =
-                NavigationStep.documentType;
+            _currentStep = NavigationStep.documentType;
           });
         },
       );
-
     }
   }
 
@@ -260,13 +258,14 @@ class _AppNavigationState extends State<AppNavigation> {
           _currentStep = NavigationStep.passportMrz; // Return to scanner screen
         });
       },
-      onDataRead: (MrtdData data, PassportDataResult passportDataResult) {
+      onDataRead: (MrtdData data, DataResult passportDataResult) {
         setState(() {
           _mrtdData = data;
-          _passportDataResult = passportDataResult;
+          _documentDataResult = passportDataResult;
           _currentStep = NavigationStep.results; // Show results
         });
-      }, documentType: _currentDocumentType ?? DocumentType.passport,
+      },
+      documentType: _currentDocumentType ?? DocumentType.passport,
     );
   }
 
@@ -376,7 +375,7 @@ class _AppNavigationState extends State<AppNavigation> {
   void _resetPassportFlow({bool clearSession = false}) {
     _mrzResult = null;
     _mrtdData = null;
-    _passportDataResult = null;
+    _documentDataResult = null;
     _manualDocNumber = null;
     _manualDob = null;
     _manualExpiry = null;

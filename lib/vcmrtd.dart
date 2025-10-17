@@ -34,6 +34,7 @@ export 'src/lds/mrz.dart';
 export 'src/lds/tlv.dart';
 
 export 'src/document.dart';
+export 'src/document_reader.dart';
 
 export 'src/proto/dba_key.dart';
 export 'src/proto/access_key.dart';

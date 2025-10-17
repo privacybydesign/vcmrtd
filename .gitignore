@@ -1,4 +1,5 @@
 # Miscellaneous
+
 *.class
 *.log
 *.pyc
@@ -137,3 +138,9 @@ CLAUDE.md
 docs/.docusaurus/
 docs/build/
 /docs/node_modules/
+.dart-tool/dart-flutter-telemetry-session.json
+.dart-tool/dart-flutter-telemetry-dismissed-surveys.json
+.dart-tool/CLIENT_ID
+AGENTS.md
+.dart-tool/dart-flutter-telemetry.config
+example/android/build/reports/problems/problems-report.html
