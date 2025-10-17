@@ -1,14 +1,14 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-class PassportDataResult {
+class DataResult {
   final Map<String, String> dataGroups;
   final String efSod;
   final String? sessionId;
   final Uint8List? nonce;
   final Uint8List? aaSignature;
 
-  PassportDataResult({
+  DataResult({
     required this.dataGroups,
     required this.efSod,
     this.sessionId,

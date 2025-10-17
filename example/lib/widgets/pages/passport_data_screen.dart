@@ -18,7 +18,7 @@ import 'data_screen_widgets/verify_result.dart';
 
 class PassportDataScreen extends StatefulWidget {
   final MrtdData mrtdData;
-  final PassportDataResult passportDataResult;
+  final DataResult passportDataResult;
   final VoidCallback onBackPressed;
   final String? sessionId;
   final Uint8List? nonce;

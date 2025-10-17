@@ -8,34 +8,57 @@ import '../../types/data.dart';
 import '../ef.dart';
 import '../mrz.dart';
 import '../tlv.dart';
+import '../../parsing/parser.dart';
 
-abstract class EfDG1 extends DataGroup {
+class EfDG1 extends DataGroup {
   static const FID = 0x0101;
   static const SFI = 0x01;
   static const TAG = DgTag(0x61);
-  void parseMRZ(Uint8List mrzData);
 
-  EfDG1._internal(Uint8List data) : super.fromBytes(data);
+  final DocumentType documentType;
 
-  factory EfDG1.fromBytes(Uint8List data, DocumentType docType) {
-    switch (docType) {
-      case DocumentType.passport:
-        return PassportDG1.fromBytes(data);
-      case DocumentType.driverLicence:
-        return DrivingLicenseDG1.fromBytes(data);
-      default:
-        throw ArgumentError('Unsupported document type: $docType');
-    }
+  MRZ? _passportMrz;
+
+  // Driving licence-specific fields.
+  String? _driverLicenceNumber;
+  String? _driverLicenceCountry;
+  int? _driverLicenceGeneration;
+
+  EfDG1._internal(this.documentType, Uint8List data) : super.fromBytes(data);
+
+  factory EfDG1.fromBytes(Uint8List data,
+      [DocumentType docType = DocumentType.passport]) {
+    return EfDG1._internal(docType, data);
   }
+
+  MRZ get passportMrz {
+    if (_passportMrz == null) {
+      throw StateError(
+          'Passport MRZ not available for $documentType documents');
+    }
+    return _passportMrz!;
+  }
+
+  String? get driverLicenceNumber => _driverLicenceNumber;
+  String? get driverLicenceCountry => _driverLicenceCountry;
+  int? get driverLicenceGeneration => _driverLicenceGeneration;
+
+  bool get hasPassportMrz => _passportMrz != null;
 
   @override
   void parseContent(final Uint8List content) {
     final tlv = TLV.fromBytes(content);
     if (tlv.tag != 0x5F1F) {
       throw EfParseError(
-          "Invalid data object tag=${tlv.tag.hex()}, expected object with tag=5F1F");
+        "Invalid data object tag=${tlv.tag.hex()}, expected object with tag=5F1F",
+      );
     }
-    parseMRZ(tlv.value);
+
+    final result = Dg1Parser.parse(documentType, tlv.value);
+    _passportMrz = result.passportMrz;
+    _driverLicenceCountry = result.driverLicenceCountry;
+    _driverLicenceGeneration = result.driverLicenceGeneration;
+    _driverLicenceNumber = result.driverLicenceNumber;
   }
 
   @override
@@ -46,39 +69,4 @@ abstract class EfDG1 extends DataGroup {
 
   @override
   int get tag => TAG.value;
-}
-
-class PassportDG1 extends EfDG1 {
-  late final MRZ _mrz;
-  MRZ get mrz => _mrz;
-
-  PassportDG1.fromBytes(Uint8List data) : super._internal(data);
-
-  @override
-  void parseMRZ(Uint8List mrzData) {
-    _mrz = MRZ(mrzData);
-  }
-}
-
-class DrivingLicenseDG1 extends EfDG1 {
-
-  DrivingLicenseDG1.fromBytes(Uint8List data) : super._internal(data);
-
-  late final String _licenseNumber;
-  late final String _country;
-  late final int _generation;
-
-
-  String get licenseNumber => _licenseNumber;
-  String get country => _country;
-  int get generation => _generation;
-
-  @override
-  void parseMRZ(Uint8List mrzData) {
-    // Parse the 30 character DL MRZ
-    final mrzString = String.fromCharCodes(mrzData);
-    _country = mrzString.substring(2, 5); // "NLD"
-    _generation = int.parse(mrzString[5]); // 1, 2, or 3
-    _licenseNumber = mrzString.substring(6, 17);
-  }
 }

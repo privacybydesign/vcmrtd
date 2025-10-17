@@ -70,19 +70,19 @@ class MrtdDataListWidget extends StatelessWidget {
     }
 
     // EF.DG1 (MRZ)
-    if (mrtdData!.dg1 != null) {
+    if (mrtdData!.dg1 != null && mrtdData!.dg1!.passportMrz != null) {
       list.add(MrtdDataWidget(
         header: 'EF.DG1',
         collapsedText: '',
-        dataText: formatMRZ((mrtdData!.dg1! as PassportDG1).mrz),
+        dataText: formatMRZ(mrtdData!.dg1!.passportMrz),
       ));
     }
 
     if (mrtdData!.dg2 != null) {
       list.add(PassportImageWidget(
-        header: 'EF.DG2',
-        imageType: mrtdData!.dg2!.imageType,
-        imageData : mrtdData!.dg2!.imageData!));
+          header: 'EF.DG2',
+          imageType: mrtdData!.dg2!.imageType,
+          imageData: mrtdData!.dg2!.imageData!));
     }
 
     // Data Groups 2-16
