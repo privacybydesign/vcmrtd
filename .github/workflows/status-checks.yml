@@ -59,4 +59,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: prototypes-android
-          path: ./build/app/outputs/flutter-apk/app-release.apk
+          path: ./example/build/app/outputs/apk/release/*.apk
