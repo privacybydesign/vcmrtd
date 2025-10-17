@@ -1,12 +1,12 @@
 import 'dart:typed_data';
 
-import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtd/extensions.dart';
+import 'package:vcmrtd/vcmrtd.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:vcmrtdapp/helpers/document_type_extract.dart';
+import 'package:vcmrtdapp/helpers/read_data_groups.dart';
 import 'package:vcmrtdapp/helpers/mrz_data.dart';
-import 'package:vcmrtdapp/models/data_group_config.dart';
 import 'package:vcmrtdapp/models/mrtd_data.dart';
 import 'package:vcmrtdapp/models/passport_result.dart';
 import 'package:vcmrtdapp/widgets/common/animated_nfc_status_widget.dart';
@@ -117,7 +117,8 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
   void _readMRTD({required AccessKey accessKey, bool isPace = false}) async {
     try {
       setState(() {
-        _alertMessage = "Hold your phone near the ${widget.documentType.displayName} photo page";
+        _alertMessage =
+            "Hold your phone near the ${widget.documentType.displayName} photo page";
         _nfcState = NFCReadingState.waiting;
       });
 
@@ -126,7 +127,8 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
         if (!demo) {
           if (_isCancelled) return;
           await _nfc.connect(
-            iosAlertMessage: "Hold your phone near Biometric ${widget.documentType.displayName}",
+            iosAlertMessage:
+                "Hold your phone near Biometric ${widget.documentType.displayName}",
           );
         }
 
@@ -135,15 +137,43 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
             ? Passport(_nfc)
             : DrivingLicence(_nfc);
         setState(() {
-          _alertMessage = "Connecting to ${widget.documentType.displayNameLowerCase}...";
+          _alertMessage =
+              "Connecting to ${widget.documentType.displayNameLowerCase}...";
           _nfcState = NFCReadingState.connecting;
         });
 
         if (_isCancelled) return;
-        await _performDocumentReading(document, accessKey, isPace);
+        await performDocumentReading(
+          document: document,
+          nfcProvider: _nfc,
+          accessKey: accessKey,
+          isPace: isPace,
+          documentType: widget.documentType,
+          log: _log,
+          sessionId: widget.sessionId,
+          nonce: widget.nonce,
+          updateStatus: (
+              {String? message, NFCReadingState? state, double? progress}) {
+            if (!mounted) {
+              return;
+            }
+            setState(() {
+              if (message != null) {
+                _alertMessage = message;
+              }
+              if (state != null) {
+                _nfcState = state;
+              }
+              if (progress != null) {
+                _readingProgress = progress;
+              }
+            });
+          },
+          onDataRead: widget.onDataRead,
+        );
       } on Exception catch (e) {
         if (!_isCancelled) {
-          _handlePassportError(e);
+          _handleDocumentError(e);
         }
       } finally {
         await _cleanupNfcConnection();
@@ -155,278 +185,12 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
     }
   }
 
-  Future<void> _performDocumentReading(
-    Document document,
-    AccessKey accessKey,
-    bool isPace,
-  ) async {
-    _nfc.setIosAlertMessage("Trying to read EF.CardAccess ...");
-    final mrtdData = MrtdData();
 
-    try {
-      mrtdData.cardAccess = await document.readEfCardAccess();
-    } on DocumentError {
-      // Handle card access read error
-    }
 
-    _nfc.setIosAlertMessage("Trying to read EF.CardSecurity ...");
-    try {
-      mrtdData.cardSecurity = await document.readEfCardSecurity();
-    } on DocumentError {
-      // Handle card security read error
-    }
-
-    _nfc.setIosAlertMessage("Initiating session with PACE...");
-    mrtdData.isPACE = isPace;
-    mrtdData.isDBA = accessKey.PACE_REF_KEY_TAG == 0x01;
-
-    setState(() {
-      _alertMessage = "Authenticating with ${widget.documentType.displayNameLowerCase}...";
-      _nfcState = NFCReadingState.authenticating;
-    });
-
-    if (isPace) {
-      await document.startSessionPACE(accessKey, mrtdData.cardAccess!);
-    } else {
-      await document.startSession(accessKey as DBAKey);
-    }
-
-    final dataResult = await _readDataGroups(document, mrtdData);
-    widget.onDataRead?.call(mrtdData, dataResult);
-  }
-
-  Future<DataResult> _readDataGroups(
-      Document document, MrtdData mrtdData) async {
-    setState(() {
-      _alertMessage = "Reading ${widget.documentType.displayNameLowerCase} data...";
-      _nfcState = NFCReadingState.reading;
-      _readingProgress = 0.1;
-    });
-
-    try {
-      final reader = DocumentReader.from(document);
-      // Read EF.COM first
-      _nfc.setIosAlertMessage("Reading EF.COM ...");
-      mrtdData.com = await reader.readEfCOM();
-
-      // Configure data groups with their read functions and progress increments
-      final dataGroupConfigs = [
-        DataGroupConfig(
-          tag: EfDG1.TAG,
-          name: "DG1",
-          progressIncrement: 0.1,
-          readFunction: (r) async {
-            final dg = await r.readEfDG1();
-            mrtdData.dg1 = dg;
-            return dg;
-          },
-        ),
-        DataGroupConfig(
-          tag: EfDG2.TAG,
-          name: "DG2",
-          progressIncrement: 0.1,
-          readFunction: (r) async {
-            final dg = await r.readEfDG2();
-            mrtdData.dg2 = dg;
-            return dg;
-          },
-        ),
-        DataGroupConfig(
-          tag: EfDG5.TAG,
-          name: "DG5",
-          progressIncrement: 0.1,
-          readFunction: (r) async {
-            final dg = await r.readEfDG5();
-            mrtdData.dg5 = dg;
-            return dg;
-          },
-        ),
-        DataGroupConfig(
-          tag: EfDG6.TAG,
-          name: "DG6",
-          progressIncrement: 0.05,
-          readFunction: (r) async {
-            final dg = await r.readEfDG6();
-            mrtdData.dg6 = dg;
-            return dg;
-          },
-        ),
-        DataGroupConfig(
-          tag: EfDG7.TAG,
-          name: "DG7",
-          progressIncrement: 0.05,
-          readFunction: (r) async {
-            final dg = await r.readEfDG7();
-            mrtdData.dg7 = dg;
-            return dg;
-          },
-        ),
-        DataGroupConfig(
-          tag: EfDG8.TAG,
-          name: "DG8",
-          progressIncrement: 0.05,
-          readFunction: (r) async {
-            final dg = await r.readEfDG8();
-            mrtdData.dg8 = dg;
-            return dg;
-          },
-        ),
-        DataGroupConfig(
-          tag: EfDG9.TAG,
-          name: "DG9",
-          progressIncrement: 0.05,
-          readFunction: (r) async {
-            final dg = await r.readEfDG9();
-            mrtdData.dg9 = dg;
-            return dg;
-          },
-        ),
-        DataGroupConfig(
-          tag: EfDG10.TAG,
-          name: "DG10",
-          progressIncrement: 0.05,
-          readFunction: (r) async {
-            final dg = await r.readEfDG10();
-            mrtdData.dg10 = dg;
-            return dg;
-          },
-        ),
-        DataGroupConfig(
-          tag: EfDG11.TAG,
-          name: "DG11",
-          progressIncrement: 0.05,
-          readFunction: (r) async {
-            final dg = await r.readEfDG11();
-            mrtdData.dg11 = dg;
-            return dg;
-          },
-        ),
-        DataGroupConfig(
-          tag: EfDG12.TAG,
-          name: "DG12",
-          progressIncrement: 0.05,
-          readFunction: (r) async {
-            final dg = await r.readEfDG12();
-            mrtdData.dg12 = dg;
-            return dg;
-          },
-        ),
-        DataGroupConfig(
-          tag: EfDG13.TAG,
-          name: "DG13",
-          progressIncrement: 0.05,
-          readFunction: (r) async {
-            final dg = await r.readEfDG13();
-            mrtdData.dg13 = dg;
-            return dg;
-          },
-        ),
-        DataGroupConfig(
-          tag: EfDG14.TAG,
-          name: "DG14",
-          progressIncrement: 0.05,
-          readFunction: (r) async {
-            final dg = await r.readEfDG14();
-            mrtdData.dg14 = dg;
-            return dg;
-          },
-        ),
-        DataGroupConfig(
-          tag: EfDG16.TAG,
-          name: "DG16",
-          progressIncrement: 0.05,
-          readFunction: (r) async {
-            final dg = await r.readEfDG16();
-            mrtdData.dg16 = dg;
-            return dg;
-          },
-        ),
-      ];
-
-      _nfc.setIosAlertMessage("Reading Data Groups");
-
-      final Map<String, String> dataGroups = {};
-      double currentProgress = 0.2;
-
-      // Process each data group
-      for (final config in dataGroupConfigs) {
-        if (mrtdData.com!.dgTags.contains(config.tag)) {
-          try {
-            final dgData = await config.readFunction(reader);
-
-            // Convert data group to hex string
-            final hexData = dgData.toBytes().hex();
-            if (hexData.isNotEmpty) {
-              dataGroups[config.name] = hexData;
-            }
-          } catch (e) {
-            _log.warning("Failed to read ${config.name}: $e");
-            // Continue with other data groups even if one fails
-          }
-        }
-
-        currentProgress += config.progressIncrement;
-        setState(() => _readingProgress = currentProgress.clamp(0.0, 0.9));
-      }
-
-      // Handle DG15 and Active Authentication separately
-      if (widget.sessionId != null &&
-          widget.nonce != null &&
-          mrtdData.com!.dgTags.contains(EfDG15.TAG)) {
-        setState(() {
-          _alertMessage = "Performing security verification...";
-          _nfcState = NFCReadingState.authenticating;
-          _readingProgress = 0.9;
-        });
-
-        try {
-          mrtdData.dg15 = await reader.readEfDG15();
-          if (mrtdData.dg15 != null) {
-            final hexData = mrtdData.dg15!.toBytes().hex();
-            if (hexData.isNotEmpty) {
-              dataGroups["DG15"] = hexData;
-            }
-          }
-
-          _nfc.setIosAlertMessage("Doing AA ...");
-          mrtdData.aaSig = await document.activeAuthenticate(widget.nonce!);
-        } catch (e) {
-          _log.warning("Failed to read DG15 or perform AA: $e");
-        }
-      }
-
-      // Read EF.SOD
-      _nfc.setIosAlertMessage("Reading EF.SOD ...");
-      mrtdData.sod = await reader.readEfSOD();
-
-      final efSodHex = mrtdData.sod?.toBytes().hex() ?? '';
-      _log.info("EF.SOD: $efSodHex");
-
-      setState(() {
-        _alertMessage = "${widget.documentType.displayName} reading completed successfully!";
-        _nfcState = NFCReadingState.success;
-        _readingProgress = 1.0;
-      });
-
-      return DataResult(
-          dataGroups: dataGroups,
-          efSod: efSodHex,
-          nonce: widget.nonce,
-          sessionId: widget.sessionId,
-          aaSignature: mrtdData.aaSig);
-    } catch (e) {
-      _log.severe("Error reading ${widget.documentType.displayNameLowerCase} data: $e");
-      setState(() {
-        _alertMessage = "Failed to read passport data";
-        _nfcState = NFCReadingState.error;
-      });
-      rethrow;
-    }
-  }
-
-  void _handlePassportError(Exception e) {
+  void _handleDocumentError(Exception e) {
     final se = e.toString().toLowerCase();
-    String alertMsg = "An error has occurred while reading ${widget.documentType.displayNameLowerCase}!";
+    String alertMsg =
+        "An error has occurred while reading ${widget.documentType.displayNameLowerCase}!";
 
     if (e is DocumentError) {
       if (se.contains("security status not satisfied")) {
@@ -440,7 +204,8 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
     }
 
     if (se.contains('timeout')) {
-      alertMsg = "Timeout while waiting for ${widget.documentType.displayNameLowerCase} tag";
+      alertMsg =
+          "Timeout while waiting for ${widget.documentType.displayNameLowerCase} tag";
     } else if (se.contains("tag was lost")) {
       alertMsg = "Tag was lost. Please try again!";
     } else if (se.contains("invalidated by user")) {
