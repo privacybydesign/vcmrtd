@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../custom/custom_logger_extension.dart';
 
 class MRZCameraOverlay extends StatelessWidget {
   const MRZCameraOverlay({
@@ -92,4 +91,3 @@ class _WhiteOverlay extends StatelessWidget {
     );
   }
 }
-  
