@@ -56,10 +56,8 @@ set -o pipefail
 sdkmanager --sdk_root="$ANDROID_HOME" \
   "cmdline-tools;latest" \
   "ndk;$ANDROID_NDK_VERSION" \
-  "cmake;3.10.2.4988404" \
-  "platforms;android-35" \
+  "cmake;3.22.1" \
   "platforms;android-36" \
-  "build-tools;35.0.1" \
   "build-tools;36.1.0"
 
 # Ensure that right NDK version is selected.
