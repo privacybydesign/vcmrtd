@@ -73,7 +73,7 @@ class NfcProvider extends ComProvider {
       : const Duration(seconds: 10);
 
   /// Maximum number of automatic retry attempts for transient errors.
-  int maxRetries = 2;
+  int maxRetries = 5;
 
   NfcProvider() : super(_log);
 
@@ -197,9 +197,8 @@ class NfcProvider extends ComProvider {
       if (classifiedError.isRetryable() && retryCount < maxRetries) {
         _log.warning("Transceive failed (attempt ${retryCount + 1}/$maxRetries): $classifiedError");
 
-        // Exponential backoff: 100ms, 200ms, 400ms...
-        final delayMs = 100 * (1 << retryCount);
-        await Future.delayed(Duration(milliseconds: delayMs));
+        // Linear backoff: 200ms.
+        await Future.delayed(Duration(milliseconds: 200));
 
         // For timeout errors, increase timeout on retry
         Duration? retryTimeout = timeout ?? this.timeout;
