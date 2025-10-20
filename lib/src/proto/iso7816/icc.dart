@@ -289,18 +289,32 @@ class ICC {
     return rapdu;
   }
   Future<ResponseAPDU> _transceive(final CommandAPDU cmd) async {
+    // Validate connection before attempting transceive
+    if (!_com.isConnected()) {
+      throw ComProviderError("Cannot transceive: not connected to ICC");
+    }
+
     _log.debug("Transceiving to ICC: $cmd");
     final rawCmd = _wrap(cmd).toBytes();
 
     _log.debug("Sending ${rawCmd.length} byte(s) to ICC: data='${rawCmd.hex()}'");
-    Uint8List rawResp = await _com.transceive(rawCmd);
-    _log.debug("Received ${rawResp.length} byte(s) from ICC");
-    _log.sdDebug(" data='${rawResp.hex()}'");
 
-    final rapdu = _unwrap(ResponseAPDU.fromBytes(rawResp));
-    _log.debug("Received response from ICC: ${rapdu.status} data_len=${rapdu.data?.length ?? 0}");
-    _log.sdDebug(" data=${rapdu.data?.hex()}");
-    return rapdu;
+    try {
+      Uint8List rawResp = await _com.transceive(rawCmd);
+      _log.debug("Received ${rawResp.length} byte(s) from ICC");
+      _log.sdDebug(" data='${rawResp.hex()}'");
+
+      final rapdu = _unwrap(ResponseAPDU.fromBytes(rawResp));
+      _log.debug("Received response from ICC: ${rapdu.status} data_len=${rapdu.data?.length ?? 0}");
+      _log.sdDebug(" data=${rapdu.data?.hex()}");
+      return rapdu;
+    } on ComProviderError catch (e) {
+      _log.error("Communication error during transceive: $e");
+      rethrow;
+    } catch (e) {
+      _log.error("Unexpected error during transceive: $e");
+      rethrow;
+    }
   }
 
   CommandAPDU _wrap(final CommandAPDU cmd) {

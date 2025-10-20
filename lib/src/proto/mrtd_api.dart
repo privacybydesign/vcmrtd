@@ -30,21 +30,89 @@ class MrtdApiError implements Exception {
 
 /// Defines ICAO 9303 MRTD standard API to
 /// communicate and send commands to MRTD.
-/// TODO: Add ComProvider onConnected notifier and reset _maxRead to _defaultReadLength on new connection
 class MrtdApi {
 
   static const int challengeLen = 8; // 8 bytes
   ICC icc;
+  final ComProvider _com;
 
-  MrtdApi(ComProvider com) : icc = ICC(com);
+  MrtdApi(ComProvider com)
+      : _com = com,
+        icc = ICC(com) {
+    // Set up connection callbacks to reset state on reconnection
+    _com.onConnected = _onConnectionEstablished;
+    _com.onDisconnected = _onConnectionLost;
+  }
 
   // See: Section 4.1 https://www.icao.int/publications/Documents/9303_p10_cons_en.pdf
   static const _defaultSelectP2          = ISO97816_SelectFileP2.returnFCP | ISO97816_SelectFileP2.returnFMD;
   final _log                             = Logger("mrtd.api");
-  static const int _defaultReadLength    = 112; // 256 = expect maximum number of bytes. TODO: in production set it to 224 - JMRTD
+  static const int _defaultReadLength    = 224; // JMRTD default read size
   int _maxRead                           = _defaultReadLength;
   static const int _readAheadLength      = 8;   // Number of bytes to read at the start of file to determine file length.
   Future<void> Function()? _reinitSession;
+  DBAKey? _bacKeys;
+  AccessKey? _paceAccessKey;
+  EfCardAccess? _paceEfCardAccess;
+
+  /// Called when NFC connection is established. Resets state for new session.
+  void _onConnectionEstablished() {
+    _log.info("Connection established, resetting max read to $_defaultReadLength");
+    _maxRead = _defaultReadLength;
+  }
+
+  /// Called when NFC connection is lost. Clears session state.
+  void _onConnectionLost() {
+    _log.warning("Connection lost, clearing session state");
+    icc.sm = null;
+  }
+
+  /// Attempts to recover from a lost NFC connection by reconnecting and reinitializing session.
+  /// Returns true if reconnection successful, false otherwise.
+  /// This method should be called when ComProviderError is caught during operations.
+  Future<bool> attemptReconnection({String iosAlertMessage = "Reconnecting to passport..."}) async {
+    _log.info("Attempting to recover from connection loss...");
+
+    try {
+      // Step 1: Check if already connected
+      if (_com.isConnected()) {
+        _log.debug("Already connected, attempting session reinitialization only");
+        await _reinitSession?.call();
+        return true;
+      }
+
+      // Step 2: Attempt to reconnect NFC
+      _log.debug("Reconnecting to NFC tag...");
+      await _com.connect();
+
+      if (!_com.isConnected()) {
+        _log.warning("Reconnection failed: not connected after connect attempt");
+        return false;
+      }
+
+      // Step 3: Re-select eMRTD application
+      _log.debug("Re-selecting eMRTD application...");
+      await selectEMrtdApplication();
+
+      // Step 4: Reinitialize secure session (BAC or PACE)
+      if (_bacKeys != null) {
+        _log.debug("Re-initializing BAC session...");
+        await initSessionViaBAC(_bacKeys!);
+      } else if (_paceAccessKey != null && _paceEfCardAccess != null) {
+        _log.debug("Re-initializing PACE session...");
+        await initSessionViaPACE(_paceAccessKey!, _paceEfCardAccess!);
+      } else {
+        _log.warning("Cannot reinitialize session: no stored keys");
+        return false;
+      }
+
+      _log.info("Successfully recovered from connection loss");
+      return true;
+    } catch (e) {
+      _log.error("Reconnection attempt failed: $e");
+      return false;
+    }
+  }
 
   /// Sends active authentication command to MRTD with [challenge].
   /// [challenge] must be 8 bytes long.
@@ -62,6 +130,7 @@ class MrtdApi {
   /// Can throw [ComProviderError] in case connection with MRTD is lost.
   Future<void> initSessionViaBAC(final DBAKey keys) async {
     _log.debug("Initiating SM session using BAC protocol");
+    _bacKeys = keys;
     await BAC.initSession(dbaKeys: keys, icc: icc);
     _reinitSession = () async {
       _log.debug("Re-initiating SM session using BAC protocol");
@@ -75,6 +144,8 @@ class MrtdApi {
   /// Can throw [ComProviderError] in case connection with MRTD is lost.
   Future<void> initSessionViaPACE(final AccessKey accessKey, EfCardAccess efCardAccess) async {
     _log.debug("Initiating SM session using PACE protocol (only DBA for now)");
+    _paceAccessKey = accessKey;
+    _paceEfCardAccess = efCardAccess;
     await PACE.initSession(accessKey: accessKey, icc: icc, efCardAccess: efCardAccess);
     _reinitSession = () async {
       _log.debug("Re-initiating SM session using PACE protocol");
@@ -222,6 +293,23 @@ class MrtdApi {
         }
         else {
           _log.warning("No data received when trying to read binary");
+        }
+      }
+      on ComProviderError catch(e) {
+        // NFC connection was lost during read operation
+        _log.error("Communication error during read: $e");
+
+        // Attempt automatic reconnection
+        _log.info("Attempting automatic reconnection...");
+        final reconnected = await attemptReconnection();
+
+        if (reconnected) {
+          _log.info("Reconnection successful, retrying read operation");
+          // Don't increment offset/length - retry from current position
+          continue;
+        } else {
+          _log.error("Reconnection failed, cannot continue reading");
+          throw MrtdApiError("Connection lost and reconnection failed: ${e.message}");
         }
       }
       on ICCError catch(e) { // thrown on _readBinary error when no data is received.
