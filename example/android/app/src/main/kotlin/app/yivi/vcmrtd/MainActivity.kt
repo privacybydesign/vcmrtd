@@ -1,4 +1,4 @@
-package app.yivi.vcmrtd
+package foundation.privacybydesign.vcmrtd
 
 import android.content.Intent
 import io.flutter.embedding.android.FlutterActivity
@@ -7,7 +7,7 @@ import io.flutter.plugins.GeneratedPluginRegistrant
 import io.flutter.plugin.common.MethodChannel
 
 import android.content.Context
-import app.yivi.vcmrtd.ImageUtil
+import foundation.privacybydesign.vcmrtd.ImageUtil
 
 class MainActivity : FlutterActivity() {
     private lateinit var deepLinkPlugin: DeepLinkPlugin

@@ -1,7 +1,6 @@
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:expandable/expandable.dart';
 import 'package:vcmrtdapp/services/jpeg2000_converter.dart';
 
 class PassportImageWidget extends StatefulWidget {

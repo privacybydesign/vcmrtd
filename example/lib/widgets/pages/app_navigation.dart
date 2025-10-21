@@ -5,7 +5,6 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:vcmrtdapp/helpers/mrz_data.dart';
 import 'package:vcmrtdapp/models/document_result.dart';
 import 'package:vcmrtdapp/services/deeplink_service.dart';
 import 'package:vcmrtdapp/utils/nonce.dart';
@@ -13,9 +12,9 @@ import 'package:vcmrtdapp/widgets/pages/passport_data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_reading_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/scanner_wrapper.dart';
 
+import '../../helpers/mrz_data.dart';
 import 'document_selection_screen.dart';
 import 'driving_licence_data_screen.dart';
-import 'driving_licence_screen.dart';
 import 'nfc_guidance_screen.dart';
 import 'manual_entry_screen.dart';
 import '../../models/mrtd_data.dart';
@@ -136,7 +135,6 @@ class _AppNavigationState extends State<AppNavigation> {
       },
       onManualEntry: () {
         setState(() {
-          _currentDocumentType = DocumentType.passport;
           _currentStep = NavigationStep.manual;
         });
       },

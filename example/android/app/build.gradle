@@ -6,9 +6,8 @@ plugins {
 }
 
 android {
-    namespace = "app.yivi.vcmrtd"
+    namespace = "foundation.privacybydesign.vcmrtd"
     compileSdk = 36
-    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -21,7 +20,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "app.yivi.vcmrtd"
+        applicationId = "foundation.privacybydesign.vcmrtd"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 26 //flutter.minSdkVersion
@@ -35,6 +34,51 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.debug
+        }
+    }
+
+    signingConfigs {
+        if (project.hasProperty("keyStoreFile")) {
+            release {
+                storeFile file(project.property("keyStoreFile"))
+                storePassword project.property("keyStorePassword")
+                keyAlias project.property("keyAlias")
+                keyPassword project.property("keyPassword")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            // Flutter does not support building for x86 in release mode.
+            ndk {
+                abiFilters "armeabi-v7a", "arm64-v8a", "x86_64"
+            }
+
+            if (project.hasProperty("keyStoreFile")) {
+                signingConfig signingConfigs.release
+            } else {
+                // For testing purposes we sign with dummy credentials if no key properties are given.
+                signingConfig signingConfigs.debug
+            }
+        }
+    }
+
+    bundle {
+        // Store archive and code transparency cannot be combined yet.
+        // https://stackoverflow.com/questions/74275816/code-verification-error-when-uploading-aab-files-added-after-transparency-meta
+        storeArchive {
+            enable = false
+        }
+        if (project.hasProperty("keyStoreFile")) {
+            codeTransparency {
+                signing {
+                    storeFile file(project.property("keyStoreFile"))
+                    storePassword project.property("keyStorePassword")
+                    keyAlias project.property("keyAlias")
+                    keyPassword project.property("keyPassword")
+                }
+            }
         }
     }
 }

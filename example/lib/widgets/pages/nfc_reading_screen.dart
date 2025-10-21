@@ -130,7 +130,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
     return null;
   }
 
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

@@ -1,7 +1,5 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:vcmrtd/internal.dart';
-import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtdapp/models/mrtd_data.dart';
 
 class SecurityContent extends StatelessWidget {

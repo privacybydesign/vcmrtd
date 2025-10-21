@@ -1,5 +1,14 @@
-# Miscellaneous
+rubyvendor/
 
+example/fastlane/.env.default
+example/fastlane/build
+example/fastlane/profiles
+example/fastlane/report.xml
+
+# ---
+# Flutter generated excludes below:
+
+# Miscellaneous
 *.class
 *.log
 *.pyc
