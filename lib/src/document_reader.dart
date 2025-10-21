@@ -28,6 +28,7 @@ abstract class DocumentReader {
 
   Future<EfCOM> readEfCOM() => document.readEfCOM();
   Future<EfSOD> readEfSOD() => document.readEfSOD();
+  Future<EfDG1> readEfDG1() => _unsupported('EF.DG1');
   Future<EfDG2> readEfDG2() => _unsupported('EF.DG2');
   Future<EfDG3> readEfDG3() => _unsupported('EF.DG3');
   Future<EfDG4> readEfDG4() => _unsupported('EF.DG4');
@@ -70,6 +71,8 @@ class PassportReader extends DocumentReader {
 
   Passport get _passport => document as Passport;
 
+  @override
+  Future<EfDG1> readEfDG1() => _passport.readEfDG1();
   @override
   Future<EfDG2> readEfDG2() => _passport.readEfDG2();
   @override
