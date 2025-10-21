@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:vcmrtd/extensions.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtd/src/proto/can_key.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:vcmrtdapp/helpers/document_type_extract.dart';
@@ -12,7 +13,7 @@ import 'package:vcmrtdapp/models/passport_result.dart';
 import 'package:vcmrtdapp/widgets/common/animated_nfc_status_widget.dart';
 
 class NfcReadingScreen extends StatefulWidget {
-  final MRZResult? mrzResult;
+  final dynamic mrzResult;
   final String? manualDocNumber;
   final DateTime? manualDob;
   final DateTime? manualExpiry;
@@ -41,6 +42,18 @@ class NfcReadingScreen extends StatefulWidget {
   State<NfcReadingScreen> createState() => _NfcReadingScreenState();
 }
 
+class _DocumentSessionConfig {
+  final Document document;
+  final AccessKey accessKey;
+  final bool isPace;
+
+  _DocumentSessionConfig({
+    required this.document,
+    required this.accessKey,
+    required this.isPace,
+  });
+}
+
 class _NfcReadingScreenState extends State<NfcReadingScreen> {
   final NfcProvider _nfc = NfcProvider();
   String _alertMessage = "";
@@ -49,6 +62,76 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
   final _log = Logger("vcmrtd.app");
   bool _isCancelled = false;
 
+
+  Future<_DocumentSessionConfig?> _prepareDocumentSession() async {
+    bool paceMode = false;
+    String docNumber;
+    DateTime? birthDate;
+    DateTime? expiryDate;
+
+    // Determine the correct key and document type
+    if (widget.documentType == DocumentType.passport) {
+
+      if (widget.mrzResult != null) {
+        docNumber = widget.mrzResult.documentNumber;
+        birthDate = widget.mrzResult.birthDate;
+        expiryDate = widget.mrzResult.expiryDate;
+        if (widget.mrzResult!.countryCode == "NLD") {
+          paceMode = true;
+        }
+      } else if (widget.manualDocNumber != null &&
+          widget.manualDob != null &&
+          widget.manualExpiry != null) {
+        docNumber = widget.manualDocNumber!;
+        birthDate = widget.manualDob!;
+        expiryDate = widget.manualExpiry!;
+      } else {
+        setState(() {
+          _alertMessage =
+          "No ${widget.documentType.displayName} data available. Please go back and enter your passport information.";
+          _nfcState = NFCReadingState.error;
+        });
+        return null;
+      }
+
+      final accessKey = DBAKey(
+        docNumber,
+        birthDate!,
+        expiryDate!,
+        paceMode: paceMode,
+      );
+
+      return _DocumentSessionConfig(
+        document: Passport(_nfc),
+        accessKey: accessKey,
+        isPace: paceMode,
+      );
+    }
+
+    if (widget.documentType == DocumentType.driverLicence) {
+      docNumber = widget.mrzResult?.documentNumber ??
+          widget.manualDocNumber ??
+          '';
+
+      if (docNumber == null || docNumber == '') {
+        _alertMessage =
+        "No ${widget.documentType.displayName} data available. Please go back and enter your information again.";
+        _nfcState = NFCReadingState.error;
+        return null;
+      }
+
+      final canKey = CanKey(docNumber);
+      return _DocumentSessionConfig(
+        document: DrivingLicence(_nfc),
+        accessKey: canKey,
+        isPace: true, // driver licences always use PACE (CAN)
+      );
+    }
+
+    return null;
+  }
+
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -72,39 +155,41 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
   }
 
   void _processDBAAuthentication() async {
-    String docNumber;
 
+    String docNumber;
     // Passport fields
     DateTime birthDate;
     DateTime expiryDate;
 
     bool paceMode = false;
 
-    // Use either MRZ data or manual entry data
-    if (widget.mrzResult != null) {
-      docNumber = widget.mrzResult!.documentNumber;
-      birthDate = widget.mrzResult!.birthDate;
-      expiryDate = widget.mrzResult!.expiryDate;
+    if (widget.documentType == DocumentType.passport) {
 
-      // Set PACE mode based on country code if available
-      if (widget.mrzResult!.countryCode == "NLD") {
-        paceMode = true;
+      // Use either MRZ data or manual entry data
+      if (widget.mrzResult != null) {
+        docNumber = widget.mrzResult!.documentNumber;
+        birthDate = widget.mrzResult!.birthDate;
+        expiryDate = widget.mrzResult!.expiryDate;
+
+        // Set PACE mode based on country code if available
+        if (widget.mrzResult!.countryCode == "NLD") {
+          paceMode = true;
+        }
+      } else if (widget.manualDocNumber != null &&
+          widget.manualDob != null &&
+          widget.manualExpiry != null) {
+        docNumber = widget.manualDocNumber!;
+        birthDate = widget.manualDob!;
+        expiryDate = widget.manualExpiry!;
+      } else {
+        setState(() {
+          _alertMessage =
+          "No ${widget.documentType.displayName} data available. Please go back and enter your passport information.";
+          _nfcState = NFCReadingState.error;
+        });
+        return;
       }
-    } else if (widget.manualDocNumber != null &&
-        widget.manualDob != null &&
-        widget.manualExpiry != null) {
-      docNumber = widget.manualDocNumber!;
-      birthDate = widget.manualDob!;
-      expiryDate = widget.manualExpiry!;
-    } else {
-      setState(() {
-        _alertMessage =
-            "No ${widget.documentType.displayName} data available. Please go back and enter your passport information.";
-        _nfcState = NFCReadingState.error;
-      });
-      return;
-    }
-
+    // DBAKey needs to be refactored to work with driver's licence, for now we force pace with can key directly on driver's licence
     final bacKeySeed = DBAKey(
       docNumber,
       birthDate,
@@ -112,6 +197,14 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
       paceMode: paceMode,
     );
     _readMRTD(accessKey: bacKeySeed, isPace: paceMode);
+    }
+    else if (widget.documentType == DocumentType.driverLicence) {
+      docNumber = widget.mrzResult!.documentNumber;
+      final canKey = CanKey(docNumber);
+      paceMode = true;
+    _readMRTD(accessKey: canKey, isPace: paceMode);
+
+    }
   }
 
   void _readMRTD({required AccessKey accessKey, bool isPace = false}) async {
@@ -200,7 +293,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
       _log.error("PassportError: ${e.message}");
     } else {
       _log.error(
-          "An exception was encountered while trying to read Passport: $e");
+          "An exception was encountered while trying to read ${widget.documentType.displayNameLowerCase}: $e");
     }
 
     if (se.contains('timeout')) {
