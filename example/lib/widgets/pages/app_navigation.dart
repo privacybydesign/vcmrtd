@@ -106,14 +106,12 @@ class _AppNavigationState extends State<AppNavigation> {
     return DocumentTypeSelectionScreen(
       onPassportSelected: () {
         setState(() {
-          _resetPassportFlow();
           _currentStep = NavigationStep.passportMrz;
           _currentDocumentType = DocumentType.passport;
         });
       },
       onDrivingLicenceSelected: () {
         setState(() {
-          _resetPassportFlow();
           _currentStep = NavigationStep.edlMrz;
           _currentDocumentType = DocumentType.driverLicence;
         });
@@ -224,7 +222,6 @@ class _AppNavigationState extends State<AppNavigation> {
         onBackPressed: () {
           Navigator.of(context).pop();
           setState(() {
-            _resetPassportFlow(clearSession: true);
             _currentDocumentType = DocumentType.passport;
             _currentStep =
                 NavigationStep.documentType; // Back to doc type selection
@@ -372,17 +369,4 @@ class _AppNavigationState extends State<AppNavigation> {
     );
   }
 
-  void _resetPassportFlow({bool clearSession = false}) {
-    _mrzResult = null;
-    _mrtdData = null;
-    _documentDataResult = null;
-    _manualDocNumber = null;
-    _manualDob = null;
-    _manualExpiry = null;
-
-    if (clearSession) {
-      _nonce = null;
-      _sessionId = null;
-    }
-  }
 }
