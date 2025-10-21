@@ -1,5 +1,6 @@
 // Created by Crt Vavros, copyright © 2022 ZeroPass. All rights reserved.
 import 'dart:typed_data';
+import 'package:vcmrtd/internal.dart';
 import 'package:vcmrtd/src/types/data.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtd/extensions.dart';
@@ -33,7 +34,7 @@ abstract class Document {
   final MrtdApi _api;
   _DF _dfSelected = _DF.None;
 
-  String get applicationAID;
+  Uint8List get applicationAID;
   DocumentType get documentType;
 
   Document(ComProvider provider, String loggerName)
@@ -134,7 +135,7 @@ abstract class Document {
     if(_dfSelected != _DF.DF1) {
       _log.debug("Selecting DF1");
       await _exec(() =>
-          _api.selectEMrtdApplication()
+          _api.selectEMrtdApplication(applicationAID)
       );
       _dfSelected = _DF.DF1;
     }
@@ -437,7 +438,7 @@ class Passport extends Document {
   }
 
   @override
-  String get applicationAID => "A0000002471001";
+  Uint8List get applicationAID => DF1.PassportAID;
 
   @override
   DocumentType get documentType => DocumentType.passport;
@@ -447,7 +448,7 @@ class DrivingLicence extends Document {
   DrivingLicence(ComProvider provider) : super(provider, "driverslicence");
 
   @override
-  String get applicationAID => "DRIVING_LICENSE_AID_HERE";  // TODO: add real AID
+  Uint8List get applicationAID => DF1.DriverAID;
 
   @override
   DocumentType get documentType => DocumentType.driverLicence;
