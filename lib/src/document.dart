@@ -182,6 +182,14 @@ abstract class Document {
   // data group readers --------------------------------
 
 
+}
+
+
+class Passport extends Document {
+  static const aaChallengeLen = 8;
+  Passport(ComProvider provider) : super(provider, "passport");
+
+
   /// Reads file EF.DG1 from passport.
   /// Session with passport should be already
   /// established before calling this function.
@@ -193,16 +201,9 @@ abstract class Document {
     await _selectDF1();
     _log.debug("Reading EF.DG1");
     return EfDG1.fromBytes(
-        await _exec(() => _api.readFileBySFI(EfDG1.SFI)),
-        documentType
+      await _exec(() => _api.readFileBySFI(EfDG1.SFI)),
     );
   }
-}
-
-
-class Passport extends Document {
-  static const aaChallengeLen = 8;
-  Passport(ComProvider provider) : super(provider, "passport");
 
   /// Reads file EF.DG2 from passport.
   /// Session with passport should be already

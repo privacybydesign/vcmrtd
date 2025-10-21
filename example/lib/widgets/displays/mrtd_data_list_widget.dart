@@ -3,7 +3,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:vcmrtd/extensions.dart';
-import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtdapp/widgets/displays/passport_image_widget.dart';
 import '../../models/mrtd_data.dart';
 import '../../utils/formatters.dart';
@@ -70,11 +69,11 @@ class MrtdDataListWidget extends StatelessWidget {
     }
 
     // EF.DG1 (MRZ)
-    if (mrtdData!.dg1 != null && mrtdData!.dg1!.passportMrz != null) {
+    if (mrtdData!.dg1 != null) {
       list.add(MrtdDataWidget(
         header: 'EF.DG1',
         collapsedText: '',
-        dataText: formatMRZ(mrtdData!.dg1!.passportMrz),
+        dataText: formatMRZ(mrtdData!.dg1!.mrz),
       ));
     }
 
@@ -82,7 +81,7 @@ class MrtdDataListWidget extends StatelessWidget {
       list.add(PassportImageWidget(
           header: 'EF.DG2',
           imageType: mrtdData!.dg2!.imageType,
-          imageData: mrtdData!.dg2!.imageData!));
+          imageData : mrtdData!.dg2!.imageData!));
     }
 
     // Data Groups 2-16

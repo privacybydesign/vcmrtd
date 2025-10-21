@@ -16,9 +16,7 @@ class DrivingLicenceDataScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dg1 = mrtdData.dg1!;
-    final licenseNumber = dg1.driverLicenceNumber ?? '-';
-    final country = dg1.driverLicenceCountry ?? '-';
-    final generation = dg1.driverLicenceGeneration?.toString() ?? '-';
+
 
     return PlatformScaffold(
       appBar: PlatformAppBar(
@@ -34,9 +32,7 @@ class DrivingLicenceDataScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('License Number: $licenseNumber'),
-              Text('Country: $country'),
-              Text('Generation: $generation'),
+              Text('DG1 : $dg1'),
             ],
           ),
         ),
