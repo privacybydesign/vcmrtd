@@ -6,7 +6,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:vcmrtdapp/helpers/mrz_data.dart';
-import 'package:vcmrtdapp/models/passport_result.dart';
+import 'package:vcmrtdapp/models/document_result.dart';
 import 'package:vcmrtdapp/services/deeplink_service.dart';
 import 'package:vcmrtdapp/utils/nonce.dart';
 import 'package:vcmrtdapp/widgets/pages/passport_data_screen.dart';
@@ -44,7 +44,7 @@ class _AppNavigationState extends State<AppNavigation> {
   NavigationStep _currentStep = NavigationStep.documentType;
   dynamic _mrzResult;
   MrtdData? _mrtdData;
-  DataResult? _documentDataResult;
+  DocumentResult? _documentDataResult;
   DocumentType? _currentDocumentType;
   StreamSubscription? _sub;
   String? _sessionId;
@@ -255,7 +255,7 @@ class _AppNavigationState extends State<AppNavigation> {
           _currentStep = NavigationStep.passportMrz; // Return to scanner screen
         });
       },
-      onDataRead: (MrtdData data, DataResult passportDataResult) {
+      onDataRead: (MrtdData data, DocumentResult passportDataResult) {
         setState(() {
           _mrtdData = data;
           _documentDataResult = passportDataResult;

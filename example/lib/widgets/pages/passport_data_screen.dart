@@ -4,7 +4,7 @@ import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'dart:convert';
-import 'package:vcmrtdapp/models/passport_result.dart';
+import 'package:vcmrtdapp/models/document_result.dart';
 import 'package:http/http.dart' as http;
 
 import '../../widgets/pages/data_screen_widgets/personal_data_section.dart';
@@ -18,7 +18,7 @@ import 'data_screen_widgets/verify_result.dart';
 
 class PassportDataScreen extends StatefulWidget {
   final MrtdData mrtdData;
-  final DataResult passportDataResult;
+  final DocumentResult passportDataResult;
   final VoidCallback onBackPressed;
   final String? sessionId;
   final Uint8List? nonce;

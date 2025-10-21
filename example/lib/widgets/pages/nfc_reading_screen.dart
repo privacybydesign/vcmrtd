@@ -7,9 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:vcmrtdapp/helpers/document_type_extract.dart';
 import 'package:vcmrtdapp/helpers/read_data_groups.dart';
-import 'package:vcmrtdapp/helpers/mrz_data.dart';
 import 'package:vcmrtdapp/models/mrtd_data.dart';
-import 'package:vcmrtdapp/models/passport_result.dart';
+import 'package:vcmrtdapp/models/document_result.dart';
 import 'package:vcmrtdapp/widgets/common/animated_nfc_status_widget.dart';
 
 class NfcReadingScreen extends StatefulWidget {
@@ -21,7 +20,7 @@ class NfcReadingScreen extends StatefulWidget {
   final Document? document;
   final String? sessionId;
   final Uint8List? nonce;
-  final Function(MrtdData, DataResult)? onDataRead;
+  final Function(MrtdData, DocumentResult)? onDataRead;
   final VoidCallback? onCancel;
 
   const NfcReadingScreen(

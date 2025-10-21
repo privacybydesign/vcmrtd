@@ -6,7 +6,7 @@ import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtdapp/helpers/document_type_extract.dart';
 import 'package:vcmrtdapp/models/data_group_config.dart';
 import 'package:vcmrtdapp/models/mrtd_data.dart';
-import 'package:vcmrtdapp/models/passport_result.dart';
+import 'package:vcmrtdapp/models/document_result.dart';
 import 'package:vcmrtdapp/widgets/common/animated_nfc_status_widget.dart';
 
 typedef StatusUpdater = void Function({
@@ -15,7 +15,7 @@ typedef StatusUpdater = void Function({
   double? progress,
 });
 
-Future<DataResult> readDataGroups({
+Future<DocumentResult> readDataGroups({
   required Document document,
   required MrtdData mrtdData,
   required DocumentType documentType,
@@ -232,7 +232,7 @@ Future<DataResult> readDataGroups({
       progress: 1.0,
     );
 
-    return DataResult(
+    return DocumentResult(
       dataGroups: dataGroups,
       efSod: efSodHex,
       nonce: nonce,
@@ -261,7 +261,7 @@ Future<void> performDocumentReading({
   required StatusUpdater updateStatus,
   String? sessionId,
   Uint8List? nonce,
-  void Function(MrtdData, DataResult)? onDataRead,
+  void Function(MrtdData, DocumentResult)? onDataRead,
 }) async {
   nfcProvider.setIosAlertMessage("Trying to read EF.CardAccess ...");
   final mrtdData = MrtdData();
