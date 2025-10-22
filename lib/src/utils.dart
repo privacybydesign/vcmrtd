@@ -5,12 +5,12 @@ import 'dart:typed_data';
 class Utils {
   static const bool isProfileMode = bool.fromEnvironment('dart.vm.profile', defaultValue: false);
   static const bool isReleaseMode = bool.fromEnvironment('dart.vm.product', defaultValue: false);
-  static const bool isDebugMode   = !isReleaseMode && !isProfileMode;
+  static const bool isDebugMode = !isReleaseMode && !isProfileMode;
 
   /// Returns number of bits to represent integer [n].
   /// [n] must be positive integer number.
   static int bitCount(final int n) {
-    if(n < 0) {
+    if (n < 0) {
       throw ArgumentError.value(n, null, "n is negative");
     }
 
@@ -34,16 +34,15 @@ class Utils {
 
     // get first set byte
     int i = 0;
-    for(; i < raw.length; i++) {
-      if(raw[i] != 0x00 ) {
+    for (; i < raw.length; i++) {
+      if (raw[i] != 0x00) {
         break;
       }
     }
-    return raw.sublist( raw.length - i >= minLen ? i : raw.length  - minLen);
+    return raw.sublist(raw.length - i >= minLen ? i : raw.length - minLen);
   }
 
-  static Uint8List bigIntToUint8List({required BigInt bigInt}) =>
-      bigIntToByteData(bigInt).buffer.asUint8List();
+  static Uint8List bigIntToUint8List({required BigInt bigInt}) => bigIntToByteData(bigInt).buffer.asUint8List();
 
   static ByteData bigIntToByteData(BigInt bigInt) {
     final data = ByteData((bigInt.bitLength / 8).ceil());
