@@ -21,7 +21,7 @@ class DgTag {
 
 abstract class DataGroup extends ElementaryFile {
   int get tag; // TLV tag
-  DataGroup.fromBytes(Uint8List data) : super.fromBytes(data);
+  DataGroup.fromBytes(super.data) : super.fromBytes();
 
   @override
   void parse(Uint8List content) {

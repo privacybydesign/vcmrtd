@@ -7,7 +7,7 @@ class ProfilePictureWidget extends StatelessWidget {
   final Uint8List? imageData;
   final ImageType? imageType;
 
-  const ProfilePictureWidget({Key? key, required this.imageData, required this.imageType}) : super(key: key);
+  const ProfilePictureWidget({super.key, required this.imageData, required this.imageType});
 
   @override
   Widget build(BuildContext context) {

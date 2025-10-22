@@ -15,13 +15,13 @@ class AnimatedNFCStatusWidget extends StatefulWidget {
   final double progress; // 0.0 to 1.0 for progress indicators
 
   const AnimatedNFCStatusWidget({
-    Key? key,
+    super.key,
     required this.state,
     required this.message,
     this.onRetry,
     this.onCancel,
     this.progress = 0.0,
-  }) : super(key: key);
+  });
 
   @override
   State<AnimatedNFCStatusWidget> createState() => _AnimatedNFCStatusWidgetState();

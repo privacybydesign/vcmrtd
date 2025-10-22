@@ -12,8 +12,7 @@ class ManualEntryScreen extends StatefulWidget {
   final VoidCallback onBack;
   final Function(String docNumber, DateTime dob, DateTime expiry)? onDataEntered;
 
-  const ManualEntryScreen({Key? key, required this.onContinue, required this.onBack, this.onDataEntered})
-    : super(key: key);
+  const ManualEntryScreen({super.key, required this.onContinue, required this.onBack, this.onDataEntered});
 
   @override
   State<ManualEntryScreen> createState() => _ManualEntryScreenState();

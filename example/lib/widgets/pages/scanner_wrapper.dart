@@ -17,13 +17,13 @@ class ScannerWrapper extends StatefulWidget {
   final DocumentType documentType;
 
   const ScannerWrapper({
-    Key? key,
+    super.key,
     required this.onMrzScanned,
     required this.onManualEntry,
     required this.onCancel,
     required this.onBack,
     this.documentType = DocumentType.passport,
-  }) : super(key: key);
+  });
 
   @override
   State<ScannerWrapper> createState() => _ScannerWrapperState();

@@ -16,7 +16,7 @@ class EfDG1 extends DataGroup {
   late final MRZ _mrz;
   MRZ get mrz => _mrz;
 
-  EfDG1.fromBytes(Uint8List data) : super.fromBytes(data);
+  EfDG1.fromBytes(super.data) : super.fromBytes();
 
   @override
   int get fid => FID;

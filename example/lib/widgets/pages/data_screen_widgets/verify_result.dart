@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:vcmrtdapp/widgets/pages/data_screen_widgets/read_only_textbox.dart';
 
@@ -8,11 +7,11 @@ class VerifyResultSection extends StatelessWidget {
   final bool authenticContent;
 
   const VerifyResultSection({
-    Key? key,
+    super.key,
     required this.isExpired,
     required this.authenticChip,
     required this.authenticContent,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

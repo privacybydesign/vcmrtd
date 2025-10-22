@@ -14,7 +14,6 @@ import 'iso7816/command_apdu.dart';
 import 'iso7816/iso7816.dart';
 import 'iso7816/response_apdu.dart';
 import 'iso7816/sm.dart';
-import 'iso7816/smcipher.dart';
 import '../crypto/iso9797.dart';
 import '../lds/tlv.dart';
 import '../crypto/aes.dart';
@@ -28,7 +27,7 @@ class MrtdSM extends SecureMessaging {
   SSC _ssc;
   set ssc(final SSC ssc) => _ssc = ssc;
 
-  MrtdSM(SMCipher smCipher, this._ssc) : super(smCipher);
+  MrtdSM(super.smCipher, this._ssc);
 
   @override
   CommandAPDU protect(final CommandAPDU cmd) {

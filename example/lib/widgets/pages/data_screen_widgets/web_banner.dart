@@ -1,10 +1,9 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class WebBanner extends StatelessWidget {
   final sessionId;
 
-  const WebBanner({Key? key, required this.sessionId}) : super(key: key);
+  const WebBanner({super.key, required this.sessionId});
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +33,7 @@ class WebBanner extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Session IID: ${sessionId}',
+                  'Session IID: $sessionId',
                   style: TextStyle(color: Colors.blue[600], fontSize: 12, fontFamily: 'monospace'),
                 ),
               ],

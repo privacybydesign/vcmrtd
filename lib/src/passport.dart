@@ -2,7 +2,6 @@
 import 'dart:typed_data';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtd/extensions.dart';
-import 'package:vcmrtd/src/proto/access_key.dart';
 import 'package:logging/logging.dart';
 
 import 'proto/iso7816/icc.dart';

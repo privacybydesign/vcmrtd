@@ -23,13 +23,13 @@ class DataScreen extends StatefulWidget {
   final Uint8List? nonce;
 
   const DataScreen({
-    Key? key,
+    super.key,
     required this.mrtdData,
     required this.onBackPressed,
     required this.passportDataResult,
     this.sessionId,
     this.nonce,
-  }) : super(key: key);
+  });
 
   @override
   State<DataScreen> createState() => _DataScreenState();

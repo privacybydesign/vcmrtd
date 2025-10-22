@@ -12,11 +12,11 @@ int g = int.parse(
 );
 
 class DomainParameter {
-  late int _id;
-  late String _name;
-  late int _size;
-  late DomainParameterType _type;
-  late bool _isSupported; //is supported by this library (is in pointycastle)
+  late final int _id;
+  late final String _name;
+  late final int _size;
+  late final DomainParameterType _type;
+  late final bool _isSupported; //is supported by this library (is in pointycastle)
 
   DomainParameter({
     required int id,

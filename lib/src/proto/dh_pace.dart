@@ -135,7 +135,7 @@ class DHPace {
 
   DHpkcs3Engine? _engine;
   DHpkcs3Engine? _engineEphemeral;
-  DhParameterSpec _domainParameters; //only for override(testing) purposes
+  final DhParameterSpec _domainParameters; //only for override(testing) purposes
 
   bool get isPublicKeySet => _engine != null;
   BigInt get publicKey => _engine!.publicKey;
@@ -159,11 +159,11 @@ class DHPace {
     _log.warning("This function is only for testing purposes. It prints private keys. Do not use in production.");
     String forReturn = "DHPace: ${selectedDomainParameter.name}: ";
     bool isAny = false;
-    if (isPublicKeySet && _engine!.privateKey != null) {
+    if (isPublicKeySet) {
       forReturn += " private key: ${_engine!.privateKey.toString()}";
       isAny = true;
     }
-    if (isEphemeralPublicKeySet && _engine!.privateKey != null) {
+    if (isEphemeralPublicKeySet) {
       forReturn += " ephemeral private key: ${_engineEphemeral!.privateKey.toString()}";
       isAny = true;
     }
@@ -198,7 +198,7 @@ class DHPace {
     return Utils.uint8ListToBigInt(pubKey.toRelavantBytes());
   }
 
-  void generateKeyPair({int? seed = null}) {
+  void generateKeyPair({int? seed}) {
     _log.fine("DHPace.generateKeyPair; Generating key pair for domain parameter ${selectedDomainParameter.name}.");
 
     DhKeyPair keyPair = _engine!.generateKeyPair(seed: seed);
@@ -206,7 +206,7 @@ class DHPace {
     _log.sdVerbose("DHPace.generateKeyPair; Generated public/private key: ${keyPair.toStringAlsoPrivate()}");
   }
 
-  void generateKeyPairWithCustomGenerator({required BigInt ephemeralGenerator, int? seed = null}) {
+  void generateKeyPairWithCustomGenerator({required BigInt ephemeralGenerator, int? seed}) {
     _log.fine(
       "DHPace.generateKeyPairWithCustomGenerator; Generating custom key pair for domain parameter "
       "${selectedDomainParameter.name}.",

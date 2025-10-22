@@ -43,6 +43,7 @@ class CanKey extends AccessKey {
   }
 
   /// Returns K-pi [kpi] to be used in PACE protocol.
+  @override
   Uint8List Kpi(CipherAlgorithm cipherAlgorithm, KEY_LENGTH keyLength) {
     if (cipherAlgorithm == CipherAlgorithm.DESede) {
       //_cachedSeed = KDF(sha1, _can, Int32(3)).sublist(0, seedLen);

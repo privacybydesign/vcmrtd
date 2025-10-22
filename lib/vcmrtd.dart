@@ -1,5 +1,5 @@
 // Created by Crt Vavros, copyright © 2022 ZeroPass. All rights reserved.
-library vcmrtd;
+library;
 
 export 'src/com/com_provider.dart';
 export 'src/com/nfc_provider.dart';

@@ -5,7 +5,6 @@ import 'dart:typed_data';
 
 import 'package:vcmrtd/extensions.dart';
 import "package:vcmrtd/src/lds/df1/dg.dart";
-import "package:vcmrtd/src/extension/logging_apis.dart";
 import 'package:logging/logging.dart';
 import 'package:pointycastle/asn1.dart';
 
@@ -23,7 +22,7 @@ class EfCardAccess extends ElementaryFile {
 
   final _log = Logger("EfCardAccess");
 
-  EfCardAccess.fromBytes(Uint8List data) : super.fromBytes(data);
+  EfCardAccess.fromBytes(super.data) : super.fromBytes();
 
   @override
   int get fid => FID;
@@ -33,7 +32,7 @@ class EfCardAccess extends ElementaryFile {
 
   @override
   void parse(Uint8List content) {
-    _log.sdVerbose("Parsing EF.CardAccess" + content.hex());
+    _log.sdVerbose("Parsing EF.CardAccess${content.hex()}");
 
     var parser = ASN1Parser(content);
     if (!parser.hasNext()) {
@@ -47,7 +46,7 @@ class EfCardAccess extends ElementaryFile {
     // - PaceInfo
     // - PACEDomainParameterInfo
 
-    if (set.elements == null || set.elements!.length < 1) {
+    if (set.elements == null || set.elements!.isEmpty) {
       _log.error("Invalid structure of EF.CardAccess. More than one element in set.");
       throw EfParseError("Invalid structure of EF.CardAccess. More than one element in set.");
     }

@@ -1,6 +1,4 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtdapp/widgets/pages/data_screen_widgets/profile_picture.dart';
@@ -11,7 +9,7 @@ class PersonalDataSection extends StatelessWidget {
   final MRZ mrz;
   final EfDG2 dg2;
 
-  const PersonalDataSection({Key? key, required this.mrz, required this.dg2}) : super(key: key);
+  const PersonalDataSection({super.key, required this.mrz, required this.dg2});
 
   @override
   Widget build(BuildContext context) {

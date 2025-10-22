@@ -187,10 +187,12 @@ class OIE {
     identifier = item['identifier'] as List<int>;
   }
 
+  @override
   String toString() {
     return 'OIE: $identifierString, $readableName, $identifier';
   }
 
+  @override
   bool operator ==(Object other) {
     if (other is OIE) {
       //return identifierString == other.identifierString &&
@@ -231,16 +233,12 @@ class OIEPaceProtocol extends OIE {
   TOKEN_AGREEMENT_ALGO? _tokenAgreementAlgorithm;
   MAPPING_TYPE? _mappingType;
 
-  OIEPaceProtocol({required String identifierString, required String readableName, required List<int> identifier})
-    : super(
-        identifierString: identifierString.toUpperCase(),
-        readableName: readableName.toUpperCase(),
-        identifier: identifier,
-      ) {
+  OIEPaceProtocol({required String identifierString, required String readableName, required super.identifier})
+    : super(identifierString: identifierString.toUpperCase(), readableName: readableName.toUpperCase()) {
     setParams();
   }
 
-  OIEPaceProtocol.fromMap({required Map<String, Object> item}) : super.fromMap(item: item) {
+  OIEPaceProtocol.fromMap({required super.item}) : super.fromMap() {
     setParams();
   }
 

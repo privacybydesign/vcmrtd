@@ -14,8 +14,7 @@ class NfcGuidanceScreen extends StatefulWidget {
   final VoidCallback onBack;
   final VoidCallback? onTroubleshooting;
 
-  const NfcGuidanceScreen({Key? key, required this.onStartReading, required this.onBack, this.onTroubleshooting})
-    : super(key: key);
+  const NfcGuidanceScreen({super.key, required this.onStartReading, required this.onBack, this.onTroubleshooting});
 
   @override
   State<NfcGuidanceScreen> createState() => _NfcGuidanceScreenState();

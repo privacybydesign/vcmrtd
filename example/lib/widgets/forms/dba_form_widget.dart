@@ -16,7 +16,7 @@ class DbaFormWidget extends StatefulWidget {
   final ValueChanged<bool> onPACEChanged;
 
   const DbaFormWidget({
-    Key? key,
+    super.key,
     required this.formKey,
     required this.docNumberController,
     required this.dobController,
@@ -24,7 +24,7 @@ class DbaFormWidget extends StatefulWidget {
     required this.checkBoxPACE,
     required this.inputDisabled,
     required this.onPACEChanged,
-  }) : super(key: key);
+  });
 
   @override
   State<DbaFormWidget> createState() => _DbaFormWidgetState();

@@ -2,6 +2,7 @@ name: vcmrtd
 description: Veriable Credentials from Machine Readable Travel Documents
 
 version: 2.0.0
+publish_to: none
 
 environment:
   sdk: ^3.8.0

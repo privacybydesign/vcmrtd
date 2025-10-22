@@ -18,6 +18,7 @@ abstract class PublicKeyPACE {
 
   Uint8List toRelavantBytes();
 
+  @override
   String toString();
 }
 

@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 class NfcStatusWidget extends StatelessWidget {
   final bool isNfcAvailable;
 
-  const NfcStatusWidget({Key? key, required this.isNfcAvailable}) : super(key: key);
+  const NfcStatusWidget({super.key, required this.isNfcAvailable});
 
   @override
   Widget build(BuildContext context) {

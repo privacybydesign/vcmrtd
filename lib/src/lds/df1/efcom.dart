@@ -18,11 +18,11 @@ class EfCOM extends ElementaryFile {
   late final String _uver;
   final _tags = <DgTag>{};
 
-  get version => _ver;
-  get unicodeVersion => _uver;
+  String get version => _ver;
+  String get unicodeVersion => _uver;
   Set<DgTag> get dgTags => _tags;
 
-  EfCOM.fromBytes(Uint8List data) : super.fromBytes(data);
+  EfCOM.fromBytes(super.data) : super.fromBytes();
 
   @override
   int get fid => FID;

@@ -1,11 +1,10 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:vcmrtdapp/models/mrtd_data.dart';
 
 class SecurityContent extends StatelessWidget {
   final MrtdData mrtdData;
 
-  const SecurityContent({Key? key, required this.mrtdData}) : super(key: key);
+  const SecurityContent({super.key, required this.mrtdData});
 
   @override
   Widget build(BuildContext context) {

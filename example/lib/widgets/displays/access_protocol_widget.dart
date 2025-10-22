@@ -12,12 +12,12 @@ class AccessProtocolWidget extends StatelessWidget {
   final bool isDBA;
 
   const AccessProtocolWidget({
-    Key? key,
+    super.key,
     required this.header,
     required this.collapsedText,
     required this.isPACE,
     required this.isDBA,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

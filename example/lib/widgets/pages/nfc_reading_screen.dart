@@ -21,7 +21,7 @@ class NfcReadingScreen extends StatefulWidget {
   final VoidCallback? onCancel;
 
   const NfcReadingScreen({
-    Key? key,
+    super.key,
     this.mrzResult,
     this.manualDocNumber,
     this.manualDob,
@@ -30,7 +30,7 @@ class NfcReadingScreen extends StatefulWidget {
     this.nonce,
     this.onDataRead,
     this.onCancel,
-  }) : super(key: key);
+  });
 
   @override
   State<NfcReadingScreen> createState() => _NfcReadingScreenState();

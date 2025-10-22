@@ -34,7 +34,7 @@ class MRZCameraViewState extends State<MRZCameraView> {
     initCamera();
   }
 
-  initCamera() async {
+  Future<void> initCamera() async {
     cameras = await availableCameras();
 
     try {

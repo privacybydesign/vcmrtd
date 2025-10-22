@@ -1,7 +1,6 @@
 // Created by Crt Vavros, copyright © 2022 ZeroPass. All rights reserved.
 // ignore_for_file: constant_identifier_names
 
-import 'dart:typed_data';
 import 'dg.dart';
 
 /// As specified in ICAO9303-p10 is not used and reserved for future.
@@ -10,7 +9,7 @@ class EfDG6 extends DataGroup {
   static const SFI = 0x06;
   static const TAG = DgTag(0x66);
 
-  EfDG6.fromBytes(Uint8List data) : super.fromBytes(data);
+  EfDG6.fromBytes(super.data) : super.fromBytes();
 
   @override
   int get fid => FID;

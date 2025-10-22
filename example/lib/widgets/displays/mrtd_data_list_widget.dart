@@ -13,7 +13,7 @@ import 'mrtd_data_widget.dart';
 class MrtdDataListWidget extends StatelessWidget {
   final MrtdData? mrtdData;
 
-  const MrtdDataListWidget({Key? key, this.mrtdData}) : super(key: key);
+  const MrtdDataListWidget({super.key, this.mrtdData});
 
   List<Widget> _buildDataWidgets() {
     List<Widget> list = [];

@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class InfoRow extends StatelessWidget {
@@ -6,7 +5,7 @@ class InfoRow extends StatelessWidget {
   final String value;
   final IconData iconData;
 
-  const InfoRow({Key? key, required this.label, required this.value, required this.iconData}) : super(key: key);
+  const InfoRow({super.key, required this.label, required this.value, required this.iconData});
 
   @override
   Widget build(BuildContext context) {
