@@ -35,7 +35,7 @@ class MRZCameraViewState extends State<MRZCameraView> {
     initCamera();
   }
 
-  initCamera() async {
+  Future<void> initCamera() async {
     cameras = await availableCameras();
 
     try {
@@ -194,7 +194,7 @@ class MRZCameraViewState extends State<MRZCameraView> {
 
     // For camera feed that supports only yuv_420_888
     if (format == null || Platform.isAndroid && format == InputImageFormat.yuv_420_888) {
-      Uint8List _yuv420ToNv21(CameraImage img) {
+      Uint8List yuv420ToNv21(CameraImage img) {
         final int width = img.width;
         final int height = img.height;
         final int ySize = width * height;
@@ -226,7 +226,7 @@ class MRZCameraViewState extends State<MRZCameraView> {
         return nv21;
       }
 
-      final nv21Bytes = _yuv420ToNv21(image);
+      final nv21Bytes = yuv420ToNv21(image);
 
       return InputImage.fromBytes(
         bytes: nv21Bytes,
@@ -242,7 +242,7 @@ class MRZCameraViewState extends State<MRZCameraView> {
     // only supported formats:
     // * nv21 for Android
     // * bgra8888 for iOS
-    if (format == null ||
+    if (
         (Platform.isAndroid && format != InputImageFormat.nv21) ||
         (Platform.isIOS && format != InputImageFormat.bgra8888)) {
       return null;

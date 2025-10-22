@@ -300,42 +300,6 @@ class _AppNavigationState extends State<AppNavigation> {
     super.dispose();
   }
 
-  void _showHelpDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Need Help?'),
-          content: const Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Scan MRZ Code (Recommended)',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              Text(
-                'The Machine Readable Zone (MRZ) is at the bottom of your passport with two lines of text and numbers. Scanning it is faster and more accurate.\n',
-              ),
-              Text(
-                'Enter Details Manually',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              Text(
-                'You can also type in your passport information by hand if scanning doesn\'t work or if you prefer this method.',
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Got it'),
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   void _showTroubleshootingDialog() {
     showDialog(

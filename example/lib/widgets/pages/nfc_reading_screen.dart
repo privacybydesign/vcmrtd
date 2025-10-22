@@ -2,7 +2,6 @@ import 'dart:typed_data';
 
 import 'package:vcmrtd/extensions.dart';
 import 'package:vcmrtd/vcmrtd.dart';
-import 'package:vcmrtd/src/proto/can_key.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:vcmrtdapp/helpers/document_type_extract.dart';
@@ -24,7 +23,7 @@ class NfcReadingScreen extends StatefulWidget {
   final VoidCallback? onCancel;
 
   const NfcReadingScreen(
-      {Key? key,
+      {super.key,
       this.mrzResult,
       this.manualDocNumber,
       this.manualDob,
@@ -34,8 +33,7 @@ class NfcReadingScreen extends StatefulWidget {
       this.sessionId,
       this.nonce,
       this.onDataRead,
-      this.onCancel})
-      : super(key: key);
+      this.onCancel});
 
   @override
   State<NfcReadingScreen> createState() => _NfcReadingScreenState();
@@ -60,75 +58,6 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
   double _readingProgress = 0.0;
   final _log = Logger("vcmrtd.app");
   bool _isCancelled = false;
-
-
-  Future<_DocumentSessionConfig?> _prepareDocumentSession() async {
-    bool paceMode = false;
-    String docNumber;
-    DateTime? birthDate;
-    DateTime? expiryDate;
-
-    // Determine the correct key and document type
-    if (widget.documentType == DocumentType.passport) {
-
-      if (widget.mrzResult != null) {
-        docNumber = widget.mrzResult.documentNumber;
-        birthDate = widget.mrzResult.birthDate;
-        expiryDate = widget.mrzResult.expiryDate;
-        if (widget.mrzResult!.countryCode == "NLD") {
-          paceMode = true;
-        }
-      } else if (widget.manualDocNumber != null &&
-          widget.manualDob != null &&
-          widget.manualExpiry != null) {
-        docNumber = widget.manualDocNumber!;
-        birthDate = widget.manualDob!;
-        expiryDate = widget.manualExpiry!;
-      } else {
-        setState(() {
-          _alertMessage =
-          "No ${widget.documentType.displayName} data available. Please go back and enter your passport information.";
-          _nfcState = NFCReadingState.error;
-        });
-        return null;
-      }
-
-      final accessKey = DBAKey(
-        docNumber,
-        birthDate!,
-        expiryDate!,
-        paceMode: paceMode,
-      );
-
-      return _DocumentSessionConfig(
-        document: Passport(_nfc),
-        accessKey: accessKey,
-        isPace: paceMode,
-      );
-    }
-
-    if (widget.documentType == DocumentType.driverLicence) {
-      docNumber = widget.mrzResult?.documentNumber ??
-          widget.manualDocNumber ??
-          '';
-
-      if (docNumber == null || docNumber == '') {
-        _alertMessage =
-        "No ${widget.documentType.displayName} data available. Please go back and enter your information again.";
-        _nfcState = NFCReadingState.error;
-        return null;
-      }
-
-      final canKey = CanKey(docNumber);
-      return _DocumentSessionConfig(
-        document: DrivingLicence(_nfc),
-        accessKey: canKey,
-        isPace: true, // driver licences always use PACE (CAN)
-      );
-    }
-
-    return null;
-  }
 
 
   @override

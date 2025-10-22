@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:intl/intl.dart';
 
-import '../../helpers/mrz_scanner.dart';
 import '../../helpers/document_type_extract.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
@@ -20,13 +19,13 @@ class ManualEntryScreen extends StatefulWidget {
   final DocumentType documentType;
 
   const ManualEntryScreen({
-    Key? key,
+    super.key,
     required this.onContinue,
     required this.onBack,
     this.onMrzEntered,
     this.onDataEntered,
     required this.documentType,
-  }) : super(key: key);
+  });
 
   @override
   State<ManualEntryScreen> createState() => _ManualEntryScreenState();
@@ -92,9 +91,9 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                     padding: const EdgeInsets.all(12),
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
+                        color: Colors.black.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.red.withOpacity(0.3)),
+                      border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       children: [
@@ -351,7 +350,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF6b6868).withOpacity(0.1),
+                    color: const Color(0xFF6b6868).withValues(alpha:0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
@@ -472,7 +471,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
               width: 60,
               height: 60,
               decoration: BoxDecoration(
-                color: const Color(0xFF6b6868).withOpacity(0.1),
+                color: const Color(0xFF6b6868).withValues(alpha:0.1),
                 borderRadius: BorderRadius.circular(30),
               ),
               child: Icon(

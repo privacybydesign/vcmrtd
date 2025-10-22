@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class ReadOnlyTextBox extends StatelessWidget {
@@ -7,11 +6,11 @@ class ReadOnlyTextBox extends StatelessWidget {
   final bool isError;
 
   const ReadOnlyTextBox({
-    Key? key,
+    super.key,
     required this.label,
     required this.value,
     required this.isError,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

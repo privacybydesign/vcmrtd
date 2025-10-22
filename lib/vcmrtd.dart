@@ -32,6 +32,7 @@ export 'src/lds/efcard_access.dart';
 export 'src/lds/efcard_security.dart';
 export 'src/lds/mrz.dart';
 export 'src/lds/tlv.dart';
+export 'src/proto/can_key.dart';
 
 export 'src/document.dart';
 export 'src/document_reader.dart';

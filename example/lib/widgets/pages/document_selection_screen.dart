@@ -80,7 +80,7 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: const Color(0xFF6b6868).withOpacity(0.1),
+                color: const Color(0xFF6b6868).withValues(alpha:0.1),
                 borderRadius: BorderRadius.circular(40),
               ),
               child: const Icon(
@@ -139,7 +139,7 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: accentColor.withOpacity(0.1),
+                        color: accentColor.withValues(alpha:0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(

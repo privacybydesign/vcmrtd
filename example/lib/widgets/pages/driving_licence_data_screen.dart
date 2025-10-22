@@ -8,10 +8,10 @@ class DrivingLicenceDataScreen extends StatelessWidget {
   final VoidCallback onBackPressed;
 
   const DrivingLicenceDataScreen({
-    Key? key,
+    super.key,
     required this.mrtdData,
     required this.onBackPressed,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

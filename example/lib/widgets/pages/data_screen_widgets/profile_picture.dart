@@ -8,10 +8,10 @@ class ProfilePictureWidget extends StatelessWidget {
   final ImageType? imageType;
 
   const ProfilePictureWidget({
-    Key? key,
+    super.key,
     required this.imageData,
     required this.imageType,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +46,7 @@ class ProfilePictureWidget extends StatelessWidget {
         border: Border.all(color: Colors.grey[300]!),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),

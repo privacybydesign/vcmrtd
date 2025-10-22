@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:vcmrtd/vcmrtd.dart';
 import 'dart:convert';
 import 'package:vcmrtdapp/models/document_result.dart';
 import 'package:http/http.dart' as http;
@@ -24,13 +23,12 @@ class PassportDataScreen extends StatefulWidget {
   final Uint8List? nonce;
 
   const PassportDataScreen(
-      {Key? key,
+      {super.key,
       required this.mrtdData,
       required this.onBackPressed,
       required this.passportDataResult,
       this.sessionId,
-      this.nonce})
-      : super(key: key);
+      this.nonce});
 
   @override
   State<PassportDataScreen> createState() => _PassportDataScreenState();

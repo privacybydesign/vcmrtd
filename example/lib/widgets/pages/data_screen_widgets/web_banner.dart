@@ -1,13 +1,12 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class WebBanner extends StatelessWidget {
-  final sessionId;
+  final String? sessionId;
 
   const WebBanner({
-    Key? key,
+    super.key,
     required this.sessionId,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
