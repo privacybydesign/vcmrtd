@@ -4,7 +4,7 @@ description: Veriable Credentials from Machine Readable Travel Documents
 version: 2.0.0
 
 environment:
-  sdk: ^3.6.0
+  sdk: ^3.8.0
 
 dependency_overrides:
   pointycastle:

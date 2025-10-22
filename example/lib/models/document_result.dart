@@ -8,13 +8,7 @@ class DocumentResult {
   final Uint8List? nonce;
   final Uint8List? aaSignature;
 
-  DocumentResult({
-    required this.dataGroups,
-    required this.efSod,
-    this.sessionId,
-    this.nonce,
-    this.aaSignature
-  });
+  DocumentResult({required this.dataGroups, required this.efSod, this.sessionId, this.nonce, this.aaSignature});
 
   String _bytesToHex(Uint8List bytes) {
     final StringBuffer buffer = StringBuffer();
@@ -29,7 +23,7 @@ class DocumentResult {
     'ef_sod': efSod,
     'nonce': nonce != null ? _bytesToHex(nonce!) : null,
     'session_id': sessionId,
-    'aa_signature': aaSignature != null ? _bytesToHex(aaSignature!) : null
+    'aa_signature': aaSignature != null ? _bytesToHex(aaSignature!) : null,
   };
 
   String toJsonString() => jsonEncode(toJson());

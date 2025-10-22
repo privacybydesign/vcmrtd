@@ -1,16 +1,12 @@
 import 'dart:typed_data';
 
-
 ///
 /// Class repesents one Data Row in a Data Field. MRTD additional data
 /// is stored in communication messages.
 /// Structure:
 ///   [Tag, Length, Value]
 ///
-enum DocumentType {
-  passport,
-  driverLicence,
-}
+enum DocumentType { passport, driverLicence }
 
 class DataRowException implements Exception {
   final String message;
@@ -38,8 +34,7 @@ class DataRow {
     bytes[0] = tag;
     bytes[1] = length;
     // Set the third and fourth bytes to `value`.
-    if (value != null)
-      bytes.setRange(2, 2 + value.length, value);
+    if (value != null) bytes.setRange(2, 2 + value.length, value);
     return bytes;
   }
 
@@ -49,8 +44,6 @@ class DataRow {
     return bytes.map((byte) => '0x' + byte.toRadixString(16).padLeft(2, '0') + " ").join();
   }
 }
-
-
 
 ///
 /// Class repesents one entire data set in a Data Field. MRTD additional data
@@ -71,12 +64,12 @@ class DataSet {
     rows.add(DataRow(tag: tag, value: value));
   }
 
-  void addRow({required DataRow row}){
+  void addRow({required DataRow row}) {
     rows.add(row);
   }
 
   ///it returns chunk of all data rows as a Uint8List
-  Uint8List toList(){
+  Uint8List toList() {
     var b = BytesBuilder();
     //final bytes = Uint8List(rows.length);
     for (DataRow row in rows) {
@@ -88,7 +81,4 @@ class DataSet {
   void clear() {
     rows.clear();
   }
-
 }
-
-

@@ -8,12 +8,8 @@ class PassportImageWidget extends StatefulWidget {
   final Uint8List? imageData;
   final ImageType? imageType;
 
-  const PassportImageWidget({
-    Key? key,
-    required this.header,
-    required this.imageData,
-    required this.imageType,
-  }) : super(key: key);
+  const PassportImageWidget({Key? key, required this.header, required this.imageData, required this.imageType})
+    : super(key: key);
 
   @override
   State<PassportImageWidget> createState() => _PassportImageWidgetState();
@@ -36,8 +32,7 @@ class _PassportImageWidgetState extends State<PassportImageWidget> {
   void didUpdateWidget(PassportImageWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     // Check if image data or type changed
-    if (widget.imageData != oldWidget.imageData || 
-        widget.imageType != oldWidget.imageType) {
+    if (widget.imageData != oldWidget.imageData || widget.imageType != oldWidget.imageType) {
       if (widget.imageType == ImageType.jpeg2000 && widget.imageData != null) {
         _convertJp2Image();
       } else {
@@ -59,7 +54,7 @@ class _PassportImageWidgetState extends State<PassportImageWidget> {
 
     try {
       final cacheKey = _getCacheKey();
-      
+
       // Check cache first
       if (_conversionCache.containsKey(cacheKey)) {
         setState(() {
@@ -71,11 +66,11 @@ class _PassportImageWidgetState extends State<PassportImageWidget> {
 
       // Convert the image
       final convertedData = await convertJp2(widget.imageData!, context);
-      
+
       if (convertedData != null) {
         // Cache the result
         _conversionCache[cacheKey] = convertedData;
-        
+
         if (mounted) {
           setState(() {
             _convertedImage = convertedData;
@@ -109,19 +104,14 @@ class _PassportImageWidgetState extends State<PassportImageWidget> {
         widget.imageData!,
         fit: BoxFit.contain,
         gaplessPlayback: true,
-        errorBuilder: (context, error, stackTrace) =>
-            const Text("Error displaying JPEG image."),
+        errorBuilder: (context, error, stackTrace) => const Text("Error displaying JPEG image."),
       );
     } else if (widget.imageType == ImageType.jpeg2000) {
       if (_isConverting) {
         return const Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text("Converting JPEG2000 image..."),
-            ],
+            children: [CircularProgressIndicator(), SizedBox(height: 16), Text("Converting JPEG2000 image...")],
           ),
         );
       } else if (_convertedImage != null) {
@@ -129,18 +119,13 @@ class _PassportImageWidgetState extends State<PassportImageWidget> {
           _convertedImage!,
           fit: BoxFit.contain,
           gaplessPlayback: true,
-          errorBuilder: (context, error, stackTrace) =>
-              const Text("Error displaying converted JPEG2000 image."),
+          errorBuilder: (context, error, stackTrace) => const Text("Error displaying converted JPEG2000 image."),
         );
       } else {
-        return const Center(
-          child: Text("Failed to convert JPEG2000 image."),
-        );
+        return const Center(child: Text("Failed to convert JPEG2000 image."));
       }
     } else {
-      return const Center(
-        child: Text("Unknown or unsupported image type."),
-      );
+      return const Center(child: Text("Unknown or unsupported image type."));
     }
   }
 

@@ -22,18 +22,19 @@ class NfcReadingScreen extends StatefulWidget {
   final Function(MrtdData, DocumentResult)? onDataRead;
   final VoidCallback? onCancel;
 
-  const NfcReadingScreen(
-      {super.key,
-      this.mrzResult,
-      this.manualDocNumber,
-      this.manualDob,
-      this.manualExpiry,
-      required this.documentType,
-      this.document,
-      this.sessionId,
-      this.nonce,
-      this.onDataRead,
-      this.onCancel});
+  const NfcReadingScreen({
+    super.key,
+    this.mrzResult,
+    this.manualDocNumber,
+    this.manualDob,
+    this.manualExpiry,
+    required this.documentType,
+    this.document,
+    this.sessionId,
+    this.nonce,
+    this.onDataRead,
+    this.onCancel,
+  });
 
   @override
   State<NfcReadingScreen> createState() => _NfcReadingScreenState();
@@ -44,11 +45,7 @@ class _DocumentSessionConfig {
   final AccessKey accessKey;
   final bool isPace;
 
-  _DocumentSessionConfig({
-    required this.document,
-    required this.accessKey,
-    required this.isPace,
-  });
+  _DocumentSessionConfig({required this.document, required this.accessKey, required this.isPace});
 }
 
 class _NfcReadingScreenState extends State<NfcReadingScreen> {
@@ -58,7 +55,6 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
   double _readingProgress = 0.0;
   final _log = Logger("vcmrtd.app");
   bool _isCancelled = false;
-
 
   @override
   Widget build(BuildContext context) {
@@ -83,7 +79,6 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
   }
 
   void _processDBAAuthentication() async {
-
     String docNumber;
     // Passport fields
     DateTime birthDate;
@@ -92,7 +87,6 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
     bool paceMode = false;
 
     if (widget.documentType == DocumentType.passport) {
-
       // Use either MRZ data or manual entry data
       if (widget.mrzResult != null) {
         docNumber = widget.mrzResult!.documentNumber;
@@ -103,43 +97,33 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
         if (widget.mrzResult!.countryCode == "NLD") {
           paceMode = true;
         }
-      } else if (widget.manualDocNumber != null &&
-          widget.manualDob != null &&
-          widget.manualExpiry != null) {
+      } else if (widget.manualDocNumber != null && widget.manualDob != null && widget.manualExpiry != null) {
         docNumber = widget.manualDocNumber!;
         birthDate = widget.manualDob!;
         expiryDate = widget.manualExpiry!;
       } else {
         setState(() {
           _alertMessage =
-          "No ${widget.documentType.displayName} data available. Please go back and enter your passport information.";
+              "No ${widget.documentType.displayName} data available. Please go back and enter your passport information.";
           _nfcState = NFCReadingState.error;
         });
         return;
       }
-    // DBAKey needs to be refactored to work with driver's licence, for now we force pace with can key directly on driver's licence
-    final bacKeySeed = DBAKey(
-      docNumber,
-      birthDate,
-      expiryDate,
-      paceMode: paceMode,
-    );
-    _readMRTD(accessKey: bacKeySeed, isPace: paceMode);
-    }
-    else if (widget.documentType == DocumentType.driverLicence) {
+      // DBAKey needs to be refactored to work with driver's licence, for now we force pace with can key directly on driver's licence
+      final bacKeySeed = DBAKey(docNumber, birthDate, expiryDate, paceMode: paceMode);
+      _readMRTD(accessKey: bacKeySeed, isPace: paceMode);
+    } else if (widget.documentType == DocumentType.driverLicence) {
       docNumber = widget.mrzResult!.documentNumber;
       final canKey = CanKey(docNumber);
       paceMode = true;
-    _readMRTD(accessKey: canKey, isPace: paceMode);
-
+      _readMRTD(accessKey: canKey, isPace: paceMode);
     }
   }
 
   void _readMRTD({required AccessKey accessKey, bool isPace = false}) async {
     try {
       setState(() {
-        _alertMessage =
-            "Hold your phone near the ${widget.documentType.displayName} photo page";
+        _alertMessage = "Hold your phone near the ${widget.documentType.displayName} photo page";
         _nfcState = NFCReadingState.waiting;
       });
 
@@ -147,19 +131,13 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
         bool demo = false;
         if (!demo) {
           if (_isCancelled) return;
-          await _nfc.connect(
-            iosAlertMessage:
-                "Hold your phone near Biometric ${widget.documentType.displayName}",
-          );
+          await _nfc.connect(iosAlertMessage: "Hold your phone near Biometric ${widget.documentType.displayName}");
         }
 
         if (_isCancelled) return;
-        final Document document = widget.documentType == DocumentType.passport
-            ? Passport(_nfc)
-            : DrivingLicence(_nfc);
+        final Document document = widget.documentType == DocumentType.passport ? Passport(_nfc) : DrivingLicence(_nfc);
         setState(() {
-          _alertMessage =
-              "Connecting to ${widget.documentType.displayNameLowerCase}...";
+          _alertMessage = "Connecting to ${widget.documentType.displayNameLowerCase}...";
           _nfcState = NFCReadingState.connecting;
         });
 
@@ -173,8 +151,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
           log: _log,
           sessionId: widget.sessionId,
           nonce: widget.nonce,
-          updateStatus: (
-              {String? message, NFCReadingState? state, double? progress}) {
+          updateStatus: ({String? message, NFCReadingState? state, double? progress}) {
             if (!mounted) {
               return;
             }
@@ -206,27 +183,21 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
     }
   }
 
-
-
   void _handleDocumentError(Exception e) {
     final se = e.toString().toLowerCase();
-    String alertMsg =
-        "An error has occurred while reading ${widget.documentType.displayNameLowerCase}!";
+    String alertMsg = "An error has occurred while reading ${widget.documentType.displayNameLowerCase}!";
 
     if (e is DocumentError) {
       if (se.contains("security status not satisfied")) {
-        alertMsg =
-            "Failed to initiate session with ${widget.documentType.displayNameLowerCase}.\nCheck input data!";
+        alertMsg = "Failed to initiate session with ${widget.documentType.displayNameLowerCase}.\nCheck input data!";
       }
       _log.error("PassportError: ${e.message}");
     } else {
-      _log.error(
-          "An exception was encountered while trying to read ${widget.documentType.displayNameLowerCase}: $e");
+      _log.error("An exception was encountered while trying to read ${widget.documentType.displayNameLowerCase}: $e");
     }
 
     if (se.contains('timeout')) {
-      alertMsg =
-          "Timeout while waiting for ${widget.documentType.displayNameLowerCase} tag";
+      alertMsg = "Timeout while waiting for ${widget.documentType.displayNameLowerCase} tag";
     } else if (se.contains("tag was lost")) {
       alertMsg = "Tag was lost. Please try again!";
     } else if (se.contains("invalidated by user")) {
@@ -243,9 +214,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
     if (_alertMessage.isNotEmpty) {
       await _nfc.disconnect(iosErrorMessage: _alertMessage);
     } else {
-      await _nfc.disconnect(
-        iosAlertMessage: "Finished",
-      );
+      await _nfc.disconnect(iosAlertMessage: "Finished");
     }
   }
 

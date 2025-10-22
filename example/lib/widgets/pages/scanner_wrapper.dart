@@ -9,7 +9,6 @@ import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'scan_screen.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
-
 /// Wrapper around ScannerPage to handle navigation callbacks
 class ScannerWrapper extends StatefulWidget {
   final Function(dynamic) onMrzScanned;
@@ -34,24 +33,15 @@ class ScannerWrapper extends StatefulWidget {
 class _ScannerWrapperState extends State<ScannerWrapper> {
   bool _hasNavigated = false;
 
-
   @override
   Widget build(BuildContext context) {
     return PlatformScaffold(
-      material: (_, __) => MaterialScaffoldData(
-        backgroundColor: Colors.black,
-        extendBody: true,
-      ),
-      cupertino: (_, __) => CupertinoPageScaffoldData(
-        backgroundColor: Colors.black,
-      ),
+      material: (_, __) => MaterialScaffoldData(backgroundColor: Colors.black, extendBody: true),
+      cupertino: (_, __) => CupertinoPageScaffoldData(backgroundColor: Colors.black),
       appBar: PlatformAppBar(
         backgroundColor: Colors.black,
         title: Text('Scan ${widget.documentType.displayName}'),
-        leading: PlatformIconButton(
-          icon: Icon(PlatformIcons(context).back),
-          onPressed: widget.onBack,
-        ),
+        leading: PlatformIconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBack),
       ),
       body: Stack(
         children: [
@@ -68,12 +58,7 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
               }
             },
           ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: _buildBottomControls(context),
-          ),
+          Positioned(left: 0, right: 0, bottom: 0, child: _buildBottomControls(context)),
         ],
       ),
     );
@@ -89,14 +74,10 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
-          children:  [
+          children: [
             Text(
               'Position the ${widget.documentType.displayName}',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
             ),
             Text(
               'Align the Machine Readable Zone (MRZ) with the frame at the bottom of the screen. Hold steady until scanning completes.',
@@ -111,9 +92,7 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
   Widget _buildBottomControls(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(30, 24, 24, 32),
-      decoration: BoxDecoration(
-        color: Colors.transparent,
-      ),
+      decoration: BoxDecoration(color: Colors.transparent),
       child: SafeArea(
         top: false,
         child: Column(
@@ -127,21 +106,15 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
                 widget.onManualEntry();
               },
               material: (_, __) => MaterialElevatedButtonData(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black,
-                ),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black),
               ),
-              cupertino: (_, __) => CupertinoElevatedButtonData(
-                color: Colors.white,
-              ),
-              child:  Text(
+              cupertino: (_, __) => CupertinoElevatedButtonData(color: Colors.white),
+              child: Text(
                 'Enter ${widget.documentType.displayName} details manually',
                 style: TextStyle(color: Colors.black),
               ),
             ),
             const SizedBox(height: 12),
-
           ],
         ),
       ),

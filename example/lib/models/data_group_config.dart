@@ -6,10 +6,5 @@ class DataGroupConfig {
   final double progressIncrement;
   final Future<DataGroup> Function(DocumentReader) readFunction;
 
-  DataGroupConfig({
-    required this.tag,
-    required this.name,
-    required this.progressIncrement,
-    required this.readFunction,
-  });
+  DataGroupConfig({required this.tag, required this.name, required this.progressIncrement, required this.readFunction});
 }

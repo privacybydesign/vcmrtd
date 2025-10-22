@@ -41,8 +41,7 @@ class DESCipher {
   /// Sets new iv. The [iv] length must be 8 bytes.
   set iv(final Uint8List iv) {
     if (iv.length != blockSize) {
-      throw ArgumentError.value(
-          iv, "invalid IV length should be $blockSize bytes");
+      throw ArgumentError.value(iv, "invalid IV length should be $blockSize bytes");
     }
     _iv = _bytesToDWordList(iv);
   }
@@ -79,8 +78,7 @@ class DESCipher {
   // Returns decrypted [eblock].
   Uint8List decryptBlock(final Uint8List eblock) {
     if (eblock.length % blockSize != 0) {
-      throw ArgumentError.value(
-          eblock, "eblock size should be $blockSize bytes");
+      throw ArgumentError.value(eblock, "eblock size should be $blockSize bytes");
     }
     _bc.init(false, _key);
     final wblock = _bytesToDWordList(eblock);
@@ -96,16 +94,14 @@ class DESCipher {
   /// Encrypts/decrypts [data] using CBC block cipher mode.
   Uint8List _process(final Uint8List data) {
     if (data.length % blockSize != 0) {
-      throw ArgumentError.value(
-          data, "data size should be multiple of $blockSize bytes");
+      throw ArgumentError.value(data, "data size should be multiple of $blockSize bytes");
     }
 
     List<int> pdata = List<int>.empty(growable: true);
     List<int> xord = _iv;
     final size = data.length / blockSize;
     for (int i = 0; i < size; i++) {
-      final block =
-          _bytesToDWordList(data.sublist(i * blockSize, i * blockSize + 8));
+      final block = _bytesToDWordList(data.sublist(i * blockSize, i * blockSize + 8));
 
       // copy current block - to be used for CBC xoring when decrypting
       List<int> pblock = List.from(block);
@@ -151,8 +147,7 @@ class DESCipher {
 
   void _xorBlock(final List<int> block, final List<int> xdata) {
     if (block.length != xdata.length) {
-      throw ArgumentError.value(
-          xdata, "invalid length pf data to xor block with");
+      throw ArgumentError.value(xdata, "invalid length pf data to xor block with");
     }
     for (int i = 0; i < block.length; i++) {
       block[i] ^= xdata[i];
@@ -186,8 +181,7 @@ class DESedeCipher extends DESCipher {
   ///
   /// [key] length must be 8, 16 or 24 bytes.
   /// [iv] length must be 8 bytes.
-  DESedeCipher({required final Uint8List key, required final Uint8List iv})
-      : super(key: key, iv: iv);
+  DESedeCipher({required final Uint8List key, required final Uint8List iv}) : super(key: key, iv: iv);
 
   /// Sets new key. [key] length must be 8, 16 or 24 bytes.
   @override
@@ -234,11 +228,12 @@ class DESedeCipher extends DESCipher {
 /// The [data] if [padData] is set to false should be padded to the nearest multiple of 8.
 /// When [padData] is true, the [data] is padded according to the ISO/IEC 9797-1, padding method 2.
 // ignore: non_constant_identifier_names
-Uint8List DESedeEncrypt(
-    {required final Uint8List key,
-    required final Uint8List iv,
-    required final Uint8List data,
-    bool padData = true}) {
+Uint8List DESedeEncrypt({
+  required final Uint8List key,
+  required final Uint8List iv,
+  required final Uint8List data,
+  bool padData = true,
+}) {
   return DESedeCipher(key: key, iv: iv).encrypt(data, padData: padData);
 }
 
@@ -247,10 +242,11 @@ Uint8List DESedeEncrypt(
 /// The [data] if [padData] is set to false should be padded to the nearest multiple of 8.
 /// When [padData] is true, the [data] is padded according to the ISO/IEC 9797-1, padding method 2.
 // ignore: non_constant_identifier_names
-Uint8List DESedeDecrypt(
-    {required final Uint8List key,
-    required final Uint8List iv,
-    required final Uint8List edata,
-    bool paddedData = true}) {
+Uint8List DESedeDecrypt({
+  required final Uint8List key,
+  required final Uint8List iv,
+  required final Uint8List edata,
+  bool paddedData = true,
+}) {
   return DESedeCipher(key: key, iv: iv).decrypt(edata, paddedData: paddedData);
 }

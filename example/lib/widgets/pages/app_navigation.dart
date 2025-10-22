@@ -20,15 +20,7 @@ import 'manual_entry_screen.dart';
 import '../../models/mrtd_data.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
-enum NavigationStep {
-  documentType,
-  passportMrz,
-  edlMrz,
-  manual,
-  nfcHelp,
-  nfcReading,
-  results,
-}
+enum NavigationStep { documentType, passportMrz, edlMrz, manual, nfcHelp, nfcReading, results }
 
 /// Main navigation controller that manages the new UX flow
 class AppNavigation extends StatefulWidget {
@@ -178,12 +170,9 @@ class _AppNavigationState extends State<AppNavigation> {
             _manualDocNumber = result.documentNumber;
           });
         } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Invalid MRZ format: $e'),
-              backgroundColor: Colors.redAccent,
-            ),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Invalid MRZ format: $e'), backgroundColor: Colors.redAccent));
         }
       },
     );
@@ -200,8 +189,7 @@ class _AppNavigationState extends State<AppNavigation> {
       },
       onBack: () {
         setState(() {
-          _currentStep =
-              NavigationStep.passportMrz; // Back to scanner/manual entry
+          _currentStep = NavigationStep.passportMrz; // Back to scanner/manual entry
         });
       },
       onTroubleshooting: () {
@@ -221,8 +209,7 @@ class _AppNavigationState extends State<AppNavigation> {
           Navigator.of(context).pop();
           setState(() {
             _currentDocumentType = DocumentType.passport;
-            _currentStep =
-                NavigationStep.documentType; // Back to doc type selection
+            _currentStep = NavigationStep.documentType; // Back to doc type selection
           });
         },
       );
@@ -300,7 +287,6 @@ class _AppNavigationState extends State<AppNavigation> {
     super.dispose();
   }
 
-
   void _showTroubleshootingDialog() {
     showDialog(
       context: context,
@@ -315,20 +301,13 @@ class _AppNavigationState extends State<AppNavigation> {
               Text('• Make sure NFC is enabled in your phone settings'),
               Text('• Remove any thick phone case or metal objects'),
               Text('• Try different positions on the passport back cover'),
-              Text(
-                  '• Ensure the passport has an electronic chip (newer passports)'),
+              Text('• Ensure the passport has an electronic chip (newer passports)'),
               Text('• Keep both devices completely still during reading'),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
-            ),
-          ],
+          actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK'))],
         );
       },
     );
   }
-
 }

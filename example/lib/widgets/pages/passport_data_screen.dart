@@ -22,13 +22,14 @@ class PassportDataScreen extends StatefulWidget {
   final String? sessionId;
   final Uint8List? nonce;
 
-  const PassportDataScreen(
-      {super.key,
-      required this.mrtdData,
-      required this.onBackPressed,
-      required this.passportDataResult,
-      this.sessionId,
-      this.nonce});
+  const PassportDataScreen({
+    super.key,
+    required this.mrtdData,
+    required this.onBackPressed,
+    required this.passportDataResult,
+    this.sessionId,
+    this.nonce,
+  });
 
   @override
   State<PassportDataScreen> createState() => _PassportDataScreenState();
@@ -46,11 +47,9 @@ class _PassportDataScreenState extends State<PassportDataScreen> {
   Widget build(BuildContext context) {
     return PlatformScaffold(
       appBar: PlatformAppBar(
-          title: const Text('Passport Data'),
-          leading: PlatformIconButton(
-            icon: Icon(PlatformIcons(context).back),
-            onPressed: widget.onBackPressed,
-          )),
+        title: const Text('Passport Data'),
+        leading: PlatformIconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBackPressed),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
@@ -58,18 +57,14 @@ class _PassportDataScreenState extends State<PassportDataScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Return to Web banner if opened via universal link
-              if (widget.sessionId != null)
-                WebBanner(sessionId: widget.sessionId),
-              PersonalDataSection(
-                  mrz: widget.mrtdData.dg1!.mrz, dg2: widget.mrtdData.dg2!),
+              if (widget.sessionId != null) WebBanner(sessionId: widget.sessionId),
+              PersonalDataSection(mrz: widget.mrtdData.dg1!.mrz, dg2: widget.mrtdData.dg2!),
               const SizedBox(height: 20),
               SecurityContent(mrtdData: widget.mrtdData),
               const SizedBox(height: 20),
               if (widget.sessionId != null) ...[
                 const SizedBox(height: 20),
-                if (_isExpired == null &&
-                    _authenticChip == null &&
-                    _authenticContent == null)
+                if (_isExpired == null && _authenticChip == null && _authenticContent == null)
                   ReturnToWebSection(
                     isReturningToIssue: _isReturningToIssue,
                     isReturningToVerify: _isReturningToVerify,
@@ -79,9 +74,10 @@ class _PassportDataScreenState extends State<PassportDataScreen> {
                 else ...[
                   const SizedBox(height: 20),
                   VerifyResultSection(
-                      isExpired: _isExpired!,
-                      authenticChip: _authenticChip!,
-                      authenticContent: _authenticContent!),
+                    isExpired: _isExpired!,
+                    authenticChip: _authenticChip!,
+                    authenticContent: _authenticContent!,
+                  ),
                 ],
               ],
             ],
@@ -102,8 +98,7 @@ class _PassportDataScreenState extends State<PassportDataScreen> {
       final String jsonPayload = json.encode(payload);
 
       final response = await http.post(
-        Uri.parse(
-            'https://passport-issuer.staging.yivi.app/api/verify-passport'),
+        Uri.parse('https://passport-issuer.staging.yivi.app/api/verify-passport'),
         headers: {'Content-Type': 'application/json'},
         body: jsonPayload,
       );
@@ -138,8 +133,7 @@ class _PassportDataScreenState extends State<PassportDataScreen> {
       final jwtUrlParam = responseBody["jwt"];
 
       // Start the session
-      final sessionResponseBody =
-          await _apiService.startIrmaSession(jwtUrlParam, irmaServerUrlParam);
+      final sessionResponseBody = await _apiService.startIrmaSession(jwtUrlParam, irmaServerUrlParam);
       final sessionPtr = sessionResponseBody["sessionPtr"];
       final urlEncodedSessionPtr = Uri.encodeFull(jsonEncode(sessionPtr));
 
@@ -206,30 +200,15 @@ class _PassportDataScreenState extends State<PassportDataScreen> {
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                error,
-                style: const TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 12,
-                ),
-              ),
+              decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(4)),
+              child: Text(error, style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
             ),
             const SizedBox(height: 12),
-            const Text(
-              'Please try again or contact support if the problem persists.',
-              style: TextStyle(fontSize: 14),
-            ),
+            const Text('Please try again or contact support if the problem persists.', style: TextStyle(fontSize: 14)),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK')),
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();

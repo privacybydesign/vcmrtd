@@ -13,8 +13,7 @@ import 'package:vcmrtd/vcmrtd.dart';
 class ManualEntryScreen extends StatefulWidget {
   final VoidCallback onContinue;
   final VoidCallback onBack;
-  final Function(String docNumber, DateTime dob, DateTime expiry)?
-      onDataEntered;
+  final Function(String docNumber, DateTime dob, DateTime expiry)? onDataEntered;
   final Function(String mrzString)? onMrzEntered;
   final DocumentType documentType;
 
@@ -60,10 +59,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
     return PlatformScaffold(
       appBar: PlatformAppBar(
         title: Text('Enter ${widget.documentType.displayName} Details'),
-        leading: PlatformIconButton(
-          icon: Icon(PlatformIcons(context).back),
-          onPressed: widget.onBack,
-        ),
+        leading: PlatformIconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBack),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -91,7 +87,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                     padding: const EdgeInsets.all(12),
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.1),
+                      color: Colors.black.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                     ),
@@ -100,13 +96,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                         Icon(Icons.error_outline, color: Colors.red, size: 20),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Text(
-                            _errorMessage,
-                            style: const TextStyle(
-                              color: Colors.red,
-                              fontSize: 14,
-                            ),
-                          ),
+                          child: Text(_errorMessage, style: const TextStyle(color: Colors.red, fontSize: 14)),
                         ),
                       ],
                     ),
@@ -117,13 +107,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                   onPressed: _handleContinue,
                   child: const Padding(
                     padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Text(
-                      'Continue to NFC Reading',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                    child: Text('Continue to NFC Reading', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
                   ),
                 ),
 
@@ -142,36 +126,25 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
   Widget _buildHelpText() {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF3F4F6),
-        borderRadius: BorderRadius.circular(8),
-      ),
+      decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(8)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             'Where to find this information:',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF374151),
-            ),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
           ),
           const SizedBox(height: 8),
           Text(
             widget.documentType == DocumentType.passport
                 ? '• Passport Number: Usually at the top right of the photo page\n'
-                    '• Date of Birth: Listed as "Date of birth" or "DOB"\n'
-                    '• Expiry Date: Listed as "Date of expiry" or "Valid until"'
+                      '• Date of Birth: Listed as "Date of birth" or "DOB"\n'
+                      '• Expiry Date: Listed as "Date of expiry" or "Valid until"'
                 : '• The MRZ is at the bottom of the front side of your driver\'s licence\n'
-                    '• You can also get this by scanning the QR Code on the back of your driver\'s licence\n '
-                    '• It\'s a single line of exactly 30 characters\n'
-                    '• Starts with "D1", "D2", or "D3"',
-            style: const TextStyle(
-              fontSize: 14,
-              color: Color(0xFF6B7280),
-              height: 1.4,
-            ),
+                      '• You can also get this by scanning the QR Code on the back of your driver\'s licence\n '
+                      '• It\'s a single line of exactly 30 characters\n'
+                      '• Starts with "D1", "D2", or "D3"',
+            style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280), height: 1.4),
           ),
         ],
       ),
@@ -247,8 +220,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
             if (_selectedExpiry!.isBefore(DateTime.now())) {
               return '${widget.documentType.displayName} has expired';
             }
-            if (_selectedDob != null &&
-                _selectedExpiry!.isBefore(_selectedDob!)) {
+            if (_selectedDob != null && _selectedExpiry!.isBefore(_selectedDob!)) {
               return 'Expiry date cannot be before date of birth';
             }
             return null;
@@ -277,10 +249,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                 LengthLimitingTextInputFormatter(30),
               ],
               hintText: 'D1NLD15094962111659VW87Z78NB84',
-              style: const TextStyle(
-                fontFamily: 'Courier',
-                fontSize: 14,
-              ),
+              style: const TextStyle(fontFamily: 'Courier', fontSize: 14),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return 'MRZ string is required';
@@ -288,9 +257,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                 if (value.trim().length != 30) {
                   return 'MRZ must be exactly 30 characters';
                 }
-                if (!value.startsWith('D1') &&
-                    !value.startsWith('D2') &&
-                    !value.startsWith('DL')) {
+                if (!value.startsWith('D1') && !value.startsWith('D2') && !value.startsWith('DL')) {
                   return 'MRZ must start with D1, D2, or DL';
                 }
                 return null;
@@ -303,21 +270,13 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Character count:',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF666666),
-                  ),
-                ),
+                const Text('Character count:', style: TextStyle(fontSize: 12, color: Color(0xFF666666))),
                 Text(
                   '${_mrzController.text.length} / 30',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: _mrzController.text.length == 30
-                        ? Colors.green
-                        : const Color(0xFF666666),
+                    color: _mrzController.text.length == 30 ? Colors.green : const Color(0xFF666666),
                   ),
                 ),
               ],
@@ -328,17 +287,10 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
     ];
   }
 
-  Widget _buildInputCard({
-    required String title,
-    required String hint,
-    required IconData icon,
-    required Widget child,
-  }) {
+  Widget _buildInputCard({required String title, required String hint, required IconData icon, required Widget child}) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -350,23 +302,15 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF6b6868).withValues(alpha:0.1),
+                    color: const Color(0xFF6b6868).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(
-                    icon,
-                    size: 18,
-                    color: const Color(0xFF6b6868),
-                  ),
+                  child: Icon(icon, size: 18, color: const Color(0xFF6b6868)),
                 ),
                 const SizedBox(width: 12),
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF212121),
-                  ),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF212121)),
                 ),
               ],
             ),
@@ -378,8 +322,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
     );
   }
 
-  Future<void> _selectDate(BuildContext context,
-      {required bool isDateOfBirth}) async {
+  Future<void> _selectDate(BuildContext context, {required bool isDateOfBirth}) async {
     final DateTime now = DateTime.now();
     final DateTime initialDate = isDateOfBirth
         ? DateTime(now.year - 30, now.month, now.day)
@@ -396,11 +339,9 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
       lastDate: lastDate,
       builder: (context, child) {
         return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-                  primary: const Color(0xFF6b6868),
-                ),
-          ),
+          data: Theme.of(
+            context,
+          ).copyWith(colorScheme: Theme.of(context).colorScheme.copyWith(primary: const Color(0xFF6b6868))),
           child: child!,
         );
       },
@@ -440,11 +381,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
       }
 
       if (widget.onDataEntered != null) {
-        widget.onDataEntered!(
-          _docNumberController.text.trim().toUpperCase(),
-          _selectedDob!,
-          _selectedExpiry!,
-        );
+        widget.onDataEntered!(_docNumberController.text.trim().toUpperCase(), _selectedDob!, _selectedExpiry!);
       }
     } else {
       // Driver's license flow - call onMrzEntered with MRZ string
@@ -460,9 +397,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
   Widget _buildHeaderCard() {
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -471,13 +406,11 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
               width: 60,
               height: 60,
               decoration: BoxDecoration(
-                color: const Color(0xFF6b6868).withValues(alpha:0.1),
+                color: const Color(0xFF6b6868).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(30),
               ),
               child: Icon(
-                widget.documentType == DocumentType.passport
-                    ? Icons.edit_document
-                    : Icons.text_fields,
+                widget.documentType == DocumentType.passport ? Icons.edit_document : Icons.text_fields,
                 size: 30,
                 color: const Color(0xFF6b6868),
               ),
@@ -487,11 +420,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
               widget.documentType == DocumentType.passport
                   ? 'Enter Your ${widget.documentType.displayName} Information'
                   : 'Enter MRZ String',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF212121),
-              ),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF212121)),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
@@ -499,10 +428,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
               widget.documentType == DocumentType.passport
                   ? 'Please enter the information exactly as it appears on your ${widget.documentType.displayNameLowerCase}'
                   : 'Type the Machine Readable Zone text exactly as it appears',
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF666666),
-              ),
+              style: const TextStyle(fontSize: 14, color: Color(0xFF666666)),
               textAlign: TextAlign.center,
             ),
           ],

@@ -46,10 +46,7 @@ abstract class DocumentReader {
   Future<EfDG16> readEfDG16() => _unsupported('EF.DG16');
 
   Future<T> _unsupported<T>(String fileName) {
-    return Future.error(
-      UnsupportedError(
-          '${documentType.name} documents do not support reading $fileName'),
-    );
+    return Future.error(UnsupportedError('${documentType.name} documents do not support reading $fileName'));
   }
 
   static DocumentReader from(Document document) {

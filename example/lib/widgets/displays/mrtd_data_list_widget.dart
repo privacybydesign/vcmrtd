@@ -13,10 +13,7 @@ import 'mrtd_data_widget.dart';
 class MrtdDataListWidget extends StatelessWidget {
   final MrtdData? mrtdData;
 
-  const MrtdDataListWidget({
-    Key? key,
-    this.mrtdData,
-  }) : super(key: key);
+  const MrtdDataListWidget({Key? key, this.mrtdData}) : super(key: key);
 
   List<Widget> _buildDataWidgets() {
     List<Widget> list = [];
@@ -24,64 +21,53 @@ class MrtdDataListWidget extends StatelessWidget {
 
     // Access protocol information
     if (mrtdData!.isPACE != null && mrtdData!.isDBA != null) {
-      list.add(AccessProtocolWidget(
-        header: "Access protocol",
-        collapsedText: '',
-        isDBA: mrtdData!.isDBA!,
-        isPACE: mrtdData!.isPACE!,
-      ));
+      list.add(
+        AccessProtocolWidget(
+          header: "Access protocol",
+          collapsedText: '',
+          isDBA: mrtdData!.isDBA!,
+          isPACE: mrtdData!.isPACE!,
+        ),
+      );
     }
 
     // EF.CardAccess
     if (mrtdData!.cardAccess != null) {
-      list.add(MrtdDataWidget(
-        header: 'EF.CardAccess',
-        collapsedText: '',
-        dataText: mrtdData!.cardAccess!.toBytes().hex(),
-      ));
+      list.add(
+        MrtdDataWidget(header: 'EF.CardAccess', collapsedText: '', dataText: mrtdData!.cardAccess!.toBytes().hex()),
+      );
     }
 
     // EF.CardSecurity
     if (mrtdData!.cardSecurity != null) {
-      list.add(MrtdDataWidget(
-        header: 'EF.CardSecurity',
-        collapsedText: '',
-        dataText: mrtdData!.cardSecurity!.toBytes().hex(),
-      ));
+      list.add(
+        MrtdDataWidget(header: 'EF.CardSecurity', collapsedText: '', dataText: mrtdData!.cardSecurity!.toBytes().hex()),
+      );
     }
 
     // EF.SOD
     if (mrtdData!.sod != null) {
-      list.add(MrtdDataWidget(
-        header: 'EF.SOD',
-        collapsedText: '',
-        dataText: mrtdData!.sod!.toBytes().hex(),
-      ));
+      list.add(MrtdDataWidget(header: 'EF.SOD', collapsedText: '', dataText: mrtdData!.sod!.toBytes().hex()));
     }
 
     // EF.COM
     if (mrtdData!.com != null) {
-      list.add(MrtdDataWidget(
-        header: 'EF.COM',
-        collapsedText: '',
-        dataText: formatEfCom(mrtdData!.com!),
-      ));
+      list.add(MrtdDataWidget(header: 'EF.COM', collapsedText: '', dataText: formatEfCom(mrtdData!.com!)));
     }
 
     // EF.DG1 (MRZ)
     if (mrtdData!.dg1 != null) {
-      list.add(MrtdDataWidget(
-        header: 'EF.DG1',
-        collapsedText: '',
-        dataText: formatMRZ(mrtdData!.dg1!.mrz),
-      ));
+      list.add(MrtdDataWidget(header: 'EF.DG1', collapsedText: '', dataText: formatMRZ(mrtdData!.dg1!.mrz)));
     }
 
     if (mrtdData!.dg2 != null) {
-      list.add(PassportImageWidget(
+      list.add(
+        PassportImageWidget(
           header: 'EF.DG2',
           imageType: mrtdData!.dg2!.imageType,
-          imageData : mrtdData!.dg2!.imageData!));
+          imageData: mrtdData!.dg2!.imageData!,
+        ),
+      );
     }
 
     // Data Groups 2-16
@@ -105,21 +91,15 @@ class MrtdDataListWidget extends StatelessWidget {
 
     for (final entry in dataGroups.entries) {
       if (entry.value != null) {
-        list.add(MrtdDataWidget(
-          header: entry.key,
-          collapsedText: '',
-          dataText: entry.value!,
-        ));
+        list.add(MrtdDataWidget(header: entry.key, collapsedText: '', dataText: entry.value!));
       }
     }
 
     // Active Authentication signature
     if (mrtdData!.aaSig != null) {
-      list.add(MrtdDataWidget(
-        header: 'Active Authentication signature',
-        collapsedText: '',
-        dataText: mrtdData!.aaSig!.hex(),
-      ));
+      list.add(
+        MrtdDataWidget(header: 'Active Authentication signature', collapsedText: '', dataText: mrtdData!.aaSig!.hex()),
+      );
     }
 
     return list;
@@ -133,15 +113,8 @@ class MrtdDataListWidget extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Padding(
-            padding: const EdgeInsets.only(
-              left: 16.0,
-              top: 8.0,
-              bottom: 8.0,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: _buildDataWidgets(),
-            ),
+            padding: const EdgeInsets.only(left: 16.0, top: 8.0, bottom: 8.0),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: _buildDataWidgets()),
           ),
         ],
       ),

@@ -37,10 +37,7 @@ class ApiService {
 
   /// Start an IRMA session
   Future<Map<String, dynamic>> startIrmaSession(String jwt, String irmaServerUrl) async {
-    final response = await http.post(
-      Uri.parse('$irmaServerUrl/session'),
-      body: jwt,
-    );
+    final response = await http.post(Uri.parse('$irmaServerUrl/session'), body: jwt);
 
     if (response.statusCode != 200) {
       throw Exception('Failed to start session: ${response.statusCode} ${response.body}');

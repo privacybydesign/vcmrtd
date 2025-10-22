@@ -3,10 +3,7 @@ import 'package:flutter/material.dart';
 class WebBanner extends StatelessWidget {
   final String? sessionId;
 
-  const WebBanner({
-    super.key,
-    required this.sessionId,
-  });
+  const WebBanner({super.key, required this.sessionId});
 
   @override
   Widget build(BuildContext context) {
@@ -32,20 +29,12 @@ class WebBanner extends StatelessWidget {
               children: [
                 Text(
                   'Web Authentication Session',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue[800],
-                    fontSize: 16,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue[800], fontSize: 16),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Session IID: ${sessionId}',
-                  style: TextStyle(
-                    color: Colors.blue[600],
-                    fontSize: 12,
-                    fontFamily: 'monospace',
-                  ),
+                  style: TextStyle(color: Colors.blue[600], fontSize: 12, fontFamily: 'monospace'),
                 ),
               ],
             ),

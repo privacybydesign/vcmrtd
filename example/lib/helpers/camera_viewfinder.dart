@@ -1,4 +1,3 @@
-
 import 'dart:io';
 
 import 'package:camera/camera.dart';
@@ -39,21 +38,17 @@ class MRZCameraViewState extends State<MRZCameraView> {
     cameras = await availableCameras();
 
     try {
-      if (cameras.any((element) =>
-          element.lensDirection == widget.initialDirection &&
-          element.sensorOrientation == 90)) {
+      if (cameras.any(
+        (element) => element.lensDirection == widget.initialDirection && element.sensorOrientation == 90,
+      )) {
         _cameraIndex = cameras.indexOf(
           cameras.firstWhere(
-            (element) =>
-                element.lensDirection == widget.initialDirection &&
-                element.sensorOrientation == 90,
+            (element) => element.lensDirection == widget.initialDirection && element.sensorOrientation == 90,
           ),
         );
       } else {
         _cameraIndex = cameras.indexOf(
-          cameras.firstWhere(
-            (element) => element.lensDirection == widget.initialDirection,
-          ),
+          cameras.firstWhere((element) => element.lensDirection == widget.initialDirection),
         );
       }
     } catch (e) {
@@ -73,16 +68,11 @@ class MRZCameraViewState extends State<MRZCameraView> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: widget.showOverlay
-          ? MRZCameraOverlay(child: _liveFeedBody())
-          : _liveFeedBody(),
-    );
+    return Scaffold(body: widget.showOverlay ? MRZCameraOverlay(child: _liveFeedBody()) : _liveFeedBody());
   }
 
   Widget _liveFeedBody() {
-    if (_controller?.value.isInitialized == false ||
-        _controller?.value.isInitialized == null) {
+    if (_controller?.value.isInitialized == false || _controller?.value.isInitialized == null) {
       return Container();
     }
     if (_controller?.value.isInitialized == false) {
@@ -106,10 +96,7 @@ class MRZCameraViewState extends State<MRZCameraView> {
           Transform.scale(
             scale: scale,
             child: Center(
-              child: AspectRatio(
-                aspectRatio: 9 / 16,
-                child: CameraPreview(_controller!),
-              ),
+              child: AspectRatio(aspectRatio: 9 / 16, child: CameraPreview(_controller!)),
             ),
           ),
         ],
@@ -123,9 +110,7 @@ class MRZCameraViewState extends State<MRZCameraView> {
       camera,
       ResolutionPreset.high,
       enableAudio: false,
-      imageFormatGroup: Platform.isAndroid
-          ? ImageFormatGroup.nv21
-          : ImageFormatGroup.bgra8888,
+      imageFormatGroup: Platform.isAndroid ? ImageFormatGroup.nv21 : ImageFormatGroup.bgra8888,
     );
     _controller?.initialize().then((_) {
       if (!mounted) {
@@ -171,16 +156,14 @@ class MRZCameraViewState extends State<MRZCameraView> {
     if (Platform.isIOS) {
       rotation = InputImageRotationValue.fromRawValue(sensorOrientation);
     } else if (Platform.isAndroid) {
-      var rotationCompensation =
-          _orientations[_controller!.value.deviceOrientation];
+      var rotationCompensation = _orientations[_controller!.value.deviceOrientation];
       if (rotationCompensation == null) return null;
       if (camera.lensDirection == CameraLensDirection.front) {
         // front-facing
         rotationCompensation = (sensorOrientation + rotationCompensation) % 360;
       } else {
         // back-facing
-        rotationCompensation =
-            (sensorOrientation - rotationCompensation + 360) % 360;
+        rotationCompensation = (sensorOrientation - rotationCompensation + 360) % 360;
       }
       rotation = InputImageRotationValue.fromRawValue(rotationCompensation);
       // print('rotationCompensation: $rotationCompensation');
@@ -242,8 +225,7 @@ class MRZCameraViewState extends State<MRZCameraView> {
     // only supported formats:
     // * nv21 for Android
     // * bgra8888 for iOS
-    if (
-        (Platform.isAndroid && format != InputImageFormat.nv21) ||
+    if ((Platform.isAndroid && format != InputImageFormat.nv21) ||
         (Platform.isIOS && format != InputImageFormat.bgra8888)) {
       return null;
     }

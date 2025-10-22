@@ -7,7 +7,7 @@ import 'package:vcmrtd/vcmrtd.dart';
 
 class ScannerPage extends StatefulWidget {
   final DocumentType documentType;
-  final  Function(dynamic) onSuccess;
+  final Function(dynamic) onSuccess;
 
   const ScannerPage({super.key, this.documentType = DocumentType.passport, required this.onSuccess});
 
@@ -19,14 +19,13 @@ class _ScannerPageState extends State<ScannerPage> {
   final MRZController controller = MRZController();
   @override
   Widget build(BuildContext context) {
-        return MRZScanner(
-          controller: controller,
-          documentType: widget.documentType,
-          onSuccess: (dynamic mrzResult, lines) async {
-            'MRZ Scanned'.logInfo();
-            widget.onSuccess(mrzResult);
-          },
-        );
-      }
+    return MRZScanner(
+      controller: controller,
+      documentType: widget.documentType,
+      onSuccess: (dynamic mrzResult, lines) async {
+        'MRZ Scanned'.logInfo();
+        widget.onSuccess(mrzResult);
+      },
+    );
   }
-
+}

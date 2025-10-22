@@ -9,11 +9,7 @@ import 'package:vcmrtdapp/models/mrtd_data.dart';
 import 'package:vcmrtdapp/models/document_result.dart';
 import 'package:vcmrtdapp/widgets/common/animated_nfc_status_widget.dart';
 
-typedef StatusUpdater = void Function({
-  String? message,
-  NFCReadingState? state,
-  double? progress,
-});
+typedef StatusUpdater = void Function({String? message, NFCReadingState? state, double? progress});
 
 Future<DocumentResult> readDataGroups({
   required Document document,
@@ -193,9 +189,7 @@ Future<DocumentResult> readDataGroups({
       updateStatus(progress: currentProgress.clamp(0.0, 0.9));
     }
 
-    final shouldAttemptAa = sessionId != null &&
-        nonce != null &&
-        mrtdData.com!.dgTags.contains(EfDG15.TAG);
+    final shouldAttemptAa = sessionId != null && nonce != null && mrtdData.com!.dgTags.contains(EfDG15.TAG);
 
     if (shouldAttemptAa) {
       updateStatus(
@@ -240,13 +234,8 @@ Future<DocumentResult> readDataGroups({
       aaSignature: mrtdData.aaSig,
     );
   } catch (e) {
-    log.severe(
-      "Error reading ${documentType.displayNameLowerCase} data: $e",
-    );
-    updateStatus(
-      message: "Failed to read passport data",
-      state: NFCReadingState.error,
-    );
+    log.severe("Error reading ${documentType.displayNameLowerCase} data: $e");
+    updateStatus(message: "Failed to read passport data", state: NFCReadingState.error);
     rethrow;
   }
 }
@@ -284,8 +273,7 @@ Future<void> performDocumentReading({
   mrtdData.isDBA = accessKey.PACE_REF_KEY_TAG == 0x01;
 
   updateStatus(
-    message:
-        "Authenticating with ${documentType.displayNameLowerCase}...",
+    message: "Authenticating with ${documentType.displayNameLowerCase}...",
     state: NFCReadingState.authenticating,
   );
 

@@ -12,12 +12,8 @@ class MrtdDataWidget extends StatelessWidget {
   final String collapsedText;
   final String dataText;
 
-  const MrtdDataWidget({
-    Key? key,
-    required this.header,
-    required this.collapsedText,
-    required this.dataText,
-  }) : super(key: key);
+  const MrtdDataWidget({Key? key, required this.header, required this.collapsedText, required this.dataText})
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -29,12 +25,7 @@ class MrtdDataWidget extends StatelessWidget {
         iconColor: Colors.red,
       ),
       header: Text(header),
-      collapsed: Text(
-        collapsedText,
-        softWrap: true,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-      ),
+      collapsed: Text(collapsedText, softWrap: true, maxLines: 2, overflow: TextOverflow.ellipsis),
       expanded: Container(
         padding: const EdgeInsets.all(18),
         color: const Color.fromARGB(255, 239, 239, 239),
@@ -46,10 +37,7 @@ class MrtdDataWidget extends StatelessWidget {
               onPressed: () => Clipboard.setData(ClipboardData(text: dataText)),
               padding: const EdgeInsets.all(8),
             ),
-            SelectableText(
-              dataText,
-              textAlign: TextAlign.left,
-            ),
+            SelectableText(dataText, textAlign: TextAlign.left),
           ],
         ),
       ),

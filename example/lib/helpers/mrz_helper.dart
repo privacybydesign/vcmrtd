@@ -30,10 +30,7 @@ class MRZHelper {
       // to make sure that all lines are the same in length
     }
     List<String> firstLineChars = ableToScanTextList.first.split('');
-    List<String> supportedDocTypes = [
-      'P',
-      'V',
-    ]; // you can add more doc types like A,C,I are also supported
+    List<String> supportedDocTypes = ['P', 'V']; // you can add more doc types like A,C,I are also supported
     String fChar = firstLineChars[0];
     if (supportedDocTypes.contains(fChar)) {
       'Passport or Visa MRZ detected'.logInfo();
@@ -56,8 +53,7 @@ class MRZHelper {
         list[i] = list[i].toUpperCase();
         // to ensure that every letter is uppercase
       }
-      if (double.tryParse(list[i]) == null &&
-          !(RegExp(r'^[A-Za-z0-9_.]+$').hasMatch(list[i]))) {
+      if (double.tryParse(list[i]) == null && !(RegExp(r'^[A-Za-z0-9_.]+$').hasMatch(list[i]))) {
         list[i] = '<';
         // sometimes < sign not recognized well
       }

@@ -7,34 +7,21 @@ class DrivingLicenceDataScreen extends StatelessWidget {
   final MrtdData mrtdData;
   final VoidCallback onBackPressed;
 
-  const DrivingLicenceDataScreen({
-    super.key,
-    required this.mrtdData,
-    required this.onBackPressed,
-  });
+  const DrivingLicenceDataScreen({super.key, required this.mrtdData, required this.onBackPressed});
 
   @override
   Widget build(BuildContext context) {
     final dg1 = mrtdData.dg1!;
 
-
     return PlatformScaffold(
       appBar: PlatformAppBar(
         title: const Text('Driving Licence Data'),
-        leading: PlatformIconButton(
-          icon: Icon(PlatformIcons(context).back),
-          onPressed: onBackPressed,
-        ),
+        leading: PlatformIconButton(icon: Icon(PlatformIcons(context).back), onPressed: onBackPressed),
       ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('DG1 : $dg1'),
-            ],
-          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('DG1 : $dg1')]),
         ),
       ),
     );

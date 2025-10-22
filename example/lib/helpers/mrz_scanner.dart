@@ -6,7 +6,6 @@ import 'camera_viewfinder.dart';
 import 'mrz_helper.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
-
 class MRZScanner extends StatefulWidget {
   const MRZScanner({
     Key? controller,
@@ -88,8 +87,7 @@ class MRZScannerState extends State<MRZScanner> {
       } else {
         _isBusy = false;
       }
-    }
-    catch (e) {
+    } catch (e) {
       print('Error processing image: $e');
       _isBusy = false;
     }

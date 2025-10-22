@@ -29,59 +29,56 @@ class MrtdData {
   Uint8List? aaSig;
   bool? isPACE;
   bool? isDBA;
-  
+
   // Nonce enhancement tracking
   bool? isNonceEnhanced;
   String? sessionId;
   DateTime? authTimestamp;
-  
+
   /// Constructor
   MrtdData() {
     authTimestamp = DateTime.now();
   }
-  
+
   /// Constructor with nonce enhancement
-  MrtdData.withNonceEnhancement({
-    required this.sessionId,
-    this.isNonceEnhanced = true,
-  }) {
+  MrtdData.withNonceEnhancement({required this.sessionId, this.isNonceEnhanced = true}) {
     authTimestamp = DateTime.now();
   }
-  
+
   /// Check if any data is available
-  bool get hasData => 
-    cardAccess != null || 
-    cardSecurity != null ||
-    com != null ||
-    sod != null ||
-    dg1 != null ||
-    dg2 != null ||
-    dg3 != null ||
-    dg4 != null ||
-    dg5 != null ||
-    dg6 != null ||
-    dg7 != null ||
-    dg8 != null ||
-    dg9 != null ||
-    dg10 != null ||
-    dg11 != null ||
-    dg12 != null ||
-    dg13 != null ||
-    dg14 != null ||
-    dg15 != null ||
-    dg16 != null ||
-    aaSig != null;
-    
+  bool get hasData =>
+      cardAccess != null ||
+      cardSecurity != null ||
+      com != null ||
+      sod != null ||
+      dg1 != null ||
+      dg2 != null ||
+      dg3 != null ||
+      dg4 != null ||
+      dg5 != null ||
+      dg6 != null ||
+      dg7 != null ||
+      dg8 != null ||
+      dg9 != null ||
+      dg10 != null ||
+      dg11 != null ||
+      dg12 != null ||
+      dg13 != null ||
+      dg14 != null ||
+      dg15 != null ||
+      dg16 != null ||
+      aaSig != null;
+
   /// Check if nonce enhancement was used
   bool get wasNonceEnhanced => isNonceEnhanced == true;
-  
+
   /// Get authentication method description
   String get authenticationMethod {
     final paceText = isPACE == true ? 'PACE' : 'BAC';
     final nonceText = wasNonceEnhanced ? 'Nonce-Enhanced ' : '';
     return '$nonceText$paceText';
   }
-  
+
   /// Get security level description
   String get securityLevel {
     if (wasNonceEnhanced) {
