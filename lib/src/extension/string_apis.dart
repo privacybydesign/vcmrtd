@@ -42,7 +42,7 @@ extension StringYYMMDDateApi on String {
 
   DateTime parseDate({bool futureDate = false}) {
     if (length == 6) {
-      return this.parseDateYYMMDD(futureDate: futureDate);
+      return parseDateYYMMDD(futureDate: futureDate);
     } else {
       return DateTime.parse(this);
     }

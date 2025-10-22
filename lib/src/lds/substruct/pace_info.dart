@@ -62,6 +62,7 @@ class PaceInfo {
     parse(content: content, protocolType: protocolType);
   }
 
+  @override
   String toString() {
     return "PaceInfo(protocol: $_protocol, version: $_version, "
         "parameterId: $_parameterId, isPaceDomainParameterSupported: $_isPaceDomainParameterSupported)";
@@ -129,10 +130,11 @@ class PaceInfo {
 
     try {
       //check if DomainParameterSelectorEC(DH) raises exception
-      if (_protocol.tokenAgreementAlgorithm == TOKEN_AGREEMENT_ALGO.ECDH)
+      if (_protocol.tokenAgreementAlgorithm == TOKEN_AGREEMENT_ALGO.ECDH) {
         DomainParameterSelectorECDH.getDomainParameter(id: _parameterId!);
-      else
+      } else {
         DomainParameterSelectorDH.getDomainParameter(id: _parameterId!);
+      }
 
       _isPaceDomainParameterSupported = true;
     } catch (e) {

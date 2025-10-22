@@ -44,7 +44,7 @@ class AES_SMCipher implements SMCipher {
   @override
   Uint8List decrypt(Uint8List data, {SSC? ssc}) {
     _log.debug("decrypt: data size: ${data.length}, ssc: ${ssc?.toBytes().hex()}");
-    _log.sdVerbose("decrypt: data: ${data}, KSenc: ${KSenc.hex()}");
+    _log.sdVerbose("decrypt: data: $data, KSenc: ${KSenc.hex()}");
     if (ssc == null) throw Exception("PACE_SMCipher_AES.decrypt: SSC should not be null");
 
     //IV = E(KSenc, SCC)

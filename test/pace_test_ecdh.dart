@@ -1,24 +1,16 @@
 //  Created by Nejc Skerjanc, copyright © 2023 ZeroPass. All rights reserved.
-import 'dart:convert';
-import 'dart:ffi';
 import 'dart:typed_data';
 
-import 'package:crypto/crypto.dart';
 import 'package:vcmrtd/extensions.dart';
 import 'package:vcmrtd/src/lds/asn1ObjectIdentifiers.dart';
-import 'package:vcmrtd/src/lds/substruct/paceCons.dart';
-import 'package:vcmrtd/src/proto/can_key.dart';
 import 'package:vcmrtd/src/proto/ecdh_pace.dart';
 import 'package:vcmrtd/src/proto/iso7816/iso7816.dart';
 import 'package:vcmrtd/src/proto/pace.dart';
 import 'package:vcmrtd/src/proto/public_key_pace.dart';
-import 'package:vcmrtd/src/utils.dart';
 import 'package:pointycastle/ecc/api.dart';
 import 'package:test/test.dart';
 import 'package:vcmrtd/src/proto/dba_key.dart';
 import 'package:vcmrtd/src/proto/iso7816/command_apdu.dart';
-import 'package:vcmrtd/src/extension/string_apis.dart';
-import 'package:vcmrtd/src/crypto/kdf.dart';
 import 'package:vcmrtd/src/crypto/aes.dart';
 import 'package:vcmrtd/src/lds/efcard_access.dart';
 
@@ -32,7 +24,7 @@ void main() {
     final tvKeySeed = "7e2d2a41c74ea0b38cd36f863939bfa8e9032aad".parseHex(); //changed
     final tvKenc = "3dc4f8862f8a1570b57fefdcfec43e46".parseHex(); //changed
     final tvKmac = "bc641c6b2fa8b5704552322007761f85".parseHex(); //changed
-    final tv_K_pi = "89ded1b26624ec1e634c1989302849dd".parseHex(); //changed
+    final tvKPi = "89ded1b26624ec1e634c1989302849dd".parseHex(); //changed
 
     final nonceEncypted = "95a3a016522ee98d01e76cb6b98b42c3".parseHex();
     final nonceDecrypted = "3F00C4D39D153F2B2A214A078D899B22".parseHex();
@@ -150,7 +142,7 @@ void main() {
 
     // K_pi
     var kpi = dbaKeys.Kpi(CipherAlgorithm.AES, KEY_LENGTH.s128);
-    expect(kpi, tv_K_pi);
+    expect(kpi, tvKPi);
 
     // terminal's public key
     ECDHPace terminal = DomainParameterSelectorECDH.getDomainParameter(id: paceDomainParameterID);
@@ -221,7 +213,7 @@ void main() {
     // nonce management
     AESCipher aesCipherNonce = AESChiperSelector.getChiper(size: KEY_LENGTH.s128);
     Uint8List decryptedNonceCalc = aesCipherNonce.decrypt(data: nonceEncypted, key: kpi);
-    print("Decrypted nonce:" + decryptedNonceCalc.hex());
+    print("Decrypted nonce:${decryptedNonceCalc.hex()}");
     expect(decryptedNonceCalc.length, 16);
     expect(decryptedNonceCalc, nonceDecrypted);
 

@@ -83,11 +83,11 @@ class StatusWord {
   // SW2 indicates a number of extra data bytes still available.
   // Can be returned by GET RESPONSE command (ISO 7816-4 section 7)
 
-  static remainingAvailableResponseBytes(int numBytes) {
+  static StatusWord remainingAvailableResponseBytes(int numBytes) {
     return StatusWord(sw1: sw1SuccessWithRemainingBytes, sw2: numBytes); // Normal execution
   }
 
-  static leWrongLength(int exactLength) {
+  static StatusWord leWrongLength(int exactLength) {
     // Indicates wrong length of Le field. The SW2 indicates the exact length.
     return StatusWord(sw1: sw1WrongLengthWithExactLength, sw2: exactLength);
   }

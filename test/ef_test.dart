@@ -44,18 +44,18 @@ void main() {
             .parseHex();
     var dg1 = EfDG1.fromBytes(tvDG1TD1);
     expect(dg1.toBytes(), tvDG1TD1);
-    expect(dg1.passportMrz.version, MRZVersion.td1);
-    expect(dg1.passportMrz.documentCode, 'I');
-    expect(dg1.passportMrz.documentNumber, 'XI85935F8');
-    expect(dg1.passportMrz.country, 'NLD');
-    expect(dg1.passportMrz.nationality, 'NLD');
-    expect(dg1.passportMrz.firstName, 'MARIANNE LOUISE');
-    expect(dg1.passportMrz.lastName, 'VAN DER STEEN');
-    expect(dg1.passportMrz.gender, 'F');
-    expect(dg1.passportMrz.dateOfBirth, DateTime(1972, 8, 14));
-    expect(dg1.passportMrz.dateOfExpiry, DateTime(2011, 8, 26));
-    expect(dg1.passportMrz.optionalData, '999999990');
-    expect(dg1.passportMrz.optionalData2, '');
+    expect(dg1.mrz.version, MRZVersion.td1);
+    expect(dg1.mrz.documentCode, 'I');
+    expect(dg1.mrz.documentNumber, 'XI85935F8');
+    expect(dg1.mrz.country, 'NLD');
+    expect(dg1.mrz.nationality, 'NLD');
+    expect(dg1.mrz.firstName, 'MARIANNE LOUISE');
+    expect(dg1.mrz.lastName, 'VAN DER STEEN');
+    expect(dg1.mrz.gender, 'F');
+    expect(dg1.mrz.dateOfBirth, DateTime(1972, 8, 14));
+    expect(dg1.mrz.dateOfExpiry, DateTime(2011, 8, 26));
+    expect(dg1.mrz.optionalData, '999999990');
+    expect(dg1.mrz.optionalData2, '');
 
     // A.2.2 - Note: The serialized MRZ in doc is malformed!
     //               The data was modified:
@@ -70,18 +70,18 @@ void main() {
             .parseHex();
     dg1 = EfDG1.fromBytes(tvDG1TD2);
     expect(dg1.toBytes(), tvDG1TD2);
-    expect(dg1.passportMrz.version, MRZVersion.td2);
-    expect(dg1.passportMrz.documentCode, 'I');
-    expect(dg1.passportMrz.documentNumber, '123456789012');
-    expect(dg1.passportMrz.country, 'ATA');
-    expect(dg1.passportMrz.nationality, 'HMD');
-    expect(dg1.passportMrz.firstName, 'JOHN T');
-    expect(dg1.passportMrz.lastName, 'SMITH');
-    expect(dg1.passportMrz.gender, 'M');
-    expect(dg1.passportMrz.dateOfBirth, DateTime(1974, 6, 22));
-    expect(dg1.passportMrz.dateOfExpiry, DateTime(2010, 12, 31));
-    expect(dg1.passportMrz.optionalData, '');
-    expect(dg1.passportMrz.optionalData2, null);
+    expect(dg1.mrz.version, MRZVersion.td2);
+    expect(dg1.mrz.documentCode, 'I');
+    expect(dg1.mrz.documentNumber, '123456789012');
+    expect(dg1.mrz.country, 'ATA');
+    expect(dg1.mrz.nationality, 'HMD');
+    expect(dg1.mrz.firstName, 'JOHN T');
+    expect(dg1.mrz.lastName, 'SMITH');
+    expect(dg1.mrz.gender, 'M');
+    expect(dg1.mrz.dateOfBirth, DateTime(1974, 6, 22));
+    expect(dg1.mrz.dateOfExpiry, DateTime(2010, 12, 31));
+    expect(dg1.mrz.optionalData, '');
+    expect(dg1.mrz.optionalData2, null);
 
     //  Test vectors from Appendix B To Part 4 of ICAO 9393 p04 doc
     var tvDG1TD3 =
@@ -89,18 +89,18 @@ void main() {
             .parseHex();
     dg1 = EfDG1.fromBytes(tvDG1TD3);
     expect(dg1.toBytes(), tvDG1TD3);
-    expect(dg1.passportMrz.version, MRZVersion.td3);
-    expect(dg1.passportMrz.documentCode, 'P');
-    expect(dg1.passportMrz.documentNumber, 'L898902C3');
-    expect(dg1.passportMrz.country, 'UTO');
-    expect(dg1.passportMrz.nationality, 'UTO');
-    expect(dg1.passportMrz.firstName, 'ANNA MARIA');
-    expect(dg1.passportMrz.lastName, 'ERIKSSON');
-    expect(dg1.passportMrz.gender, 'F');
-    expect(dg1.passportMrz.dateOfBirth, DateTime(1974, 8, 12));
-    expect(dg1.passportMrz.dateOfExpiry, DateTime(2012, 4, 15));
-    expect(dg1.passportMrz.optionalData, 'ZE184226B');
-    expect(dg1.passportMrz.optionalData2, null);
+    expect(dg1.mrz.version, MRZVersion.td3);
+    expect(dg1.mrz.documentCode, 'P');
+    expect(dg1.mrz.documentNumber, 'L898902C3');
+    expect(dg1.mrz.country, 'UTO');
+    expect(dg1.mrz.nationality, 'UTO');
+    expect(dg1.mrz.firstName, 'ANNA MARIA');
+    expect(dg1.mrz.lastName, 'ERIKSSON');
+    expect(dg1.mrz.gender, 'F');
+    expect(dg1.mrz.dateOfBirth, DateTime(1974, 8, 12));
+    expect(dg1.mrz.dateOfExpiry, DateTime(2012, 4, 15));
+    expect(dg1.mrz.optionalData, 'ZE184226B');
+    expect(dg1.mrz.optionalData2, null);
 
     //  Test vectors from BSI TR-03105_Part5-1 - 4.4 Configuration of default EAC+AA passport
     // Note: The optional data cd was changed to 0 from '<'
@@ -109,18 +109,18 @@ void main() {
             .parseHex();
     dg1 = EfDG1.fromBytes(tvDG1TD3);
     expect(dg1.toBytes(), tvDG1TD3);
-    expect(dg1.passportMrz.version, MRZVersion.td3);
-    expect(dg1.passportMrz.documentCode, 'P');
-    expect(dg1.passportMrz.documentNumber, 'C11T002JM');
-    expect(dg1.passportMrz.country, 'D');
-    expect(dg1.passportMrz.nationality, 'D');
-    expect(dg1.passportMrz.firstName, 'ERIKA');
-    expect(dg1.passportMrz.lastName, 'MUSTERMANN');
-    expect(dg1.passportMrz.gender, 'F');
-    expect(dg1.passportMrz.dateOfBirth, DateTime(1996, 8, 12));
-    expect(dg1.passportMrz.dateOfExpiry, DateTime(2023, 10, 31));
-    expect(dg1.passportMrz.optionalData, '');
-    expect(dg1.passportMrz.optionalData2, null);
+    expect(dg1.mrz.version, MRZVersion.td3);
+    expect(dg1.mrz.documentCode, 'P');
+    expect(dg1.mrz.documentNumber, 'C11T002JM');
+    expect(dg1.mrz.country, 'D');
+    expect(dg1.mrz.nationality, 'D');
+    expect(dg1.mrz.firstName, 'ERIKA');
+    expect(dg1.mrz.lastName, 'MUSTERMANN');
+    expect(dg1.mrz.gender, 'F');
+    expect(dg1.mrz.dateOfBirth, DateTime(1996, 8, 12));
+    expect(dg1.mrz.dateOfExpiry, DateTime(2023, 10, 31));
+    expect(dg1.mrz.optionalData, '');
+    expect(dg1.mrz.optionalData2, null);
 
     // Fuzz testing
     expect(() => EfDG1.fromBytes(Uint8List(0)), throwsTLVError(message: "Can't decode empty encodedTag"));

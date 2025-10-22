@@ -12,8 +12,7 @@ class MrtdDataWidget extends StatelessWidget {
   final String collapsedText;
   final String dataText;
 
-  const MrtdDataWidget({Key? key, required this.header, required this.collapsedText, required this.dataText})
-    : super(key: key);
+  const MrtdDataWidget({super.key, required this.header, required this.collapsedText, required this.dataText});
 
   @override
   Widget build(BuildContext context) {

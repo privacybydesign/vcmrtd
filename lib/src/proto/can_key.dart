@@ -8,6 +8,8 @@ import 'package:vcmrtd/extensions.dart';
 import '../crypto/kdf.dart';
 import 'access_key.dart';
 
+
+
 class CanKeysError implements Exception {
   final String message;
   CanKeysError(this.message);
@@ -29,13 +31,13 @@ class CanKey extends AccessKey {
   CanKey(String canNumber) {
     //docs https://www.icao.int/Meetings/TAG-MRTD/Documents/Tag-Mrtd-20/TagMrtd-20_WP020_en.pdf
     //3.1.6 CAN is 6 digits long
-    final RegExp regex = RegExp(r'^\d{10}$');
+    final RegExp regex = RegExp(r'^\d{6}$');
     if (!regex.hasMatch(canNumber)) {
       throw CanKeysError("AccessKey.CanKeys; Code must be exactly 6 digits and only contain numbers");
     }
 
-    Uint8List canNumberInList = Uint8List(10);
-    for (int i = 0; i < 10; i++) {
+    Uint8List canNumberInList = Uint8List(6);
+    for (int i = 0; i < 6; i++) {
       canNumberInList[i] = canNumber.codeUnitAt(i);
     }
 
@@ -43,6 +45,7 @@ class CanKey extends AccessKey {
   }
 
   /// Returns K-pi [kpi] to be used in PACE protocol.
+  @override
   Uint8List Kpi(CipherAlgorithm cipherAlgorithm, KEY_LENGTH keyLength) {
     if (cipherAlgorithm == CipherAlgorithm.DESede) {
       //_cachedSeed = KDF(sha1, _can, Int32(3)).sublist(0, seedLen);

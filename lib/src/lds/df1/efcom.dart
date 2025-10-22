@@ -18,11 +18,11 @@ class EfCOM extends ElementaryFile {
   late final String _uver;
   final _tags = <DgTag>{};
 
-  get version => _ver;
-  get unicodeVersion => _uver;
+  String get version => _ver;
+  String get unicodeVersion => _uver;
   Set<DgTag> get dgTags => _tags;
 
-  EfCOM.fromBytes(Uint8List data) : super.fromBytes(data);
+  EfCOM.fromBytes(super.data) : super.fromBytes();
 
   @override
   int get fid => FID;
@@ -46,25 +46,20 @@ class EfCOM extends ElementaryFile {
     _ver = String.fromCharCodes(vtv.value);
 
     // Parse string version
-    final secondTlv = TLV.decode(data.sublist(vtv.encodedLen));
-    if (secondTlv.tag.value != 0x5F36 && secondTlv.tag.value != 0x5C) {
+    final uvtv = TLV.decode(data.sublist(vtv.encodedLen));
+    if (uvtv.tag.value != 0x5F36) {
       throw EfParseError(
-        "Expected unicode version object with tag=5F36 and the tag list with tag=5C but got tag=${secondTlv.tag.value.hex()}",
+        "Invalid unicode version object tag=${uvtv.tag.value.hex()}, expected unicode version object with tag=5F36",
       );
     }
-    DecodedTV tvTagList;
-    if (secondTlv.tag.value == 0x5F36) {
-      _uver = String.fromCharCodes(secondTlv.value);
+    _uver = String.fromCharCodes(uvtv.value);
 
-      // Parse tag list
-      tvTagList = TLV.decode(data.sublist(vtv.encodedLen + secondTlv.encodedLen));
-      if (tvTagList.tag.value != 0x5C) {
-        throw EfParseError(
-          "Invalid tag list object tag=${tvTagList.tag.value.hex()}, expected tag list object with tag=5C",
-        );
-      }
-    } else {
-      tvTagList = secondTlv;
+    // Parse tag list
+    final tvTagList = TLV.decode(data.sublist(vtv.encodedLen + uvtv.encodedLen));
+    if (tvTagList.tag.value != 0x5C) {
+      throw EfParseError(
+        "Invalid tag list object tag=${tvTagList.tag.value.hex()}, expected tag list object with tag=5C",
+      );
     }
 
     // fill _tags set.

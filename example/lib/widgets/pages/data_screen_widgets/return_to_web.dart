@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class ReturnToWebSection extends StatelessWidget {
@@ -8,12 +7,12 @@ class ReturnToWebSection extends StatelessWidget {
   final VoidCallback onVerifyPressed;
 
   const ReturnToWebSection({
-    Key? key,
+    super.key,
     required this.isReturningToIssue,
     required this.isReturningToVerify,
     required this.onIssuePressed,
     required this.onVerifyPressed,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

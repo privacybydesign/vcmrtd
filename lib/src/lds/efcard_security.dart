@@ -8,7 +8,7 @@ class EfCardSecurity extends ElementaryFile {
   static const FID = 0x011D;
   static const SFI = 0x1D;
 
-  EfCardSecurity.fromBytes(Uint8List data) : super.fromBytes(data);
+  EfCardSecurity.fromBytes(super.data) : super.fromBytes();
 
   @override
   int get fid => FID;

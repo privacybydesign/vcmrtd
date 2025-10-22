@@ -22,7 +22,7 @@ class ISO9797 {
   /// The [msg] if [padMsg] is set to false should be padded to the nearest multiple of 8.
   /// When [padMsg] is true, the [msg] is padded according to the ISO/IEC 9797-1, padding method 2.
   ///
-  static macAlg3(Uint8List key, Uint8List msg, {bool padMsg = true}) {
+  static Uint8List macAlg3(Uint8List key, Uint8List msg, {bool padMsg = true}) {
     if (key.length != macAlg3_Key1Len && key.length != macAlg3_Key2Len) {
       throw ArgumentError.value(key, "key length must be 16 or 24");
     }

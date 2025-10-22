@@ -6,8 +6,6 @@ import 'dart:typed_data';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtd/extensions.dart';
 
-import 'dg.dart';
-
 enum ImageType { jpeg, jpeg2000 }
 
 class EfDG2 extends DataGroup {
@@ -27,7 +25,7 @@ class EfDG2 extends DataGroup {
   static const SMT_TAG = 0x7D;
   static const VERSION_NUMBER = 0x30313000;
 
-  EfDG2.fromBytes(Uint8List data) : super.fromBytes(data);
+  EfDG2.fromBytes(super.data) : super.fromBytes();
 
   @override
   int get fid => FID;
@@ -96,13 +94,11 @@ class EfDG2 extends DataGroup {
     }
   }
 
-  _readBIT(Uint8List stream, int index) {
+  void _readBIT(Uint8List stream, int index) {
     final tvl = TLV.decode(stream);
 
     if (tvl.tag.value != BIOMETRIC_INFORMATION_TEMPLATE_TAG) {
-      throw EfParseError(
-        "Invalid object tag=${tvl.tag.value.hex()}, expected tag=${BIOMETRIC_INFORMATION_TEMPLATE_TAG}",
-      );
+      throw EfParseError("Invalid object tag=${tvl.tag.value.hex()}, expected tag=$BIOMETRIC_INFORMATION_TEMPLATE_TAG");
     }
 
     var bht = TLV.decode(tvl.value);
@@ -117,15 +113,13 @@ class EfDG2 extends DataGroup {
   }
 
   //TODO Reads a biometric information template protected with secure messaging.
-  _readStaticallyProtectedBIT() {}
+  void _readStaticallyProtectedBIT() {}
 
   List<DecodedTV> _readBHT(Uint8List stream) {
     final bht = TLV.decode(stream);
 
     if (bht.tag.value != BIOMETRIC_HEADER_TEMPLATE_BASE_TAG) {
-      throw EfParseError(
-        "Invalid object tag=${bht.tag.value.hex()}, expected tag=${BIOMETRIC_INFORMATION_TEMPLATE_TAG}",
-      );
+      throw EfParseError("Invalid object tag=${bht.tag.value.hex()}, expected tag=$BIOMETRIC_INFORMATION_TEMPLATE_TAG");
     }
 
     int bhtLength = stream.length;
@@ -140,7 +134,7 @@ class EfDG2 extends DataGroup {
     return elements;
   }
 
-  _readBiometricDataBlock(List<DecodedTV> sbh) {
+  void _readBiometricDataBlock(List<DecodedTV> sbh) {
     var firstBlock = sbh.first;
     if (firstBlock.tag.value != BIOMETRIC_DATA_BLOCK_TAG &&
         firstBlock.tag.value != BIOMETRIC_DATA_BLOCK_CONSTRUCTED_TAG) {

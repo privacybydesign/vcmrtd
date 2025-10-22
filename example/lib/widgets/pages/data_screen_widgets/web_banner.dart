@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class WebBanner extends StatelessWidget {
-  final String? sessionId;
+  final sessionId;
 
   const WebBanner({super.key, required this.sessionId});
 
@@ -33,7 +33,7 @@ class WebBanner extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Session IID: ${sessionId}',
+                  'Session IID: $sessionId',
                   style: TextStyle(color: Colors.blue[600], fontSize: 12, fontFamily: 'monospace'),
                 ),
               ],

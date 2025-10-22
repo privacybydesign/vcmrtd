@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 class AlertMessageWidget extends StatelessWidget {
   final String message;
 
-  const AlertMessageWidget({Key? key, required this.message}) : super(key: key);
+  const AlertMessageWidget({super.key, required this.message});
 
   @override
   Widget build(BuildContext context) {

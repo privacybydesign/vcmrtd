@@ -1,7 +1,6 @@
 // Created by Crt Vavros, copyright © 2022 ZeroPass. All rights reserved.
 // ignore_for_file: constant_identifier_names
 
-import 'dart:typed_data';
 import 'dg.dart';
 
 class EfDG5 extends DataGroup {
@@ -9,7 +8,7 @@ class EfDG5 extends DataGroup {
   static const SFI = 0x05;
   static const TAG = DgTag(0x65);
 
-  EfDG5.fromBytes(Uint8List data) : super.fromBytes(data);
+  EfDG5.fromBytes(super.data) : super.fromBytes();
 
   @override
   int get fid => FID;

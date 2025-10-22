@@ -53,7 +53,7 @@ class EfDG11 extends DataGroup {
   String? _title;
   String? _personalSummary;
   Uint8List? _proofOfCitizenship;
-  var _otherValidTDNumbers = <String>[];
+  final _otherValidTDNumbers = <String>[];
   String? _custodyInformation;
 
   String? get nameOfHolder => _nameOfHolder;
@@ -70,7 +70,7 @@ class EfDG11 extends DataGroup {
   List<String> get otherValidTDNumbers => _otherValidTDNumbers;
   String? get custodyInformation => _custodyInformation;
 
-  EfDG11.fromBytes(Uint8List data) : super.fromBytes(data);
+  EfDG11.fromBytes(super.data) : super.fromBytes();
 
   @override
   int get fid => FID;

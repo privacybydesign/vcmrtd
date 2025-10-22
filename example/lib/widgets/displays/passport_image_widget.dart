@@ -8,8 +8,7 @@ class PassportImageWidget extends StatefulWidget {
   final Uint8List? imageData;
   final ImageType? imageType;
 
-  const PassportImageWidget({Key? key, required this.header, required this.imageData, required this.imageType})
-    : super(key: key);
+  const PassportImageWidget({super.key, required this.header, required this.imageData, required this.imageType});
 
   @override
   State<PassportImageWidget> createState() => _PassportImageWidgetState();

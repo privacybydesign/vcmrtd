@@ -10,7 +10,7 @@ import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
 enum NfcStatus { notSupported, disabled, enabled }
 
 class NfcProviderError extends ComProviderError {
-  NfcProviderError([String message = ""]) : super(message);
+  NfcProviderError([super.message]);
   NfcProviderError.fromException(Exception e) : super(e.toString());
 
   @override

@@ -46,11 +46,11 @@ class Utils {
 
   static ByteData bigIntToByteData(BigInt bigInt) {
     final data = ByteData((bigInt.bitLength / 8).ceil());
-    var _bigInt = bigInt;
+    var bigInt0 = bigInt;
 
     for (var i = 1; i <= data.lengthInBytes; i++) {
-      data.setUint8(data.lengthInBytes - i, _bigInt.toUnsigned(8).toInt());
-      _bigInt = _bigInt >> 8;
+      data.setUint8(data.lengthInBytes - i, bigInt0.toUnsigned(8).toInt());
+      bigInt0 = bigInt0 >> 8;
     }
 
     return data;
