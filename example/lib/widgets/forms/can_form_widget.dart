@@ -10,12 +10,7 @@ class CanFormWidget extends StatelessWidget {
   final TextEditingController canController;
   final bool inputDisabled;
 
-  const CanFormWidget({
-    Key? key,
-    required this.formKey,
-    required this.canController,
-    required this.inputDisabled,
-  }) : super(key: key);
+  const CanFormWidget({super.key, required this.formKey, required this.canController, required this.inputDisabled});
 
   @override
   Widget build(BuildContext context) {

@@ -22,12 +22,13 @@ final Map<DgTag, String> dgTagToString = {
   EfDG13.TAG: 'EF.DG13',
   EfDG14.TAG: 'EF.DG14',
   EfDG15.TAG: 'EF.DG15',
-  EfDG16.TAG: 'EF.DG16'
+  EfDG16.TAG: 'EF.DG16',
 };
 
 /// Formats EF.COM data for display
 String formatEfCom(final EfCOM efCom) {
-  var str = "version: ${efCom.version}\n"
+  var str =
+      "version: ${efCom.version}\n"
       "unicode version: ${efCom.unicodeVersion}\n"
       "DG tags:";
 
@@ -44,23 +45,24 @@ String formatEfCom(final EfCOM efCom) {
 /// Formats MRZ data for display
 String formatMRZ(final MRZ mrz) {
   return "MRZ\n"
-          "  version: ${mrz.version}\n"
-          "  doc code: ${mrz.documentCode}\n"
-          "  doc No.: ${mrz.documentNumber}\n"
-          "  country: ${mrz.country}\n"
-          "  nationality: ${mrz.nationality}\n"
-          "  name: ${mrz.firstName}\n"
-          "  surname: ${mrz.lastName}\n"
-          "  gender: ${mrz.gender}\n"
-          "  date of birth: ${DateFormat.yMd().format(mrz.dateOfBirth)}\n"
-          "  date of expiry: ${DateFormat.yMd().format(mrz.dateOfExpiry)}\n"
-          "  add. data: ${mrz.optionalData}\n"
-          "  add. data: ${mrz.optionalData2}";
+      "  version: ${mrz.version}\n"
+      "  doc code: ${mrz.documentCode}\n"
+      "  doc No.: ${mrz.documentNumber}\n"
+      "  country: ${mrz.country}\n"
+      "  nationality: ${mrz.nationality}\n"
+      "  name: ${mrz.firstName}\n"
+      "  surname: ${mrz.lastName}\n"
+      "  gender: ${mrz.gender}\n"
+      "  date of birth: ${DateFormat.yMd().format(mrz.dateOfBirth)}\n"
+      "  date of expiry: ${DateFormat.yMd().format(mrz.dateOfExpiry)}\n"
+      "  add. data: ${mrz.optionalData}\n"
+      "  add. data: ${mrz.optionalData2}";
 }
 
 /// Formats DG15 data for display
 String formatDG15(final EfDG15 dg15) {
-  var str = "EF.DG15:\n"
+  var str =
+      "EF.DG15:\n"
       "  AAPublicKey\n"
       "    type: ";
 
@@ -76,7 +78,8 @@ String formatDG15(final EfDG15 dg15) {
     final tvModule = TLV.decode(tvKeySeq.value);
     final tvExp = TLV.decode(tvKeySeq.value.sublist(tvModule.encodedLen));
 
-    str += "RSA\n"
+    str +=
+        "RSA\n"
         "    exponent: ${tvExp.value.hex()}\n"
         "    modulus: ${tvModule.value.hex()}";
   } else {

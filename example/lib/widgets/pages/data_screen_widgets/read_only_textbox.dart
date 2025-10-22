@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class ReadOnlyTextBox extends StatelessWidget {
@@ -6,12 +5,7 @@ class ReadOnlyTextBox extends StatelessWidget {
   final String value;
   final bool isError;
 
-  const ReadOnlyTextBox({
-    Key? key,
-    required this.label,
-    required this.value,
-    required this.isError,
-  }) : super(key: key);
+  const ReadOnlyTextBox({super.key, required this.label, required this.value, required this.isError});
 
   @override
   Widget build(BuildContext context) {
@@ -25,8 +19,7 @@ class ReadOnlyTextBox extends StatelessWidget {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide:
-              BorderSide(color: isError ? Colors.red[200]! : Colors.grey[300]!),
+          borderSide: BorderSide(color: isError ? Colors.red[200]! : Colors.grey[300]!),
         ),
         prefixIcon: Icon(
           isError ? Icons.error_outline : Icons.info_outline,

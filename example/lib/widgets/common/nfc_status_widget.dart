@@ -7,27 +7,15 @@ import 'package:flutter/material.dart';
 class NfcStatusWidget extends StatelessWidget {
   final bool isNfcAvailable;
 
-  const NfcStatusWidget({
-    Key? key,
-    required this.isNfcAvailable,
-  }) : super(key: key);
+  const NfcStatusWidget({super.key, required this.isNfcAvailable});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: <Widget>[
-        const Text(
-          'NFC available:',
-          style: TextStyle(
-            fontSize: 18.0,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        const Text('NFC available:', style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold)),
         const SizedBox(width: 4),
-        Text(
-          isNfcAvailable ? "Yes" : "No",
-          style: const TextStyle(fontSize: 18.0),
-        ),
+        Text(isNfcAvailable ? "Yes" : "No", style: const TextStyle(fontSize: 18.0)),
       ],
     );
   }

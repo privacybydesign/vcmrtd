@@ -7,8 +7,6 @@ class DMRTDException implements Exception {
   DMRTDException(this.message);
   @override
   String toString() {
-    String result = 'ASN1ObjectIdentifierException';
-    if (message is String) return '$exceptionName: $message';
-    return result;
+    return '$exceptionName: $message';
   }
 }

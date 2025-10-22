@@ -6,8 +6,6 @@ import 'dart:typed_data';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtd/extensions.dart';
 
-import 'dg.dart';
-
 enum ImageType { jpeg, jpeg2000 }
 
 class EfDG2 extends DataGroup {
@@ -27,7 +25,7 @@ class EfDG2 extends DataGroup {
   static const SMT_TAG = 0x7D;
   static const VERSION_NUMBER = 0x30313000;
 
-  EfDG2.fromBytes(Uint8List data) : super.fromBytes(data);
+  EfDG2.fromBytes(super.data) : super.fromBytes();
 
   @override
   int get fid => FID;
@@ -71,8 +69,7 @@ class EfDG2 extends DataGroup {
   void parse(Uint8List content) {
     final tlv = TLV.fromBytes(content);
     if (tlv.tag != tag) {
-      throw EfParseError(
-          "Invalid DG2 tag=${tlv.tag.hex()}, expected tag=${TAG.value.hex()}");
+      throw EfParseError("Invalid DG2 tag=${tlv.tag.hex()}, expected tag=${TAG.value.hex()}");
     }
 
     final data = tlv.value;
@@ -80,14 +77,14 @@ class EfDG2 extends DataGroup {
 
     if (bigt.tag.value != BIOMETRIC_INFORMATION_GROUP_TEMPLATE_TAG) {
       throw EfParseError(
-          "Invalid object tag=${bigt.tag.value.hex()}, expected tag=$BIOMETRIC_INFORMATION_GROUP_TEMPLATE_TAG");
+        "Invalid object tag=${bigt.tag.value.hex()}, expected tag=$BIOMETRIC_INFORMATION_GROUP_TEMPLATE_TAG",
+      );
     }
 
     final bict = TLV.decode(bigt.value);
 
     if (bict.tag.value != BIOMETRIC_INFORMATION_COUNT_TAG) {
-      throw EfParseError(
-          "Invalid object tag=${bict.tag.value.hex()}, expected tag=$BIOMETRIC_INFORMATION_COUNT_TAG");
+      throw EfParseError("Invalid object tag=${bict.tag.value.hex()}, expected tag=$BIOMETRIC_INFORMATION_COUNT_TAG");
     }
 
     int bitCount = (bict.value[0] & 0xFF);
@@ -97,12 +94,11 @@ class EfDG2 extends DataGroup {
     }
   }
 
-  _readBIT(Uint8List stream, int index) {
+  void _readBIT(Uint8List stream, int index) {
     final tvl = TLV.decode(stream);
 
     if (tvl.tag.value != BIOMETRIC_INFORMATION_TEMPLATE_TAG) {
-      throw EfParseError(
-          "Invalid object tag=${tvl.tag.value.hex()}, expected tag=${BIOMETRIC_INFORMATION_TEMPLATE_TAG}");
+      throw EfParseError("Invalid object tag=${tvl.tag.value.hex()}, expected tag=$BIOMETRIC_INFORMATION_TEMPLATE_TAG");
     }
 
     var bht = TLV.decode(tvl.value);
@@ -117,14 +113,13 @@ class EfDG2 extends DataGroup {
   }
 
   //TODO Reads a biometric information template protected with secure messaging.
-  _readStaticallyProtectedBIT() {}
+  void _readStaticallyProtectedBIT() {}
 
   List<DecodedTV> _readBHT(Uint8List stream) {
     final bht = TLV.decode(stream);
 
     if (bht.tag.value != BIOMETRIC_HEADER_TEMPLATE_BASE_TAG) {
-      throw EfParseError(
-          "Invalid object tag=${bht.tag.value.hex()}, expected tag=${BIOMETRIC_INFORMATION_TEMPLATE_TAG}");
+      throw EfParseError("Invalid object tag=${bht.tag.value.hex()}, expected tag=$BIOMETRIC_INFORMATION_TEMPLATE_TAG");
     }
 
     int bhtLength = stream.length;
@@ -139,19 +134,17 @@ class EfDG2 extends DataGroup {
     return elements;
   }
 
-  _readBiometricDataBlock(List<DecodedTV> sbh) {
+  void _readBiometricDataBlock(List<DecodedTV> sbh) {
     var firstBlock = sbh.first;
     if (firstBlock.tag.value != BIOMETRIC_DATA_BLOCK_TAG &&
         firstBlock.tag.value != BIOMETRIC_DATA_BLOCK_CONSTRUCTED_TAG) {
       throw EfParseError(
-          "Invalid object tag=${firstBlock.tag.value.hex()}, expected tag=$BIOMETRIC_DATA_BLOCK_TAG or $BIOMETRIC_DATA_BLOCK_CONSTRUCTED_TAG ");
+        "Invalid object tag=${firstBlock.tag.value.hex()}, expected tag=$BIOMETRIC_DATA_BLOCK_TAG or $BIOMETRIC_DATA_BLOCK_CONSTRUCTED_TAG ",
+      );
     }
 
     var data = firstBlock.value;
-    if (data[0] != 0x46 &&
-        data[1] != 0x41 &&
-        data[2] != 0x43 &&
-        data[3] != 0x00) {
+    if (data[0] != 0x46 && data[1] != 0x41 && data[2] != 0x43 && data[3] != 0x00) {
       throw EfParseError("Biometric data block is invalid");
     }
 
@@ -168,12 +161,10 @@ class EfDG2 extends DataGroup {
     lengthOfRecord = _extractContent(data, start: offset, end: offset + 4);
     offset += 4;
 
-    numberOfFacialImages =
-        _extractContent(data, start: offset, end: offset + 2);
+    numberOfFacialImages = _extractContent(data, start: offset, end: offset + 2);
     offset += 2;
 
-    facialRecordDataLength =
-        _extractContent(data, start: offset, end: offset + 4);
+    facialRecordDataLength = _extractContent(data, start: offset, end: offset + 4);
     offset += 4;
 
     nrFeaturePoints = _extractContent(data, start: offset, end: offset + 2);
@@ -197,8 +188,7 @@ class EfDG2 extends DataGroup {
     poseAngle = _extractContent(data, start: offset, end: offset + 3);
     offset += 3;
 
-    poseAngleUncertainty =
-        _extractContent(data, start: offset, end: offset + 3);
+    poseAngleUncertainty = _extractContent(data, start: offset, end: offset + 3);
     offset += 3;
 
     // Features (not handled). There shouldn't be any but if for some reason there were,

@@ -19,7 +19,7 @@ class AuthFormWidget extends StatelessWidget {
   final ValueChanged<bool> onPACEChanged;
 
   const AuthFormWidget({
-    Key? key,
+    super.key,
     required this.tabController,
     required this.mrzFormKey,
     required this.canFormKey,
@@ -30,7 +30,7 @@ class AuthFormWidget extends StatelessWidget {
     required this.checkBoxPACE,
     required this.inputDisabled,
     required this.onPACEChanged,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -58,11 +58,7 @@ class AuthFormWidget extends StatelessWidget {
                 inputDisabled: inputDisabled,
                 onPACEChanged: onPACEChanged,
               ),
-              CanFormWidget(
-                formKey: canFormKey,
-                canController: canController,
-                inputDisabled: inputDisabled,
-              ),
+              CanFormWidget(formKey: canFormKey, canController: canController, inputDisabled: inputDisabled),
             ],
           ),
         ),

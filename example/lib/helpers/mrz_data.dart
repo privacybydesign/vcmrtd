@@ -1,4 +1,4 @@
-library mrz_data;
+library;
 
 export 'mrz_scanner.dart';
 export '../controllers/mrz_controller.dart';

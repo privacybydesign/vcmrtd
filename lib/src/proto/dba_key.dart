@@ -7,13 +7,10 @@ import 'package:logging/logging.dart';
 import '../crypto/kdf.dart';
 import '../lds/asn1ObjectIdentifiers.dart';
 import '../lds/mrz.dart';
-import '../extension/datetime_apis.dart';
-import '../extension/string_apis.dart';
 import 'access_key.dart';
 
 const SEED_LEN_BAC = 16;
 const SEED_LEN_PACE = 20; //uncut
-
 
 /// Class defines Document Basic Access Keys as specified in section 9.7.2 of doc ICAO 9303 p11
 /// which are used to establish secure messaging session via BAC protocol.
@@ -34,9 +31,9 @@ class DBAKey extends AccessKey {
   /// passport owner's [dateOfBirth] and passport [dateOfExpiry].
   DBAKey(String mrtdNumber, DateTime dateOfBirth, DateTime dateOfExpiry, {bool paceMode = false}) {
     _mrtdNum = mrtdNumber;
-    _dob     = dateOfBirth.formatYYMMDD();
-    _doe     = dateOfExpiry.formatYYMMDD();
-    seedLen  = paceMode ? SEED_LEN_PACE : SEED_LEN_BAC;
+    _dob = dateOfBirth.formatYYMMDD();
+    _doe = dateOfExpiry.formatYYMMDD();
+    seedLen = paceMode ? SEED_LEN_PACE : SEED_LEN_BAC;
   }
 
   /// Constructs [DBAKey] from [mrz].
@@ -55,25 +52,24 @@ class DBAKey extends AccessKey {
   }
 
   /// Returns K-pi [kpi] to be used in PACE protocol.
-  Uint8List Kpi(CipherAlgorithm cipherAlgorithm, KEY_LENGTH keyLength){
+  @override
+  Uint8List Kpi(CipherAlgorithm cipherAlgorithm, KEY_LENGTH keyLength) {
     _log.debug("Calculating K-pi key ...");
-    _log.sdDebug("Seed: ${keySeed.hex()}, "
-        "Key length: $keyLength, "
-        "Cipher algorithm: $cipherAlgorithm");
+    _log.sdDebug(
+      "Seed: ${keySeed.hex()}, "
+      "Key length: $keyLength, "
+      "Cipher algorithm: $cipherAlgorithm",
+    );
 
-    if (cipherAlgorithm == CipherAlgorithm.DESede){
+    if (cipherAlgorithm == CipherAlgorithm.DESede) {
       return DeriveKey.desEDE(keySeed, paceMode: true);
-    }
-    else if (cipherAlgorithm == CipherAlgorithm.AES && keyLength == KEY_LENGTH.s128) {
+    } else if (cipherAlgorithm == CipherAlgorithm.AES && keyLength == KEY_LENGTH.s128) {
       return DeriveKey.aes128(keySeed, paceMode: true);
-    }
-    else if (cipherAlgorithm == CipherAlgorithm.AES && keyLength == KEY_LENGTH.s192) {
+    } else if (cipherAlgorithm == CipherAlgorithm.AES && keyLength == KEY_LENGTH.s192) {
       return DeriveKey.aes192(keySeed, paceMode: true);
-    }
-    else if (cipherAlgorithm == CipherAlgorithm.AES && keyLength == KEY_LENGTH.s256) {
+    } else if (cipherAlgorithm == CipherAlgorithm.AES && keyLength == KEY_LENGTH.s256) {
       return DeriveKey.aes256(keySeed, paceMode: true);
-    }
-    else {
+    } else {
       throw ArgumentError.value(cipherAlgorithm, null, "CanKeys; Unsupported cipher algorithm");
     }
   }
@@ -81,7 +77,7 @@ class DBAKey extends AccessKey {
   /// Returns Kseed as specified in Appendix D.2
   /// to the Part 11 of doc ICAO 9303 p11
   Uint8List get keySeed {
-    if(_cachedSeed == null) {
+    if (_cachedSeed == null) {
       final paddedMrtdNum = _mrtdNum.padRight(9, '<');
       final cdn = MRZ.calculateCheckDigit(paddedMrtdNum);
       final cdb = MRZ.calculateCheckDigit(_dob);

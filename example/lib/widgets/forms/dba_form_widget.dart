@@ -16,7 +16,7 @@ class DbaFormWidget extends StatefulWidget {
   final ValueChanged<bool> onPACEChanged;
 
   const DbaFormWidget({
-    Key? key,
+    super.key,
     required this.formKey,
     required this.docNumberController,
     required this.dobController,
@@ -24,7 +24,7 @@ class DbaFormWidget extends StatefulWidget {
     required this.checkBoxPACE,
     required this.inputDisabled,
     required this.onPACEChanged,
-  }) : super(key: key);
+  });
 
   @override
   State<DbaFormWidget> createState() => _DbaFormWidgetState();
@@ -45,8 +45,7 @@ class _DbaFormWidgetState extends State<DbaFormWidget> {
     return DateFormat.yMd().parse(widget.doeController.text);
   }
 
-  Future<String?> _pickDate(BuildContext context, DateTime firstDate,
-      DateTime initDate, DateTime lastDate) async {
+  Future<String?> _pickDate(BuildContext context, DateTime firstDate, DateTime initDate, DateTime lastDate) async {
     final locale = Localizations.localeOf(context);
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -119,12 +118,7 @@ class _DbaFormWidgetState extends State<DbaFormWidget> {
                 final firstDate = DateTime(now.year - 90, now.month, now.day);
                 final lastDate = DateTime(now.year - 15, now.month, now.day);
                 final initDate = _getDOBDate();
-                final date = await _pickDate(
-                  context,
-                  firstDate,
-                  initDate ?? lastDate,
-                  lastDate,
-                );
+                final date = await _pickDate(context, firstDate, initDate ?? lastDate, lastDate);
 
                 FocusScope.of(context).requestFocus(FocusNode());
                 if (date != null) {
@@ -155,12 +149,7 @@ class _DbaFormWidgetState extends State<DbaFormWidget> {
                 final firstDate = DateTime(now.year, now.month, now.day + 1);
                 final lastDate = DateTime(now.year + 10, now.month + 6, now.day);
                 final initDate = _getDOEDate();
-                final date = await _pickDate(
-                  context,
-                  firstDate,
-                  initDate ?? firstDate,
-                  lastDate,
-                );
+                final date = await _pickDate(context, firstDate, initDate ?? firstDate, lastDate);
 
                 FocusScope.of(context).requestFocus(FocusNode());
                 if (date != null) {

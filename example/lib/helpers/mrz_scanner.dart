@@ -88,8 +88,7 @@ class MRZScannerState extends State<MRZScanner> {
       } else {
         _isBusy = false;
       }
-    }
-    catch (e) {
+    } catch (e) {
       print('Error processing image: $e');
       _isBusy = false;
     }

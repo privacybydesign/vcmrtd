@@ -9,8 +9,7 @@ class DeepLinkData {
   DeepLinkData(this.uri, this.sessionId, this.nonce);
 
   @override
-  String toString() =>
-      'DeepLinkData(sessionId=$sessionId, nonce=$nonce, uri=$uri)';
+  String toString() => 'DeepLinkData(sessionId=$sessionId, nonce=$nonce, uri=$uri)';
 }
 
 class DeepLinkService {

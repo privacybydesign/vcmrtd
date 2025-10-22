@@ -20,17 +20,17 @@ class NfcReadingScreen extends StatefulWidget {
   final Function(MrtdData, PassportDataResult)? onDataRead;
   final VoidCallback? onCancel;
 
-  const NfcReadingScreen(
-      {Key? key,
-      this.mrzResult,
-      this.manualDocNumber,
-      this.manualDob,
-      this.manualExpiry,
-      this.sessionId,
-      this.nonce,
-      this.onDataRead,
-      this.onCancel})
-      : super(key: key);
+  const NfcReadingScreen({
+    super.key,
+    this.mrzResult,
+    this.manualDocNumber,
+    this.manualDob,
+    this.manualExpiry,
+    this.sessionId,
+    this.nonce,
+    this.onDataRead,
+    this.onCancel,
+  });
 
   @override
   State<NfcReadingScreen> createState() => _NfcReadingScreenState();
@@ -82,9 +82,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
       if (widget.mrzResult!.countryCode == "NLD") {
         paceMode = true;
       }
-    } else if (widget.manualDocNumber != null &&
-        widget.manualDob != null &&
-        widget.manualExpiry != null) {
+    } else if (widget.manualDocNumber != null && widget.manualDob != null && widget.manualExpiry != null) {
       docNumber = widget.manualDocNumber!;
       birthDate = widget.manualDob!;
       expiryDate = widget.manualExpiry!;
@@ -92,19 +90,13 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
       paceMode = false;
     } else {
       setState(() {
-        _alertMessage =
-            "No passport data available. Please go back and enter your passport information.";
+        _alertMessage = "No passport data available. Please go back and enter your passport information.";
         _nfcState = NFCReadingState.error;
       });
       return;
     }
 
-    final bacKeySeed = DBAKey(
-      docNumber,
-      birthDate,
-      expiryDate,
-      paceMode: paceMode,
-    );
+    final bacKeySeed = DBAKey(docNumber, birthDate, expiryDate, paceMode: paceMode);
     _readMRTD(accessKey: bacKeySeed, isPace: paceMode);
   }
 
@@ -119,9 +111,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
         bool demo = false;
         if (!demo) {
           if (_isCancelled) return;
-          await _nfc.connect(
-            iosAlertMessage: "Hold your phone near Biometric Passport",
-          );
+          await _nfc.connect(iosAlertMessage: "Hold your phone near Biometric Passport");
         }
 
         if (_isCancelled) return;
@@ -151,11 +141,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
     }
   }
 
-  Future<void> _performPassportReading(
-    Passport passport,
-    AccessKey accessKey,
-    bool isPace,
-  ) async {
+  Future<void> _performPassportReading(Passport passport, AccessKey accessKey, bool isPace) async {
     debugPrint("_performPassportReading()");
     _nfc.setIosAlertMessage("Trying to read EF.CardAccess ...");
     final mrtdData = MrtdData();
@@ -194,14 +180,12 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
       await passport.startSession(accessKey as DBAKey);
     }
 
-
     debugPrint("");
     final passportDataResult = await _readDataGroups(passport, mrtdData);
     widget.onDataRead?.call(mrtdData, passportDataResult);
   }
 
-  Future<PassportDataResult> _readDataGroups(
-      Passport passport, MrtdData mrtdData) async {
+  Future<PassportDataResult> _readDataGroups(Passport passport, MrtdData mrtdData) async {
     setState(() {
       _alertMessage = "Reading passport data...";
       _nfcState = NFCReadingState.reading;
@@ -374,9 +358,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
       }
 
       // Handle DG15 and Active Authentication separately
-      if (widget.sessionId != null &&
-          widget.nonce != null &&
-          mrtdData.com!.dgTags.contains(EfDG15.TAG)) {
+      if (widget.sessionId != null && widget.nonce != null && mrtdData.com!.dgTags.contains(EfDG15.TAG)) {
         setState(() {
           _alertMessage = "Performing security verification...";
           _nfcState = NFCReadingState.authenticating;
@@ -417,7 +399,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
         efSod: efSodHex,
         nonce: widget.nonce,
         sessionId: widget.sessionId,
-        aaSignature: mrtdData.aaSig
+        aaSignature: mrtdData.aaSig,
       );
     } catch (e) {
       _log.severe("Error reading passport data: $e");
@@ -435,13 +417,11 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
 
     if (e is PassportError) {
       if (se.contains("security status not satisfied")) {
-        alertMsg =
-            "Failed to initiate session with passport.\nCheck input data!";
+        alertMsg = "Failed to initiate session with passport.\nCheck input data!";
       }
       _log.error("PassportError: ${e.message}");
     } else {
-      _log.error(
-          "An exception was encountered while trying to read Passport: $e");
+      _log.error("An exception was encountered while trying to read Passport: $e");
     }
 
     if (se.contains('timeout')) {
@@ -462,9 +442,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
     if (_alertMessage.isNotEmpty) {
       await _nfc.disconnect(iosErrorMessage: _alertMessage);
     } else {
-      await _nfc.disconnect(
-        iosAlertMessage: "Finished",
-      );
+      await _nfc.disconnect(iosAlertMessage: "Finished");
     }
   }
 

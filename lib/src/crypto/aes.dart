@@ -1,12 +1,12 @@
 //  Created by Nejc Skerjanc, copyright © 2023 ZeroPass. All rights reserved.
 
 import 'dart:typed_data';
+import 'package:pointycastle/src/impl/base_block_cipher.dart';
 import 'package:vcmrtd/extensions.dart';
 import 'package:logging/logging.dart';
 import 'package:pointycastle/export.dart';
 
 import '../lds/asn1ObjectIdentifiers.dart';
-
 
 class AESCipherError implements Exception {
   final String message;
@@ -15,10 +15,7 @@ class AESCipherError implements Exception {
   String toString() => message;
 }
 
-enum BLOCK_CIPHER_MODE {
-  ECB,
-  CBC
-}
+enum BLOCK_CIPHER_MODE { ECB, CBC }
 
 /// Class implements AES encryption/decryption and CMAC calculation.
 /// It uses pointycastle library for AES implementation.
@@ -31,13 +28,12 @@ class AESCipher {
   static final _log = Logger("AESCipher");
   static final _factory = () => AESEngine();
 
-  late KEY_LENGTH _size;
+  late final KEY_LENGTH _size;
 
-  AESCipher({required KEY_LENGTH size}) :
-        _size = size;
+  AESCipher({required KEY_LENGTH size}) : _size = size;
 
   int get size {
-    switch(_size) {
+    switch (_size) {
       case KEY_LENGTH.s128:
         return 16;
       case KEY_LENGTH.s192:
@@ -52,7 +48,13 @@ class AESCipher {
   //  The key must be exactly 128-bits, 192-bits or 256-bits (i.e. 16, 24 or 32 bytes);
   //  This is what determines whether AES-128, AES-192 or AES-256 is being performed.
 
-  Uint8List encrypt({required Uint8List data, required Uint8List key, Uint8List? iv, BLOCK_CIPHER_MODE mode = BLOCK_CIPHER_MODE.CBC, bool padding = false}) {
+  Uint8List encrypt({
+    required Uint8List data,
+    required Uint8List key,
+    Uint8List? iv,
+    BLOCK_CIPHER_MODE mode = BLOCK_CIPHER_MODE.CBC,
+    bool padding = false,
+  }) {
     _log.finest("AESCipher.encrypt; data size: ${data.length}, data: ${data.hex()}");
     _log.sdVerbose("AESCipher.encrypt; data:${data.hex()}, key size: ${key.length}, key: ${key.hex()}");
 
@@ -62,39 +64,40 @@ class AESCipher {
     }
 
     if (iv != null) {
-      _log.sdVerbose(
-          "AESCipher.encrypt; iv size: ${iv.length}, iv: ${iv.hex()}");
+      _log.sdVerbose("AESCipher.encrypt; iv size: ${iv.length}, iv: ${iv.hex()}");
       if (iv.length != AES_BLOCK_SIZE) {
         _log.error("AESCipher.encrypt; iv length is not 128 bits.");
         throw AESCipherError("AESCipher.encrypt; iv length is not 128 bits.");
       }
-    }
-    else if (mode == BLOCK_CIPHER_MODE.CBC) {
+    } else if (mode == BLOCK_CIPHER_MODE.CBC) {
       iv = Uint8List(AES_BLOCK_SIZE);
       _log.sdVerbose("AESCipher.encrypt; iv is null");
     }
-    final paddedData;
+    final Uint8List paddedData;
     if (padding) {
       _log.finest("Padding data with zeros to block size: $AES_BLOCK_SIZE");
-      paddedData = pad(
-          data: data, blockSize: AES_BLOCK_SIZE); //AES has no padding
-    }
-    else {
+      paddedData = pad(data: data, blockSize: AES_BLOCK_SIZE); //AES has no padding
+    } else {
       _log.finest("Data will not be padded.");
       paddedData = data;
     }
-    var cipher;
-    if (mode == BLOCK_CIPHER_MODE.CBC)
-      cipher = CBCBlockCipher(_factory())
-        ..init(true, ParametersWithIV(KeyParameter(key), iv!));
-    else
+    BaseBlockCipher cipher;
+    if (mode == BLOCK_CIPHER_MODE.CBC) {
+      cipher = CBCBlockCipher(_factory())..init(true, ParametersWithIV(KeyParameter(key), iv!));
+    } else {
       cipher = ECBBlockCipher(_factory())..init(true, KeyParameter(key)); //ECB mode
+    }
 
     //return cipher.process(paddedData);
-    return _processBlocks(cipher:cipher, data:paddedData);
+    return _processBlocks(cipher: cipher, data: paddedData);
   }
 
-  Uint8List decrypt({required Uint8List data, required Uint8List key, Uint8List? iv, BLOCK_CIPHER_MODE mode = BLOCK_CIPHER_MODE.CBC}) {
+  Uint8List decrypt({
+    required Uint8List data,
+    required Uint8List key,
+    Uint8List? iv,
+    BLOCK_CIPHER_MODE mode = BLOCK_CIPHER_MODE.CBC,
+  }) {
     _log.finest("AESCipher.decrypt; data size: ${data.length}, data: ${data.hex()}");
     _log.sdVerbose("AESCipher.decrypt; data: ${data.hex()}, key size: ${key.length}, key: ${key.hex()}");
 
@@ -103,26 +106,24 @@ class AESCipher {
       throw AESCipherError("AESCipher.decrypt; AES${size * 8} key length must be ${size * 8} bits.");
     }
 
-    if (iv != null){
+    if (iv != null) {
       _log.sdVerbose("AESCipher.decrypt; iv size: ${iv.length}, iv: ${iv.hex()}");
       if (iv.length != AES_BLOCK_SIZE) {
         _log.error("AESCipher.encrypt; iv length is not 128 bits.");
         throw AESCipherError("AESCipher.encrypt; iv length is not 128 bits.");
       }
-    }
-    else {
+    } else {
       iv = Uint8List(AES_BLOCK_SIZE);
       _log.sdVerbose("AESCipher.decrypt; iv is null");
     }
 
-    var cipher;
-    if (mode == BLOCK_CIPHER_MODE.CBC)
-      cipher = CBCBlockCipher(_factory())
-        ..init(false, ParametersWithIV(KeyParameter(key), iv));
-    else
-
+    BaseBlockCipher cipher;
+    if (mode == BLOCK_CIPHER_MODE.CBC) {
+      cipher = CBCBlockCipher(_factory())..init(false, ParametersWithIV(KeyParameter(key), iv));
+    } else {
       cipher = ECBBlockCipher(_factory())..init(false, KeyParameter(key));
-      return Uint8List.fromList(_processBlocks(cipher:cipher, data:data).toList());
+    }
+    return Uint8List.fromList(_processBlocks(cipher: cipher, data: data).toList());
   }
 
   Uint8List _processBlocks({required BlockCipher cipher, required Uint8List data}) {
@@ -138,7 +139,7 @@ class AESCipher {
     return output;
   }
 
-  Uint8List pad({required Uint8List data, int blockSize = AES_BLOCK_SIZE }) {
+  Uint8List pad({required Uint8List data, int blockSize = AES_BLOCK_SIZE}) {
     _log.finest("Padding data with zeros to block size: $blockSize");
     _log.sdVerbose("Data to pad: ${data.hex()} ");
     final padLength = blockSize - (data.length % blockSize);
@@ -165,7 +166,7 @@ class AESCipher256 extends AESCipher {
   AESCipher256() : super(size: KEY_LENGTH.s256);
 }
 
-class AESChiperSelector{
+class AESChiperSelector {
   static final _log = Logger("AESChiperSelector");
 
   static AESCipher getChiper({required KEY_LENGTH size}) {

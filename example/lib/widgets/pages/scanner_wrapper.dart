@@ -17,13 +17,13 @@ class ScannerWrapper extends StatefulWidget {
   final DocumentType documentType;
 
   const ScannerWrapper({
-    Key? key,
+    super.key,
     required this.onMrzScanned,
     required this.onManualEntry,
     required this.onCancel,
     required this.onBack,
     this.documentType = DocumentType.passport,
-  }) : super(key: key);
+  });
 
   @override
   State<ScannerWrapper> createState() => _ScannerWrapperState();
@@ -43,20 +43,12 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
   @override
   Widget build(BuildContext context) {
     return PlatformScaffold(
-      material: (_, __) => MaterialScaffoldData(
-        backgroundColor: Colors.black,
-        extendBody: true,
-      ),
-      cupertino: (_, __) => CupertinoPageScaffoldData(
-        backgroundColor: Colors.black,
-      ),
+      material: (_, __) => MaterialScaffoldData(backgroundColor: Colors.black, extendBody: true),
+      cupertino: (_, __) => CupertinoPageScaffoldData(backgroundColor: Colors.black),
       appBar: PlatformAppBar(
         backgroundColor: Colors.black,
         title: Text('Scan ${_getDocumentTypeName()}'),
-        leading: PlatformIconButton(
-          icon: Icon(PlatformIcons(context).back),
-          onPressed: widget.onBack,
-        ),
+        leading: PlatformIconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBack),
       ),
       body: Stack(
         children: [
@@ -73,12 +65,7 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
               }
             },
           ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: _buildBottomControls(context),
-          ),
+          Positioned(left: 0, right: 0, bottom: 0, child: _buildBottomControls(context)),
         ],
       ),
     );
@@ -97,11 +84,7 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
           children: [
             Text(
               'Position the ${_getDocumentTypeName()}',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
             ),
             Text(
               'Align the Machine Readable Zone (MRZ) with the frame at the bottom of the screen. Hold steady until scanning completes.',
@@ -116,9 +99,7 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
   Widget _buildBottomControls(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(30, 24, 24, 32),
-      decoration: BoxDecoration(
-        color: Colors.transparent,
-      ),
+      decoration: BoxDecoration(color: Colors.transparent),
       child: SafeArea(
         top: false,
         child: Column(
@@ -132,18 +113,10 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
                 widget.onManualEntry();
               },
               material: (_, __) => MaterialElevatedButtonData(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black,
-                ),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black),
               ),
-              cupertino: (_, __) => CupertinoElevatedButtonData(
-                color: Colors.white,
-              ),
-              child: Text(
-                'Enter ${_getDocumentTypeName()} details manually',
-                style: TextStyle(color: Colors.black),
-              ),
+              cupertino: (_, __) => CupertinoElevatedButtonData(color: Colors.white),
+              child: Text('Enter ${_getDocumentTypeName()} details manually', style: TextStyle(color: Colors.black)),
             ),
             const SizedBox(height: 12),
           ],

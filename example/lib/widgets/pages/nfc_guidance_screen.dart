@@ -14,19 +14,13 @@ class NfcGuidanceScreen extends StatefulWidget {
   final VoidCallback onBack;
   final VoidCallback? onTroubleshooting;
 
-  const NfcGuidanceScreen({
-    Key? key,
-    required this.onStartReading,
-    required this.onBack,
-    this.onTroubleshooting,
-  }) : super(key: key);
+  const NfcGuidanceScreen({super.key, required this.onStartReading, required this.onBack, this.onTroubleshooting});
 
   @override
   State<NfcGuidanceScreen> createState() => _NfcGuidanceScreenState();
 }
 
-class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
-    with TickerProviderStateMixin {
+class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _positionAnimation;
   var _isNfcAvailable = false;
@@ -37,30 +31,21 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
     super.initState();
 
     // Setup positioning animation
-    _animationController = AnimationController(
-      duration: const Duration(seconds: 3),
-      vsync: this,
-    );
+    _animationController = AnimationController(duration: const Duration(seconds: 3), vsync: this);
 
     _positionAnimation = Tween<double>(
       begin: 0.0,
       end: 2.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
+    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeInOut));
     // Start animation loop
     _animationController.repeat(reverse: true);
 
     _initNFCState();
 
     // Update platform state every 3 sec
-    _timerStateUpdater = Timer.periodic(
-      const Duration(seconds: 3),
-      (Timer t) {
-        _initNFCState();
-      },
-    );
+    _timerStateUpdater = Timer.periodic(const Duration(seconds: 3), (Timer t) {
+      _initNFCState();
+    });
   }
 
   Future<void> _initNFCState() async {
@@ -91,10 +76,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
     return PlatformScaffold(
       appBar: PlatformAppBar(
         title: const Text('Read Passport via NFC'),
-        leading: PlatformIconButton(
-          icon: Icon(PlatformIcons(context).back),
-          onPressed: widget.onBack,
-        ),
+        leading: PlatformIconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBack),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -105,13 +87,8 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
               Row(
                 children: [
                   Text(
-                    _isNfcAvailable
-                        ? 'NFC is available'
-                        : 'NFC is not available',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      color: Color(0xFF212121),
-                    ),
+                    _isNfcAvailable ? 'NFC is available' : 'NFC is not available',
+                    style: const TextStyle(fontSize: 18, color: Color(0xFF212121)),
                   ),
                   const SizedBox(width: 8),
                   Icon(
@@ -158,15 +135,9 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
         alignment: Alignment.center,
         children: [
           // Passport illustration with glowing NFC indicator
-          Positioned(
-            bottom: 60,
-            child: _buildPassportIllustration(),
-          ),
+          Positioned(bottom: 60, child: _buildPassportIllustration()),
           // Phone illustration (moves up and down)
-          Positioned(
-            top: 60 + (_positionAnimation.value * 20),
-            child: _buildPhoneIllustration(),
-          ),
+          Positioned(top: 60 + (_positionAnimation.value * 20), child: _buildPhoneIllustration()),
         ],
       ),
     );
@@ -203,105 +174,78 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
 
   Widget _buildPassportIllustration() {
     return RotatedBox(
-        quarterTurns: 3,
-        child: Container(
-          width: 160,
-          height: 200, // increased height to accommodate opened cover
-          child: Column(
-            children: [
-              // Top half – passport cover flipped open
-              Container(
-                height: 90,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF424242),
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(8)),
-                  border: Border.all(color: const Color(0xFF424242), width: 2),
-                ),
-                child: const Center(
-                  child: RotatedBox(
-                    quarterTurns: 2, // upside down to simulate flipping
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'PASSPORT',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        Text(
-                          'Kingdom of Example',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.white70,
-                          ),
-                        ),
-                      ],
-                    ),
+      quarterTurns: 3,
+      child: Container(
+        width: 160,
+        height: 200, // increased height to accommodate opened cover
+        child: Column(
+          children: [
+            // Top half – passport cover flipped open
+            Container(
+              height: 90,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: const Color(0xFF424242),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                border: Border.all(color: const Color(0xFF424242), width: 2),
+              ),
+              child: const Center(
+                child: RotatedBox(
+                  quarterTurns: 2, // upside down to simulate flipping
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'PASSPORT',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                      Text('Kingdom of Example', style: TextStyle(fontSize: 10, color: Colors.white70)),
+                    ],
                   ),
                 ),
               ),
+            ),
 
-              // Bottom half – inner page with photo + info
-              Container(
-                height: 100,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFBDBDBD),
-                  borderRadius:
-                      const BorderRadius.vertical(bottom: Radius.circular(8)),
-                  border: Border.all(color: const Color(0xFF424242), width: 2),
-                ),
-                child: Row(
-                  children: [
-                    // Photo placeholder
-                    Container(
-                      width: 70,
-                      alignment: Alignment.center,
-                      child: CircleAvatar(
-                        radius: 24,
-                        backgroundColor: Colors.grey.shade300,
-                        child: Icon(
-                          Icons.person,
-                          size: 28,
-                          color: Colors.grey.shade700,
-                        ),
-                      ),
-                    ),
-                    // Info text
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text(
-                            'Name: John Doe',
-                            style: TextStyle(
-                                fontSize: 10, color: Color(0xFF333333)),
-                          ),
-                          Text(
-                            'Nationality: NL',
-                            style: TextStyle(
-                                fontSize: 10, color: Color(0xFF333333)),
-                          ),
-                          Text(
-                            'DOB: 01-01-1990',
-                            style: TextStyle(
-                                fontSize: 10, color: Color(0xFF333333)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+            // Bottom half – inner page with photo + info
+            Container(
+              height: 100,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: const Color(0xFFBDBDBD),
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8)),
+                border: Border.all(color: const Color(0xFF424242), width: 2),
               ),
-            ],
-          ),
-        ));
+              child: Row(
+                children: [
+                  // Photo placeholder
+                  Container(
+                    width: 70,
+                    alignment: Alignment.center,
+                    child: CircleAvatar(
+                      radius: 24,
+                      backgroundColor: Colors.grey.shade300,
+                      child: Icon(Icons.person, size: 28, color: Colors.grey.shade700),
+                    ),
+                  ),
+                  // Info text
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text('Name: John Doe', style: TextStyle(fontSize: 10, color: Color(0xFF333333))),
+                        Text('Nationality: NL', style: TextStyle(fontSize: 10, color: Color(0xFF333333))),
+                        Text('DOB: 01-01-1990', style: TextStyle(fontSize: 10, color: Color(0xFF333333))),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildInstructions() {
@@ -310,11 +254,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
       children: [
         const Text(
           'Place Your Phone on the Passport’s Photo Page',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF212121),
-          ),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF212121)),
         ),
 
         const SizedBox(height: 8),
@@ -322,20 +262,13 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
         // Tips
         Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF3F4F6),
-            borderRadius: BorderRadius.circular(8),
-          ),
+          decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(8)),
           child: const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 'Tips for better results:',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF374151),
-                ),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
               ),
               SizedBox(height: 8),
               Text(
@@ -346,11 +279,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
                 '• Remove any phone case if reading fails\n'
                 '• Keep both devices still during reading\n'
                 '• The process takes 10–30 seconds',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF6B7280),
-                  height: 1.4,
-                ),
+                style: TextStyle(fontSize: 14, color: Color(0xFF6B7280), height: 1.4),
               ),
             ],
           ),
@@ -367,10 +296,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
           onPressed: widget.onStartReading,
           child: const Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
-            child: Text(
-              'Scan Passport',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            ),
+            child: Text('Scan Passport', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
           ),
         ),
         const SizedBox(height: 8),
@@ -379,10 +305,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
             onPressed: widget.onTroubleshooting,
             child: const Text(
               'Having trouble?',
-              style: TextStyle(
-                color: Color(0xFF2196F3),
-                fontWeight: FontWeight.w500,
-              ),
+              style: TextStyle(color: Color(0xFF2196F3), fontWeight: FontWeight.w500),
             ),
           ),
       ],

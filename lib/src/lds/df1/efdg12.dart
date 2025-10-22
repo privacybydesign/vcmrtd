@@ -42,8 +42,7 @@ class EfDG12 extends DataGroup {
   DateTime? get dateOfIssue => _dateOfIssue;
   String? get issuingAuthority => _issuingAuthority;
 
-
-  EfDG12.fromBytes(Uint8List data) : super.fromBytes(data);
+  EfDG12.fromBytes(super.data) : super.fromBytes();
 
   @override
   int get fid => FID;
@@ -58,15 +57,15 @@ class EfDG12 extends DataGroup {
   void parse(Uint8List content) {
     final tlv = TLV.fromBytes(content);
     if (tlv.tag != tag) {
-      throw EfParseError(
-          "Invalid DG12 tag=${tlv.tag.hex()}, expected tag=${TAG.value.hex()}");
+      throw EfParseError("Invalid DG12 tag=${tlv.tag.hex()}, expected tag=${TAG.value.hex()}");
     }
 
     final data = tlv.value;
     final tagListTag = TLV.decode(data);
     if (tagListTag.tag.value != TAG_LIST_TAG) {
       throw EfParseError(
-          "Invalid version object tag=${tagListTag.tag.value.hex()}, expected version object with tag=5c");
+        "Invalid version object tag=${tagListTag.tag.value.hex()}, expected version object with tag=5c",
+      );
     }
     var tagListLength = tlv.value.length;
     int tagListBytesRead = tagListTag.encodedLen;
