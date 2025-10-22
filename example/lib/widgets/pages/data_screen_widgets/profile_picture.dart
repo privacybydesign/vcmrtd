@@ -7,11 +7,7 @@ class ProfilePictureWidget extends StatelessWidget {
   final Uint8List? imageData;
   final ImageType? imageType;
 
-  const ProfilePictureWidget({
-    Key? key,
-    required this.imageData,
-    required this.imageType,
-  }) : super(key: key);
+  const ProfilePictureWidget({super.key, required this.imageData, required this.imageType});
 
   @override
   Widget build(BuildContext context) {
@@ -29,10 +25,7 @@ class ProfilePictureWidget extends StatelessWidget {
           children: [
             Icon(Icons.person, size: 50, color: Colors.grey[400]),
             const SizedBox(height: 8),
-            Text(
-              'No Photo',
-              style: TextStyle(color: Colors.grey[600], fontSize: 12),
-            ),
+            Text('No Photo', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
           ],
         ),
       );
@@ -44,18 +37,9 @@ class ProfilePictureWidget extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.grey[300]!),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: _buildPassportImage(),
-      ),
+      child: ClipRRect(borderRadius: BorderRadius.circular(8), child: _buildPassportImage()),
     );
   }
 
@@ -76,13 +60,7 @@ class ProfilePictureWidget extends StatelessWidget {
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              PassportImageWidget(
-                header: 'test',
-                imageData: imageData!,
-                imageType: imageType!,
-              ),
-            ],
+            children: [PassportImageWidget(header: 'test', imageData: imageData!, imageType: imageType!)],
           ),
         ),
       );

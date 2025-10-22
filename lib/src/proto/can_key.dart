@@ -8,8 +8,6 @@ import 'package:vcmrtd/extensions.dart';
 import '../crypto/kdf.dart';
 import 'access_key.dart';
 
-
-
 class CanKeysError implements Exception {
   final String message;
   CanKeysError(this.message);
@@ -44,28 +42,21 @@ class CanKey extends AccessKey {
     _can = canNumberInList;
   }
 
-
   /// Returns K-pi [kpi] to be used in PACE protocol.
-  Uint8List Kpi (CipherAlgorithm cipherAlgorithm, KEY_LENGTH keyLength){
-      if (cipherAlgorithm == CipherAlgorithm.DESede){
-        //_cachedSeed = KDF(sha1, _can, Int32(3)).sublist(0, seedLen);
-        return DeriveKey.desEDE(_can, paceMode: true);
-      }
-      else if (cipherAlgorithm == CipherAlgorithm.AES &&
-               keyLength == KEY_LENGTH.s128) {
-        return DeriveKey.aes128(_can, paceMode: true);
-      }
-      else if (cipherAlgorithm == CipherAlgorithm.AES &&
-                keyLength == KEY_LENGTH.s192) {
-        return DeriveKey.aes192(_can, paceMode: true);
-      }
-      else if (cipherAlgorithm == CipherAlgorithm.AES &&
-                keyLength == KEY_LENGTH.s256) {
-        return DeriveKey.aes256(_can, paceMode: true);
-      }
-      else {
-        throw ArgumentError.value(cipherAlgorithm, null, "CanKeys; Unsupported cipher algorithm");
-      }
+  @override
+  Uint8List Kpi(CipherAlgorithm cipherAlgorithm, KEY_LENGTH keyLength) {
+    if (cipherAlgorithm == CipherAlgorithm.DESede) {
+      //_cachedSeed = KDF(sha1, _can, Int32(3)).sublist(0, seedLen);
+      return DeriveKey.desEDE(_can, paceMode: true);
+    } else if (cipherAlgorithm == CipherAlgorithm.AES && keyLength == KEY_LENGTH.s128) {
+      return DeriveKey.aes128(_can, paceMode: true);
+    } else if (cipherAlgorithm == CipherAlgorithm.AES && keyLength == KEY_LENGTH.s192) {
+      return DeriveKey.aes192(_can, paceMode: true);
+    } else if (cipherAlgorithm == CipherAlgorithm.AES && keyLength == KEY_LENGTH.s256) {
+      return DeriveKey.aes256(_can, paceMode: true);
+    } else {
+      throw ArgumentError.value(cipherAlgorithm, null, "CanKeys; Unsupported cipher algorithm");
+    }
   }
 
   /// Returns passport number used for calculating key seed.

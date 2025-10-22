@@ -16,8 +16,7 @@ void main() async {
   Logger.root.level = Level.ALL;
   Logger.root.logSensitiveData = true;
   Logger.root.onRecord.listen((record) {
-    print(
-        '${record.loggerName} ${record.level.name}: ${record.time}: ${record.message}');
+    print('${record.loggerName} ${record.level.name}: ${record.time}: ${record.message}');
   });
   WidgetsFlutterBinding.ensureInitialized();
   await deepLinkService.init();
@@ -37,13 +36,8 @@ class VcMrtdApp extends StatelessWidget {
         theme: ThemeData(
           primarySwatch: Colors.indigo,
           brightness: Brightness.light,
-          textTheme: TextTheme(
-            bodyLarge: TextStyle(fontSize: 16.0, color: Colors.black87),
-          ),
-          appBarTheme: AppBarTheme(
-            backgroundColor: Colors.indigo,
-            foregroundColor: Colors.white,
-          ),
+          textTheme: TextTheme(bodyLarge: TextStyle(fontSize: 16.0, color: Colors.black87)),
+          appBarTheme: AppBarTheme(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
         ),
         // Optional:
         // darkTheme: ThemeData.dark(),
@@ -53,9 +47,7 @@ class VcMrtdApp extends StatelessWidget {
         theme: CupertinoThemeData(
           primaryColor: CupertinoColors.activeBlue,
           barBackgroundColor: CupertinoColors.systemGrey6,
-          textTheme: CupertinoTextThemeData(
-            textStyle: TextStyle(fontSize: 16),
-          ),
+          textTheme: CupertinoTextThemeData(textStyle: TextStyle(fontSize: 16)),
         ),
       ),
       home: AppNavigation(deepLinkService: deepLinkService),

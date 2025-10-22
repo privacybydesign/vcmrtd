@@ -1,30 +1,19 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:vcmrtdapp/models/mrtd_data.dart';
 
 class SecurityContent extends StatelessWidget {
   final MrtdData mrtdData;
 
-  const SecurityContent({
-    Key? key,
-    required this.mrtdData,
-  }) : super(key: key);
+  const SecurityContent({super.key, required this.mrtdData});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _buildAccessProtocolInfo(),
-        const SizedBox(height: 20),
-        _buildSecurityDetails(),
-      ],
-    );
+    return Column(children: [_buildAccessProtocolInfo(), const SizedBox(height: 20), _buildSecurityDetails()]);
   }
 
   Widget _buildAccessProtocolInfo() {
     if (mrtdData.isPACE == null || mrtdData.isDBA == null) {
-      return const Text('No access protocol information available',
-          style: TextStyle(color: Colors.grey));
+      return const Text('No access protocol information available', style: TextStyle(color: Colors.grey));
     }
 
     return Container(
@@ -39,11 +28,7 @@ class SecurityContent extends StatelessWidget {
         children: [
           Text(
             'Access Protocol',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.blue[800],
-              fontSize: 16,
-            ),
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue[800], fontSize: 16),
           ),
           const SizedBox(height: 8),
           Row(
@@ -122,11 +107,7 @@ class SecurityContent extends StatelessWidget {
         children: [
           Text(
             'Available Security Elements',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[800],
-              fontSize: 16,
-            ),
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[800], fontSize: 16),
           ),
           const SizedBox(height: 12),
           Row(
@@ -150,12 +131,13 @@ class SecurityContent extends StatelessWidget {
               spacing: 8,
               runSpacing: 4,
               children: availableElements
-                  .map((element) => Chip(
-                        label:
-                            Text(element, style: const TextStyle(fontSize: 12)),
-                        backgroundColor: Colors.blue[100],
-                        labelStyle: TextStyle(color: Colors.blue[800]),
-                      ))
+                  .map(
+                    (element) => Chip(
+                      label: Text(element, style: const TextStyle(fontSize: 12)),
+                      backgroundColor: Colors.blue[100],
+                      labelStyle: TextStyle(color: Colors.blue[800]),
+                    ),
+                  )
                   .toList(),
             ),
           ],

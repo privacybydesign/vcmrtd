@@ -1,6 +1,4 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtdapp/widgets/pages/data_screen_widgets/profile_picture.dart';
@@ -11,11 +9,7 @@ class PersonalDataSection extends StatelessWidget {
   final MRZ mrz;
   final EfDG2 dg2;
 
-  const PersonalDataSection({
-    Key? key,
-    required this.mrz,
-    required this.dg2,
-  }) : super(key: key);
+  const PersonalDataSection({super.key, required this.mrz, required this.dg2});
 
   @override
   Widget build(BuildContext context) {
@@ -29,15 +23,14 @@ class PersonalDataSection extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.person,
-                    color: Theme.of(context).primaryColor, size: 28),
+                Icon(Icons.person, color: Theme.of(context).primaryColor, size: 28),
                 const SizedBox(width: 8),
                 Text(
                   'Personal Information',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).primaryColor,
-                      ),
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).primaryColor,
+                  ),
                 ),
               ],
             ),
@@ -56,8 +49,7 @@ class PersonalDataSection extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ProfilePictureWidget(
-                imageData: dg2.imageData, imageType: dg2.imageType),
+            ProfilePictureWidget(imageData: dg2.imageData, imageType: dg2.imageType),
             const SizedBox(width: 20),
             Expanded(child: _buildBasicInfo()),
           ],
@@ -72,25 +64,17 @@ class PersonalDataSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        InfoRow(
-            label: 'Full Name',
-            value: '${mrz.firstName} ${mrz.lastName}',
-            iconData: Icons.person_outline),
+        InfoRow(label: 'Full Name', value: '${mrz.firstName} ${mrz.lastName}', iconData: Icons.person_outline),
+        const SizedBox(height: 12),
+        InfoRow(label: 'Nationality', value: mrz.nationality, iconData: Icons.flag_outlined),
         const SizedBox(height: 12),
         InfoRow(
-            label: 'Nationality',
-            value: mrz.nationality,
-            iconData: Icons.flag_outlined),
+          label: 'Document',
+          value: '${mrz.documentCode} ${mrz.documentNumber}',
+          iconData: Icons.document_scanner_outlined,
+        ),
         const SizedBox(height: 12),
-        InfoRow(
-            label: 'Document',
-            value: '${mrz.documentCode} ${mrz.documentNumber}',
-            iconData: Icons.document_scanner_outlined),
-        const SizedBox(height: 12),
-        InfoRow(
-            label: 'Gender',
-            value: mrz.gender,
-            iconData: Icons.person_pin_outlined),
+        InfoRow(label: 'Gender', value: mrz.gender, iconData: Icons.person_pin_outlined),
       ],
     );
   }
@@ -128,26 +112,17 @@ class PersonalDataSection extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: InfoRow(
-                    label: 'Country',
-                    value: mrz.country,
-                    iconData: Icons.public_outlined),
+                child: InfoRow(label: 'Country', value: mrz.country, iconData: Icons.public_outlined),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: InfoRow(
-                    label: 'Version',
-                    value: mrz.version.name,
-                    iconData: Icons.info_outline),
+                child: InfoRow(label: 'Version', value: mrz.version.name, iconData: Icons.info_outline),
               ),
             ],
           ),
           if (mrz.optionalData.isNotEmpty) ...[
             const SizedBox(height: 12),
-            InfoRow(
-                label: 'Optional Data',
-                value: mrz.optionalData,
-                iconData: Icons.data_object_outlined),
+            InfoRow(label: 'Optional Data', value: mrz.optionalData, iconData: Icons.data_object_outlined),
           ],
         ],
       ),

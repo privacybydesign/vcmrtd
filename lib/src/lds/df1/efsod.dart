@@ -11,7 +11,7 @@ class EfSOD extends ElementaryFile {
   static const SFI = 0x1D;
   static const TAG = 0x77;
 
-  EfSOD.fromBytes(Uint8List data) : super.fromBytes(data);
+  EfSOD.fromBytes(super.data) : super.fromBytes();
 
   @override
   int get fid => FID;

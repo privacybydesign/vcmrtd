@@ -22,10 +22,7 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF6b6868),
-              Colors.white,
-            ],
+            colors: [Color(0xFF6b6868), Colors.white],
             stops: [0.0, 0.3],
           ),
         ),
@@ -40,8 +37,7 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
                 _buildOptionCard(
                   context: context,
                   title: 'Passport',
-                  subtitle:
-                      'Use a machine readable passport',
+                  subtitle: 'Use a machine readable passport',
                   icon: Icons.book,
                   accentColor: const Color(0xFF6b6868),
                   onTap: onPassportSelected,
@@ -52,12 +48,10 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
                 _buildOptionCard(
                   context: context,
                   title: 'Driving Licence',
-                  subtitle:
-                      'Use a machine readable driving licence. Currently works primarily with Dutch licences.',
+                  subtitle: 'Use a machine readable driving licence. Currently works primarily with Dutch licences.',
                   icon: Icons.directions_car,
                   accentColor: const Color(0xFF2196F3),
                   onTap: onDrivingLicenceSelected,
-
                 ),
               ],
             ),
@@ -83,11 +77,7 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
                 color: const Color(0xFF6b6868).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(40),
               ),
-              child: const Icon(
-                Icons.document_scanner,
-                size: 40,
-                color: Color(0xFF6b6868),
-              ),
+              child: const Icon(Icons.document_scanner, size: 40, color: Color(0xFF6b6868)),
             ),
             const SizedBox(height: 24),
             Text(
@@ -125,10 +115,7 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: Container(
           height: 122,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            color: Colors.white,
-          ),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: Colors.white),
           child: Stack(
             children: [
               Padding(
@@ -142,11 +129,7 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
                         color: accentColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Icon(
-                        icon,
-                        color: accentColor,
-                        size: 24,
-                      ),
+                      child: Icon(icon, color: accentColor, size: 24),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -156,19 +139,12 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
                         children: [
                           Text(
                             title,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF212121),
-                            ),
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF212121)),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             subtitle,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFF666666),
-                            ),
+                            style: const TextStyle(fontSize: 14, color: Color(0xFF666666)),
                             maxLines: 3,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -183,19 +159,11 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
                   top: 8,
                   right: 8,
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: accentColor,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(color: accentColor, borderRadius: BorderRadius.circular(12)),
                     child: Text(
                       badgeText,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),

@@ -7,11 +7,10 @@ import 'package:logging/logging.dart';
 
 import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
 
-
 enum NfcStatus { notSupported, disabled, enabled }
 
 class NfcProviderError extends ComProviderError {
-  NfcProviderError([String message = ""]) : super(message);
+  NfcProviderError([super.message]);
   NfcProviderError.fromException(Exception e) : super(e.toString());
 
   @override
@@ -21,7 +20,9 @@ class NfcProviderError extends ComProviderError {
 class NfcProvider extends ComProvider {
   static final _log = Logger('nfc.provider');
 
-  Duration timeout = const Duration(seconds: 10); /// [Android] Default timeout.
+  Duration timeout = const Duration(seconds: 10);
+
+  /// [Android] Default timeout.
   NfcProvider() : super(_log);
 
   NFCTag? _tag;
@@ -46,7 +47,10 @@ class NfcProvider extends ComProvider {
   }
 
   @override
-  Future<void> connect({Duration? timeout, String iosAlertMessage = "Hold your iPhone near the biometric Passport"}) async {
+  Future<void> connect({
+    Duration? timeout,
+    String iosAlertMessage = "Hold your iPhone near the biometric Passport",
+  }) async {
     if (isConnected()) {
       return;
     }
@@ -58,7 +62,8 @@ class NfcProvider extends ComProvider {
         readIso14443A: true,
         readIso14443B: true,
         readIso18092: false,
-        readIso15693: false);
+        readIso15693: false,
+      );
       if (_tag!.type != NFCTagType.iso7816) {
         _log.info("Ignoring non ISO-7816 tag: ${_tag!.type}");
         return await disconnect();
@@ -69,15 +74,13 @@ class NfcProvider extends ComProvider {
   }
 
   @override
-  Future<void> disconnect(
-      {String? iosAlertMessage, String? iosErrorMessage}) async {
+  Future<void> disconnect({String? iosAlertMessage, String? iosErrorMessage}) async {
     if (isConnected()) {
       _log.debug("Disconnecting");
       try {
         _tag = null;
-        return await FlutterNfcKit.finish(
-          iosAlertMessage: iosAlertMessage, iosErrorMessage: iosErrorMessage);
-      } on Exception catch(e) {
+        return await FlutterNfcKit.finish(iosAlertMessage: iosAlertMessage, iosErrorMessage: iosErrorMessage);
+      } on Exception catch (e) {
         throw NfcProviderError.fromException(e);
       }
     }
@@ -89,11 +92,10 @@ class NfcProvider extends ComProvider {
   }
 
   @override
-  Future<Uint8List> transceive(final Uint8List data,
-      {Duration? timeout}) async {
+  Future<Uint8List> transceive(final Uint8List data, {Duration? timeout}) async {
     try {
       return await FlutterNfcKit.transceive(data, timeout: timeout ?? this.timeout);
-    } on Exception catch(e) {
+    } on Exception catch (e) {
       throw NfcProviderError.fromException(e);
     }
   }

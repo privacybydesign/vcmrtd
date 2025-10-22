@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:vcmrtd/src/extension/logging_apis.dart';
@@ -6,7 +5,6 @@ import 'package:meta/meta.dart';
 import "package:logging/logging.dart";
 
 import '../utils.dart';
-
 
 extension RandomExtension on Random {
   BigInt nextBigInt(int bitLength) {
@@ -50,13 +48,10 @@ class DhParameterSpec {
   final BigInt _g;
   final int _length;
 
-  DhParameterSpec({
-    required BigInt p,
-    required BigInt g,
-    int length = defaultPrivateKeyLength,
-  })  : _p = p,
-        _g = g,
-        _length = length;
+  DhParameterSpec({required BigInt p, required BigInt g, int length = defaultPrivateKeyLength})
+    : _p = p,
+      _g = g,
+      _length = length;
 
   /// Returns the size in bits of the random exponent (private value)
   int get length => _length;
@@ -69,7 +64,7 @@ class DhParameterSpec {
 
   @override
   String toString() {
-    return "DhParameterSpec; p: ${Utils.bigIntToUint8List(bigInt:p)}, g: ${Utils.bigIntToUint8List(bigInt:g)}, length: $length";
+    return "DhParameterSpec; p: ${Utils.bigIntToUint8List(bigInt: p)}, g: ${Utils.bigIntToUint8List(bigInt: g)}, length: $length";
   }
 }
 
@@ -77,11 +72,7 @@ class DhKeyPair {
   final BigInt _publicKey;
   final BigInt _privateKey;
 
-  DhKeyPair({
-    required BigInt publicKey,
-    required BigInt privateKey,
-  })  : _publicKey = publicKey,
-        _privateKey = privateKey;
+  DhKeyPair({required BigInt publicKey, required BigInt privateKey}) : _publicKey = publicKey, _privateKey = privateKey;
 
   BigInt get privateKey => _privateKey;
 
@@ -89,15 +80,15 @@ class DhKeyPair {
 
   @override
   String toString() {
-    return "DhKeyPair; PublicKey: ${Utils.bigIntToUint8List(bigInt:publicKey)} ";
+    return "DhKeyPair; PublicKey: ${Utils.bigIntToUint8List(bigInt: publicKey)} ";
   }
+
   // be careful with this method, it is only for debugging purposes!!!
   String toStringAlsoPrivate() {
-    return "DhKeyPair; PublicKey: ${Utils.bigIntToUint8List(bigInt:publicKey)}, "
-        "PrivateKey: ${Utils.bigIntToUint8List(bigInt:privateKey)}";
+    return "DhKeyPair; PublicKey: ${Utils.bigIntToUint8List(bigInt: publicKey)}, "
+        "PrivateKey: ${Utils.bigIntToUint8List(bigInt: privateKey)}";
   }
 }
-
 
 class DHpkcs3Engine {
   static final _log = Logger("ECDHPaceCurve");
@@ -120,46 +111,45 @@ class DHpkcs3Engine {
   // Must call computeSecretKey() method before accessing this value
   BigInt get secretKey => _secretKey;
 
-
-  factory DHpkcs3Engine.fromPrivate({required BigInt private,
-                                    required DhParameterSpec parameterSpec}) {
-
+  factory DHpkcs3Engine.fromPrivate({required BigInt private, required DhParameterSpec parameterSpec}) {
     return DHpkcs3Engine(parameterSpec: parameterSpec, privateKey: private);
   }
 
   /// Construct an engine with the desired [DhParameterSpec]. If [privateKey] is
   /// provided, the key pair is created with the provided [privateKey],
   /// otherwise a new key pair is generated.
-  DHpkcs3Engine({required DhParameterSpec parameterSpec, BigInt? privateKey, int? seed = null}) :
-        _parameterSpec = parameterSpec{
-    _log.debug("Creating DH engine with parameterSpec: ${parameterSpec}");
-    if (privateKey != null)
+  DHpkcs3Engine({required DhParameterSpec parameterSpec, BigInt? privateKey, int? seed})
+    : _parameterSpec = parameterSpec {
+    _log.debug("Creating DH engine with parameterSpec: $parameterSpec");
+    if (privateKey != null) {
       createKeyPair(privateKey: privateKey);
-    else
+    } else {
       generateKeyPair(seed: seed);
+    }
 
-    _log.sdVerbose("DHpkcs3Engine; Created DH engine;"
-        "publicKey: ${Utils.bigIntToUint8List(bigInt:publicKey)}, "
-        "privateKey: ${Utils.bigIntToUint8List(bigInt:_privateKey)}");
-  }
-
-  /// Compute the secret key using the other party public key
-  BigInt computeSecretKey({required BigInt otherPublicKey}) {
-    return otherPublicKey.modPow(
-      _privateKey,
-      _parameterSpec.p,
+    _log.sdVerbose(
+      "DHpkcs3Engine; Created DH engine;"
+      "publicKey: ${Utils.bigIntToUint8List(bigInt: publicKey)}, "
+      "privateKey: ${Utils.bigIntToUint8List(bigInt: _privateKey)}",
     );
   }
 
   /// Compute the secret key using the other party public key
+  BigInt computeSecretKey({required BigInt otherPublicKey}) {
+    return otherPublicKey.modPow(_privateKey, _parameterSpec.p);
+  }
+
+  /// Compute the secret key using the other party public key
   BigInt computeGenerator({required BigInt otherPublicKey, required BigInt nonce}) {
-    _log.debug("DHpkcs3Engine.computeGenerator; otherPublicKey: ${Utils.bigIntToUint8List(bigInt:otherPublicKey)}");
-    _log.sdVerbose("DHpkcs3Engine.computeGenerator; otherPublicKey: ${Utils.bigIntToUint8List(bigInt:otherPublicKey)}, "
-        "nonce: ${Utils.bigIntToUint8List(bigInt:nonce)}");
+    _log.debug("DHpkcs3Engine.computeGenerator; otherPublicKey: ${Utils.bigIntToUint8List(bigInt: otherPublicKey)}");
+    _log.sdVerbose(
+      "DHpkcs3Engine.computeGenerator; otherPublicKey: ${Utils.bigIntToUint8List(bigInt: otherPublicKey)}, "
+      "nonce: ${Utils.bigIntToUint8List(bigInt: nonce)}",
+    );
     //Gephemeral = (pow(g, s, p) * H) % p
     //(g.modPow(nonce, p) * H ) % p
 
-    BigInt H = this.computeSecretKey(otherPublicKey: otherPublicKey);
+    BigInt H = computeSecretKey(otherPublicKey: otherPublicKey);
     BigInt generator = (_parameterSpec.g.modPow(nonce, _parameterSpec.p) * H) % _parameterSpec.p;
 
     return generator;
@@ -169,35 +159,29 @@ class DHpkcs3Engine {
     _log.verbose("DHpkcs3Engine; Creating key pair...");
     _privateKey = privateKey;
     _publicKey = generatePublicKey(privateKey: privateKey);
-    return DhKeyPair(
-      publicKey: _publicKey,
-      privateKey: _privateKey,
-    );
+    return DhKeyPair(publicKey: _publicKey, privateKey: _privateKey);
   }
 
   /// Generate [publicKey] and [privateKey] based on the [parameterSpec] of this engine
-  DhKeyPair generateKeyPair({int? seed = null}) {
+  DhKeyPair generateKeyPair({int? seed}) {
     _log.verbose("DHpkcs3Engine; Generating key pair...");
     _privateKey = generatePrivateKey(seed: seed);
     _publicKey = generatePublicKey(privateKey: privateKey);
-    return DhKeyPair(
-      publicKey: _publicKey,
-      privateKey: _privateKey,
-    );
+    return DhKeyPair(publicKey: _publicKey, privateKey: _privateKey);
   }
 
   @protected
-  BigInt generatePrivateKey({int? seed = null}) {
+  BigInt generatePrivateKey({int? seed}) {
     _log.debug("DHpkcs3Engine.generatePrivateKey. Is seed set?: ${seed != null}");
     Random rnd;
     try {
-      if (seed != null)
+      if (seed != null) {
         rnd = Random(seed);
-      else
+      } else {
         rnd = Random.secure();
+      }
     } on UnsupportedError {
-      throw DHpkcs3EngineError(
-          'This platform cannot provide a cryptographically secure source of random numbers');
+      throw DHpkcs3EngineError('This platform cannot provide a cryptographically secure source of random numbers');
     }
 
     BigInt lowerBound = BigInt.two.pow(parameterSpec.length - 1);
@@ -206,8 +190,7 @@ class DHpkcs3Engine {
     bool loopCondition = true;
     while (loopCondition) {
       generated = rnd.nextBigInt(parameterSpec.length);
-      if (generated.compareTo(lowerBound) >= 0 &&
-          generated.compareTo(BigInt.two * lowerBound) < 0) {
+      if (generated.compareTo(lowerBound) >= 0 && generated.compareTo(BigInt.two * lowerBound) < 0) {
         loopCondition = false;
       }
     }
@@ -217,11 +200,6 @@ class DHpkcs3Engine {
   @protected
   BigInt generatePublicKey({required BigInt privateKey}) {
     _log.verbose("DHpkcs3Engine.generatePublicKey");
-    return
-      _parameterSpec.g.modPow(
-      privateKey,
-      _parameterSpec.p,
-    );
+    return _parameterSpec.g.modPow(privateKey, _parameterSpec.p);
   }
 }
-
