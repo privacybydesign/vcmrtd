@@ -159,6 +159,7 @@ abstract class Document {
     await _selectDF1();
     return EfSOD.fromBytes(await _exec(() => _api.readFileBySFI(EfSOD.SFI)));
   }
+
   // data group readers --------------------------------
 }
 

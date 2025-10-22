@@ -8,8 +8,6 @@ import 'package:vcmrtd/extensions.dart';
 import '../crypto/kdf.dart';
 import 'access_key.dart';
 
-
-
 class CanKeysError implements Exception {
   final String message;
   CanKeysError(this.message);

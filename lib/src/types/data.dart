@@ -1,6 +1,5 @@
 import 'dart:typed_data';
 
-
 ///
 /// Class repesents one Data Row in a Data Field. MRTD additional data
 /// is stored in communication messages.
@@ -45,8 +44,6 @@ class DataRow {
     return bytes.map((byte) => '0x' + byte.toRadixString(16).padLeft(2, '0') + " ").join();
   }
 }
-
-
 
 ///
 /// Class repesents one entire data set in a Data Field. MRTD additional data
