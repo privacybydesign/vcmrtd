@@ -1,4 +1,3 @@
-import 'mrz_scanner.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
 extension DocumentTypeExtension on DocumentType {

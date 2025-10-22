@@ -40,14 +40,6 @@ class NfcReadingScreen extends StatefulWidget {
   State<NfcReadingScreen> createState() => _NfcReadingScreenState();
 }
 
-class _DocumentSessionConfig {
-  final Document document;
-  final AccessKey accessKey;
-  final bool isPace;
-
-  _DocumentSessionConfig({required this.document, required this.accessKey, required this.isPace});
-}
-
 class _NfcReadingScreenState extends State<NfcReadingScreen> {
   final NfcProvider _nfc = NfcProvider();
   String _alertMessage = "";

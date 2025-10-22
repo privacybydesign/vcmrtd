@@ -3,7 +3,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:vcmrtdapp/helpers/document_type_extract.dart';
-import 'package:vcmrtdapp/helpers/mrz_data.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 
 import 'scan_screen.dart';
@@ -18,13 +17,13 @@ class ScannerWrapper extends StatefulWidget {
   final DocumentType documentType;
 
   const ScannerWrapper({
-    Key? key,
+    super.key,
     required this.onMrzScanned,
     required this.onManualEntry,
     required this.onCancel,
     required this.onBack,
     this.documentType = DocumentType.passport,
-  }) : super(key: key);
+  });
 
   @override
   State<ScannerWrapper> createState() => _ScannerWrapperState();

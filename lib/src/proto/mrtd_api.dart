@@ -9,7 +9,6 @@ import 'iso7816/icc.dart';
 import 'iso7816/response_apdu.dart';
 
 import '../com/com_provider.dart';
-import '../lds/df1/df1.dart';
 import '../lds/tlv.dart';
 import '../lds/efcard_access.dart';
 import '../utils.dart';
