@@ -191,6 +191,53 @@ class MRZCameraViewState extends State<MRZCameraView> {
     // get image format
     final format = InputImageFormatValue.fromRawValue(image.format.raw);
     print('format: $format');
+
+    // For camera feed that supports only yuv_420_888
+    if (format == null || Platform.isAndroid && format == InputImageFormat.yuv_420_888) {
+      Uint8List _yuv420ToNv21(CameraImage img) {
+        final int width = img.width;
+        final int height = img.height;
+        final int ySize = width * height;
+        final int uvSize = width * height ~/ 2;
+        final Uint8List nv21 = Uint8List(ySize + uvSize);
+
+        // Copy Y
+        nv21.setRange(0, ySize, img.planes[0].bytes);
+
+        // Interleave V and U (VU order)
+        final Plane u = img.planes[1];
+        final Plane v = img.planes[2];
+        final int uRowStride = u.bytesPerRow;
+        final int vRowStride = v.bytesPerRow;
+        final int uPixelStride = u.bytesPerPixel ?? 1;
+        final int vPixelStride = v.bytesPerPixel ?? 1;
+
+        int uvIndex = ySize;
+        for (int row = 0; row < height ~/ 2; row++) {
+          int uRowStart = row * uRowStride;
+          int vRowStart = row * vRowStride;
+          for (int col = 0; col < width ~/ 2; col++) {
+            final int vByte = v.bytes[vRowStart + col * vPixelStride];
+            final int uByte = u.bytes[uRowStart + col * uPixelStride];
+            nv21[uvIndex++] = vByte;
+            nv21[uvIndex++] = uByte;
+          }
+        }
+        return nv21;
+      }
+
+      final nv21Bytes = _yuv420ToNv21(image);
+
+      return InputImage.fromBytes(
+        bytes: nv21Bytes,
+        metadata: InputImageMetadata(
+          size: Size(image.width.toDouble(), image.height.toDouble()),
+          rotation: rotation,
+          format: InputImageFormat.nv21,
+          bytesPerRow: image.planes.first.bytesPerRow,
+        ),
+      );
+    }
     // validate format depending on platform
     // only supported formats:
     // * nv21 for Android
