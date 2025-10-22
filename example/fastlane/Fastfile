@@ -5,8 +5,8 @@ before_all do
 end
 
 lane :lint do
-  Dir.chdir("..") do
-    sh("dart", "format", "--line-length", "120", "--set-exit-if-changed", "lib/", "test/")
+  Dir.chdir("../..") do
+    sh("dart", "format", "--line-length", "120", "--set-exit-if-changed", ".")
     sh("flutter", "analyze", "--no-fatal-infos")
   end
 end

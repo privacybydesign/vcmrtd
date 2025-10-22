@@ -43,22 +43,13 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget> with 
     super.initState();
 
     // Primary controller for state transitions and scale effects
-    _primaryController = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    );
+    _primaryController = AnimationController(duration: const Duration(milliseconds: 500), vsync: this);
 
     // Secondary controller for continuous animations (pulse, rotation)
-    _secondaryController = AnimationController(
-      duration: const Duration(seconds: 2),
-      vsync: this,
-    );
+    _secondaryController = AnimationController(duration: const Duration(seconds: 2), vsync: this);
 
     // Shake controller for error states
-    _shakeController = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    );
+    _shakeController = AnimationController(duration: const Duration(milliseconds: 500), vsync: this);
 
     _initializeAnimations();
     _updateAnimationState();
@@ -69,46 +60,31 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget> with 
     _scaleAnimation = Tween<double>(
       begin: 0.8,
       end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _primaryController,
-      curve: Curves.elasticOut,
-    ));
+    ).animate(CurvedAnimation(parent: _primaryController, curve: Curves.elasticOut));
 
     // Rotation animation for loading states
     _rotationAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _secondaryController,
-      curve: Curves.linear,
-    ));
+    ).animate(CurvedAnimation(parent: _secondaryController, curve: Curves.linear));
 
     // Pulse animation for waiting states
     _pulseAnimation = Tween<double>(
       begin: 0.8,
       end: 1.2,
-    ).animate(CurvedAnimation(
-      parent: _secondaryController,
-      curve: Curves.easeInOut,
-    ));
+    ).animate(CurvedAnimation(parent: _secondaryController, curve: Curves.easeInOut));
 
     // Shake animation for error states
     _shakeAnimation = Tween<double>(
       begin: -10.0,
       end: 10.0,
-    ).animate(CurvedAnimation(
-      parent: _shakeController,
-      curve: Curves.bounceOut,
-    ));
+    ).animate(CurvedAnimation(parent: _shakeController, curve: Curves.bounceOut));
 
     // Color animation for state changes
     _colorAnimation = ColorTween(
       begin: Colors.grey,
       end: _getStateColor(),
-    ).animate(CurvedAnimation(
-      parent: _primaryController,
-      curve: Curves.easeInOut,
-    ));
+    ).animate(CurvedAnimation(parent: _primaryController, curve: Curves.easeInOut));
   }
 
   @override
@@ -124,10 +100,7 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget> with 
     _colorAnimation = ColorTween(
       begin: _colorAnimation.value ?? Colors.grey,
       end: _getStateColor(),
-    ).animate(CurvedAnimation(
-      parent: _primaryController,
-      curve: Curves.easeInOut,
-    ));
+    ).animate(CurvedAnimation(parent: _primaryController, curve: Curves.easeInOut));
 
     // Reset and start primary animation for state change
     _primaryController.reset();
@@ -209,39 +182,23 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget> with 
         _colorAnimation,
       ]),
       builder: (context, child) {
-        Widget iconWidget = Icon(
-          _getStateIcon(),
-          size: 64,
-          color: _colorAnimation.value ?? _getStateColor(),
-        );
+        Widget iconWidget = Icon(_getStateIcon(), size: 64, color: _colorAnimation.value ?? _getStateColor());
 
         // Apply state-specific animations
         switch (widget.state) {
           case NFCReadingState.waiting:
-            iconWidget = Transform.scale(
-              scale: _pulseAnimation.value,
-              child: iconWidget,
-            );
+            iconWidget = Transform.scale(scale: _pulseAnimation.value, child: iconWidget);
             break;
           case NFCReadingState.connecting:
           case NFCReadingState.reading:
           case NFCReadingState.authenticating:
-            iconWidget = Transform.rotate(
-              angle: _rotationAnimation.value * 2 * 3.14159,
-              child: iconWidget,
-            );
+            iconWidget = Transform.rotate(angle: _rotationAnimation.value * 2 * 3.14159, child: iconWidget);
             break;
           case NFCReadingState.success:
-            iconWidget = Transform.scale(
-              scale: _scaleAnimation.value,
-              child: iconWidget,
-            );
+            iconWidget = Transform.scale(scale: _scaleAnimation.value, child: iconWidget);
             break;
           case NFCReadingState.error:
-            iconWidget = Transform.translate(
-              offset: Offset(_shakeAnimation.value, 0),
-              child: iconWidget,
-            );
+            iconWidget = Transform.translate(offset: Offset(_shakeAnimation.value, 0), child: iconWidget);
             break;
           default:
             break;
@@ -253,16 +210,10 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget> with 
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: (_colorAnimation.value ?? _getStateColor()).withValues(alpha: 0.1),
-            border: Border.all(
-              color: _colorAnimation.value ?? _getStateColor(),
-              width: 2,
-            ),
+            border: Border.all(color: _colorAnimation.value ?? _getStateColor(), width: 2),
           ),
           child: Center(
-            child: Transform.scale(
-              scale: _scaleAnimation.value,
-              child: iconWidget,
-            ),
+            child: Transform.scale(scale: _scaleAnimation.value, child: iconWidget),
           ),
         );
       },
@@ -285,11 +236,7 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget> with 
                 padding: const EdgeInsets.only(top: 8.0),
                 child: Text(
                   '${(widget.progress * 100).toInt()}%',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: _getStateColor(),
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: TextStyle(fontSize: 12, color: _getStateColor(), fontWeight: FontWeight.w500),
                 ),
               ),
           ],
@@ -307,10 +254,7 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget> with 
           onPressed: widget.onRetry,
           icon: const Icon(Icons.refresh),
           label: const Text('Try Again'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _getStateColor(),
-            foregroundColor: Colors.white,
-          ),
+          style: ElevatedButton.styleFrom(backgroundColor: _getStateColor(), foregroundColor: Colors.white),
         ),
       );
     }
@@ -355,12 +299,7 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget> with 
                 fontWeight: FontWeight.w500,
                 color: _colorAnimation.value ?? _getStateColor(),
               ),
-              child: Text(
-                widget.message,
-                textAlign: TextAlign.center,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
+              child: Text(widget.message, textAlign: TextAlign.center, maxLines: 3, overflow: TextOverflow.ellipsis),
             ),
             _buildProgressIndicator(),
             _buildRetryButton(),

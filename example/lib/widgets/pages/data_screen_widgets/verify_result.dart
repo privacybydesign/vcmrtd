@@ -32,31 +32,18 @@ class VerifyResultSection extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(
                   'Verification Result',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.teal[700],
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: Colors.teal[700]),
                 ),
               ],
             ),
             const Divider(height: 30),
-            ReadOnlyTextBox(
-              label: 'Expired Document',
-              value: yn(isExpired),
-              isError: false,
-            ),
+            ReadOnlyTextBox(label: 'Expired Document', value: yn(isExpired), isError: false),
             const SizedBox(height: 12),
-            ReadOnlyTextBox(
-              label: 'Authentic Chip',
-              value: yn(authenticChip),
-              isError: false,
-            ),
+            ReadOnlyTextBox(label: 'Authentic Chip', value: yn(authenticChip), isError: false),
             const SizedBox(height: 12),
-            ReadOnlyTextBox(
-              label: 'Authentic Content',
-              value: yn(authenticContent),
-              isError: false,
-            ),
+            ReadOnlyTextBox(label: 'Authentic Content', value: yn(authenticContent), isError: false),
           ],
         ),
       ),

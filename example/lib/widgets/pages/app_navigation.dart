@@ -18,15 +18,7 @@ import 'nfc_guidance_screen.dart';
 import 'manual_entry_screen.dart';
 import '../../models/mrtd_data.dart';
 
-enum NavigationStep {
-  documentType,
-  passportMrz,
-  edlMrz,
-  manual,
-  nfcHelp,
-  nfcReading,
-  results,
-}
+enum NavigationStep { documentType, passportMrz, edlMrz, manual, nfcHelp, nfcReading, results }
 
 /// Main navigation controller that manages the new UX flow
 class AppNavigation extends StatefulWidget {
@@ -281,12 +273,7 @@ class _AppNavigationState extends State<AppNavigation> {
               Text('• Keep both devices completely still during reading'),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
-            ),
-          ],
+          actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK'))],
         );
       },
     );

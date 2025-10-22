@@ -37,8 +37,8 @@ dependencies:
 dev_dependencies:
   flutter:      # needed for flutter_nfc_kit
     sdk: flutter
-  flutter_lints: ^2.0.1
+  flutter_lints: ^6.0.0
   flutter_test: # needed for flutter_nfc_kit
     sdk: flutter
-  lints: ^2.0.0
+  lints: ^6.0.0
   test: ^1.16.5

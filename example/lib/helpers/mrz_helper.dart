@@ -30,10 +30,7 @@ class MRZHelper {
       // to make sure that all lines are the same in length
     }
     List<String> firstLineChars = ableToScanTextList.first.split('');
-    List<String> supportedDocTypes = [
-      'P',
-      'V',
-    ]; // you can add more doc types like A,C,I are also supported
+    List<String> supportedDocTypes = ['P', 'V']; // you can add more doc types like A,C,I are also supported
     String fChar = firstLineChars[0];
     if (supportedDocTypes.contains(fChar)) {
       'Passport or Visa MRZ detected'.logInfo();

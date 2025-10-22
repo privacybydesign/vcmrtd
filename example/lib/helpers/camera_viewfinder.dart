@@ -38,8 +38,9 @@ class MRZCameraViewState extends State<MRZCameraView> {
     cameras = await availableCameras();
 
     try {
-      if (cameras
-          .any((element) => element.lensDirection == widget.initialDirection && element.sensorOrientation == 90)) {
+      if (cameras.any(
+        (element) => element.lensDirection == widget.initialDirection && element.sensorOrientation == 90,
+      )) {
         _cameraIndex = cameras.indexOf(
           cameras.firstWhere(
             (element) => element.lensDirection == widget.initialDirection && element.sensorOrientation == 90,
@@ -47,9 +48,7 @@ class MRZCameraViewState extends State<MRZCameraView> {
         );
       } else {
         _cameraIndex = cameras.indexOf(
-          cameras.firstWhere(
-            (element) => element.lensDirection == widget.initialDirection,
-          ),
+          cameras.firstWhere((element) => element.lensDirection == widget.initialDirection),
         );
       }
     } catch (e) {
@@ -69,9 +68,7 @@ class MRZCameraViewState extends State<MRZCameraView> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: widget.showOverlay ? MRZCameraOverlay(child: _liveFeedBody()) : _liveFeedBody(),
-    );
+    return Scaffold(body: widget.showOverlay ? MRZCameraOverlay(child: _liveFeedBody()) : _liveFeedBody());
   }
 
   Widget _liveFeedBody() {
@@ -99,10 +96,7 @@ class MRZCameraViewState extends State<MRZCameraView> {
           Transform.scale(
             scale: scale,
             child: Center(
-              child: AspectRatio(
-                aspectRatio: 9 / 16,
-                child: CameraPreview(_controller!),
-              ),
+              child: AspectRatio(aspectRatio: 9 / 16, child: CameraPreview(_controller!)),
             ),
           ),
         ],

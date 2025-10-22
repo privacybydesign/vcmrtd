@@ -41,10 +41,7 @@ class MrtdData {
   }
 
   /// Constructor with nonce enhancement
-  MrtdData.withNonceEnhancement({
-    required this.sessionId,
-    this.isNonceEnhanced = true,
-  }) {
+  MrtdData.withNonceEnhancement({required this.sessionId, this.isNonceEnhanced = true}) {
     authTimestamp = DateTime.now();
   }
 

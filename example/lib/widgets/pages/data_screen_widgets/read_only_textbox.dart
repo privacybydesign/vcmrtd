@@ -6,12 +6,7 @@ class ReadOnlyTextBox extends StatelessWidget {
   final String value;
   final bool isError;
 
-  const ReadOnlyTextBox({
-    Key? key,
-    required this.label,
-    required this.value,
-    required this.isError,
-  }) : super(key: key);
+  const ReadOnlyTextBox({Key? key, required this.label, required this.value, required this.isError}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {

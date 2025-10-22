@@ -8,12 +8,8 @@ class PassportImageWidget extends StatefulWidget {
   final Uint8List? imageData;
   final ImageType? imageType;
 
-  const PassportImageWidget({
-    Key? key,
-    required this.header,
-    required this.imageData,
-    required this.imageType,
-  }) : super(key: key);
+  const PassportImageWidget({Key? key, required this.header, required this.imageData, required this.imageType})
+    : super(key: key);
 
   @override
   State<PassportImageWidget> createState() => _PassportImageWidgetState();
@@ -115,11 +111,7 @@ class _PassportImageWidgetState extends State<PassportImageWidget> {
         return const Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text("Converting JPEG2000 image..."),
-            ],
+            children: [CircularProgressIndicator(), SizedBox(height: 16), Text("Converting JPEG2000 image...")],
           ),
         );
       } else if (_convertedImage != null) {
@@ -130,14 +122,10 @@ class _PassportImageWidgetState extends State<PassportImageWidget> {
           errorBuilder: (context, error, stackTrace) => const Text("Error displaying converted JPEG2000 image."),
         );
       } else {
-        return const Center(
-          child: Text("Failed to convert JPEG2000 image."),
-        );
+        return const Center(child: Text("Failed to convert JPEG2000 image."));
       }
     } else {
-      return const Center(
-        child: Text("Unknown or unsupported image type."),
-      );
+      return const Center(child: Text("Unknown or unsupported image type."));
     }
   }
 

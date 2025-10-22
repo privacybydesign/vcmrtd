@@ -19,12 +19,12 @@ class PassportDataResult {
   }
 
   Map<String, dynamic> toJson() => {
-        'data_groups': dataGroups,
-        'ef_sod': efSod,
-        'nonce': nonce != null ? _bytesToHex(nonce!) : null,
-        'session_id': sessionId,
-        'aa_signature': aaSignature != null ? _bytesToHex(aaSignature!) : null
-      };
+    'data_groups': dataGroups,
+    'ef_sod': efSod,
+    'nonce': nonce != null ? _bytesToHex(nonce!) : null,
+    'session_id': sessionId,
+    'aa_signature': aaSignature != null ? _bytesToHex(aaSignature!) : null,
+  };
 
   String toJsonString() => jsonEncode(toJson());
 }

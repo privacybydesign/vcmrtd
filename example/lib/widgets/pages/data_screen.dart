@@ -22,14 +22,14 @@ class DataScreen extends StatefulWidget {
   final String? sessionId;
   final Uint8List? nonce;
 
-  const DataScreen(
-      {Key? key,
-      required this.mrtdData,
-      required this.onBackPressed,
-      required this.passportDataResult,
-      this.sessionId,
-      this.nonce})
-      : super(key: key);
+  const DataScreen({
+    Key? key,
+    required this.mrtdData,
+    required this.onBackPressed,
+    required this.passportDataResult,
+    this.sessionId,
+    this.nonce,
+  }) : super(key: key);
 
   @override
   State<DataScreen> createState() => _DataScreenState();
@@ -47,11 +47,9 @@ class _DataScreenState extends State<DataScreen> {
   Widget build(BuildContext context) {
     return PlatformScaffold(
       appBar: PlatformAppBar(
-          title: const Text('Passport Data'),
-          leading: PlatformIconButton(
-            icon: Icon(PlatformIcons(context).back),
-            onPressed: widget.onBackPressed,
-          )),
+        title: const Text('Passport Data'),
+        leading: PlatformIconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBackPressed),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
@@ -76,7 +74,10 @@ class _DataScreenState extends State<DataScreen> {
                 else ...[
                   const SizedBox(height: 20),
                   VerifyResultSection(
-                      isExpired: _isExpired!, authenticChip: _authenticChip!, authenticContent: _authenticContent!),
+                    isExpired: _isExpired!,
+                    authenticChip: _authenticChip!,
+                    authenticContent: _authenticContent!,
+                  ),
                 ],
               ],
             ],
@@ -199,30 +200,15 @@ class _DataScreenState extends State<DataScreen> {
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                error,
-                style: const TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 12,
-                ),
-              ),
+              decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(4)),
+              child: Text(error, style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
             ),
             const SizedBox(height: 12),
-            const Text(
-              'Please try again or contact support if the problem persists.',
-              style: TextStyle(fontSize: 14),
-            ),
+            const Text('Please try again or contact support if the problem persists.', style: TextStyle(fontSize: 14)),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK')),
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();

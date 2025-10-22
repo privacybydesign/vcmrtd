@@ -12,12 +12,8 @@ class ManualEntryScreen extends StatefulWidget {
   final VoidCallback onBack;
   final Function(String docNumber, DateTime dob, DateTime expiry)? onDataEntered;
 
-  const ManualEntryScreen({
-    Key? key,
-    required this.onContinue,
-    required this.onBack,
-    this.onDataEntered,
-  }) : super(key: key);
+  const ManualEntryScreen({Key? key, required this.onContinue, required this.onBack, this.onDataEntered})
+    : super(key: key);
 
   @override
   State<ManualEntryScreen> createState() => _ManualEntryScreenState();
@@ -46,10 +42,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
     return PlatformScaffold(
       appBar: PlatformAppBar(
         title: const Text('Enter Passport Details'),
-        leading: PlatformIconButton(
-          icon: Icon(PlatformIcons(context).back),
-          onPressed: widget.onBack,
-        ),
+        leading: PlatformIconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBack),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -62,9 +55,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                 // Header section
                 Card(
                   elevation: 4,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   child: Padding(
                     padding: const EdgeInsets.all(20.0),
                     child: Column(
@@ -76,29 +67,18 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                             color: const Color(0xFF6b6868).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(30),
                           ),
-                          child: const Icon(
-                            Icons.edit_document,
-                            size: 30,
-                            color: Color(0xFF6b6868),
-                          ),
+                          child: const Icon(Icons.edit_document, size: 30, color: Color(0xFF6b6868)),
                         ),
                         const SizedBox(height: 16),
                         const Text(
                           'Enter Your Passport Information',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF212121),
-                          ),
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF212121)),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 8),
                         const Text(
                           'Please enter the information exactly as it appears on your passport',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF666666),
-                          ),
+                          style: TextStyle(fontSize: 14, color: Color(0xFF666666)),
                           textAlign: TextAlign.center,
                         ),
                       ],
@@ -202,13 +182,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                         Icon(Icons.error_outline, color: Colors.red, size: 20),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Text(
-                            _errorMessage,
-                            style: const TextStyle(
-                              color: Colors.red,
-                              fontSize: 14,
-                            ),
-                          ),
+                          child: Text(_errorMessage, style: const TextStyle(color: Colors.red, fontSize: 14)),
                         ),
                       ],
                     ),
@@ -219,13 +193,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                   onPressed: _handleContinue,
                   child: const Padding(
                     padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Text(
-                      'Continue to NFC Reading',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                    child: Text('Continue to NFC Reading', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
                   ),
                 ),
 
@@ -234,31 +202,20 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                 // Help text
                 Container(
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF3F4F6),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                  decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(8)),
                   child: const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Where to find this information:',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF374151),
-                        ),
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
                       ),
                       SizedBox(height: 8),
                       Text(
                         '• Passport Number: Usually at the top right of the photo page\n'
                         '• Date of Birth: Listed as "Date of birth" or "DOB"\n'
                         '• Expiry Date: Listed as "Date of expiry" or "Valid until"',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF6B7280),
-                          height: 1.4,
-                        ),
+                        style: TextStyle(fontSize: 14, color: Color(0xFF6B7280), height: 1.4),
                       ),
                     ],
                   ),
@@ -271,17 +228,10 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
     );
   }
 
-  Widget _buildInputCard({
-    required String title,
-    required String hint,
-    required IconData icon,
-    required Widget child,
-  }) {
+  Widget _buildInputCard({required String title, required String hint, required IconData icon, required Widget child}) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -296,20 +246,12 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                     color: const Color(0xFF6b6868).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(
-                    icon,
-                    size: 18,
-                    color: const Color(0xFF6b6868),
-                  ),
+                  child: Icon(icon, size: 18, color: const Color(0xFF6b6868)),
                 ),
                 const SizedBox(width: 12),
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF212121),
-                  ),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF212121)),
                 ),
               ],
             ),
@@ -323,8 +265,9 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
 
   Future<void> _selectDate(BuildContext context, {required bool isDateOfBirth}) async {
     final DateTime now = DateTime.now();
-    final DateTime initialDate =
-        isDateOfBirth ? DateTime(now.year - 30, now.month, now.day) : DateTime(now.year + 10, now.month, now.day);
+    final DateTime initialDate = isDateOfBirth
+        ? DateTime(now.year - 30, now.month, now.day)
+        : DateTime(now.year + 10, now.month, now.day);
 
     final DateTime firstDate = isDateOfBirth ? DateTime(1900) : now;
 
@@ -337,11 +280,9 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
       lastDate: lastDate,
       builder: (context, child) {
         return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-                  primary: const Color(0xFF6b6868),
-                ),
-          ),
+          data: Theme.of(
+            context,
+          ).copyWith(colorScheme: Theme.of(context).colorScheme.copyWith(primary: const Color(0xFF6b6868))),
           child: child!,
         );
       },
@@ -381,11 +322,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
 
     // Callback with the entered data
     if (widget.onDataEntered != null) {
-      widget.onDataEntered!(
-        _docNumberController.text.trim().toUpperCase(),
-        _selectedDob!,
-        _selectedExpiry!,
-      );
+      widget.onDataEntered!(_docNumberController.text.trim().toUpperCase(), _selectedDob!, _selectedExpiry!);
     }
 
     // Continue to next screen

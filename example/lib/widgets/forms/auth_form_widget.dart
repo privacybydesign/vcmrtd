@@ -58,11 +58,7 @@ class AuthFormWidget extends StatelessWidget {
                 inputDisabled: inputDisabled,
                 onPACEChanged: onPACEChanged,
               ),
-              CanFormWidget(
-                formKey: canFormKey,
-                canController: canController,
-                inputDisabled: inputDisabled,
-              ),
+              CanFormWidget(formKey: canFormKey, canController: canController, inputDisabled: inputDisabled),
             ],
           ),
         ),

@@ -22,12 +22,13 @@ final Map<DgTag, String> dgTagToString = {
   EfDG13.TAG: 'EF.DG13',
   EfDG14.TAG: 'EF.DG14',
   EfDG15.TAG: 'EF.DG15',
-  EfDG16.TAG: 'EF.DG16'
+  EfDG16.TAG: 'EF.DG16',
 };
 
 /// Formats EF.COM data for display
 String formatEfCom(final EfCOM efCom) {
-  var str = "version: ${efCom.version}\n"
+  var str =
+      "version: ${efCom.version}\n"
       "unicode version: ${efCom.unicodeVersion}\n"
       "DG tags:";
 
@@ -60,7 +61,8 @@ String formatMRZ(final MRZ mrz) {
 
 /// Formats DG15 data for display
 String formatDG15(final EfDG15 dg15) {
-  var str = "EF.DG15:\n"
+  var str =
+      "EF.DG15:\n"
       "  AAPublicKey\n"
       "    type: ";
 
@@ -76,7 +78,8 @@ String formatDG15(final EfDG15 dg15) {
     final tvModule = TLV.decode(tvKeySeq.value);
     final tvExp = TLV.decode(tvKeySeq.value.sublist(tvModule.encodedLen));
 
-    str += "RSA\n"
+    str +=
+        "RSA\n"
         "    exponent: ${tvExp.value.hex()}\n"
         "    modulus: ${tvModule.value.hex()}";
   } else {

@@ -11,11 +11,7 @@ class PersonalDataSection extends StatelessWidget {
   final MRZ mrz;
   final EfDG2 dg2;
 
-  const PersonalDataSection({
-    Key? key,
-    required this.mrz,
-    required this.dg2,
-  }) : super(key: key);
+  const PersonalDataSection({Key? key, required this.mrz, required this.dg2}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -34,9 +30,9 @@ class PersonalDataSection extends StatelessWidget {
                 Text(
                   'Personal Information',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).primaryColor,
-                      ),
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).primaryColor,
+                  ),
                 ),
               ],
             ),
@@ -75,9 +71,10 @@ class PersonalDataSection extends StatelessWidget {
         InfoRow(label: 'Nationality', value: mrz.nationality, iconData: Icons.flag_outlined),
         const SizedBox(height: 12),
         InfoRow(
-            label: 'Document',
-            value: '${mrz.documentCode} ${mrz.documentNumber}',
-            iconData: Icons.document_scanner_outlined),
+          label: 'Document',
+          value: '${mrz.documentCode} ${mrz.documentNumber}',
+          iconData: Icons.document_scanner_outlined,
+        ),
         const SizedBox(height: 12),
         InfoRow(label: 'Gender', value: mrz.gender, iconData: Icons.person_pin_outlined),
       ],

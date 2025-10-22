@@ -20,17 +20,17 @@ class NfcReadingScreen extends StatefulWidget {
   final Function(MrtdData, PassportDataResult)? onDataRead;
   final VoidCallback? onCancel;
 
-  const NfcReadingScreen(
-      {Key? key,
-      this.mrzResult,
-      this.manualDocNumber,
-      this.manualDob,
-      this.manualExpiry,
-      this.sessionId,
-      this.nonce,
-      this.onDataRead,
-      this.onCancel})
-      : super(key: key);
+  const NfcReadingScreen({
+    Key? key,
+    this.mrzResult,
+    this.manualDocNumber,
+    this.manualDob,
+    this.manualExpiry,
+    this.sessionId,
+    this.nonce,
+    this.onDataRead,
+    this.onCancel,
+  }) : super(key: key);
 
   @override
   State<NfcReadingScreen> createState() => _NfcReadingScreenState();
@@ -96,12 +96,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
       return;
     }
 
-    final bacKeySeed = DBAKey(
-      docNumber,
-      birthDate,
-      expiryDate,
-      paceMode: paceMode,
-    );
+    final bacKeySeed = DBAKey(docNumber, birthDate, expiryDate, paceMode: paceMode);
     _readMRTD(accessKey: bacKeySeed, isPace: paceMode);
   }
 
@@ -116,9 +111,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
         bool demo = false;
         if (!demo) {
           if (_isCancelled) return;
-          await _nfc.connect(
-            iosAlertMessage: "Hold your phone near Biometric Passport",
-          );
+          await _nfc.connect(iosAlertMessage: "Hold your phone near Biometric Passport");
         }
 
         if (_isCancelled) return;
@@ -148,11 +141,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
     }
   }
 
-  Future<void> _performPassportReading(
-    Passport passport,
-    AccessKey accessKey,
-    bool isPace,
-  ) async {
+  Future<void> _performPassportReading(Passport passport, AccessKey accessKey, bool isPace) async {
     debugPrint("_performPassportReading()");
     _nfc.setIosAlertMessage("Trying to read EF.CardAccess ...");
     final mrtdData = MrtdData();
@@ -406,11 +395,12 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
       });
 
       return PassportDataResult(
-          dataGroups: dataGroups,
-          efSod: efSodHex,
-          nonce: widget.nonce,
-          sessionId: widget.sessionId,
-          aaSignature: mrtdData.aaSig);
+        dataGroups: dataGroups,
+        efSod: efSodHex,
+        nonce: widget.nonce,
+        sessionId: widget.sessionId,
+        aaSignature: mrtdData.aaSig,
+      );
     } catch (e) {
       _log.severe("Error reading passport data: $e");
       setState(() {
@@ -452,9 +442,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
     if (_alertMessage.isNotEmpty) {
       await _nfc.disconnect(iosErrorMessage: _alertMessage);
     } else {
-      await _nfc.disconnect(
-        iosAlertMessage: "Finished",
-      );
+      await _nfc.disconnect(iosAlertMessage: "Finished");
     }
   }
 
