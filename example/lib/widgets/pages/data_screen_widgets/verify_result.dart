@@ -28,8 +28,7 @@ class VerifyResultSection extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.assignment_turned_in,
-                    color: Colors.teal[700], size: 28),
+                Icon(Icons.assignment_turned_in, color: Colors.teal[700], size: 28),
                 const SizedBox(width: 8),
                 Text(
                   'Verification Result',

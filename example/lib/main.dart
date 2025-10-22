@@ -16,8 +16,7 @@ void main() async {
   Logger.root.level = Level.ALL;
   Logger.root.logSensitiveData = true;
   Logger.root.onRecord.listen((record) {
-    print(
-        '${record.loggerName} ${record.level.name}: ${record.time}: ${record.message}');
+    print('${record.loggerName} ${record.level.name}: ${record.time}: ${record.message}');
   });
   WidgetsFlutterBinding.ensureInitialized();
   await deepLinkService.init();

@@ -79,9 +79,7 @@ class MrtdDataListWidget extends StatelessWidget {
 
     if (mrtdData!.dg2 != null) {
       list.add(PassportImageWidget(
-        header: 'EF.DG2',
-        imageType: mrtdData!.dg2!.imageType,
-        imageData : mrtdData!.dg2!.imageData!));
+          header: 'EF.DG2', imageType: mrtdData!.dg2!.imageType, imageData: mrtdData!.dg2!.imageData!));
     }
 
     // Data Groups 2-16

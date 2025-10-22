@@ -9,8 +9,7 @@ class EfParseError implements Exception {
   String toString() => message;
 }
 
-abstract class ElementaryFile{
-
+abstract class ElementaryFile {
   int get fid; // file id
   int get sfi; // short file id
   final Uint8List _encoded;

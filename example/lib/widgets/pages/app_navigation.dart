@@ -180,8 +180,7 @@ class _AppNavigationState extends State<AppNavigation> {
       },
       onBack: () {
         setState(() {
-          _currentStep =
-              NavigationStep.passportMrz; // Back to scanner/manual entry
+          _currentStep = NavigationStep.passportMrz; // Back to scanner/manual entry
         });
       },
       onTroubleshooting: () {
@@ -200,8 +199,7 @@ class _AppNavigationState extends State<AppNavigation> {
         Navigator.of(context).pop();
         setState(() {
           _resetPassportFlow(clearSession: true);
-          _currentStep =
-              NavigationStep.documentType; // Back to doc type selection
+          _currentStep = NavigationStep.documentType; // Back to doc type selection
         });
       },
     );
@@ -279,8 +277,7 @@ class _AppNavigationState extends State<AppNavigation> {
               Text('• Make sure NFC is enabled in your phone settings'),
               Text('• Remove any thick phone case or metal objects'),
               Text('• Try different positions on the passport back cover'),
-              Text(
-                  '• Ensure the passport has an electronic chip (newer passports)'),
+              Text('• Ensure the passport has an electronic chip (newer passports)'),
               Text('• Keep both devices completely still during reading'),
             ],
           ),

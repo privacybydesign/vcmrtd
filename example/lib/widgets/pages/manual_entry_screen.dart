@@ -155,7 +155,6 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                       }
                       return null;
                     },
-
                   ),
                 ),
 
@@ -324,17 +323,12 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
 
   Future<void> _selectDate(BuildContext context, {required bool isDateOfBirth}) async {
     final DateTime now = DateTime.now();
-    final DateTime initialDate = isDateOfBirth
-        ? DateTime(now.year - 30, now.month, now.day)
-        : DateTime(now.year + 10, now.month, now.day);
+    final DateTime initialDate =
+        isDateOfBirth ? DateTime(now.year - 30, now.month, now.day) : DateTime(now.year + 10, now.month, now.day);
 
-    final DateTime firstDate = isDateOfBirth
-        ? DateTime(1900)
-        : now;
+    final DateTime firstDate = isDateOfBirth ? DateTime(1900) : now;
 
-    final DateTime lastDate = isDateOfBirth
-        ? now
-        : DateTime(2050);
+    final DateTime lastDate = isDateOfBirth ? now : DateTime(2050);
 
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -345,8 +339,8 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: Theme.of(context).colorScheme.copyWith(
-              primary: const Color(0xFF6b6868),
-            ),
+                  primary: const Color(0xFF6b6868),
+                ),
           ),
           child: child!,
         );

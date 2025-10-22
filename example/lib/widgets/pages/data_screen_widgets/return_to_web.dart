@@ -27,8 +27,7 @@ class ReturnToWebSection extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.arrow_back,
-                    color: Theme.of(context).primaryColor, size: 28),
+                Icon(Icons.arrow_back, color: Theme.of(context).primaryColor, size: 28),
                 const SizedBox(width: 8),
                 Text(
                   'Passport Issuer services',
@@ -58,9 +57,7 @@ class ReturnToWebSection extends StatelessWidget {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.open_in_browser),
-              label: Text(isReturningToIssue
-                  ? 'Redirecting...'
-                  : 'Issue a Credential with Yivi'),
+              label: Text(isReturningToIssue ? 'Redirecting...' : 'Issue a Credential with Yivi'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 backgroundColor: Colors.green[600],
@@ -80,9 +77,7 @@ class ReturnToWebSection extends StatelessWidget {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.open_in_browser),
-              label: Text(isReturningToVerify
-                  ? 'Redirecting...'
-                  : 'Verify via our API'),
+              label: Text(isReturningToVerify ? 'Redirecting...' : 'Verify via our API'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 backgroundColor: Colors.green[600],

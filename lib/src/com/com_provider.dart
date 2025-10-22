@@ -9,7 +9,6 @@ class ComProviderError implements Exception {
   String toString() => 'ComProviderError: $message';
 }
 
-
 /// Abstract interface for communicating with ICC.
 abstract class ComProvider {
   // ignore: unused_field

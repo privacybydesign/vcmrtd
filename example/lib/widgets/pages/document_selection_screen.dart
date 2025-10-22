@@ -40,8 +40,7 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
                 _buildOptionCard(
                   context: context,
                   title: 'Passport',
-                  subtitle:
-                      'Use a machine readable passport',
+                  subtitle: 'Use a machine readable passport',
                   icon: Icons.book,
                   accentColor: const Color(0xFF6b6868),
                   onTap: onPassportSelected,
@@ -52,12 +51,10 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
                 _buildOptionCard(
                   context: context,
                   title: 'Driving Licence',
-                  subtitle:
-                      'Use a machine readable driving licence. Currently works primarily with Dutch licences.',
+                  subtitle: 'Use a machine readable driving licence. Currently works primarily with Dutch licences.',
                   icon: Icons.directions_car,
                   accentColor: const Color(0xFF2196F3),
                   onTap: onDrivingLicenceSelected,
-
                 ),
               ],
             ),
@@ -183,8 +180,7 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
                   top: 8,
                   right: 8,
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: accentColor,
                       borderRadius: BorderRadius.circular(12),

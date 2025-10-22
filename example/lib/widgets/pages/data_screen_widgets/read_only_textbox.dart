@@ -25,8 +25,7 @@ class ReadOnlyTextBox extends StatelessWidget {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide:
-              BorderSide(color: isError ? Colors.red[200]! : Colors.grey[300]!),
+          borderSide: BorderSide(color: isError ? Colors.red[200]! : Colors.grey[300]!),
         ),
         prefixIcon: Icon(
           isError ? Icons.error_outline : Icons.info_outline,

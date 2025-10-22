@@ -45,8 +45,7 @@ class _DbaFormWidgetState extends State<DbaFormWidget> {
     return DateFormat.yMd().parse(widget.doeController.text);
   }
 
-  Future<String?> _pickDate(BuildContext context, DateTime firstDate,
-      DateTime initDate, DateTime lastDate) async {
+  Future<String?> _pickDate(BuildContext context, DateTime firstDate, DateTime initDate, DateTime lastDate) async {
     final locale = Localizations.localeOf(context);
     final DateTime? picked = await showDatePicker(
       context: context,

@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 @immutable
@@ -23,10 +22,8 @@ extension MyThemeTextStyles on ThemeData {
           fontWeight: FontWeight.bold,
           color: Color(0xFF212121),
         ),
-        secondary: TextStyle(
-            fontSize: 16, fontWeight: FontWeight.w400, color: Colors.grey),
+        secondary: TextStyle(fontSize: 16, fontWeight: FontWeight.w400, color: Colors.grey),
         hint: TextStyle(fontSize: 16, color: Color(0xFF666666)),
-        error: TextStyle(
-            fontSize: 14, color: Colors.redAccent, fontWeight: FontWeight.bold),
+        error: TextStyle(fontSize: 14, color: Colors.redAccent, fontWeight: FontWeight.bold),
       );
 }

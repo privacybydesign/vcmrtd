@@ -25,8 +25,7 @@ class NfcGuidanceScreen extends StatefulWidget {
   State<NfcGuidanceScreen> createState() => _NfcGuidanceScreenState();
 }
 
-class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
-    with TickerProviderStateMixin {
+class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _positionAnimation;
   var _isNfcAvailable = false;
@@ -105,9 +104,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
               Row(
                 children: [
                   Text(
-                    _isNfcAvailable
-                        ? 'NFC is available'
-                        : 'NFC is not available',
+                    _isNfcAvailable ? 'NFC is available' : 'NFC is not available',
                     style: const TextStyle(
                       fontSize: 18,
                       color: Color(0xFF212121),
@@ -215,8 +212,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
                 width: double.infinity,
                 decoration: BoxDecoration(
                   color: const Color(0xFF424242),
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(8)),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
                   border: Border.all(color: const Color(0xFF424242), width: 2),
                 ),
                 child: const Center(
@@ -252,8 +248,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
                 width: double.infinity,
                 decoration: BoxDecoration(
                   color: const Color(0xFFBDBDBD),
-                  borderRadius:
-                      const BorderRadius.vertical(bottom: Radius.circular(8)),
+                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8)),
                   border: Border.all(color: const Color(0xFF424242), width: 2),
                 ),
                 child: Row(
@@ -280,18 +275,15 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen>
                         children: const [
                           Text(
                             'Name: John Doe',
-                            style: TextStyle(
-                                fontSize: 10, color: Color(0xFF333333)),
+                            style: TextStyle(fontSize: 10, color: Color(0xFF333333)),
                           ),
                           Text(
                             'Nationality: NL',
-                            style: TextStyle(
-                                fontSize: 10, color: Color(0xFF333333)),
+                            style: TextStyle(fontSize: 10, color: Color(0xFF333333)),
                           ),
                           Text(
                             'DOB: 01-01-1990',
-                            style: TextStyle(
-                                fontSize: 10, color: Color(0xFF333333)),
+                            style: TextStyle(fontSize: 10, color: Color(0xFF333333)),
                           ),
                         ],
                       ),

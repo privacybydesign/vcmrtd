@@ -4,16 +4,7 @@
 import 'package:flutter/material.dart';
 
 /// Enumeration of NFC reading states for animation control
-enum NFCReadingState {
-  waiting,
-  connecting,
-  reading,
-  authenticating,
-  success,
-  error,
-  idle,
-  cancelling
-}
+enum NFCReadingState { waiting, connecting, reading, authenticating, success, error, idle, cancelling }
 
 /// Animated widget to display NFC reading status with beautiful animations
 class AnimatedNFCStatusWidget extends StatefulWidget {
@@ -36,8 +27,7 @@ class AnimatedNFCStatusWidget extends StatefulWidget {
   State<AnimatedNFCStatusWidget> createState() => _AnimatedNFCStatusWidgetState();
 }
 
-class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget>
-    with TickerProviderStateMixin {
+class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget> with TickerProviderStateMixin {
   late AnimationController _primaryController;
   late AnimationController _secondaryController;
   late AnimationController _shakeController;
@@ -280,8 +270,7 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget>
   }
 
   Widget _buildProgressIndicator() {
-    if (widget.state == NFCReadingState.reading ||
-        widget.state == NFCReadingState.authenticating) {
+    if (widget.state == NFCReadingState.reading || widget.state == NFCReadingState.authenticating) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 16.0),
         child: Column(
@@ -330,8 +319,8 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget>
 
   Widget _buildCancelButton() {
     if ((widget.state == NFCReadingState.waiting ||
-         widget.state == NFCReadingState.connecting ||
-         widget.state == NFCReadingState.reading) &&
+            widget.state == NFCReadingState.connecting ||
+            widget.state == NFCReadingState.reading) &&
         widget.onCancel != null) {
       return Padding(
         padding: const EdgeInsets.only(top: 16.0),

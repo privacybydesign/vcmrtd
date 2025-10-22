@@ -23,8 +23,7 @@ class SecurityContent extends StatelessWidget {
 
   Widget _buildAccessProtocolInfo() {
     if (mrtdData.isPACE == null || mrtdData.isDBA == null) {
-      return const Text('No access protocol information available',
-          style: TextStyle(color: Colors.grey));
+      return const Text('No access protocol information available', style: TextStyle(color: Colors.grey));
     }
 
     return Container(
@@ -151,8 +150,7 @@ class SecurityContent extends StatelessWidget {
               runSpacing: 4,
               children: availableElements
                   .map((element) => Chip(
-                        label:
-                            Text(element, style: const TextStyle(fontSize: 12)),
+                        label: Text(element, style: const TextStyle(fontSize: 12)),
                         backgroundColor: Colors.blue[100],
                         labelStyle: TextStyle(color: Colors.blue[800]),
                       ))

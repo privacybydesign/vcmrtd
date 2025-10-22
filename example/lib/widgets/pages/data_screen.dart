@@ -15,7 +15,6 @@ import '../../models/mrtd_data.dart';
 import '../../services/api_service.dart';
 import 'data_screen_widgets/verify_result.dart';
 
-
 class DataScreen extends StatefulWidget {
   final MrtdData mrtdData;
   final PassportDataResult passportDataResult;
@@ -60,18 +59,14 @@ class _DataScreenState extends State<DataScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Return to Web banner if opened via universal link
-              if (widget.sessionId != null)
-                WebBanner(sessionId: widget.sessionId),
-              PersonalDataSection(
-                  mrz: widget.mrtdData.dg1!.mrz, dg2: widget.mrtdData.dg2!),
+              if (widget.sessionId != null) WebBanner(sessionId: widget.sessionId),
+              PersonalDataSection(mrz: widget.mrtdData.dg1!.mrz, dg2: widget.mrtdData.dg2!),
               const SizedBox(height: 20),
               SecurityContent(mrtdData: widget.mrtdData),
               const SizedBox(height: 20),
               if (widget.sessionId != null) ...[
                 const SizedBox(height: 20),
-                if (_isExpired == null &&
-                    _authenticChip == null &&
-                    _authenticContent == null)
+                if (_isExpired == null && _authenticChip == null && _authenticContent == null)
                   ReturnToWebSection(
                     isReturningToIssue: _isReturningToIssue,
                     isReturningToVerify: _isReturningToVerify,
@@ -81,9 +76,7 @@ class _DataScreenState extends State<DataScreen> {
                 else ...[
                   const SizedBox(height: 20),
                   VerifyResultSection(
-                      isExpired: _isExpired!,
-                      authenticChip: _authenticChip!,
-                      authenticContent: _authenticContent!),
+                      isExpired: _isExpired!, authenticChip: _authenticChip!, authenticContent: _authenticContent!),
                 ],
               ],
             ],
@@ -104,8 +97,7 @@ class _DataScreenState extends State<DataScreen> {
       final String jsonPayload = json.encode(payload);
 
       final response = await http.post(
-        Uri.parse(
-            'https://passport-issuer.staging.yivi.app/api/verify-passport'),
+        Uri.parse('https://passport-issuer.staging.yivi.app/api/verify-passport'),
         headers: {'Content-Type': 'application/json'},
         body: jsonPayload,
       );
@@ -140,8 +132,7 @@ class _DataScreenState extends State<DataScreen> {
       final jwtUrlParam = responseBody["jwt"];
 
       // Start the session
-      final sessionResponseBody =
-          await _apiService.startIrmaSession(jwtUrlParam, irmaServerUrlParam);
+      final sessionResponseBody = await _apiService.startIrmaSession(jwtUrlParam, irmaServerUrlParam);
       final sessionPtr = sessionResponseBody["sessionPtr"];
       final urlEncodedSessionPtr = Uri.encodeFull(jsonEncode(sessionPtr));
 
