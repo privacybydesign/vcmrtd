@@ -8,11 +8,10 @@ import 'package:intl/intl.dart';
 
 /// Simple manual entry screen for passport data
 class ManualEntryScreen extends StatefulWidget {
-  final VoidCallback onContinue;
   final VoidCallback onBack;
   final Function(String docNumber, DateTime dob, DateTime expiry)? onDataEntered;
 
-  const ManualEntryScreen({super.key, required this.onContinue, required this.onBack, this.onDataEntered});
+  const ManualEntryScreen({super.key, required this.onBack, this.onDataEntered});
 
   @override
   State<ManualEntryScreen> createState() => _ManualEntryScreenState();
@@ -323,8 +322,5 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
     if (widget.onDataEntered != null) {
       widget.onDataEntered!(_docNumberController.text.trim().toUpperCase(), _selectedDob!, _selectedExpiry!);
     }
-
-    // Continue to next screen
-    widget.onContinue();
   }
 }

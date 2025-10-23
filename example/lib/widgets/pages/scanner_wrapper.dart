@@ -2,15 +2,15 @@
 // Provides callbacks for the scanner page to integrate with navigation
 
 import 'package:flutter/material.dart';
-import 'package:vcmrtdapp/helpers/mrz_data.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
+import 'package:mrz_parser/mrz_parser.dart';
+import 'package:vcmrtdapp/helpers/mrz_scanner.dart';
 
 import 'scan_screen.dart';
-import '../../helpers/mrz_scanner.dart';
 
 /// Wrapper around ScannerPage to handle navigation callbacks
 class ScannerWrapper extends StatefulWidget {
-  final Function(dynamic) onMrzScanned;
+  final Function(MRZResult) onMrzScanned;
   final VoidCallback onManualEntry;
   final VoidCallback onCancel;
   final VoidCallback onBack;

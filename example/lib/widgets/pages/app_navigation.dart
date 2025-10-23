@@ -1,6 +1,7 @@
 // Created for UX improvement - Main navigation controller
 // Handles the new flow: Choice Screen -> Scanner/Manual -> NFC Guidance -> Results
 
+/*
 import 'dart:async';
 import 'dart:typed_data';
 
@@ -30,7 +31,7 @@ class AppNavigation extends StatefulWidget {
 
 class _AppNavigationState extends State<AppNavigation> {
   NavigationStep _currentStep = NavigationStep.documentType;
-  dynamic _mrzResult;
+  MRZResult? _mrzResult;
   MrtdData? _mrtdData;
   PassportDataResult? _passportDataResult;
 
@@ -292,3 +293,4 @@ class _AppNavigationState extends State<AppNavigation> {
     }
   }
 }
+*/

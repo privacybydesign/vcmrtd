@@ -3,27 +3,53 @@ import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:flutter/material.dart';
-import 'package:vcmrtdapp/helpers/mrz_data.dart';
 import 'package:vcmrtdapp/providers/passport_reader_provider.dart';
 import 'package:vcmrtdapp/widgets/common/animated_nfc_status_widget.dart';
 
+class NfcReadingRouteParams {
+  final String docNumber;
+  final DateTime dateOfBirth;
+  final DateTime dateOfExpiry;
+  final String? countryCode;
+
+  NfcReadingRouteParams({
+    required this.docNumber,
+    required this.dateOfBirth,
+    required this.dateOfExpiry,
+    this.countryCode,
+  });
+
+  Map<String, String> toQueryParams() {
+    return {
+      'doc_number': docNumber,
+      'date_of_birth': dateOfBirth.toIso8601String(),
+      'date_of_expiry': dateOfExpiry.toIso8601String(),
+      if (countryCode != null) 'country_code': countryCode!,
+    };
+  }
+
+  static NfcReadingRouteParams fromQueryParams(Map<String, String> params) {
+    return NfcReadingRouteParams(
+      docNumber: params['doc_number']!,
+      dateOfBirth: DateTime.parse(params['date_of_birth']!),
+      dateOfExpiry: DateTime.parse(params['date_of_expiry']!),
+      countryCode: params['country_code'],
+    );
+  }
+}
+
 class NfcReadingScreen extends ConsumerStatefulWidget {
   const NfcReadingScreen({
+    required this.params,
     required this.nonce,
-    required this.mrzResult,
-    required this.manualDocNumber,
-    required this.manualDob,
-    required this.manualExpiry,
     required this.sessionId,
     required this.onCancel,
     required this.onSuccess,
     super.key,
   });
 
-  final MRZResult? mrzResult;
-  final String? manualDocNumber;
-  final DateTime? manualDob;
-  final DateTime? manualExpiry;
+  final NfcReadingRouteParams params;
+
   final String? sessionId;
   final Uint8List? nonce;
 
@@ -86,10 +112,10 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
         .read(passportReaderProvider.notifier)
         .readWithMRZ(
           iosNfcMessages: _getTranslatedIosNfcMessages(),
-          documentNumber: widget.mrzResult!.documentNumber,
-          birthDate: widget.mrzResult!.birthDate,
-          expiryDate: widget.mrzResult!.expiryDate,
-          countryCode: widget.mrzResult!.countryCode,
+          documentNumber: widget.params.docNumber,
+          birthDate: widget.params.dateOfBirth,
+          expiryDate: widget.params.dateOfExpiry,
+          countryCode: widget.params.countryCode,
           sessionId: widget.sessionId!,
           nonce: widget.nonce!,
         );
