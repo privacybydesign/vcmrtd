@@ -50,7 +50,7 @@ class MRZScannerState extends State<MRZScanner> {
   void _parseScannedText(List<String> lines) {
     try {
       final dynamic data;
-      if (widget.documentType == DocumentType.driverLicence) {
+      if (widget.documentType == DocumentType.driverLicense) {
         data = DriverLicenseParser.parse(lines);
       } else {
         data = MRZParser.parse(lines);

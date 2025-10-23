@@ -104,7 +104,7 @@ class _AppNavigationState extends State<AppNavigation> {
       onDrivingLicenceSelected: () {
         setState(() {
           _currentStep = NavigationStep.edlMrz;
-          _currentDocumentType = DocumentType.driverLicence;
+          _currentDocumentType = DocumentType.driverLicense;
         });
       },
     );
@@ -149,7 +149,7 @@ class _AppNavigationState extends State<AppNavigation> {
       },
       onBack: () {
         setState(() {
-          _currentStep = _currentDocumentType == DocumentType.driverLicence
+          _currentStep = _currentDocumentType == DocumentType.driverLicense
               ? NavigationStep.edlMrz
               : NavigationStep.passportMrz;
         });
@@ -219,7 +219,7 @@ class _AppNavigationState extends State<AppNavigation> {
         onBackPressed: () {
           Navigator.of(context).pop();
           setState(() {
-            _currentDocumentType = DocumentType.driverLicence;
+            _currentDocumentType = DocumentType.driverLicense;
             _currentStep = NavigationStep.documentType;
           });
         },
@@ -253,7 +253,7 @@ class _AppNavigationState extends State<AppNavigation> {
 
   Widget _buildDrivingLicenceScannerScreen() {
     return ScannerWrapper(
-      documentType: DocumentType.driverLicence,
+      documentType: DocumentType.driverLicense,
       onMrzScanned: (dynamic result) {
         setState(() {
           _mrzResult = result;
@@ -269,7 +269,7 @@ class _AppNavigationState extends State<AppNavigation> {
       },
       onManualEntry: () {
         setState(() {
-          _currentDocumentType = DocumentType.driverLicence;
+          _currentDocumentType = DocumentType.driverLicense;
           _currentStep = NavigationStep.manual;
         });
       },

@@ -104,7 +104,7 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
       // DBAKey needs to be refactored to work with driver's licence, for now we force pace with can key directly on driver's licence
       final bacKeySeed = DBAKey(docNumber, birthDate, expiryDate, paceMode: paceMode);
       _readMRTD(accessKey: bacKeySeed, isPace: paceMode);
-    } else if (widget.documentType == DocumentType.driverLicence) {
+    } else if (widget.documentType == DocumentType.driverLicense) {
       docNumber = widget.mrzResult!.documentNumber;
       final canKey = CanKey(docNumber);
       paceMode = true;

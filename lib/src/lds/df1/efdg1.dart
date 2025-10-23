@@ -42,7 +42,7 @@ class EfDG1 extends DataGroup {
       }
       _mrz = PassportMRZ(tlv.value);
       passportData = PassportDG1(_mrz);
-    } else if (documentType == DocumentType.driverLicence) {
+    } else if (documentType == DocumentType.driverLicense) {
       edlData = EDL_DG1.fromTlv(tlv);
     }
   }

@@ -395,5 +395,5 @@ class DrivingLicence extends Document {
   Uint8List get applicationAID => DF1.DriverAID;
 
   @override
-  DocumentType get documentType => DocumentType.driverLicence;
+  DocumentType get documentType => DocumentType.driverLicense;
 }
