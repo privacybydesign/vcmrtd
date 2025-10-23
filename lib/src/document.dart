@@ -36,7 +36,9 @@ abstract class Document {
   Uint8List get applicationAID;
   DocumentType get documentType;
 
-  Document(ComProvider provider, String loggerName) : _api = MrtdApi(provider), _log = Logger(loggerName);
+  Document(ComProvider provider, String loggerName)
+    : _api = MrtdApi(provider),
+      _log = Logger(loggerName);
 
   /// ------------- start secure messaging (supports: BAC, PACE) ---------------
 
@@ -57,7 +59,10 @@ abstract class Document {
   /// Can throw [ComProviderError] on connection failure.
   /// Throws [DocumentError] when provided [keys] are invalid or
   /// if BAC session is not supported.
-  Future<void> startSessionPACE(final AccessKey accessKey, EfCardAccess efCardAccess) async {
+  Future<void> startSessionPACE(
+    final AccessKey accessKey,
+    EfCardAccess efCardAccess,
+  ) async {
     _log.debug("Starting session");
     await _exec(() => _api.initSessionViaPACE(accessKey, efCardAccess));
     _log.debug("Session established");
@@ -116,7 +121,9 @@ abstract class Document {
     _log.debug("Reading EF.CardAccess");
 
     await _selectMF();
-    return EfCardAccess.fromBytes(await _exec(() => _api.readFileBySFI(EfCardAccess.SFI)));
+    return EfCardAccess.fromBytes(
+      await _exec(() => _api.readFileBySFI(EfCardAccess.SFI)),
+    );
   }
 
   Future<void> _selectDF1() async {
@@ -145,7 +152,9 @@ abstract class Document {
   Future<EfCardSecurity> readEfCardSecurity() async {
     _log.debug("Reading EF.CardSecurity");
     await _selectMF();
-    return EfCardSecurity.fromBytes(await _exec(() => _api.readFileBySFI(EfCardSecurity.SFI)));
+    return EfCardSecurity.fromBytes(
+      await _exec(() => _api.readFileBySFI(EfCardSecurity.SFI)),
+    );
   }
 
   /// Reads file EF.SOD.
@@ -161,12 +170,6 @@ abstract class Document {
   }
 
   // data group readers --------------------------------
-}
-
-class Passport extends Document {
-  static const aaChallengeLen = 8;
-  Passport(ComProvider provider) : super(provider, "passport");
-
   /// Reads file EF.DG1 from passport.
   /// Session with passport should be already
   /// established before calling this function.
@@ -177,7 +180,7 @@ class Passport extends Document {
   Future<EfDG1> readEfDG1() async {
     await _selectDF1();
     _log.debug("Reading EF.DG1");
-    return EfDG1.fromBytes(await _exec(() => _api.readFileBySFI(EfDG1.SFI)));
+    return EfDG1.fromBytes(await _exec(() => _api.readFileBySFI(EfDG1.SFI)), DocumentType.passport);
   }
 
   /// Reads file EF.DG2 from passport.
@@ -382,6 +385,10 @@ class Passport extends Document {
     await _selectDF1();
     return EfDG16.fromBytes(await _exec(() => _api.readFileBySFI(EfDG16.SFI)));
   }
+}
+
+class Passport extends Document {
+  Passport(ComProvider provider) : super(provider, "passport");
 
   @override
   Uint8List get applicationAID => DF1.PassportAID;

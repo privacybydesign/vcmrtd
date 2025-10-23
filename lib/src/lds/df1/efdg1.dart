@@ -3,6 +3,9 @@
 
 import 'dart:typed_data';
 import 'package:vcmrtd/extensions.dart';
+import 'package:vcmrtd/src/lds/df1/passport_dg1.dart';
+import '../../../vcmrtd.dart';
+import 'edl_dg1.dart';
 import 'dg.dart';
 import '../ef.dart';
 import '../mrz.dart';
@@ -12,11 +15,14 @@ class EfDG1 extends DataGroup {
   static const FID = 0x0101;
   static const SFI = 0x01;
   static const TAG = DgTag(0x61);
+  EDL_DG1? edlData;
+  PassportDG1? passportData;
 
-  late final MRZ _mrz;
-  MRZ get mrz => _mrz;
+  final DocumentType documentType;
 
-  EfDG1.fromBytes(super.data) : super.fromBytes();
+  late final PassportMRZ _mrz;
+
+  EfDG1.fromBytes(Uint8List data, this.documentType) : super.fromBytes(data);
 
   @override
   int get fid => FID;
@@ -30,9 +36,17 @@ class EfDG1 extends DataGroup {
   @override
   void parseContent(final Uint8List content) {
     final tlv = TLV.fromBytes(content);
-    if (tlv.tag != 0x5F1F) {
-      throw EfParseError("Invalid data object tag=${tlv.tag.hex()}, expected object with tag=5F1F");
+    if (documentType == DocumentType.passport) {
+      if (tlv.tag != 0x5F1F) {
+        throw EfParseError(
+          "Invalid data object tag=${tlv.tag.hex()}, expected object with tag=5F1F",
+        );
+      }
+      _mrz = PassportMRZ(tlv.value);
+      passportData = PassportDG1(_mrz);
+
+    } else if (documentType == DocumentType.driverLicence) {
+      edlData = EDL_DG1.fromTlv(tlv);
     }
-    _mrz = MRZ(tlv.value);
   }
 }
