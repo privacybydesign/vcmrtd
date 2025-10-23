@@ -57,7 +57,7 @@ class MrtdDataListWidget extends StatelessWidget {
 
     // EF.DG1 (MRZ)
     if (mrtdData!.dg1 != null) {
-      list.add(MrtdDataWidget(header: 'EF.DG1', collapsedText: '', dataText: formatMRZ(mrtdData!.dg1!.mrz)));
+      list.add(MrtdDataWidget(header: 'EF.DG1', collapsedText: '', dataText: formatMRZ(mrtdData!.dg1!.passportData!.mrz)));
     }
 
     if (mrtdData!.dg2 != null) {
