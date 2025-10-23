@@ -28,11 +28,10 @@ Future<DocumentResult> readDataGroups({
   );
 
   try {
-    final reader = DocumentReader.from(document);
 
     // Read EF.COM first to discover available data groups.
     nfcProvider.setIosAlertMessage("Reading EF.COM ...");
-    mrtdData.com = await reader.readEfCOM();
+    mrtdData.com = await document.readEfCOM();
 
     final dataGroupConfigs = [
       DataGroupConfig(
@@ -40,7 +39,7 @@ Future<DocumentResult> readDataGroups({
         name: "DG1",
         progressIncrement: 0.1,
         readFunction: (r) async {
-          final dg = await r.readEfDG1();
+          final dg = await document.readEfDG1();
           mrtdData.dg1 = dg;
           return dg;
         },
@@ -50,7 +49,7 @@ Future<DocumentResult> readDataGroups({
         name: "DG2",
         progressIncrement: 0.1,
         readFunction: (r) async {
-          final dg = await r.readEfDG2();
+          final dg = await document.readEfDG2();
           mrtdData.dg2 = dg;
           return dg;
         },
@@ -60,7 +59,7 @@ Future<DocumentResult> readDataGroups({
         name: "DG5",
         progressIncrement: 0.1,
         readFunction: (r) async {
-          final dg = await r.readEfDG5();
+          final dg = await document.readEfDG5();
           mrtdData.dg5 = dg;
           return dg;
         },
@@ -70,7 +69,7 @@ Future<DocumentResult> readDataGroups({
         name: "DG6",
         progressIncrement: 0.05,
         readFunction: (r) async {
-          final dg = await r.readEfDG6();
+          final dg = await document.readEfDG6();
           mrtdData.dg6 = dg;
           return dg;
         },
@@ -80,7 +79,7 @@ Future<DocumentResult> readDataGroups({
         name: "DG7",
         progressIncrement: 0.05,
         readFunction: (r) async {
-          final dg = await r.readEfDG7();
+          final dg = await document.readEfDG7();
           mrtdData.dg7 = dg;
           return dg;
         },
@@ -90,7 +89,7 @@ Future<DocumentResult> readDataGroups({
         name: "DG8",
         progressIncrement: 0.05,
         readFunction: (r) async {
-          final dg = await r.readEfDG8();
+          final dg = await document.readEfDG8();
           mrtdData.dg8 = dg;
           return dg;
         },
@@ -100,7 +99,7 @@ Future<DocumentResult> readDataGroups({
         name: "DG9",
         progressIncrement: 0.05,
         readFunction: (r) async {
-          final dg = await r.readEfDG9();
+          final dg = await document.readEfDG9();
           mrtdData.dg9 = dg;
           return dg;
         },
@@ -110,7 +109,7 @@ Future<DocumentResult> readDataGroups({
         name: "DG10",
         progressIncrement: 0.05,
         readFunction: (r) async {
-          final dg = await r.readEfDG10();
+          final dg = await document.readEfDG10();
           mrtdData.dg10 = dg;
           return dg;
         },
@@ -120,7 +119,7 @@ Future<DocumentResult> readDataGroups({
         name: "DG11",
         progressIncrement: 0.05,
         readFunction: (r) async {
-          final dg = await r.readEfDG11();
+          final dg = await document.readEfDG11();
           mrtdData.dg11 = dg;
           return dg;
         },
@@ -130,7 +129,7 @@ Future<DocumentResult> readDataGroups({
         name: "DG12",
         progressIncrement: 0.05,
         readFunction: (r) async {
-          final dg = await r.readEfDG12();
+          final dg = await document.readEfDG12();
           mrtdData.dg12 = dg;
           return dg;
         },
@@ -140,7 +139,7 @@ Future<DocumentResult> readDataGroups({
         name: "DG13",
         progressIncrement: 0.05,
         readFunction: (r) async {
-          final dg = await r.readEfDG13();
+          final dg = await document.readEfDG13();
           mrtdData.dg13 = dg;
           return dg;
         },
@@ -150,7 +149,7 @@ Future<DocumentResult> readDataGroups({
         name: "DG14",
         progressIncrement: 0.05,
         readFunction: (r) async {
-          final dg = await r.readEfDG14();
+          final dg = await document.readEfDG14();
           mrtdData.dg14 = dg;
           return dg;
         },
@@ -160,7 +159,7 @@ Future<DocumentResult> readDataGroups({
         name: "DG16",
         progressIncrement: 0.05,
         readFunction: (r) async {
-          final dg = await r.readEfDG16();
+          final dg = await document.readEfDG16();
           mrtdData.dg16 = dg;
           return dg;
         },
@@ -175,7 +174,7 @@ Future<DocumentResult> readDataGroups({
     for (final config in dataGroupConfigs) {
       if (mrtdData.com!.dgTags.contains(config.tag)) {
         try {
-          final dgData = await config.readFunction(reader);
+          final dgData = await config.readFunction(document);
           final hexData = dgData.toBytes().hex();
           if (hexData.isNotEmpty) {
             dataGroups[config.name] = hexData;
@@ -199,7 +198,7 @@ Future<DocumentResult> readDataGroups({
       );
 
       try {
-        mrtdData.dg15 = await reader.readEfDG15();
+        mrtdData.dg15 = await document.readEfDG15();
         if (mrtdData.dg15 != null) {
           final hexData = mrtdData.dg15!.toBytes().hex();
           if (hexData.isNotEmpty) {
@@ -215,7 +214,7 @@ Future<DocumentResult> readDataGroups({
     }
 
     nfcProvider.setIosAlertMessage("Reading EF.SOD ...");
-    mrtdData.sod = await reader.readEfSOD();
+    mrtdData.sod = await document.readEfSOD();
 
     final efSodHex = mrtdData.sod?.toBytes().hex() ?? '';
     log.info("EF.SOD: $efSodHex");
