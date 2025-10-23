@@ -181,11 +181,14 @@ class _NfcReadingScreenState extends State<NfcReadingScreen> {
 
     if (e is DocumentError) {
       if (se.contains("security status not satisfied")) {
-        alertMsg = "Failed to initiate session with ${widget.documentType.displayName.toLowerCase()}.\nCheck input data!";
+        alertMsg =
+            "Failed to initiate session with ${widget.documentType.displayName.toLowerCase()}.\nCheck input data!";
       }
       _log.error("PassportError: ${e.message}");
     } else {
-      _log.error("An exception was encountered while trying to read ${widget.documentType.displayName.toLowerCase()}: $e");
+      _log.error(
+        "An exception was encountered while trying to read ${widget.documentType.displayName.toLowerCase()}: $e",
+      );
     }
 
     if (se.contains('timeout')) {

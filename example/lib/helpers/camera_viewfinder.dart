@@ -209,7 +209,6 @@ class MRZCameraViewState extends State<MRZCameraView> {
 
     // For camera feed that supports only yuv_420_888
     if (format == null || Platform.isAndroid && format == InputImageFormat.yuv_420_888) {
-
       final nv21Bytes = yuv420ToNv21(image);
 
       return InputImage.fromBytes(
