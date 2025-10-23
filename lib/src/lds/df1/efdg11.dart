@@ -65,7 +65,7 @@ class EfDG11 extends DataGroup {
   String? get telephone => _telephone;
   String? get profession => _profession;
   String? get title => _title;
-  String? get ersonalSummary => _personalSummary;
+  String? get personalSummary => _personalSummary;
   Uint8List? get proofOfCitizenship => _proofOfCitizenship;
   List<String> get otherValidTDNumbers => _otherValidTDNumbers;
   String? get custodyInformation => _custodyInformation;
