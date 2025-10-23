@@ -28,7 +28,6 @@ Future<DocumentResult> readDataGroups({
   );
 
   try {
-
     // Read EF.COM first to discover available data groups.
     nfcProvider.setIosAlertMessage("Reading EF.COM ...");
     mrtdData.com = await document.readEfCOM();

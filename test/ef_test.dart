@@ -107,7 +107,7 @@ void main() {
     tvDG1TD3 =
         "615B5F1F58503C443C3C4D55535445524D414E4E3C3C4552494B413C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C433131543030324A4D34443C3C3936303831323246323331303331343C3C3C3C3C3C3C3C3C3C3C3C3C3C3034"
             .parseHex();
-    dg1 = EfDG1.fromBytes(tvDG1TD3,DocumentType.passport);
+    dg1 = EfDG1.fromBytes(tvDG1TD3, DocumentType.passport);
     expect(dg1.toBytes(), tvDG1TD3);
     expect(dg1.passportData?.mrz.version, MRZVersion.td3);
     expect(dg1.passportData?.mrz.documentCode, 'P');
@@ -123,8 +123,17 @@ void main() {
     expect(dg1.passportData?.mrz.optionalData2, null);
 
     // Fuzz testing
-    expect(() => EfDG1.fromBytes(Uint8List(0), DocumentType.passport), throwsTLVError(message: "Can't decode empty encodedTag"));
-    expect(() => EfDG1.fromBytes("00".parseHex(),DocumentType.passport), throwsTLVError(message: "Can't decode empty encodedLength"));
-    expect(() => EfDG1.fromBytes("1C00".parseHex(),DocumentType.passport), throwsEfParseError(message: "Invalid tag=1C, expected tag=61"));
+    expect(
+      () => EfDG1.fromBytes(Uint8List(0), DocumentType.passport),
+      throwsTLVError(message: "Can't decode empty encodedTag"),
+    );
+    expect(
+      () => EfDG1.fromBytes("00".parseHex(), DocumentType.passport),
+      throwsTLVError(message: "Can't decode empty encodedLength"),
+    );
+    expect(
+      () => EfDG1.fromBytes("1C00".parseHex(), DocumentType.passport),
+      throwsEfParseError(message: "Invalid tag=1C, expected tag=61"),
+    );
   });
 }

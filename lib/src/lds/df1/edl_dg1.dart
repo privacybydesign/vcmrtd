@@ -7,8 +7,7 @@ import 'package:vcmrtd/src/lds/df1/efdg1.dart';
 import '../../../vcmrtd.dart';
 
 class EDL_DG1 {
-
-  static const  ISSUING_MEMBER_STATE_TAG = 0X5F03;
+  static const ISSUING_MEMBER_STATE_TAG = 0X5F03;
 
   static const HOLDER_SURNAME_TAG = 0X5F04;
   static const HOLDER_OTHER_NAME_TAG = 0x5F05;
@@ -34,11 +33,9 @@ class EDL_DG1 {
   String? issuingAuthority;
   String? documentNumber;
 
-
   EDL_DG1();
 
   static EDL_DG1 fromTlv(TLV tlv) {
-
     final data = EDL_DG1();
     final bytes = tlv.value;
     int bytesRead = 0;
@@ -81,7 +78,4 @@ class EDL_DG1 {
     }
     return data;
   }
-
 }
-
-
