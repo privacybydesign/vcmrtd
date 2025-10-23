@@ -43,7 +43,7 @@ String formatEfCom(final EfCOM efCom) {
 }
 
 /// Formats MRZ data for display
-String formatMRZ(final MRZ mrz) {
+String formatMRZ(final PassportMRZ mrz) {
   return "MRZ\n"
       "  version: ${mrz.version}\n"
       "  doc code: ${mrz.documentCode}\n"

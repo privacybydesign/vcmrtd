@@ -15,7 +15,7 @@ class MRZParseError implements Exception {
   String toString() => message;
 }
 
-class MRZ {
+class PassportMRZ {
   late final String country;
   late final DateTime dateOfBirth;
   late final DateTime dateOfExpiry;
@@ -34,7 +34,7 @@ class MRZ {
 
   final Uint8List _encoded;
 
-  MRZ(Uint8List encodedMRZ) : _encoded = encodedMRZ {
+  PassportMRZ(Uint8List encodedMRZ) : _encoded = encodedMRZ {
     _parse(encodedMRZ);
   }
 
