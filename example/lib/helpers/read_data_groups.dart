@@ -22,7 +22,7 @@ Future<DocumentResult> readDataGroups({
   Uint8List? nonce,
 }) async {
   updateStatus(
-    message: "Reading ${documentType.displayNameLowerCase} data...",
+    message: "Reading ${documentType.displayName.toLowerCase()} data...",
     state: NFCReadingState.reading,
     progress: 0.1,
   );
@@ -232,7 +232,7 @@ Future<DocumentResult> readDataGroups({
       aaSignature: mrtdData.aaSig,
     );
   } catch (e) {
-    log.severe("Error reading ${documentType.displayNameLowerCase} data: $e");
+    log.severe("Error reading ${documentType.displayName.toLowerCase()} data: $e");
     updateStatus(message: "Failed to read passport data", state: NFCReadingState.error);
     rethrow;
   }
@@ -271,7 +271,7 @@ Future<void> performDocumentReading({
   mrtdData.isDBA = accessKey.PACE_REF_KEY_TAG == 0x01;
 
   updateStatus(
-    message: "Authenticating with ${documentType.displayNameLowerCase}...",
+    message: "Authenticating with ${documentType.displayName.toLowerCase()}...",
     state: NFCReadingState.authenticating,
   );
 

@@ -156,7 +156,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
       // Document Number Field
       _buildInputCard(
         title: '${widget.documentType.displayName} Number',
-        hint: 'Enter your ${widget.documentType.displayNameLowerCase} number',
+        hint: 'Enter your ${widget.documentType.displayName.toLowerCase()} number',
         icon: Icons.numbers,
         child: PlatformTextFormField(
           controller: _docNumberController,
@@ -206,7 +206,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
       // Expiry Date Field
       _buildInputCard(
         title: 'Expiry Date',
-        hint: 'Select ${widget.documentType.displayNameLowerCase} expiry date',
+        hint: 'Select ${widget.documentType.displayName.toLowerCase()} expiry date',
         icon: Icons.event_busy,
         child: PlatformTextFormField(
           controller: _expiryController,
@@ -426,7 +426,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
             const SizedBox(height: 8),
             Text(
               widget.documentType == DocumentType.passport
-                  ? 'Please enter the information exactly as it appears on your ${widget.documentType.displayNameLowerCase}'
+                  ? 'Please enter the information exactly as it appears on your ${widget.documentType.displayName.toLowerCase()}'
                   : 'Type the Machine Readable Zone text exactly as it appears',
               style: const TextStyle(fontSize: 14, color: Color(0xFF666666)),
               textAlign: TextAlign.center,
