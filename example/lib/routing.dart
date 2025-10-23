@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -59,8 +57,6 @@ GoRouter createRouter(BuildContext context, WidgetRef ref) {
           final params = NfcReadingRouteParams.fromQueryParams(state.uri.queryParameters);
           return NfcReadingScreen(
             params: params,
-            nonce: Uint8List(0),
-            sessionId: '',
             onCancel: context.pop,
             onSuccess: (result, data) {
               context.push('/result');

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/extensions.dart';
+import 'package:vcmrtd/src/types/active_authentication.dart';
 import 'package:vcmrtd/src/types/data_group_config.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
@@ -60,8 +61,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
     required DateTime birthDate,
     required DateTime expiryDate,
     required String? countryCode,
-    required String sessionId,
-    required Uint8List nonce,
+    NonceAndSessionId? activeAuthenticationParams,
   }) async {
     _log = ['Reading with MRZ'];
 
@@ -84,8 +84,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
         iosNfcMessages: iosNfcMessages,
         accessKey: key,
         isPace: isPaceCandidate,
-        sessionId: sessionId,
-        nonce: nonce,
+        activeAuthenticationParams: activeAuthenticationParams,
       );
     } catch (e) {
       _handleError(iosNfcMessages, e);
@@ -97,8 +96,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
     required IosNfcMessages iosNfcMessages,
     required AccessKey accessKey,
     required bool isPace,
-    String? sessionId,
-    Uint8List? nonce,
+    NonceAndSessionId? activeAuthenticationParams,
   }) async {
     _addLog('Connecting...');
     state = PassportReaderConnecting();
@@ -109,7 +107,13 @@ class PassportReader extends StateNotifier<PassportReaderState> {
 
     PassportDataResult? result;
     try {
-      result = await _perform(iosNfcMessages, passport, accessKey, isPace, sessionId: sessionId, nonce: nonce);
+      result = await _perform(
+        iosNfcMessages,
+        passport,
+        accessKey,
+        isPace,
+        activeAuthenticationParams: activeAuthenticationParams,
+      );
     } finally {
       await _disconnect(null);
     }
@@ -149,8 +153,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
     Passport passport,
     AccessKey accessKey,
     bool isPace, {
-    String? sessionId,
-    Uint8List? nonce,
+    NonceAndSessionId? activeAuthenticationParams,
   }) async {
     _mrtdData = MrtdData();
     _mrtdData!.isPACE = isPace;
@@ -176,8 +179,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
       accessKey,
       passport,
       _mrtdData!,
-      sessionId: sessionId,
-      nonce: nonce,
+      activeAuthenticationParams: activeAuthenticationParams,
     );
 
     _addLog('Reading successful');
@@ -229,8 +231,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
     AccessKey accessKey,
     Passport passport,
     MrtdData mrtdData, {
-    String? sessionId,
-    Uint8List? nonce,
+    NonceAndSessionId? activeAuthenticationParams,
   }) async {
     try {
       _addLog('Reading EF COM');
@@ -268,7 +269,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
         _setIosAlertMessage(iosNfcMessages.readingPassportData, iosNfcMessages.progressFormatter);
       }
 
-      if (sessionId != null && nonce != null && mrtdData.com!.dgTags.contains(EfDG15.TAG)) {
+      if (activeAuthenticationParams != null && mrtdData.com!.dgTags.contains(EfDG15.TAG)) {
         _addLog('Security verification');
         state = PassportReaderSecurityVerification();
         _setIosAlertMessage(iosNfcMessages.authenticating, iosNfcMessages.progressFormatter);
@@ -285,7 +286,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
           }
 
           _addLog('Performing active authentication');
-          mrtdData.aaSig = await passport.activeAuthenticate(nonce);
+          mrtdData.aaSig = await passport.activeAuthenticate(stringToUint8List(activeAuthenticationParams.nonce));
           _addLog('Active authentication successful');
         } catch (e) {
           _addLog('Failed to read DG15 or perform AA: $e');
@@ -302,8 +303,8 @@ class PassportReader extends StateNotifier<PassportReaderState> {
       final result = PassportDataResult(
         dataGroups: dataGroups,
         efSod: efSodHex,
-        nonce: nonce,
-        sessionId: sessionId,
+        nonce: activeAuthenticationParams != null ? stringToUint8List(activeAuthenticationParams.nonce) : null,
+        sessionId: activeAuthenticationParams?.sessionId,
         aaSignature: mrtdData.aaSig,
       );
       return result;

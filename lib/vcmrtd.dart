@@ -40,3 +40,4 @@ export 'src/proto/access_key.dart';
 
 export 'src/types/mrtd_data.dart';
 export 'src/types/passport_data_result.dart';
+export 'src/types/active_authentication.dart';
