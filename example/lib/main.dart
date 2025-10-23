@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:vcmrtd/extensions.dart';
 import 'package:vcmrtdapp/services/deeplink_service.dart';
@@ -20,7 +21,7 @@ void main() async {
   });
   WidgetsFlutterBinding.ensureInitialized();
   await deepLinkService.init();
-  runApp(VcMrtdApp());
+  runApp(ProviderScope(child: VcMrtdApp()));
 }
 
 class VcMrtdApp extends StatelessWidget {
@@ -32,18 +33,15 @@ class VcMrtdApp extends StatelessWidget {
         DefaultCupertinoLocalizations.delegate,
         DefaultWidgetsLocalizations.delegate,
       ],
-      material: (_, __) => MaterialAppData(
+      material: (_, _) => MaterialAppData(
         theme: ThemeData(
           primarySwatch: Colors.indigo,
           brightness: Brightness.light,
           textTheme: TextTheme(bodyLarge: TextStyle(fontSize: 16.0, color: Colors.black87)),
           appBarTheme: AppBarTheme(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
         ),
-        // Optional:
-        // darkTheme: ThemeData.dark(),
-        // themeMode: ThemeMode.system,
       ),
-      cupertino: (_, __) => CupertinoAppData(
+      cupertino: (_, _) => CupertinoAppData(
         theme: CupertinoThemeData(
           primaryColor: CupertinoColors.activeBlue,
           barBackgroundColor: CupertinoColors.systemGrey6,

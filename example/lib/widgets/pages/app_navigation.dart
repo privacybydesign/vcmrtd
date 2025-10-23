@@ -5,8 +5,8 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtdapp/helpers/mrz_data.dart';
-import 'package:vcmrtdapp/models/passport_result.dart';
 import 'package:vcmrtdapp/services/deeplink_service.dart';
 import 'package:vcmrtdapp/utils/nonce.dart';
 import 'package:vcmrtdapp/widgets/pages/data_screen.dart';
@@ -16,7 +16,6 @@ import 'package:vcmrtdapp/widgets/pages/scanner_wrapper.dart';
 import 'document_selection_screen.dart';
 import 'nfc_guidance_screen.dart';
 import 'manual_entry_screen.dart';
-import '../../models/mrtd_data.dart';
 
 enum NavigationStep { documentType, passportMrz, edlMrz, manual, nfcHelp, nfcReading, results }
 
@@ -210,7 +209,7 @@ class _AppNavigationState extends State<AppNavigation> {
           _currentStep = NavigationStep.passportMrz; // Return to scanner screen
         });
       },
-      onDataRead: (MrtdData data, PassportDataResult passportDataResult) {
+      onSuccess: (PassportDataResult passportDataResult, MrtdData data) {
         setState(() {
           _mrtdData = data;
           _passportDataResult = passportDataResult;

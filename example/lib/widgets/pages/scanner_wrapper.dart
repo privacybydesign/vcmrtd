@@ -43,8 +43,8 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
   @override
   Widget build(BuildContext context) {
     return PlatformScaffold(
-      material: (_, __) => MaterialScaffoldData(backgroundColor: Colors.black, extendBody: true),
-      cupertino: (_, __) => CupertinoPageScaffoldData(backgroundColor: Colors.black),
+      material: (_, _) => MaterialScaffoldData(backgroundColor: Colors.black, extendBody: true),
+      cupertino: (_, _) => CupertinoPageScaffoldData(backgroundColor: Colors.black),
       appBar: PlatformAppBar(
         backgroundColor: Colors.black,
         title: Text('Scan ${_getDocumentTypeName()}'),
@@ -112,10 +112,10 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
               onPressed: () {
                 widget.onManualEntry();
               },
-              material: (_, __) => MaterialElevatedButtonData(
+              material: (_, _) => MaterialElevatedButtonData(
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black),
               ),
-              cupertino: (_, __) => CupertinoElevatedButtonData(color: Colors.white),
+              cupertino: (_, _) => CupertinoElevatedButtonData(color: Colors.white),
               child: Text('Enter ${_getDocumentTypeName()} details manually', style: TextStyle(color: Colors.black)),
             ),
             const SizedBox(height: 12),

@@ -1,9 +1,8 @@
-import 'dart:nativewrappers/_internal/vm/lib/typed_data_patch.dart';
+import 'package:flutter/foundation.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/extensions.dart';
-import 'package:vcmrtd/src/types/mrtd_data.dart';
-import 'package:vcmrtd/src/types/passport_data_result.dart';
+import 'package:vcmrtd/src/types/data_group_config.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
 class PassportReader extends StateNotifier<PassportReaderState> {
@@ -118,8 +117,8 @@ class PassportReader extends StateNotifier<PassportReaderState> {
   }
 
   static const Set<String> paceCountriesAlpha3 = {
-    'AUT', 'BEL', 'BGR', 'HRV', 'CYP', 'CZE', 'DNK', 'EST', 'FIN', 'FRA', 'DEU', 'GRC',
-    'HUN', 'IRL', 'ITA', 'LVA', 'LTU', 'LUX', 'MLT', 'NLD', 'POL', 'PRT', 'ROU', 'SVK',
+    'AUT', 'BEL', 'BGR', 'HRV', 'CYP', 'CZE', 'DNK', 'EST', 'FIN', 'FRA', 'DEU', 'GRC', // EU 27
+    'HUN', 'IRL', 'ITA', 'LVA', 'LTU', 'LUX', 'MLT', 'NLD', 'POL', 'PRT', 'ROU', 'SVK', // EU 27
     'SVN', 'ESP', 'SWE', // EU 27
     'ISL', 'LIE', 'NOR', // EEA
     'CHE', // Switzerland
@@ -182,7 +181,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
     );
 
     _addLog('Reading successful');
-    state = PassportReaderSuccess(result: result);
+    state = PassportReaderSuccess(result: result, mrtdData: _mrtdData!);
     _setIosAlertMessage(iosNfcMessages.completedSuccessfully, iosNfcMessages.progressFormatter);
     return result;
   }
@@ -208,7 +207,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
     throw Exception('unreachable');
   }
 
-  _reconnect(Passport passport, accessKey) async {
+  Future<void> _reconnect(Passport passport, accessKey) async {
     try {
       await _nfc.reconnect();
     } catch (e) {
@@ -307,8 +306,6 @@ class PassportReader extends StateNotifier<PassportReaderState> {
         sessionId: sessionId,
         aaSignature: mrtdData.aaSig,
       );
-      state = PassportReaderSuccess(result: result);
-      _setIosAlertMessage(iosNfcMessages.completedSuccessfully, iosNfcMessages.progressFormatter);
       return result;
     } catch (e) {
       _handleError(iosNfcMessages, e);
@@ -342,7 +339,6 @@ class PassportReader extends StateNotifier<PassportReaderState> {
     }
 
     final logs = 'NFC reading failed:\n - ${_compileLogs()}\n\nException: $e';
-    reportError(Exception(logs), StackTrace.current);
     state = PassportReaderFailed(error: error, logs: logs);
   }
 
@@ -484,8 +480,9 @@ class PassportReaderReadingPassportData extends PassportReaderState {
 class PassportReaderSecurityVerification extends PassportReaderState {}
 
 class PassportReaderSuccess extends PassportReaderState {
-  PassportReaderSuccess({required this.result});
+  PassportReaderSuccess({required this.result, required this.mrtdData});
   final PassportDataResult result;
+  final MrtdData mrtdData;
 }
 
 enum PassportReadingError { unknown, timeoutWaitingForTag, tagLost, failedToInitiateSession, invalidatedByUser }

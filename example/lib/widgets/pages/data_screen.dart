@@ -3,15 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
-import 'package:vcmrtdapp/models/passport_result.dart';
 import 'package:http/http.dart' as http;
+import 'package:vcmrtd/vcmrtd.dart';
 
 import '../../widgets/pages/data_screen_widgets/personal_data_section.dart';
 import '../../widgets/pages/data_screen_widgets/security_content.dart';
 import '../../widgets/pages/data_screen_widgets/return_to_web.dart';
 import '../../widgets/pages/data_screen_widgets/web_banner.dart';
 
-import '../../models/mrtd_data.dart';
 import '../../services/api_service.dart';
 import 'data_screen_widgets/verify_result.dart';
 
