@@ -1,8 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
-
-import 'package:vcmrtd/src/lds/df1/dg.dart';
-import 'package:vcmrtd/src/lds/df1/efdg1.dart';
 
 import '../../../vcmrtd.dart';
 
