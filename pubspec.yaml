@@ -21,6 +21,7 @@ dependencies:
   convert: ^3.1.2
   crypto: ^3.0.6
   expandable: ^5.0.1
+  http: ^1.5.0
   fixnum: ^1.1.1
   flutter_nfc_kit: ^3.6.0-rc.6
   intl: ^0.20.2

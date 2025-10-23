@@ -7,9 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:vcmrtd/extensions.dart';
 import 'package:vcmrtdapp/routing.dart';
-import 'package:vcmrtdapp/services/deeplink_service.dart';
-
-final deepLinkService = DeepLinkService();
 
 void main() async {
   Logger.root.level = Level.ALL;
@@ -19,7 +16,6 @@ void main() async {
   });
 
   WidgetsFlutterBinding.ensureInitialized();
-  await deepLinkService.init();
   runApp(ProviderScope(child: VcMrtdApp()));
 }
 

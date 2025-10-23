@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtdapp/widgets/pages/data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/document_selection_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/manual_entry_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_reading_screen.dart';
@@ -80,12 +82,13 @@ GoRouter createRouter(BuildContext context, WidgetRef ref) {
       GoRoute(
         path: '/result',
         builder: (context, state) {
-          return Container();
+          return DataScreen(
+            onBackPressed: () => context.go('/select_doc_type'),
+            mrtdData: MrtdData(),
+            passportDataResult: PassportDataResult(dataGroups: {}, efSod: ''),
+          );
         },
       ),
     ],
-    redirect: (context, state) {
-      return null;
-    },
   );
 }
