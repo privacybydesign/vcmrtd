@@ -495,7 +495,6 @@ class IosNfcMessages {
   final String cancelled;
   final String connecting;
   final String readingCardAccess;
-  final String readingCardSecurity;
   final String authenticating;
   final String readingPassportData;
   final String cancelledByUser;
@@ -513,7 +512,6 @@ class IosNfcMessages {
     required this.cancelled,
     required this.connecting,
     required this.readingCardAccess,
-    required this.readingCardSecurity,
     required this.authenticating,
     required this.readingPassportData,
     required this.cancelledByUser,

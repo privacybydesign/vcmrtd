@@ -138,20 +138,19 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
 
     return IosNfcMessages(
       progressFormatter: progressFormatter,
-      holdNearPhotoPage: 'passport.nfc.hold_near_photo_page',
-      cancelling: 'passport.nfc.cancelling',
-      cancelled: 'passport.nfc.cancelled',
-      connecting: 'passport.nfc.connecting',
-      readingCardAccess: 'passport.nfc.reading_card_security',
-      readingCardSecurity: 'passport.nfc.reading_card_security',
-      authenticating: 'passport.nfc.authenticating',
-      readingPassportData: 'passport.nfc.reading_passport_data',
-      cancelledByUser: 'passport.nfc.cancelled_by_user',
-      performingSecurityVerification: 'passport.nfc.performing_security_verification',
-      completedSuccessfully: 'passport.nfc.completed_successfully',
-      timeoutWaitingForTag: 'passport.nfc.timeout_waiting_for_tag',
-      failedToInitiateSession: 'passport.nfc.failed_initiate_session',
-      tagLostTryAgain: 'passport.nfc.tag_lost_try_again',
+      holdNearPhotoPage: 'Hold your phone close to photo',
+      cancelling: 'Cancelling...',
+      cancelled: 'Cancelled',
+      connecting: 'Connecting...',
+      readingCardAccess: 'Reading EF.CardAccess',
+      authenticating: 'Authenticating',
+      readingPassportData: 'Reading passport data',
+      cancelledByUser: 'Session cancelled by user',
+      performingSecurityVerification: 'Performing security verification...',
+      completedSuccessfully: 'Success!',
+      timeoutWaitingForTag: 'Waiting for tag...',
+      failedToInitiateSession: 'Failed to initiate session',
+      tagLostTryAgain: 'Tag lost, try again.',
     );
   }
 }
