@@ -40,6 +40,16 @@ class Session {
     await nfc.connect();
   }
 
+  Future<void> retryConnection() async {
+    passport.reset();
+    // await nfc.reconnect();
+    if (nfc.isConnected()) {
+      await nfc.reconnect();
+    } else {
+      await nfc.connect();
+    }
+  }
+
   Future<void> readCardAccess() async {
     result.cardAccess = await passport.readEfCardAccess();
   }
@@ -70,6 +80,10 @@ class Session {
     }
   }
 
+  Future<void> readSod() async {
+    result.sod = await passport.readEfSOD();
+  }
+
   Future<void> performActiveAuthentication() async {
     if (activeAuthenticationParams == null || !result.com!.dgTags.contains(EfDG15.TAG)) {
       return;
@@ -89,7 +103,9 @@ class Session {
     );
   }
 
-  void dispose() {}
+  Future<void> dispose() async {
+    await nfc.disconnect();
+  }
 }
 
 class PassportReader extends StateNotifier<PassportReaderState> {
@@ -141,6 +157,47 @@ class PassportReader extends StateNotifier<PassportReaderState> {
   //   }
   // }
   //
+
+  Future<void> _reconnectionLoop({
+    required Session session,
+    required bool authenticate,
+    required Function toTry,
+    int numAttempts = 5,
+  }) async {
+    for (int i = 0; i < numAttempts; ++i) {
+      try {
+        await toTry();
+      } catch (e) {
+        if (i >= numAttempts - 1) {
+          debugPrint('''
+        \n\n\n\n\n\n\n\n\nRETHROW $i\n\n\n\n\n\n
+        ''');
+          rethrow;
+        }
+        await Future.delayed(const Duration(milliseconds: 300));
+        debugPrint('''
+        \n\n\n\n\n\n\n\n\nRETRY $i\n\n\n\n\n\n
+        ''');
+
+        try {
+          await session.retryConnection();
+        } catch (e) {
+          debugPrint('Retry connection failed: $e');
+        }
+        if (authenticate) {
+          try {
+            await session.authenticate();
+          } catch (e) {
+            debugPrint('Retry authenticate failed: $e');
+          }
+        }
+      }
+    }
+    debugPrint('''
+        \n\n\n\n\n\n\n\n\nOUT SCOPE\n\n\n\n\n\n
+        ''');
+  }
+
   Future<PassportDataResult?> readWithMRZ({
     required IosNfcMessages iosNfcMessages,
     required String documentNumber,
@@ -166,27 +223,76 @@ class PassportReader extends StateNotifier<PassportReaderState> {
       activeAuthenticationParams: activeAuthenticationParams,
     );
 
-    await session.init();
+    try {
+      await session.init();
+    } catch (e) {
+      state = PassportReaderFailed(error: PassportReadingError.unknown, logs: e.toString());
+      debugPrint('Failure: $e');
+      await session.dispose();
+      return null;
+    }
 
     state = PassportReaderReadingCardAccess();
-    await session.readCardAccess();
+    try {
+      await _reconnectionLoop(session: session, authenticate: false, toTry: session.readCardAccess);
+    } catch (e) {
+      state = PassportReaderFailed(error: PassportReadingError.unknown, logs: e.toString());
+      await session.dispose();
+      debugPrint('Failure card reading access: $e');
+      return null;
+    }
 
     state = PassportReaderAuthenticating();
-    await session.authenticate();
+    try {
+      await _reconnectionLoop(session: session, authenticate: false, toTry: session.authenticate);
+    } catch (e) {
+      state = PassportReaderFailed(error: PassportReadingError.unknown, logs: e.toString());
+      await session.dispose();
+      debugPrint('Failure authenticating: $e');
+      return null;
+    }
 
-    await session.readCom();
+    try {
+      await _reconnectionLoop(session: session, authenticate: true, toTry: session.readCom);
+    } catch (e) {
+      state = PassportReaderFailed(error: PassportReadingError.unknown, logs: e.toString());
+      await session.dispose();
+      debugPrint('Failure read com: $e');
+      return null;
+    }
 
     for (final config in _createConfigs()) {
       state = PassportReaderReadingPassportData(dataGroup: config.name, progress: config.progressStage);
-      await session.readDataGroup(config);
+      try {
+        await _reconnectionLoop(
+          session: session,
+          authenticate: true,
+          toTry: () async => await session.readDataGroup(config),
+        );
+      } catch (e) {
+        state = PassportReaderFailed(error: PassportReadingError.unknown, logs: e.toString());
+        await session.dispose();
+        debugPrint('Failure reading DG ${config.name}: $e');
+        return null;
+      }
     }
 
+    await _reconnectionLoop(session: session, authenticate: true, toTry: session.readSod);
+
     state = PassportReaderSecurityVerification();
-    await session.performActiveAuthentication();
+    try {
+      await _reconnectionLoop(session: session, authenticate: true, toTry: session.performActiveAuthentication);
+      await session.performActiveAuthentication();
+    } catch (e) {
+      state = PassportReaderFailed(error: PassportReadingError.unknown, logs: e.toString());
+      await session.dispose();
+      debugPrint('Failure active authentication: $e');
+      return null;
+    }
 
     final result = session.finish();
-
     state = PassportReaderSuccess(result: result, mrtdData: session.result);
+    await session.dispose();
     return result;
   }
 
