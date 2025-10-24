@@ -39,17 +39,9 @@ class NfcReadingRouteParams {
 }
 
 class NfcReadingScreen extends ConsumerStatefulWidget {
-  const NfcReadingScreen({
-    required this.params,
-    this.activeAuthenticationParams,
-    required this.onCancel,
-    required this.onSuccess,
-    super.key,
-  });
+  const NfcReadingScreen({required this.params, required this.onCancel, required this.onSuccess, super.key});
 
   final NfcReadingRouteParams params;
-
-  final NonceAndSessionId? activeAuthenticationParams;
 
   final Function() onCancel;
   final Function(PassportDataResult, MrtdData) onSuccess;
