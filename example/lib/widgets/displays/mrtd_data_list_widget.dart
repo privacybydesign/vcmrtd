@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:vcmrtd/extensions.dart';
+import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtdapp/widgets/displays/passport_image_widget.dart';
 import '../../models/mrtd_data.dart';
 import '../../utils/formatters.dart';
@@ -12,8 +13,8 @@ import 'mrtd_data_widget.dart';
 /// Widget to display list of MRTD data
 class MrtdDataListWidget extends StatelessWidget {
   final MrtdData? mrtdData;
-
-  const MrtdDataListWidget({super.key, this.mrtdData});
+  final DocumentType documentType;
+  const MrtdDataListWidget({super.key, this.mrtdData, required this.documentType});
 
   List<Widget> _buildDataWidgets() {
     List<Widget> list = [];
@@ -52,7 +53,7 @@ class MrtdDataListWidget extends StatelessWidget {
 
     // EF.COM
     if (mrtdData!.com != null) {
-      list.add(MrtdDataWidget(header: 'EF.COM', collapsedText: '', dataText: formatEfCom(mrtdData!.com!)));
+      list.add(MrtdDataWidget(header: 'EF.COM', collapsedText: '', dataText: formatEfCom(mrtdData!.com!, documentType)));
     }
 
     // EF.DG1 (MRZ)

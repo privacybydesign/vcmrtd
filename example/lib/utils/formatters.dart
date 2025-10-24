@@ -5,28 +5,32 @@ import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtd/extensions.dart';
 import 'package:intl/intl.dart';
 
-/// Tag to string mapping for data groups
-final Map<DgTag, String> dgTagToString = {
-  EfDG1.TAG: 'EF.DG1',
-  EfDG2.TAG: 'EF.DG2',
-  EfDG3.TAG: 'EF.DG3',
-  EfDG4.TAG: 'EF.DG4',
-  EfDG5.TAG: 'EF.DG5',
-  EfDG6.TAG: 'EF.DG6',
-  EfDG7.TAG: 'EF.DG7',
-  EfDG8.TAG: 'EF.DG8',
-  EfDG9.TAG: 'EF.DG9',
-  EfDG10.TAG: 'EF.DG10',
-  EfDG11.TAG: 'EF.DG11',
-  EfDG12.TAG: 'EF.DG12',
-  EfDG13.TAG: 'EF.DG13',
-  EfDG14.TAG: 'EF.DG14',
-  EfDG15.TAG: 'EF.DG15',
-  EfDG16.TAG: 'EF.DG16',
-};
+/// Get tag to string mapping for data groups based on document type
+Map<DgTag, String> getDgTagToStringMap(DocumentType documentType) {
+  return {
+    EfDG1.TAG: 'EF.DG1',
+    EfDG2.TAG: 'EF.DG2',
+    EfDG3.TAG: 'EF.DG3',
+    EfDG4.TAG: 'EF.DG4',
+    EfDG5.TAG: 'EF.DG5',
+    EfDG6.getTag(documentType): 'EF.DG6',
+    EfDG7.TAG: 'EF.DG7',
+    EfDG8.TAG: 'EF.DG8',
+    EfDG9.TAG: 'EF.DG9',
+    EfDG10.TAG: 'EF.DG10',
+    EfDG11.TAG: 'EF.DG11',
+    EfDG12.TAG: 'EF.DG12',
+    EfDG13.TAG: 'EF.DG13',
+    EfDG14.TAG: 'EF.DG14',
+    EfDG15.TAG: 'EF.DG15',
+    EfDG16.TAG: 'EF.DG16',
+  };
+}
 
 /// Formats EF.COM data for display
-String formatEfCom(final EfCOM efCom) {
+String formatEfCom(final EfCOM efCom, DocumentType documentType) {
+  final dgTagToString = getDgTagToStringMap(documentType);
+
   var str =
       "version: ${efCom.version}\n"
       "unicode version: ${efCom.unicodeVersion}\n"
@@ -79,7 +83,7 @@ String formatDG15(final EfDG15 dg15) {
     final tvExp = TLV.decode(tvKeySeq.value.sublist(tvModule.encodedLen));
 
     str +=
-        "RSA\n"
+    "RSA\n"
         "    exponent: ${tvExp.value.hex()}\n"
         "    modulus: ${tvModule.value.hex()}";
   } else {
