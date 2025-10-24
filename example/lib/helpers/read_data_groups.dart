@@ -9,7 +9,8 @@ import 'package:vcmrtdapp/models/mrtd_data.dart';
 import 'package:vcmrtdapp/models/document_result.dart';
 import 'package:vcmrtdapp/widgets/common/animated_nfc_status_widget.dart';
 
-typedef StatusUpdater = void Function({String? message, NFCReadingState? state, double? progress});
+typedef StatusUpdater =
+    void Function({String? message, NFCReadingState? state, double? progress});
 
 Future<DocumentResult> readDataGroups({
   required Document document,
@@ -40,7 +41,6 @@ Future<DocumentResult> readDataGroups({
         progressIncrement: 0.1,
         readFunction: (r) async {
           final dg = await document.readEfDG1(document.documentType);
-          _log.info("DG1 data ${dg.edlData?.holderSurname} or ${dg.edlData?.dateOfIssue} ${dg.edlData?.placeOfBirth} ${dg.edlData?.issuingMemberState} ${dg.edlData?.issuingAuthority} ${dg.edlData?.documentNumber}");
           mrtdData.dg1 = dg;
           return dg;
         },
@@ -66,11 +66,12 @@ Future<DocumentResult> readDataGroups({
         },
       ),
       DataGroupConfig(
-        tag: EfDG6.TAG,
+        tag: EfDG6.getTag(documentType),
         name: "DG6",
         progressIncrement: 0.05,
         readFunction: (r) async {
-          final dg = await document.readEfDG6();
+          final dg = await document.readEfDG6(document.documentType);
+
           mrtdData.dg6 = dg;
           return dg;
         },
@@ -189,7 +190,10 @@ Future<DocumentResult> readDataGroups({
       updateStatus(progress: currentProgress.clamp(0.0, 0.9));
     }
 
-    final shouldAttemptAa = sessionId != null && nonce != null && mrtdData.com!.dgTags.contains(EfDG15.TAG);
+    final shouldAttemptAa =
+        sessionId != null &&
+        nonce != null &&
+        mrtdData.com!.dgTags.contains(EfDG15.TAG);
 
     if (shouldAttemptAa) {
       updateStatus(
@@ -234,8 +238,13 @@ Future<DocumentResult> readDataGroups({
       aaSignature: mrtdData.aaSig,
     );
   } catch (e) {
-    log.severe("Error reading ${documentType.displayName.toLowerCase()} data: $e");
-    updateStatus(message: "Failed to read passport data", state: NFCReadingState.error);
+    log.severe(
+      "Error reading ${documentType.displayName.toLowerCase()} data: $e",
+    );
+    updateStatus(
+      message: "Failed to read passport data",
+      state: NFCReadingState.error,
+    );
     rethrow;
   }
 }
