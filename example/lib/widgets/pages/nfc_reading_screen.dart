@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:flutter/material.dart';
+import 'package:vcmrtdapp/providers/active_authenticiation_provider.dart';
 import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
 import 'package:vcmrtdapp/providers/passport_reader_provider.dart';
 import 'package:vcmrtdapp/widgets/common/animated_nfc_status_widget.dart';
@@ -115,7 +116,11 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
 
   Future<void> startReading() async {
     try {
-      final nonceAndSessionId = await ref.read(passportIssuerProvider).startSessionAtPassportIssuer();
+      NonceAndSessionId? nonceAndSessionId;
+
+      if (ref.read(activeAuthenticationProvider)) {
+        nonceAndSessionId = await ref.read(passportIssuerProvider).startSessionAtPassportIssuer();
+      }
 
       await ref
           .read(passportReaderProvider.notifier)

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vcmrtdapp/providers/active_authenticiation_provider.dart';
 import 'package:vcmrtdapp/theme/text_styles.dart';
 
 typedef DocumentTypeCallback = void Function();
@@ -62,9 +64,9 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
   }
 }
 
-class _Header extends StatelessWidget {
+class _Header extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Card(
       elevation: 8,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -89,10 +91,17 @@ class _Header extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
-            Text(
-              'Choose the document type to continue.',
-              style: Theme.of(context).defaultTextStyles.hint,
-              textAlign: TextAlign.center,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Perform active authentication', style: Theme.of(context).defaultTextStyles.hint),
+                Switch(
+                  value: ref.watch(activeAuthenticationProvider),
+                  onChanged: (value) {
+                    ref.read(activeAuthenticationProvider.notifier).state = value;
+                  },
+                ),
+              ],
             ),
           ],
         ),
