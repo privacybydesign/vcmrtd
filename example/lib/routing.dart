@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtdapp/widgets/pages/data_screen.dart';
@@ -15,7 +14,7 @@ extension CustomRouteExtensions on BuildContext {
   }
 }
 
-GoRouter createRouter(BuildContext context, WidgetRef ref) {
+GoRouter createRouter() {
   return GoRouter(
     initialLocation: '/select_doc_type',
     routes: [

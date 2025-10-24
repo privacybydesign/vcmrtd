@@ -38,10 +38,10 @@ class _DataScreenState extends ConsumerState<DataScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PlatformScaffold(
-      appBar: PlatformAppBar(
+    return Scaffold(
+      appBar: AppBar(
         title: const Text('Passport Data'),
-        leading: PlatformIconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBackPressed),
+        leading: IconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBackPressed),
       ),
       body: SafeArea(
         child: SingleChildScrollView(

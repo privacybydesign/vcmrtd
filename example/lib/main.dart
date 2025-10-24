@@ -28,7 +28,7 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      routerConfig: createRouter(context, ref),
+      routerConfig: createRouter(),
       localizationsDelegates: const [
         DefaultMaterialLocalizations.delegate,
         DefaultCupertinoLocalizations.delegate,

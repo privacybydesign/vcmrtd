@@ -37,10 +37,10 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PlatformScaffold(
-      appBar: PlatformAppBar(
+    return Scaffold(
+      appBar: AppBar(
         title: const Text('Enter Passport Details'),
-        leading: PlatformIconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBack),
+        leading: IconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBack),
       ),
       body: SafeArea(
         child: SingleChildScrollView(

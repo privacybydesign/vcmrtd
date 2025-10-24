@@ -42,11 +42,8 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    return PlatformScaffold(
-      material: (_, _) => MaterialScaffoldData(backgroundColor: Colors.black, extendBody: true),
-      cupertino: (_, _) => CupertinoPageScaffoldData(backgroundColor: Colors.black),
-      appBar: PlatformAppBar(
-        backgroundColor: Colors.black,
+    return Scaffold(
+      appBar: AppBar(
         title: Text('Scan ${_getDocumentTypeName()}'),
         leading: PlatformIconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBack),
       ),

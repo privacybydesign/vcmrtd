@@ -83,6 +83,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
     }
 
     return Scaffold(
+      appBar: AppBar(title: Text('Scan passport')),
       body: Center(
         child: AnimatedNFCStatusWidget(
           state: _mapState(passportState),
