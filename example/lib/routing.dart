@@ -14,9 +14,12 @@ extension CustomRouteExtensions on BuildContext {
   }
 }
 
+final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
+
 GoRouter createRouter() {
   return GoRouter(
     initialLocation: '/select_doc_type',
+    observers: [routeObserver],
     routes: [
       GoRoute(
         path: '/select_doc_type',
