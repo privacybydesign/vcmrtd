@@ -26,6 +26,7 @@ Future<DocumentResult> readDataGroups({
     state: NFCReadingState.reading,
     progress: 0.1,
   );
+  final _log = Logger("mrtd.api");
 
   try {
     // Read EF.COM first to discover available data groups.
@@ -38,7 +39,8 @@ Future<DocumentResult> readDataGroups({
         name: "DG1",
         progressIncrement: 0.1,
         readFunction: (r) async {
-          final dg = await document.readEfDG1();
+          final dg = await document.readEfDG1(document.documentType);
+          _log.info("DG1 data ${dg.edlData?.holderSurname} or ${dg.edlData?.dateOfIssue} ${dg.edlData?.placeOfBirth} ${dg.edlData?.issuingMemberState} ${dg.edlData?.issuingAuthority} ${dg.edlData?.documentNumber}");
           mrtdData.dg1 = dg;
           return dg;
         },

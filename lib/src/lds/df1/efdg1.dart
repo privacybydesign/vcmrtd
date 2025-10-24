@@ -36,6 +36,7 @@ class EfDG1 extends DataGroup {
   @override
   void parseContent(final Uint8List content) {
     final tlv = TLV.fromBytes(content);
+
     if (documentType == DocumentType.passport) {
       if (tlv.tag != 0x5F1F) {
         throw EfParseError("Invalid data object tag=${tlv.tag.hex()}, expected object with tag=5F1F");
@@ -43,7 +44,11 @@ class EfDG1 extends DataGroup {
       _mrz = PassportMRZ(tlv.value);
       passportData = PassportDG1(_mrz);
     } else if (documentType == DocumentType.driverLicense) {
-      edlData = EDL_DG1.fromTlv(tlv);
+      if (tlv.tag != 0x5f01) {
+        throw EfParseError("Invalid data object tag=${tlv.tag.hex()}, expected object with tag=5F01");
+
+      }
+      edlData = EDL_DG1.fromBytes(content);
     }
   }
 }

@@ -34,32 +34,43 @@ class EfCOM extends ElementaryFile {
   void parse(final Uint8List content) {
     final tlv = TLV.fromBytes(content);
     if (tlv.tag != TAG) {
-      throw EfParseError("Invalid EF.COM tag=${tlv.tag.hex()}, expected tag=${TAG.hex()}");
+      throw EfParseError(
+        "Invalid EF.COM tag=${tlv.tag.hex()}, expected tag=${TAG.hex()}",
+      );
     }
 
     // Parse version number
     final data = tlv.value;
     final vtv = TLV.decode(data);
     if (vtv.tag.value != 0x5F01) {
-      throw EfParseError("Invalid version object tag=${vtv.tag.value.hex()}, expected version object with tag=5F01");
+      throw EfParseError(
+        "Invalid version object tag=${vtv.tag.value.hex()}, expected version object with tag=5F01",
+      );
     }
     _ver = String.fromCharCodes(vtv.value);
 
     // Parse string version
-    final uvtv = TLV.decode(data.sublist(vtv.encodedLen));
-    if (uvtv.tag.value != 0x5F36) {
+    final secondTlv = TLV.decode(data.sublist(vtv.encodedLen));
+    if (secondTlv.tag.value != 0x5F36 && secondTlv.tag.value != 0x5C) {
       throw EfParseError(
-        "Invalid unicode version object tag=${uvtv.tag.value.hex()}, expected unicode version object with tag=5F36",
+        "Expected unicode version object with tag=5F36 and the tag list with tag=5C but got tag=${secondTlv.tag.value.hex()}",
       );
     }
-    _uver = String.fromCharCodes(uvtv.value);
+    DecodedTV tvTagList;
+    if (secondTlv.tag.value == 0x5F36) {
+      _uver = String.fromCharCodes(secondTlv.value);
 
-    // Parse tag list
-    final tvTagList = TLV.decode(data.sublist(vtv.encodedLen + uvtv.encodedLen));
-    if (tvTagList.tag.value != 0x5C) {
-      throw EfParseError(
-        "Invalid tag list object tag=${tvTagList.tag.value.hex()}, expected tag list object with tag=5C",
+      // Parse tag list
+      tvTagList = TLV.decode(
+        data.sublist(vtv.encodedLen + secondTlv.encodedLen),
       );
+      if (tvTagList.tag.value != 0x5C) {
+        throw EfParseError(
+          "Invalid tag list object tag=${tvTagList.tag.value.hex()}, expected tag list object with tag=5C",
+        );
+      }
+    } else {
+      tvTagList = secondTlv;
     }
 
     // fill _tags set.

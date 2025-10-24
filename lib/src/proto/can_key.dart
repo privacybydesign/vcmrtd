@@ -29,13 +29,13 @@ class CanKey extends AccessKey {
   CanKey(String canNumber) {
     //docs https://www.icao.int/Meetings/TAG-MRTD/Documents/Tag-Mrtd-20/TagMrtd-20_WP020_en.pdf
     //3.1.6 CAN is 6 digits long
-    final RegExp regex = RegExp(r'^\d{6}$');
+    final RegExp regex = RegExp(r'^\d{10}$');
     if (!regex.hasMatch(canNumber)) {
-      throw CanKeysError("AccessKey.CanKeys; Code must be exactly 6 digits and only contain numbers");
+      throw CanKeysError("AccessKey.CanKeys; Code must be exactly 10 digits and only contain numbers");
     }
 
-    Uint8List canNumberInList = Uint8List(6);
-    for (int i = 0; i < 6; i++) {
+    Uint8List canNumberInList = Uint8List(10);
+    for (int i = 0; i < 10; i++) {
       canNumberInList[i] = canNumber.codeUnitAt(i);
     }
 

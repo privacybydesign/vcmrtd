@@ -168,10 +168,10 @@ abstract class Document {
   /// Can throw [ComProviderError] on connection error.
   /// Throws [DocumentError] if file doesn't exist or
   /// if calling this function prior establishing session with passport.
-  Future<EfDG1> readEfDG1() async {
+  Future<EfDG1> readEfDG1(DocumentType documentType) async {
     await _selectDF1();
     _log.debug("Reading EF.DG1");
-    return EfDG1.fromBytes(await _exec(() => _api.readFileBySFI(EfDG1.SFI)), DocumentType.passport);
+    return EfDG1.fromBytes(await _exec(() => _api.readFileBySFI(EfDG1.SFI)), documentType);
   }
 
   /// Reads file EF.DG2 from passport.
