@@ -62,12 +62,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
     }
 
     if (passportState is PassportReaderPending) {
-      return NfcGuidanceScreen(
-        onStartReading: () {
-          startReading();
-        },
-        onBack: context.pop,
-      );
+      return NfcGuidanceScreen(onStartReading: startReading, onBack: context.pop);
     }
 
     return Scaffold(
