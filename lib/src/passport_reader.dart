@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/extensions.dart';
-import 'package:vcmrtd/src/types/active_authentication.dart';
 import 'package:vcmrtd/src/types/data_group_config.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 

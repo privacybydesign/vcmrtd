@@ -18,6 +18,6 @@ class IrmaSessionPointer {
 
   Uri toUniversalLink() {
     final urlEncodedSessionPtr = Uri.encodeFull(jsonEncode(toJson()));
-    return Uri.parse('https://open.staging.yivi.app/-/session#$urlEncodedSessionPtr');
+    return Uri.parse('https://open.yivi.app/-/session#$urlEncodedSessionPtr');
   }
 }

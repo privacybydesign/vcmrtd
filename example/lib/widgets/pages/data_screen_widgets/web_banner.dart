@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class WebBanner extends StatelessWidget {
-  final sessionId;
+  final String sessionId;
 
   const WebBanner({super.key, required this.sessionId});
 

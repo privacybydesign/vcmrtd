@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -17,17 +16,8 @@ class DataScreen extends ConsumerStatefulWidget {
   final MrtdData mrtdData;
   final PassportDataResult passportDataResult;
   final VoidCallback onBackPressed;
-  final String? sessionId;
-  final Uint8List? nonce;
 
-  const DataScreen({
-    super.key,
-    required this.mrtdData,
-    required this.onBackPressed,
-    required this.passportDataResult,
-    this.sessionId,
-    this.nonce,
-  });
+  const DataScreen({super.key, required this.mrtdData, required this.onBackPressed, required this.passportDataResult});
 
   @override
   ConsumerState<DataScreen> createState() => _DataScreenState();
@@ -50,12 +40,13 @@ class _DataScreenState extends ConsumerState<DataScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Return to Web banner if opened via universal link
-              if (widget.sessionId != null) WebBanner(sessionId: widget.sessionId),
+              if (widget.passportDataResult.sessionId != null)
+                WebBanner(sessionId: widget.passportDataResult.sessionId!),
               PersonalDataSection(mrz: widget.mrtdData.dg1!.mrz, dg2: widget.mrtdData.dg2!),
               const SizedBox(height: 20),
               SecurityContent(mrtdData: widget.mrtdData),
               const SizedBox(height: 20),
-              if (widget.sessionId != null) ...[
+              if (widget.passportDataResult.sessionId != null) ...[
                 const SizedBox(height: 20),
                 if (_verificationResponse == null)
                   ReturnToWebSection(
@@ -96,7 +87,7 @@ class _DataScreenState extends ConsumerState<DataScreen> {
 
     try {
       final response = await issuer.startIrmaIssuanceSession(widget.passportDataResult);
-      await launchUrl(response.toUniversalLink());
+      await launchUrl(response.toUniversalLink(), mode: LaunchMode.externalApplication);
       _showReturnSuccessDialog();
     } catch (e) {
       _showReturnErrorDialog(e.toString());

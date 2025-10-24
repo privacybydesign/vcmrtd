@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:flutter/material.dart';
+import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
 import 'package:vcmrtdapp/providers/passport_reader_provider.dart';
 import 'package:vcmrtdapp/widgets/common/animated_nfc_status_widget.dart';
 
@@ -9,14 +10,12 @@ class NfcReadingRouteParams {
   final DateTime dateOfBirth;
   final DateTime dateOfExpiry;
   final String? countryCode;
-  final NonceAndSessionId? activeAuthenticationParams;
 
   NfcReadingRouteParams({
     required this.docNumber,
     required this.dateOfBirth,
     required this.dateOfExpiry,
     this.countryCode,
-    this.activeAuthenticationParams,
   });
 
   Map<String, String> toQueryParams() {
@@ -25,22 +24,15 @@ class NfcReadingRouteParams {
       'date_of_birth': dateOfBirth.toIso8601String(),
       'date_of_expiry': dateOfExpiry.toIso8601String(),
       if (countryCode != null) 'country_code': countryCode!,
-      if (activeAuthenticationParams != null) 'session_id': activeAuthenticationParams!.sessionId,
-      if (activeAuthenticationParams != null) 'nonce': activeAuthenticationParams!.nonce,
     };
   }
 
   static NfcReadingRouteParams fromQueryParams(Map<String, String> params) {
-    NonceAndSessionId? activeAuthenticationParams;
-    if (params.containsKey('session_id') && params.containsKey('session_id')) {
-      activeAuthenticationParams = NonceAndSessionId(nonce: params['nonce']!, sessionId: params['session_id']!);
-    }
     return NfcReadingRouteParams(
       docNumber: params['doc_number']!,
       dateOfBirth: DateTime.parse(params['date_of_birth']!),
       dateOfExpiry: DateTime.parse(params['date_of_expiry']!),
       countryCode: params['country_code'],
-      activeAuthenticationParams: activeAuthenticationParams,
     );
   }
 }
@@ -122,16 +114,22 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
   }
 
   Future<void> startReading() async {
-    await ref
-        .read(passportReaderProvider.notifier)
-        .readWithMRZ(
-          iosNfcMessages: _getTranslatedIosNfcMessages(),
-          documentNumber: widget.params.docNumber,
-          birthDate: widget.params.dateOfBirth,
-          expiryDate: widget.params.dateOfExpiry,
-          countryCode: widget.params.countryCode,
-          activeAuthenticationParams: widget.activeAuthenticationParams,
-        );
+    try {
+      final nonceAndSessionId = await ref.read(passportIssuerProvider).startSessionAtPassportIssuer();
+
+      await ref
+          .read(passportReaderProvider.notifier)
+          .readWithMRZ(
+            iosNfcMessages: _getTranslatedIosNfcMessages(),
+            documentNumber: widget.params.docNumber,
+            birthDate: widget.params.dateOfBirth,
+            expiryDate: widget.params.dateOfExpiry,
+            countryCode: widget.params.countryCode,
+            activeAuthenticationParams: nonceAndSessionId,
+          );
+    } catch (e) {
+      debugPrint('failed to read passport: $e');
+    }
   }
 
   IosNfcMessages _getTranslatedIosNfcMessages() {

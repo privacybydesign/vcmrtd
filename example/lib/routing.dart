@@ -60,7 +60,7 @@ GoRouter createRouter() {
             params: params,
             onCancel: context.pop,
             onSuccess: (result, data) {
-              context.push('/result');
+              context.go('/result', extra: {'result': result, 'data': data});
             },
           );
         },
@@ -81,10 +81,13 @@ GoRouter createRouter() {
       GoRoute(
         path: '/result',
         builder: (context, state) {
+          final s = state.extra as Map<String, dynamic>;
+          final data = s['data'] as MrtdData;
+          final result = s['result'] as PassportDataResult;
           return DataScreen(
             onBackPressed: () => context.go('/select_doc_type'),
-            mrtdData: MrtdData(),
-            passportDataResult: PassportDataResult(dataGroups: {}, efSod: ''),
+            mrtdData: data,
+            passportDataResult: result,
           );
         },
       ),
