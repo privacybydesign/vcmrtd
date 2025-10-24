@@ -1,10 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:flutter/material.dart';
 import 'package:vcmrtdapp/providers/active_authenticiation_provider.dart';
 import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
 import 'package:vcmrtdapp/providers/passport_reader_provider.dart';
 import 'package:vcmrtdapp/widgets/common/animated_nfc_status_widget.dart';
+import 'package:vcmrtdapp/widgets/pages/nfc_guidance_screen.dart';
 
 class NfcReadingRouteParams {
   final String docNumber;
@@ -52,19 +54,20 @@ class NfcReadingScreen extends ConsumerStatefulWidget {
 
 class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      startReading();
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     final passportState = ref.watch(passportReaderProvider);
 
     if (passportState case PassportReaderSuccess(result: final result, mrtdData: final mrtdData)) {
       WidgetsBinding.instance.addPostFrameCallback((_) => widget.onSuccess(result, mrtdData));
+    }
+
+    if (passportState is PassportReaderPending) {
+      return NfcGuidanceScreen(
+        onStartReading: () {
+          startReading();
+        },
+        onBack: context.pop,
+      );
     }
 
     return Scaffold(
