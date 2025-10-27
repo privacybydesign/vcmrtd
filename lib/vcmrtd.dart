@@ -33,6 +33,13 @@ export 'src/lds/mrz.dart';
 export 'src/lds/tlv.dart';
 
 export 'src/passport.dart';
+export 'src/passport_reader.dart';
+export 'src/passport_issuer.dart';
 
 export 'src/proto/dba_key.dart';
 export 'src/proto/access_key.dart';
+
+export 'src/types/mrtd_data.dart';
+export 'src/types/passport_data_result.dart';
+export 'src/types/active_authentication.dart';
+export 'src/types/verification_response.dart';

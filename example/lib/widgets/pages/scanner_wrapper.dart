@@ -2,15 +2,15 @@
 // Provides callbacks for the scanner page to integrate with navigation
 
 import 'package:flutter/material.dart';
-import 'package:vcmrtdapp/helpers/mrz_data.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
+import 'package:mrz_parser/mrz_parser.dart';
+import 'package:vcmrtdapp/helpers/mrz_scanner.dart';
 
 import 'scan_screen.dart';
-import '../../helpers/mrz_scanner.dart';
 
 /// Wrapper around ScannerPage to handle navigation callbacks
 class ScannerWrapper extends StatefulWidget {
-  final Function(dynamic) onMrzScanned;
+  final Function(MRZResult) onMrzScanned;
   final VoidCallback onManualEntry;
   final VoidCallback onCancel;
   final VoidCallback onBack;
@@ -42,13 +42,10 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    return PlatformScaffold(
-      material: (_, __) => MaterialScaffoldData(backgroundColor: Colors.black, extendBody: true),
-      cupertino: (_, __) => CupertinoPageScaffoldData(backgroundColor: Colors.black),
-      appBar: PlatformAppBar(
-        backgroundColor: Colors.black,
+    return Scaffold(
+      appBar: AppBar(
         title: Text('Scan ${_getDocumentTypeName()}'),
-        leading: PlatformIconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBack),
+        leading: IconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBack),
       ),
       body: Stack(
         children: [
@@ -108,14 +105,11 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
           children: [
             _buildOverlayCard(context),
             const SizedBox(height: 20),
-            PlatformElevatedButton(
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black),
               onPressed: () {
                 widget.onManualEntry();
               },
-              material: (_, __) => MaterialElevatedButtonData(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black),
-              ),
-              cupertino: (_, __) => CupertinoElevatedButtonData(color: Colors.white),
               child: Text('Enter ${_getDocumentTypeName()} details manually', style: TextStyle(color: Colors.black)),
             ),
             const SizedBox(height: 12),

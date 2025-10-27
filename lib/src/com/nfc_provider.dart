@@ -47,6 +47,11 @@ class NfcProvider extends ComProvider {
   }
 
   @override
+  Future<void> reconnect() async {
+    await FlutterNfcKit.iosRestartPolling();
+  }
+
+  @override
   Future<void> connect({
     Duration? timeout,
     String iosAlertMessage = "Hold your iPhone near the biometric Passport",

@@ -1,54 +1,37 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'dart:convert';
-import 'package:vcmrtdapp/models/passport_result.dart';
-import 'package:http/http.dart' as http;
+import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
 
 import '../../widgets/pages/data_screen_widgets/personal_data_section.dart';
 import '../../widgets/pages/data_screen_widgets/security_content.dart';
 import '../../widgets/pages/data_screen_widgets/return_to_web.dart';
 import '../../widgets/pages/data_screen_widgets/web_banner.dart';
 
-import '../../models/mrtd_data.dart';
-import '../../services/api_service.dart';
 import 'data_screen_widgets/verify_result.dart';
 
-class DataScreen extends StatefulWidget {
+class DataScreen extends ConsumerStatefulWidget {
   final MrtdData mrtdData;
   final PassportDataResult passportDataResult;
   final VoidCallback onBackPressed;
-  final String? sessionId;
-  final Uint8List? nonce;
 
-  const DataScreen({
-    super.key,
-    required this.mrtdData,
-    required this.onBackPressed,
-    required this.passportDataResult,
-    this.sessionId,
-    this.nonce,
-  });
+  const DataScreen({super.key, required this.mrtdData, required this.onBackPressed, required this.passportDataResult});
 
   @override
-  State<DataScreen> createState() => _DataScreenState();
+  ConsumerState<DataScreen> createState() => _DataScreenState();
 }
 
-class _DataScreenState extends State<DataScreen> {
-  final _apiService = ApiService();
-  bool _isReturningToIssue = false;
-  bool _isReturningToVerify = false;
-  bool? _isExpired;
-  bool? _authenticContent;
-  bool? _authenticChip;
+class _DataScreenState extends ConsumerState<DataScreen> {
+  VerificationResponse? _verificationResponse;
 
   @override
   Widget build(BuildContext context) {
-    return PlatformScaffold(
-      appBar: PlatformAppBar(
+    return Scaffold(
+      appBar: AppBar(
         title: const Text('Passport Data'),
-        leading: PlatformIconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBackPressed),
+        leading: IconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBackPressed),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -57,26 +40,27 @@ class _DataScreenState extends State<DataScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Return to Web banner if opened via universal link
-              if (widget.sessionId != null) WebBanner(sessionId: widget.sessionId),
+              if (widget.passportDataResult.sessionId != null)
+                WebBanner(sessionId: widget.passportDataResult.sessionId!),
               PersonalDataSection(mrz: widget.mrtdData.dg1!.mrz, dg2: widget.mrtdData.dg2!),
               const SizedBox(height: 20),
               SecurityContent(mrtdData: widget.mrtdData),
               const SizedBox(height: 20),
-              if (widget.sessionId != null) ...[
+              if (widget.passportDataResult.sessionId != null) ...[
                 const SizedBox(height: 20),
-                if (_isExpired == null && _authenticChip == null && _authenticContent == null)
+                if (_verificationResponse == null)
                   ReturnToWebSection(
-                    isReturningToIssue: _isReturningToIssue,
-                    isReturningToVerify: _isReturningToVerify,
+                    isReturningToIssue: false,
+                    isReturningToVerify: false,
                     onIssuePressed: _returnToIssue,
-                    onVerifyPressed: _returnToVerify,
+                    onVerifyPressed: _verifyPassport,
                   )
                 else ...[
                   const SizedBox(height: 20),
                   VerifyResultSection(
-                    isExpired: _isExpired!,
-                    authenticChip: _authenticChip!,
-                    authenticContent: _authenticContent!,
+                    isExpired: _verificationResponse!.isExpired,
+                    authenticChip: _verificationResponse!.authenticChip,
+                    authenticContent: _verificationResponse!.authenticContent,
                   ),
                 ],
               ],
@@ -87,29 +71,11 @@ class _DataScreenState extends State<DataScreen> {
     );
   }
 
-  Future<void> _returnToVerify() async {
-    if (widget.sessionId == null) return;
-    setState(() {
-      _isReturningToVerify = true;
-    });
+  Future<void> _verifyPassport() async {
+    final issuer = ref.read(passportIssuerProvider);
 
     try {
-      final payload = widget.passportDataResult.toJson();
-      final String jsonPayload = json.encode(payload);
-
-      final response = await http.post(
-        Uri.parse('https://passport-issuer.staging.yivi.app/api/verify-passport'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonPayload,
-      );
-      final Map<String, dynamic> responseBody = jsonDecode(response.body);
-
-      setState(() {
-        _isExpired = responseBody['is_expired'] as bool?;
-        _authenticChip = responseBody['authentic_chip'] as bool?;
-        _authenticContent = responseBody['authentic_content'] as bool?;
-        _isReturningToVerify = false;
-      });
+      _verificationResponse = await issuer.verifyPassport(widget.passportDataResult);
     } catch (e) {
       _showReturnErrorDialog(e.toString());
     }
@@ -117,47 +83,14 @@ class _DataScreenState extends State<DataScreen> {
 
   /// Handle return to web functionality
   Future<void> _returnToIssue() async {
-    if (widget.sessionId == null) return;
-
-    setState(() {
-      _isReturningToIssue = true;
-    });
+    final issuer = ref.read(passportIssuerProvider);
 
     try {
-      // Create secure data payload
-      final payload = widget.passportDataResult.toJson();
-
-      // Get the signed IRMA JWt from the passport issuer
-      final responseBody = await _apiService.getIrmaSessionJwt(payload);
-      final irmaServerUrlParam = responseBody["irma_server_url"];
-      final jwtUrlParam = responseBody["jwt"];
-
-      // Start the session
-      final sessionResponseBody = await _apiService.startIrmaSession(jwtUrlParam, irmaServerUrlParam);
-      final sessionPtr = sessionResponseBody["sessionPtr"];
-      final urlEncodedSessionPtr = Uri.encodeFull(jsonEncode(sessionPtr));
-
-      // Open the session using a universal link in the Yivi app.
-      final returnUrl = _apiService.generateUniversalLink(urlEncodedSessionPtr);
-
-      // Open the universal link.
-      final uri = Uri.parse(returnUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-
-        // Show success message and close app
-        _showReturnSuccessDialog();
-      } else {
-        throw Exception('Cannot launch return URL: $returnUrl');
-      }
+      final response = await issuer.startIrmaIssuanceSession(widget.passportDataResult);
+      await launchUrl(response.toUniversalLink(), mode: LaunchMode.externalApplication);
+      _showReturnSuccessDialog();
     } catch (e) {
       _showReturnErrorDialog(e.toString());
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isReturningToIssue = false;
-        });
-      }
     }
   }
 

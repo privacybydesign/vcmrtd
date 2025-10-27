@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:vcmrtdapp/models/mrtd_data.dart';
+import 'package:vcmrtd/vcmrtd.dart';
 
 class SecurityContent extends StatelessWidget {
   final MrtdData mrtdData;
