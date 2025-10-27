@@ -8,7 +8,7 @@ import 'package:vcmrtd/vcmrtd.dart';
 typedef IosNfcMessageMapper = String Function(PassportReaderState);
 
 class PassportReader extends StateNotifier<PassportReaderState> {
-  final NfcProvider _nfc;
+  NfcProvider _nfc;
   bool _isCancelled = false;
   List<String> _log = [];
   IosNfcMessageMapper? _iosNfcMessageMapper;
@@ -18,15 +18,15 @@ class PassportReader extends StateNotifier<PassportReaderState> {
   }
 
   Future<void> checkNfcAvailability() async {
-    // _addLog('Checking NFC availability');
+    _addLog('Checking NFC availability');
     try {
       NfcStatus status = await NfcProvider.nfcStatus;
       if (status != NfcStatus.enabled) {
         state = PassportReaderNfcUnavailable();
       }
-      // _addLog('NFC status: $status');
+      _addLog('NFC status: $status');
     } catch (e) {
-      // _addLog('Failed to get NFC status: $e');
+      _addLog('Failed to get NFC status: $e');
     }
   }
 
@@ -36,37 +36,11 @@ class PassportReader extends StateNotifier<PassportReaderState> {
   }
 
   Future<void> cancel() async {
+    _addLog('User pressed cancel');
     _isCancelled = true;
-    // _addLog('NFC scanning cancelled');
-    state = PassportReaderCancelling();
-    // await _disconnect('passport.nfc.cancelling');
-
-    // check if the widget is still mounted,
-    // because cancel can also be called from the dispose function
-    if (mounted) {
-      state = PassportReaderCancelled();
-    }
   }
 
-  Future<void> _setState(PassportReaderState s) async {
-    state = s;
-    final message = _iosNfcMessageMapper?.call(state);
-    if (message != null && _nfc.isConnected()) {
-      await _nfc.setIosAlertMessage(message);
-    }
-  }
-
-  Future<void> _initRead(IosNfcMessageMapper mapper) async {
-    if (_nfc.isConnected()) {
-      await _nfc.disconnect();
-    }
-    _iosNfcMessageMapper = mapper;
-    _isCancelled = false;
-    _setState(PassportReaderPending());
-    await checkNfcAvailability();
-  }
-
-  Future<PassportDataResult?> readWithMRZ({
+  Future<(PassportDataResult, MrtdData)?> readWithMRZ({
     required String documentNumber,
     required DateTime birthDate,
     required DateTime expiryDate,
@@ -92,7 +66,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
     );
 
     try {
-      await session.init();
+      await _reconnectionLoop(session: session, authenticate: false, whenConnected: session.init);
     } catch (e) {
       await _failure(session, 'Failure during init: $e');
       return null;
@@ -168,10 +142,24 @@ class PassportReader extends StateNotifier<PassportReaderState> {
       return null;
     }
 
-    final result = session.finish();
-    _setState(PassportReaderSuccess(result: result, mrtdData: session.result));
+    _setState(PassportReaderSuccess());
+
     await session.dispose();
-    return result;
+    final result = session.finish();
+    return (result, session.result);
+  }
+
+  Future<void> _setToCancelState(_Session session) async {
+    state = PassportReaderCancelling();
+    await session.dispose();
+    state = PassportReaderCancelled();
+  }
+
+  bool _isCancelException(Exception e) {
+    if (_isCancelled) {
+      return true;
+    }
+    return e.toString().toLowerCase().contains('session invalidated');
   }
 
   Future<void> _reconnectionLoop({
@@ -180,51 +168,76 @@ class PassportReader extends StateNotifier<PassportReaderState> {
     required Function whenConnected,
     int numAttempts = 5,
   }) async {
-    for (int i = 0; i < numAttempts; ++i) {
+    for (int i = 1; i <= numAttempts; ++i) {
       if (_isCancelled) {
-        state = PassportReaderCancelling();
-        await session.dispose();
-        state = PassportReaderCancelled();
-        return;
+        return await _setToCancelState(session);
       }
       try {
         await whenConnected();
         return;
-      } catch (e) {
-        if (i >= numAttempts - 1) {
-          debugPrint('''
-        \n\n\n\n\n\n\n\n\nRETHROW $i\n\n\n\n\n\n
-        ''');
+      } on Exception catch (e) {
+        if (i >= numAttempts) {
+          _addLog('Rethrow on attempt $i');
           rethrow;
         }
+        if (_isCancelException(e)) {
+          return await _setToCancelState(session);
+        }
         await Future.delayed(const Duration(milliseconds: 300));
-        debugPrint('''
-        \n\n\n\n\n\n\n\n\nRETRY $i\nReason: $e\n\n\n\n\n
-        ''');
+        if (_isCancelled) {
+          return await _setToCancelState(session);
+        }
 
+        _addLog('Retry $i (Reason: $e)');
         try {
           await session.retryConnection();
         } catch (e) {
-          debugPrint('Retry connection failed: $e');
+          _addLog('Retry connection failed: $e');
         }
+
         if (authenticate) {
           try {
+            if (_isCancelException(e)) {
+              return await _setToCancelState(session);
+            }
             await session.authenticate();
           } catch (e) {
-            debugPrint('Retry authenticate failed: $e');
+            _addLog('Retry authenticate failed: $e');
           }
         }
       }
     }
-    debugPrint('''
-        \n\n\n\n\n\n\n\n\nOUT SCOPE\n\n\n\n\n\n
-        ''');
+  }
+
+  Future<void> _setState(PassportReaderState s) async {
+    _addLog('Setting state to $s');
+    state = s;
+    final message = _iosNfcMessageMapper?.call(state);
+    if (message != null && _nfc.isConnected()) {
+      await _nfc.setIosAlertMessage(message);
+    }
+  }
+
+  void _addLog(String log) {
+    _log.add(log);
+    debugPrint(log);
+  }
+
+  Future<void> _initRead(IosNfcMessageMapper mapper) async {
+    _log = [];
+    _iosNfcMessageMapper = mapper;
+    _isCancelled = false;
+    _nfc = NfcProvider();
+    await checkNfcAvailability();
+    if (state is! PassportReaderNfcUnavailable && _nfc.isConnected()) {
+      await _nfc.disconnect();
+    }
   }
 
   Future<void> _failure(_Session session, String message) async {
+    _addLog(message);
     state = PassportReaderFailed(error: PassportReadingError.unknown, logs: message);
     await session.dispose();
-    debugPrint(message);
   }
 
   List<DataGroupConfig> _createConfigs() {
@@ -358,9 +371,11 @@ class _Session {
     passport = Passport(nfc);
 
     if (nfc.isConnected()) {
-      await nfc.reconnect();
+      debugPrint('reconnect');
+      await nfc.reconnect().timeout(Duration(seconds: 2));
     } else {
-      await nfc.connect();
+      debugPrint('connect');
+      await nfc.connect().timeout(Duration(seconds: 2));
     }
   }
 
@@ -456,9 +471,7 @@ class PassportReaderReadingPassportData extends PassportReaderState {
 class PassportReaderSecurityVerification extends PassportReaderState {}
 
 class PassportReaderSuccess extends PassportReaderState {
-  PassportReaderSuccess({required this.result, required this.mrtdData});
-  final PassportDataResult result;
-  final MrtdData mrtdData;
+  PassportReaderSuccess();
 }
 
 enum PassportReadingError { unknown, timeoutWaitingForTag, tagLost, failedToInitiateSession, invalidatedByUser }
@@ -472,7 +485,7 @@ double progressForState(PassportReaderState state) {
     PassportReaderConnecting() => 0.0,
     PassportReaderReadingCardAccess() => 0.2,
     PassportReaderAuthenticating() => 0.4,
-    PassportReaderReadingPassportData(:final progress) => 0.5 + progress / 2.0,
+    PassportReaderReadingPassportData(:final progress) => 0.5 + progress / 3.0,
     PassportReaderSecurityVerification() => 0.9,
     PassportReaderSuccess() => 1.0,
     _ => throw Exception('unexpected state: $state'),

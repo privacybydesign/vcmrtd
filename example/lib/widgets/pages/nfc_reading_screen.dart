@@ -57,10 +57,6 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
   Widget build(BuildContext context) {
     final passportState = ref.watch(passportReaderProvider);
 
-    if (passportState case PassportReaderSuccess(result: final result, mrtdData: final mrtdData)) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => widget.onSuccess(result, mrtdData));
-    }
-
     if (passportState is PassportReaderPending) {
       return NfcGuidanceScreen(onStartReading: startReading, onBack: context.pop);
     }
@@ -112,7 +108,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
         nonceAndSessionId = await ref.read(passportIssuerProvider).startSessionAtPassportIssuer();
       }
 
-      await ref
+      final result = await ref
           .read(passportReaderProvider.notifier)
           .readWithMRZ(
             iosNfcMessages: _getMessageMapper(),
@@ -122,6 +118,10 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
             countryCode: widget.params.countryCode,
             activeAuthenticationParams: nonceAndSessionId,
           );
+      if (result != null) {
+        final (pdr, mrtd) = result;
+        widget.onSuccess(pdr, mrtd);
+      }
     } catch (e) {
       debugPrint('failed to read passport: $e');
     }
@@ -135,18 +135,19 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
     }
 
     return (state) {
+      final progress = progressFormatter(progressForState(state));
+
       return switch (state) {
-        PassportReaderPending() => '${progressFormatter(0.0)}\nHold your phone close to photo',
-        PassportReaderCancelled() => '${progressFormatter(0.0)}\nSession cancelled by user',
-        PassportReaderCancelling() => '${progressFormatter(0.0)}\nCancelling...',
-        PassportReaderFailed() => '${progressFormatter(0.0)}\nTag lost, try again.',
-        PassportReaderConnecting() => '${progressFormatter(0.0)}\nConnecting...',
-        PassportReaderReadingCardAccess() => '${progressFormatter(0.2)}\nReading EF.CardAccess',
-        PassportReaderAuthenticating() => '${progressFormatter(0.4)}\nAuthenticating',
-        PassportReaderReadingPassportData(:final progress) =>
-          '${progressFormatter(0.5 + progress / 10)}\nReading passport data',
-        PassportReaderSecurityVerification() => '${progressFormatter(0.8)}\nPerforming security verification...',
-        PassportReaderSuccess() => '${progressFormatter(1.0)}\nSuccess!',
+        PassportReaderPending() => '$progress\nHold your phone close to photo',
+        PassportReaderCancelled() => '$progress\nSession cancelled by user',
+        PassportReaderCancelling() => '$progress\nCancelling...',
+        PassportReaderFailed() => '$progress\nTag lost, try again.',
+        PassportReaderConnecting() => '$progress\nConnecting...',
+        PassportReaderReadingCardAccess() => '$progress\nReading EF.CardAccess',
+        PassportReaderAuthenticating() => '$progress\nAuthenticating',
+        PassportReaderReadingPassportData() => '$progress\nReading passport data',
+        PassportReaderSecurityVerification() => '$progress\nPerforming security verification...',
+        PassportReaderSuccess() => '$progress\nSuccess!',
         _ => '',
       };
     };
