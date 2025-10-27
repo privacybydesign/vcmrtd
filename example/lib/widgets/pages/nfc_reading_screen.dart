@@ -84,8 +84,10 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
       PassportReaderConnecting() => NFCReadingState.connecting,
       PassportReaderReadingCardAccess() => NFCReadingState.authenticating,
       PassportReaderAuthenticating() => NFCReadingState.authenticating,
-      PassportReaderReadingPassportData() => NFCReadingState.reading,
-      PassportReaderSecurityVerification() => NFCReadingState.authenticating,
+      PassportReaderReadingDataGroup() ||
+      PassportReaderReadingSOD() ||
+      PassportReaderReadingCOM() => NFCReadingState.reading,
+      PassportReaderActiveAuthentication() => NFCReadingState.authenticating,
       PassportReaderSuccess() => NFCReadingState.success,
       _ => throw Exception('unexpected state: $state'),
     };
@@ -143,10 +145,12 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
         PassportReaderCancelling() => 'Cancelling...',
         PassportReaderFailed() => 'Tag lost, try again.',
         PassportReaderConnecting() => 'Connecting...',
-        PassportReaderReadingCardAccess() => 'Reading EF.CardAccess',
+        PassportReaderReadingCOM() => 'Reading Ef.COM',
+        PassportReaderReadingCardAccess() => 'Reading Ef.CardAccess',
         PassportReaderAuthenticating() => 'Authenticating',
-        PassportReaderReadingPassportData() => 'Reading passport data',
-        PassportReaderSecurityVerification() => 'Performing security verification...',
+        PassportReaderReadingDataGroup() => 'Reading passport data',
+        PassportReaderReadingSOD() => 'Reading Ef.SOD',
+        PassportReaderActiveAuthentication() => 'Performing security verification...',
         PassportReaderSuccess() => 'Success!',
         _ => '',
       };

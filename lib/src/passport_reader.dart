@@ -65,6 +65,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
       activeAuthenticationParams: activeAuthenticationParams,
     );
 
+    _setState(PassportReaderConnecting());
     try {
       await _reconnectionLoop(session: session, authenticate: false, whenConnected: session.init);
     } catch (e) {
@@ -72,7 +73,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
       return null;
     }
 
-    _setState(PassportReaderConnecting());
+    _setState(PassportReaderReadingCardAccess());
     try {
       await _reconnectionLoop(session: session, authenticate: false, whenConnected: session.readCardAccess);
       if (state is PassportReaderCancelled) {
@@ -94,6 +95,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
       return null;
     }
 
+    _setState(PassportReaderReadingCOM());
     try {
       await _reconnectionLoop(session: session, authenticate: true, whenConnected: session.readCom);
       if (state is PassportReaderCancelled) {
@@ -104,23 +106,20 @@ class PassportReader extends StateNotifier<PassportReaderState> {
       return null;
     }
 
-    for (final config in _createConfigs()) {
-      _setState(PassportReaderReadingPassportData(dataGroup: config.name, progress: config.progressStage));
+    for (final c in _createConfigs()) {
+      _setState(PassportReaderReadingDataGroup(dataGroup: c.name, progress: c.progressStage));
       try {
-        await _reconnectionLoop(
-          session: session,
-          authenticate: true,
-          whenConnected: () => session.readDataGroup(config),
-        );
+        await _reconnectionLoop(session: session, authenticate: true, whenConnected: () => session.readDataGroup(c));
         if (state is PassportReaderCancelled) {
           return null;
         }
       } catch (e) {
-        await _failure(session, 'Failure reading DG ${config.name}: $e');
+        await _failure(session, 'Failure reading DG ${c.name}: $e');
         return null;
       }
     }
 
+    _setState(PassportReaderReadingSOD());
     try {
       await _reconnectionLoop(session: session, authenticate: true, whenConnected: session.readSod);
       if (state is PassportReaderCancelled) {
@@ -131,7 +130,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
       return null;
     }
 
-    _setState(PassportReaderSecurityVerification());
+    _setState(PassportReaderActiveAuthentication());
     try {
       await _reconnectionLoop(session: session, authenticate: true, whenConnected: session.performActiveAuthentication);
       if (state is PassportReaderCancelled) {
@@ -156,9 +155,6 @@ class PassportReader extends StateNotifier<PassportReaderState> {
   }
 
   bool _isCancelException(Exception e) {
-    if (_isCancelled) {
-      return true;
-    }
     return e.toString().toLowerCase().contains('session invalidated');
   }
 
@@ -180,7 +176,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
           _addLog('Rethrow on attempt $i');
           rethrow;
         }
-        if (_isCancelException(e)) {
+        if (_isCancelled || _isCancelException(e)) {
           return await _setToCancelState(session);
         }
         await Future.delayed(const Duration(milliseconds: 300));
@@ -197,7 +193,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
 
         if (authenticate) {
           try {
-            if (_isCancelException(e)) {
+            if (_isCancelled || _isCancelException(e)) {
               return await _setToCancelState(session);
             }
             await session.authenticate();
@@ -460,15 +456,19 @@ class PassportReaderConnecting extends PassportReaderState {}
 
 class PassportReaderReadingCardAccess extends PassportReaderState {}
 
+class PassportReaderReadingSOD extends PassportReaderState {}
+
+class PassportReaderReadingCOM extends PassportReaderState {}
+
 class PassportReaderAuthenticating extends PassportReaderState {}
 
-class PassportReaderReadingPassportData extends PassportReaderState {
-  PassportReaderReadingPassportData({required this.dataGroup, required this.progress});
+class PassportReaderReadingDataGroup extends PassportReaderState {
+  PassportReaderReadingDataGroup({required this.dataGroup, required this.progress});
   final String dataGroup;
   final double progress;
 }
 
-class PassportReaderSecurityVerification extends PassportReaderState {}
+class PassportReaderActiveAuthentication extends PassportReaderState {}
 
 class PassportReaderSuccess extends PassportReaderState {
   PassportReaderSuccess();
@@ -482,11 +482,13 @@ double progressForState(PassportReaderState state) {
     PassportReaderCancelled() => 0.0,
     PassportReaderCancelling() => 0.0,
     PassportReaderFailed() => 0.0,
-    PassportReaderConnecting() => 0.0,
+    PassportReaderConnecting() => 0.1,
     PassportReaderReadingCardAccess() => 0.2,
-    PassportReaderAuthenticating() => 0.4,
-    PassportReaderReadingPassportData(:final progress) => 0.5 + progress / 3.0,
-    PassportReaderSecurityVerification() => 0.9,
+    PassportReaderAuthenticating() => 0.3,
+    PassportReaderReadingCOM() => 0.4,
+    PassportReaderReadingDataGroup(:final progress) => 0.5 + progress / 4.0,
+    PassportReaderReadingSOD() => 0.8,
+    PassportReaderActiveAuthentication() => 0.9,
     PassportReaderSuccess() => 1.0,
     _ => throw Exception('unexpected state: $state'),
   };
