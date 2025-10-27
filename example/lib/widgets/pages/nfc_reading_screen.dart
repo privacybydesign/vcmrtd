@@ -115,7 +115,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
       await ref
           .read(passportReaderProvider.notifier)
           .readWithMRZ(
-            iosNfcMessages: _getTranslatedIosNfcMessages(),
+            iosNfcMessages: _getMessageMapper(),
             documentNumber: widget.params.docNumber,
             birthDate: widget.params.dateOfBirth,
             expiryDate: widget.params.dateOfExpiry,
@@ -127,28 +127,28 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
     }
   }
 
-  IosNfcMessages _getTranslatedIosNfcMessages() {
+  IosNfcMessageMapper _getMessageMapper() {
     String progressFormatter(double progress) {
       const numStages = 10;
       final prog = (progress * numStages).toInt();
       return '🟢' * prog + '⚪️' * (numStages - prog);
     }
 
-    return IosNfcMessages(
-      progressFormatter: progressFormatter,
-      holdNearPhotoPage: 'Hold your phone close to photo',
-      cancelling: 'Cancelling...',
-      cancelled: 'Cancelled',
-      connecting: 'Connecting...',
-      readingCardAccess: 'Reading EF.CardAccess',
-      authenticating: 'Authenticating',
-      readingPassportData: 'Reading passport data',
-      cancelledByUser: 'Session cancelled by user',
-      performingSecurityVerification: 'Performing security verification...',
-      completedSuccessfully: 'Success!',
-      timeoutWaitingForTag: 'Waiting for tag...',
-      failedToInitiateSession: 'Failed to initiate session',
-      tagLostTryAgain: 'Tag lost, try again.',
-    );
+    return (state) {
+      return switch (state) {
+        PassportReaderPending() => '${progressFormatter(0.0)}\nHold your phone close to photo',
+        PassportReaderCancelled() => '${progressFormatter(0.0)}\nSession cancelled by user',
+        PassportReaderCancelling() => '${progressFormatter(0.0)}\nCancelling...',
+        PassportReaderFailed() => '${progressFormatter(0.0)}\nTag lost, try again.',
+        PassportReaderConnecting() => '${progressFormatter(0.0)}\nConnecting...',
+        PassportReaderReadingCardAccess() => '${progressFormatter(0.2)}\nReading EF.CardAccess',
+        PassportReaderAuthenticating() => '${progressFormatter(0.4)}\nAuthenticating',
+        PassportReaderReadingPassportData(:final progress) =>
+          '${progressFormatter(0.5 + progress / 10)}\nReading passport data',
+        PassportReaderSecurityVerification() => '${progressFormatter(0.8)}\nPerforming security verification...',
+        PassportReaderSuccess() => '${progressFormatter(1.0)}\nSuccess!',
+        _ => '',
+      };
+    };
   }
 }

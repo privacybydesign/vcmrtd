@@ -5,10 +5,13 @@ import 'package:vcmrtd/extensions.dart';
 import 'package:vcmrtd/src/types/data_group_config.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
+typedef IosNfcMessageMapper = String Function(PassportReaderState);
+
 class PassportReader extends StateNotifier<PassportReaderState> {
   final NfcProvider _nfc;
   bool _isCancelled = false;
   List<String> _log = [];
+  IosNfcMessageMapper? _iosNfcMessageMapper;
 
   PassportReader(this._nfc) : super(PassportReaderPending()) {
     checkNfcAvailability();
@@ -45,23 +48,33 @@ class PassportReader extends StateNotifier<PassportReaderState> {
     }
   }
 
-  Future<void> _setIosAlertMessage(String message, String Function(double) progressFormatter) async {
-    if (_nfc.isConnected()) {
-      final progress = progressForState(state);
-      final formattedProgress = progressFormatter(progress);
-      _nfc.setIosAlertMessage('$formattedProgress\n$message');
+  Future<void> _setState(PassportReaderState s) async {
+    state = s;
+    final message = _iosNfcMessageMapper?.call(state);
+    if (message != null && _nfc.isConnected()) {
+      await _nfc.setIosAlertMessage(message);
     }
   }
 
+  Future<void> _initRead(IosNfcMessageMapper mapper) async {
+    if (_nfc.isConnected()) {
+      await _nfc.disconnect();
+    }
+    _iosNfcMessageMapper = mapper;
+    _isCancelled = false;
+    _setState(PassportReaderPending());
+    await checkNfcAvailability();
+  }
+
   Future<PassportDataResult?> readWithMRZ({
-    required IosNfcMessages iosNfcMessages,
     required String documentNumber,
     required DateTime birthDate,
     required DateTime expiryDate,
     required String? countryCode,
+    required IosNfcMessageMapper iosNfcMessages,
     NonceAndSessionId? activeAuthenticationParams,
   }) async {
-    await checkNfcAvailability();
+    await _initRead(iosNfcMessages);
 
     // when nfc is unavailable we can't scan it...
     if (state is PassportReaderNfcUnavailable) {
@@ -85,9 +98,9 @@ class PassportReader extends StateNotifier<PassportReaderState> {
       return null;
     }
 
-    state = PassportReaderReadingCardAccess();
+    _setState(PassportReaderConnecting());
     try {
-      await _reconnectionLoop(session: session, authenticate: false, toTry: session.readCardAccess);
+      await _reconnectionLoop(session: session, authenticate: false, whenConnected: session.readCardAccess);
       if (state is PassportReaderCancelled) {
         return null;
       }
@@ -96,9 +109,9 @@ class PassportReader extends StateNotifier<PassportReaderState> {
       return null;
     }
 
-    state = PassportReaderAuthenticating();
+    _setState(PassportReaderAuthenticating());
     try {
-      await _reconnectionLoop(session: session, authenticate: false, toTry: session.authenticate);
+      await _reconnectionLoop(session: session, authenticate: false, whenConnected: session.authenticate);
       if (state is PassportReaderCancelled) {
         return null;
       }
@@ -108,7 +121,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
     }
 
     try {
-      await _reconnectionLoop(session: session, authenticate: true, toTry: session.readCom);
+      await _reconnectionLoop(session: session, authenticate: true, whenConnected: session.readCom);
       if (state is PassportReaderCancelled) {
         return null;
       }
@@ -118,9 +131,13 @@ class PassportReader extends StateNotifier<PassportReaderState> {
     }
 
     for (final config in _createConfigs()) {
-      state = PassportReaderReadingPassportData(dataGroup: config.name, progress: config.progressStage);
+      _setState(PassportReaderReadingPassportData(dataGroup: config.name, progress: config.progressStage));
       try {
-        await _reconnectionLoop(session: session, authenticate: true, toTry: () => session.readDataGroup(config));
+        await _reconnectionLoop(
+          session: session,
+          authenticate: true,
+          whenConnected: () => session.readDataGroup(config),
+        );
         if (state is PassportReaderCancelled) {
           return null;
         }
@@ -131,7 +148,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
     }
 
     try {
-      await _reconnectionLoop(session: session, authenticate: true, toTry: session.readSod);
+      await _reconnectionLoop(session: session, authenticate: true, whenConnected: session.readSod);
       if (state is PassportReaderCancelled) {
         return null;
       }
@@ -140,9 +157,9 @@ class PassportReader extends StateNotifier<PassportReaderState> {
       return null;
     }
 
-    state = PassportReaderSecurityVerification();
+    _setState(PassportReaderSecurityVerification());
     try {
-      await _reconnectionLoop(session: session, authenticate: true, toTry: session.performActiveAuthentication);
+      await _reconnectionLoop(session: session, authenticate: true, whenConnected: session.performActiveAuthentication);
       if (state is PassportReaderCancelled) {
         return null;
       }
@@ -152,7 +169,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
     }
 
     final result = session.finish();
-    state = PassportReaderSuccess(result: result, mrtdData: session.result);
+    _setState(PassportReaderSuccess(result: result, mrtdData: session.result));
     await session.dispose();
     return result;
   }
@@ -160,7 +177,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
   Future<void> _reconnectionLoop({
     required _Session session,
     required bool authenticate,
-    required Function toTry,
+    required Function whenConnected,
     int numAttempts = 5,
   }) async {
     for (int i = 0; i < numAttempts; ++i) {
@@ -171,7 +188,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
         return;
       }
       try {
-        await toTry();
+        await whenConnected();
         return;
       } catch (e) {
         if (i >= numAttempts - 1) {
@@ -445,42 +462,6 @@ class PassportReaderSuccess extends PassportReaderState {
 }
 
 enum PassportReadingError { unknown, timeoutWaitingForTag, tagLost, failedToInitiateSession, invalidatedByUser }
-
-// ===============================================================
-
-class IosNfcMessages {
-  final String holdNearPhotoPage;
-  final String cancelling;
-  final String cancelled;
-  final String connecting;
-  final String readingCardAccess;
-  final String authenticating;
-  final String readingPassportData;
-  final String cancelledByUser;
-  final String performingSecurityVerification;
-  final String completedSuccessfully;
-  final String timeoutWaitingForTag;
-  final String failedToInitiateSession;
-  final String tagLostTryAgain;
-  final String Function(double) progressFormatter;
-
-  const IosNfcMessages({
-    required this.progressFormatter,
-    required this.holdNearPhotoPage,
-    required this.cancelling,
-    required this.cancelled,
-    required this.connecting,
-    required this.readingCardAccess,
-    required this.authenticating,
-    required this.readingPassportData,
-    required this.cancelledByUser,
-    required this.performingSecurityVerification,
-    required this.completedSuccessfully,
-    required this.timeoutWaitingForTag,
-    required this.failedToInitiateSession,
-    required this.tagLostTryAgain,
-  });
-}
 
 double progressForState(PassportReaderState state) {
   return switch (state) {
