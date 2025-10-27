@@ -373,6 +373,7 @@ class _Session {
       if (Platform.isIOS) {
         await nfc.reconnect().timeout(Duration(seconds: 2));
       } else {
+        await nfc.disconnect();
         await nfc.connect().timeout(Duration(seconds: 2));
       }
     } else {
