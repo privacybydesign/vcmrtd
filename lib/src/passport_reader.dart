@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -368,7 +370,11 @@ class _Session {
       // want to use a timeout here because on ios when the session was cancelled by
       // the user while the tag was already outside of reach, the retry mechanism will
       // still kick in, causing it to hang at reconnecting.
-      await nfc.reconnect().timeout(Duration(seconds: 2));
+      if (Platform.isIOS) {
+        await nfc.reconnect().timeout(Duration(seconds: 2));
+      } else {
+        await nfc.connect().timeout(Duration(seconds: 2));
+      }
     } else {
       await nfc.connect().timeout(Duration(seconds: 2));
     }
