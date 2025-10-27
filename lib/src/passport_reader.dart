@@ -79,7 +79,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
         return null;
       }
     } catch (e) {
-      await _failure(session, 'Failure card reading access: $e');
+      await _failure(session, 'Failure reading Ef.CardAccess: $e');
       return null;
     }
 

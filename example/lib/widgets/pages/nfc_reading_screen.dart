@@ -111,7 +111,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
       final result = await ref
           .read(passportReaderProvider.notifier)
           .readWithMRZ(
-            iosNfcMessages: _getMessageMapper(),
+            iosNfcMessages: _createIosNfcMessageMapper(),
             documentNumber: widget.params.docNumber,
             birthDate: widget.params.dateOfBirth,
             expiryDate: widget.params.dateOfExpiry,
@@ -127,7 +127,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
     }
   }
 
-  IosNfcMessageMapper _getMessageMapper() {
+  IosNfcMessageMapper _createIosNfcMessageMapper() {
     String progressFormatter(double progress) {
       const numStages = 10;
       final prog = (progress * numStages).toInt();
@@ -137,19 +137,21 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
     return (state) {
       final progress = progressFormatter(progressForState(state));
 
-      return switch (state) {
-        PassportReaderPending() => '$progress\nHold your phone close to photo',
-        PassportReaderCancelled() => '$progress\nSession cancelled by user',
-        PassportReaderCancelling() => '$progress\nCancelling...',
-        PassportReaderFailed() => '$progress\nTag lost, try again.',
-        PassportReaderConnecting() => '$progress\nConnecting...',
-        PassportReaderReadingCardAccess() => '$progress\nReading EF.CardAccess',
-        PassportReaderAuthenticating() => '$progress\nAuthenticating',
-        PassportReaderReadingPassportData() => '$progress\nReading passport data',
-        PassportReaderSecurityVerification() => '$progress\nPerforming security verification...',
-        PassportReaderSuccess() => '$progress\nSuccess!',
+      final message = switch (state) {
+        PassportReaderPending() => 'Hold your phone close to photo',
+        PassportReaderCancelled() => 'Session cancelled by user',
+        PassportReaderCancelling() => 'Cancelling...',
+        PassportReaderFailed() => 'Tag lost, try again.',
+        PassportReaderConnecting() => 'Connecting...',
+        PassportReaderReadingCardAccess() => 'Reading EF.CardAccess',
+        PassportReaderAuthenticating() => 'Authenticating',
+        PassportReaderReadingPassportData() => 'Reading passport data',
+        PassportReaderSecurityVerification() => 'Performing security verification...',
+        PassportReaderSuccess() => 'Success!',
         _ => '',
       };
+
+      return '$progress\n$message';
     };
   }
 }
