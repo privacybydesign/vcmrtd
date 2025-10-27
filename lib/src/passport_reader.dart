@@ -8,7 +8,7 @@ import 'package:vcmrtd/vcmrtd.dart';
 typedef IosNfcMessageMapper = String Function(PassportReaderState);
 
 class PassportReader extends StateNotifier<PassportReaderState> {
-  NfcProvider _nfc;
+  final NfcProvider _nfc;
   bool _isCancelled = false;
   List<String> _log = [];
   IosNfcMessageMapper? _iosNfcMessageMapper;
@@ -36,7 +36,6 @@ class PassportReader extends StateNotifier<PassportReaderState> {
   }
 
   Future<void> cancel() async {
-    _addLog('User pressed cancel');
     _isCancelled = true;
   }
 
@@ -223,7 +222,6 @@ class PassportReader extends StateNotifier<PassportReaderState> {
     _log = [];
     _iosNfcMessageMapper = mapper;
     _isCancelled = false;
-    _nfc = NfcProvider();
     await checkNfcAvailability();
     if (state is! PassportReaderNfcUnavailable && _nfc.isConnected()) {
       await _nfc.disconnect();
@@ -367,10 +365,11 @@ class _Session {
     passport = Passport(nfc);
 
     if (nfc.isConnected()) {
-      debugPrint('reconnect');
+      // want to use a timeout here because on ios when the session was cancelled by
+      // the user while the tag was already outside of reach, the retry mechanism will
+      // still kick in, causing it to hang at reconnecting.
       await nfc.reconnect().timeout(Duration(seconds: 2));
     } else {
-      debugPrint('connect');
       await nfc.connect().timeout(Duration(seconds: 2));
     }
   }
