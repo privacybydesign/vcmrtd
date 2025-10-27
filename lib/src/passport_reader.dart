@@ -21,7 +21,7 @@ class Session {
   final DateTime expiryDate;
   final String? countryCode;
   final NonceAndSessionId? activeAuthenticationParams;
-  final Passport passport;
+  Passport passport;
 
   final MrtdData result = MrtdData();
   final Map<String, String> dataGroups = {};
@@ -41,7 +41,7 @@ class Session {
   }
 
   Future<void> retryConnection() async {
-    passport.reset();
+    passport = Passport(nfc);
     // await nfc.reconnect();
     if (nfc.isConnected()) {
       await nfc.reconnect();
@@ -167,6 +167,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
     for (int i = 0; i < numAttempts; ++i) {
       try {
         await toTry();
+        return;
       } catch (e) {
         if (i >= numAttempts - 1) {
           debugPrint('''
@@ -176,7 +177,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
         }
         await Future.delayed(const Duration(milliseconds: 300));
         debugPrint('''
-        \n\n\n\n\n\n\n\n\nRETRY $i\n\n\n\n\n\n
+        \n\n\n\n\n\n\n\n\nRETRY $i\nReason: $e\n\n\n\n\n
         ''');
 
         try {
