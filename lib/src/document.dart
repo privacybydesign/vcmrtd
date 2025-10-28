@@ -52,6 +52,10 @@ abstract class Document {
     _log.debug("Session established");
   }
 
+  void reset() {
+    _api.icc.sm = null;
+  }
+
   /// Starts new Secure Messaging session with passport
   /// using PACE (Password Authenticated Connection Establishment) protocol.
   /// Can throw [ComProviderError] on connection failure.
@@ -59,6 +63,7 @@ abstract class Document {
   /// if BAC session is not supported.
   Future<void> startSessionPACE(final AccessKey accessKey, EfCardAccess efCardAccess) async {
     _log.debug("Starting session");
+    // await _selectDF1();
     await _exec(() => _api.initSessionViaPACE(accessKey, efCardAccess));
     _log.debug("Session established");
   }

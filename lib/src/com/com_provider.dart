@@ -18,6 +18,8 @@ abstract class ComProvider {
   //// Can throw [ComProviderError].
   Future<void> connect();
 
+  Future<void> reconnect();
+
   //// Can throw [ComProviderError].
   Future<void> disconnect();
 

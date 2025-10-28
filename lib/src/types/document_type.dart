@@ -1,0 +1,1 @@
+enum DocumentType { passport, driverLicense }

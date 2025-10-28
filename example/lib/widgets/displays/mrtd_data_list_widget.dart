@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:vcmrtd/extensions.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtdapp/widgets/displays/passport_image_widget.dart';
-import '../../models/mrtd_data.dart';
 import '../../utils/formatters.dart';
 import 'access_protocol_widget.dart';
 import 'mrtd_data_widget.dart';

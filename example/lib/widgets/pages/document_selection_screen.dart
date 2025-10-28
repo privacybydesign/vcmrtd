@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vcmrtdapp/providers/active_authenticiation_provider.dart';
 import 'package:vcmrtdapp/theme/text_styles.dart';
 
 typedef DocumentTypeCallback = void Function();
@@ -16,7 +17,8 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PlatformScaffold(
+    return Scaffold(
+      appBar: AppBar(title: Text('Select document type')),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -32,9 +34,9 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _buildHeader(context),
+                _Header(),
                 const SizedBox(height: 24),
-                _buildOptionCard(
+                _OptionCard(
                   context: context,
                   title: 'Passport',
                   subtitle: 'Use a machine readable passport',
@@ -45,7 +47,7 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
                   badgeText: 'Most common',
                 ),
                 const SizedBox(height: 16),
-                _buildOptionCard(
+                _OptionCard(
                   context: context,
                   title: 'Driving Licence',
                   subtitle: 'Use a machine readable driving licence. Currently works primarily with Dutch licences.',
@@ -60,8 +62,11 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildHeader(BuildContext context) {
+class _Header extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     return Card(
       elevation: 8,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -86,27 +91,48 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
-            Text(
-              'Choose the document type to continue.',
-              style: Theme.of(context).defaultTextStyles.hint,
-              textAlign: TextAlign.center,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Perform active authentication', style: Theme.of(context).defaultTextStyles.hint),
+                Switch(
+                  value: ref.watch(activeAuthenticationProvider),
+                  onChanged: (value) {
+                    ref.read(activeAuthenticationProvider.notifier).state = value;
+                  },
+                ),
+              ],
             ),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildOptionCard({
-    required BuildContext context,
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Color accentColor,
-    required VoidCallback onTap,
-    bool showBadge = false,
-    String? badgeText,
-  }) {
+class _OptionCard extends StatelessWidget {
+  const _OptionCard({
+    required this.context,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.accentColor,
+    required this.onTap,
+    this.showBadge = false,
+    this.badgeText,
+  });
+
+  final BuildContext context;
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color accentColor;
+  final VoidCallback onTap;
+  final bool showBadge;
+  final String? badgeText;
+
+  @override
+  Widget build(BuildContext context) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -162,7 +188,7 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(color: accentColor, borderRadius: BorderRadius.circular(12)),
                     child: Text(
-                      badgeText,
+                      badgeText!,
                       style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                     ),
                   ),

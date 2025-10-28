@@ -11,20 +11,12 @@ import 'package:vcmrtd/vcmrtd.dart';
 
 /// Simple manual entry screen for passport data
 class ManualEntryScreen extends StatefulWidget {
-  final VoidCallback onContinue;
   final VoidCallback onBack;
   final Function(String docNumber, DateTime dob, DateTime expiry)? onDataEntered;
   final Function(String mrzString)? onMrzEntered;
   final DocumentType documentType;
 
-  const ManualEntryScreen({
-    super.key,
-    required this.onContinue,
-    required this.onBack,
-    this.onMrzEntered,
-    this.onDataEntered,
-    required this.documentType,
-  });
+  const ManualEntryScreen({super.key, required this.onBack, this.onDataEntered, required this.documentType});
 
   @override
   State<ManualEntryScreen> createState() => _ManualEntryScreenState();
@@ -56,10 +48,10 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PlatformScaffold(
-      appBar: PlatformAppBar(
-        title: Text('Enter ${widget.documentType.displayName} Details'),
-        leading: PlatformIconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBack),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Enter Passport Details'),
+        leading: IconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBack),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -389,9 +381,6 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
         widget.onMrzEntered!(_mrzController.text.trim().toUpperCase());
       }
     }
-
-    // Continue to next screen
-    widget.onContinue();
   }
 
   Widget _buildHeaderCard() {

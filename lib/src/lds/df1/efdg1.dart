@@ -6,10 +6,6 @@ import 'package:vcmrtd/extensions.dart';
 import 'package:vcmrtd/src/lds/df1/passport_dg1.dart';
 import '../../../vcmrtd.dart';
 import 'edl_dg1.dart';
-import 'dg.dart';
-import '../ef.dart';
-import '../mrz.dart';
-import '../tlv.dart';
 
 class EfDG1 extends DataGroup {
   static const FID = 0x0101;
