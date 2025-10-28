@@ -32,6 +32,10 @@ class PassportReader extends StateNotifier<PassportReaderState> {
     }
   }
 
+  String getLogs() {
+    return '- ${_log.join('\n-')}';
+  }
+
   void reset() {
     _isCancelled = false;
     state = PassportReaderPending();
@@ -150,9 +154,12 @@ class PassportReader extends StateNotifier<PassportReaderState> {
   }
 
   Future<void> _setToCancelState(_Session session) async {
-    state = PassportReaderCancelling();
+    await _setState(PassportReaderCancelling());
     await session.dispose();
-    state = PassportReaderCancelled();
+    if (!mounted) {
+      return;
+    }
+    await _setState(PassportReaderCancelled());
   }
 
   bool _isCancelException(Exception e) {
@@ -166,6 +173,9 @@ class PassportReader extends StateNotifier<PassportReaderState> {
     int numAttempts = 5,
   }) async {
     for (int i = 1; i <= numAttempts; ++i) {
+      if (!mounted) {
+        return;
+      }
       if (_isCancelled) {
         return await _setToCancelState(session);
       }
@@ -181,6 +191,9 @@ class PassportReader extends StateNotifier<PassportReaderState> {
           return await _setToCancelState(session);
         }
         await Future.delayed(const Duration(milliseconds: 300));
+        if (!mounted) {
+          return;
+        }
         if (_isCancelled) {
           return await _setToCancelState(session);
         }
@@ -207,6 +220,9 @@ class PassportReader extends StateNotifier<PassportReaderState> {
   }
 
   Future<void> _setState(PassportReaderState s) async {
+    if (!mounted) {
+      return;
+    }
     _addLog('Setting state to $s');
     state = s;
     final message = _iosNfcMessageMapper?.call(state);
@@ -232,7 +248,8 @@ class PassportReader extends StateNotifier<PassportReaderState> {
 
   Future<void> _failure(_Session session, String message) async {
     _addLog(message);
-    state = PassportReaderFailed(error: PassportReadingError.unknown, logs: message);
+    final logs = '$message:\n${getLogs()}';
+    state = PassportReaderFailed(error: PassportReadingError.unknown, logs: logs);
     await session.dispose();
   }
 
