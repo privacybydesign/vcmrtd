@@ -47,3 +47,4 @@ export 'src/types/active_authentication.dart';
 export 'src/types/verification_response.dart';
 export 'src/types/irma_session_pointer.dart';
 export 'src/types/document_type.dart';
+export 'src/types/document_result.dart';

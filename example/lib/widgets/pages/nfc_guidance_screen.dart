@@ -7,9 +7,7 @@ import 'package:vcmrtd/vcmrtd.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
+
 /// NFC guidance screen - helps users position phone correctly for NFC reading
 class NfcGuidanceScreen extends StatefulWidget {
   final VoidCallback onStartReading;

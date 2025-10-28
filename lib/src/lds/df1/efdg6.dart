@@ -2,11 +2,8 @@
 // ignore_for_file: constant_identifier_names
 
 import 'dart:typed_data';
-import 'package:vcmrtd/extensions.dart';
 import '../../../vcmrtd.dart';
 import 'edl_dg6.dart';
-import 'dg.dart';
-import '../ef.dart';
 
 class EfDG6 extends DataGroup {
   static const FID = 0x0106;
@@ -16,9 +13,7 @@ class EfDG6 extends DataGroup {
 
   // Static method to get the correct TAG based on document type
   static DgTag getTag(DocumentType documentType) {
-    return documentType == DocumentType.driverLicense
-        ? TAG_DRIVING_LICENSE
-        : TAG_PASSPORT;
+    return documentType == DocumentType.driverLicense ? TAG_DRIVING_LICENSE : TAG_PASSPORT;
   }
 
   final DocumentType documentType;

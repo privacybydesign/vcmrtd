@@ -16,7 +16,13 @@ class ManualEntryScreen extends StatefulWidget {
   final Function(String mrzString)? onMrzEntered;
   final DocumentType documentType;
 
-  const ManualEntryScreen({super.key, required this.onBack, this.onDataEntered, required this.documentType});
+  const ManualEntryScreen({
+    super.key,
+    required this.onBack,
+    this.onDataEntered,
+    required this.documentType,
+    required this.onMrzEntered,
+  });
 
   @override
   State<ManualEntryScreen> createState() => _ManualEntryScreenState();

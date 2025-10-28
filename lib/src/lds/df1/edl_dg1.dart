@@ -84,9 +84,7 @@ class EDL_DG1 {
         data.documentNumber = utf8.decode(innerTlv.value);
         break;
       default:
-        print(
-          "Skipping unknown nested tag 0x${innerTlv.tag.toRadixString(16)}",
-        );
+        print("Skipping unknown nested tag 0x${innerTlv.tag.toRadixString(16)}");
     }
   }
 

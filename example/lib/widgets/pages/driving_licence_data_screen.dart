@@ -1,18 +1,13 @@
 import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
-
-import '../../models/mrtd_data.dart';
+import 'package:vcmrtd/vcmrtd.dart';
 
 class DrivingLicenceDataScreen extends StatelessWidget {
   final MrtdData mrtdData;
   final VoidCallback onBackPressed;
 
-  const DrivingLicenceDataScreen({
-    super.key,
-    required this.mrtdData,
-    required this.onBackPressed,
-  });
+  const DrivingLicenceDataScreen({super.key, required this.mrtdData, required this.onBackPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -22,39 +17,33 @@ class DrivingLicenceDataScreen extends StatelessWidget {
     return PlatformScaffold(
       appBar: PlatformAppBar(
         title: const Text('Driving Licence Data'),
-        leading: PlatformIconButton(
-          icon: Icon(PlatformIcons(context).back),
-          onPressed: onBackPressed,
-        ),
+        leading: PlatformIconButton(icon: Icon(PlatformIcons(context).back), onPressed: onBackPressed),
       ),
       body: SafeArea(
         child: edlData == null
             ? const Center(child: Text('No driving licence data available'))
             : ListView(
-          padding: const EdgeInsets.all(16.0),
-          children: [
-            // Photo section
-            if (imageData != null) ...[
-              _buildPhotoSection(imageData),
-              const SizedBox(height: 24),
-            ],
+                padding: const EdgeInsets.all(16.0),
+                children: [
+                  // Photo section
+                  if (imageData != null) ...[_buildPhotoSection(imageData), const SizedBox(height: 24)],
 
-            _buildSection('Personal Information', [
-              _buildDataRow('Surname', edlData.holderSurname),
-              _buildDataRow('Other Names', edlData.holderOtherName),
-              _buildDataRow('Date of Birth', _formatDate(edlData.dateOfBirth)),
-              _buildDataRow('Place of Birth', edlData.placeOfBirth),
-            ]),
-            const SizedBox(height: 24),
-            _buildSection('Document Information', [
-              _buildDataRow('Document Number', edlData.documentNumber),
-              _buildDataRow('Issuing Member State', edlData.issuingMemberState),
-              _buildDataRow('Issuing Authority', edlData.issuingAuthority),
-              _buildDataRow('Date of Issue', _formatDate(edlData.dateOfIssue)),
-              _buildDataRow('Date of Expiry', _formatDate(edlData.dateOfExpiry)),
-            ]),
-          ],
-        ),
+                  _buildSection('Personal Information', [
+                    _buildDataRow('Surname', edlData.holderSurname),
+                    _buildDataRow('Other Names', edlData.holderOtherName),
+                    _buildDataRow('Date of Birth', _formatDate(edlData.dateOfBirth)),
+                    _buildDataRow('Place of Birth', edlData.placeOfBirth),
+                  ]),
+                  const SizedBox(height: 24),
+                  _buildSection('Document Information', [
+                    _buildDataRow('Document Number', edlData.documentNumber),
+                    _buildDataRow('Issuing Member State', edlData.issuingMemberState),
+                    _buildDataRow('Issuing Authority', edlData.issuingAuthority),
+                    _buildDataRow('Date of Issue', _formatDate(edlData.dateOfIssue)),
+                    _buildDataRow('Date of Expiry', _formatDate(edlData.dateOfExpiry)),
+                  ]),
+                ],
+              ),
       ),
     );
   }
@@ -82,16 +71,9 @@ class DrivingLicenceDataScreen extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        CupertinoIcons.photo,
-                        size: 48,
-                        color: CupertinoColors.systemGrey,
-                      ),
+                      Icon(CupertinoIcons.photo, size: 48, color: CupertinoColors.systemGrey),
                       SizedBox(height: 8),
-                      Text(
-                        'Unable to load photo',
-                        style: TextStyle(color: CupertinoColors.systemGrey),
-                      ),
+                      Text('Unable to load photo', style: TextStyle(color: CupertinoColors.systemGrey)),
                     ],
                   ),
                 ),
@@ -107,13 +89,7 @@ class DrivingLicenceDataScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
         ...children,
       ],
@@ -130,18 +106,10 @@ class DrivingLicenceDataScreen extends StatelessWidget {
             width: 140,
             child: Text(
               label,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                color: CupertinoColors.systemGrey,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w600, color: CupertinoColors.systemGrey),
             ),
           ),
-          Expanded(
-            child: Text(
-              value ?? 'N/A',
-              style: const TextStyle(fontSize: 16),
-            ),
-          ),
+          Expanded(child: Text(value ?? 'N/A', style: const TextStyle(fontSize: 16))),
         ],
       ),
     );

@@ -35,18 +35,15 @@ class EDL_DG6 {
     final data = EDL_DG6();
 
     try {
-
       final tlv = TLV.fromBytes(bytes);
 
       if (tlv.tag == BIOMETRIC_INFORMATION_GROUP_TEMPLATE_TAG) {
         _parseBiometricGroup(data, tlv.value);
-      } else {
-      }
+      } else {}
 
       if (data.imageData != null) {
         final preview = data.imageData!.take(10).map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
-      } else {
-      }
+      } else {}
     } catch (e, stackTrace) {
       throw Exception("Error Decoding DG6: $e");
     }
@@ -100,11 +97,8 @@ class EDL_DG6 {
   }
 
   static void _parseFacialImageData(EDL_DG6 data, Uint8List bytes) {
-
     // Verify "FAC\0" header
-    if (bytes.length < 4 ||
-        bytes[0] != 0x46 || bytes[1] != 0x41 ||
-        bytes[2] != 0x43 || bytes[3] != 0x00) {
+    if (bytes.length < 4 || bytes[0] != 0x46 || bytes[1] != 0x41 || bytes[2] != 0x43 || bytes[3] != 0x00) {
       // Try to use raw data anyway
       data.imageData = bytes;
       return;
@@ -193,9 +187,10 @@ class EDL_DG6 {
 
       // Double check with magic bytes
       if (data.imageData![0] == 0xFF && data.imageData![1] == 0xD8) {
-      } else if (data.imageData![0] == 0x00 && data.imageData![1] == 0x00 &&
-          data.imageData![2] == 0x00 && data.imageData![3] == 0x0C) {
-      }
+      } else if (data.imageData![0] == 0x00 &&
+          data.imageData![1] == 0x00 &&
+          data.imageData![2] == 0x00 &&
+          data.imageData![3] == 0x0C) {}
     }
   }
 
@@ -229,10 +224,7 @@ class EDL_DG6 {
     } else if (length == 2) {
       return (data[start] << 8) | data[start + 1];
     } else if (length == 4) {
-      return (data[start] << 24) |
-      (data[start + 1] << 16) |
-      (data[start + 2] << 8) |
-      data[start + 3];
+      return (data[start] << 24) | (data[start + 1] << 16) | (data[start + 2] << 8) | data[start + 3];
     }
     return 0;
   }

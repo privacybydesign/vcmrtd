@@ -111,4 +111,8 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
       ),
     );
   }
+
+  String _getDocumentTypeName() {
+    return widget.documentType.displayName;
+  }
 }

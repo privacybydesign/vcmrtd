@@ -77,6 +77,7 @@ GoRouter createRouter() {
           return ManualEntryScreen(
             documentType: docType,
             onBack: context.pop,
+            onMrzEntered: (mrz) {},
             onDataEntered: (String docNumber, DateTime dob, DateTime expiry) {
               context.pushNfcReadingScreen(
                 NfcReadingRouteParams(
@@ -98,13 +99,13 @@ GoRouter createRouter() {
 
           return switch (ty) {
             DocumentType.passport => PassportDataScreen(
-              onBackPressed: () => context.go('/select_doc_type'),
               mrtdData: s['data'] as MrtdData,
               passportDataResult: s['result'] as PassportDataResult,
+              onBackPressed: () => context.go('/select_doc_type'),
             ),
             DocumentType.driverLicense => DrivingLicenceDataScreen(
               mrtdData: s['data'] as MrtdData,
-              onBackPressed: context.go('/select_doc_type'),
+              onBackPressed: () => context.go('/select_doc_type'),
             ),
           };
         },

@@ -52,7 +52,9 @@ class MrtdDataListWidget extends StatelessWidget {
 
     // EF.COM
     if (mrtdData!.com != null) {
-      list.add(MrtdDataWidget(header: 'EF.COM', collapsedText: '', dataText: formatEfCom(mrtdData!.com!, documentType)));
+      list.add(
+        MrtdDataWidget(header: 'EF.COM', collapsedText: '', dataText: formatEfCom(mrtdData!.com!, documentType)),
+      );
     }
 
     // EF.DG1 (MRZ)

@@ -47,7 +47,7 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
               // Return to Web banner if opened via universal link
               if (widget.passportDataResult.sessionId != null)
                 WebBanner(sessionId: widget.passportDataResult.sessionId!),
-              PersonalDataSection(mrz: widget.mrtdData.dg1!.mrz, dg2: widget.mrtdData.dg2!),
+              PersonalDataSection(mrz: widget.mrtdData.dg1!.passportData!.mrz, dg2: widget.mrtdData.dg2!),
               const SizedBox(height: 20),
               SecurityContent(mrtdData: widget.mrtdData),
               const SizedBox(height: 20),
