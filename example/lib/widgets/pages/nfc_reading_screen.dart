@@ -57,10 +57,6 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
   Widget build(BuildContext context) {
     final passportState = ref.watch(passportReaderProvider);
 
-    if (passportState case PassportReaderSuccess(result: final result, mrtdData: final mrtdData)) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => widget.onSuccess(result, mrtdData));
-    }
-
     if (passportState is PassportReaderPending) {
       return NfcGuidanceScreen(onStartReading: startReading, onBack: context.pop);
     }
@@ -88,8 +84,10 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
       PassportReaderConnecting() => NFCReadingState.connecting,
       PassportReaderReadingCardAccess() => NFCReadingState.authenticating,
       PassportReaderAuthenticating() => NFCReadingState.authenticating,
-      PassportReaderReadingPassportData() => NFCReadingState.reading,
-      PassportReaderSecurityVerification() => NFCReadingState.authenticating,
+      PassportReaderReadingDataGroup() ||
+      PassportReaderReadingSOD() ||
+      PassportReaderReadingCOM() => NFCReadingState.reading,
+      PassportReaderActiveAuthentication() => NFCReadingState.authenticating,
       PassportReaderSuccess() => NFCReadingState.success,
       _ => throw Exception('unexpected state: $state'),
     };
@@ -112,43 +110,52 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
         nonceAndSessionId = await ref.read(passportIssuerProvider).startSessionAtPassportIssuer();
       }
 
-      await ref
+      final result = await ref
           .read(passportReaderProvider.notifier)
           .readWithMRZ(
-            iosNfcMessages: _getTranslatedIosNfcMessages(),
+            iosNfcMessages: _createIosNfcMessageMapper(),
             documentNumber: widget.params.docNumber,
             birthDate: widget.params.dateOfBirth,
             expiryDate: widget.params.dateOfExpiry,
             countryCode: widget.params.countryCode,
             activeAuthenticationParams: nonceAndSessionId,
           );
+      if (result != null) {
+        final (pdr, mrtd) = result;
+        widget.onSuccess(pdr, mrtd);
+      }
     } catch (e) {
       debugPrint('failed to read passport: $e');
     }
   }
 
-  IosNfcMessages _getTranslatedIosNfcMessages() {
+  IosNfcMessageMapper _createIosNfcMessageMapper() {
     String progressFormatter(double progress) {
       const numStages = 10;
       final prog = (progress * numStages).toInt();
       return '🟢' * prog + '⚪️' * (numStages - prog);
     }
 
-    return IosNfcMessages(
-      progressFormatter: progressFormatter,
-      holdNearPhotoPage: 'Hold your phone close to photo',
-      cancelling: 'Cancelling...',
-      cancelled: 'Cancelled',
-      connecting: 'Connecting...',
-      readingCardAccess: 'Reading EF.CardAccess',
-      authenticating: 'Authenticating',
-      readingPassportData: 'Reading passport data',
-      cancelledByUser: 'Session cancelled by user',
-      performingSecurityVerification: 'Performing security verification...',
-      completedSuccessfully: 'Success!',
-      timeoutWaitingForTag: 'Waiting for tag...',
-      failedToInitiateSession: 'Failed to initiate session',
-      tagLostTryAgain: 'Tag lost, try again.',
-    );
+    return (state) {
+      final progress = progressFormatter(progressForState(state));
+
+      final message = switch (state) {
+        PassportReaderPending() => 'Hold your phone close to photo',
+        PassportReaderCancelled() => 'Session cancelled by user',
+        PassportReaderCancelling() => 'Cancelling...',
+        PassportReaderFailed() => 'Tag lost, try again.',
+        PassportReaderConnecting() => 'Connecting...',
+        PassportReaderReadingCOM() => 'Reading Ef.COM',
+        PassportReaderReadingCardAccess() => 'Reading Ef.CardAccess',
+        PassportReaderAuthenticating() => 'Authenticating',
+        PassportReaderReadingDataGroup() => 'Reading passport data',
+        PassportReaderReadingSOD() => 'Reading Ef.SOD',
+        PassportReaderActiveAuthentication() => 'Performing security verification...',
+        PassportReaderSuccess() => 'Success!',
+        _ => '',
+      };
+
+      return '$progress\n$message';
+    };
   }
 }

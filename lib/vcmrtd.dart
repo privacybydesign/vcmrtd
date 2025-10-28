@@ -43,3 +43,4 @@ export 'src/types/mrtd_data.dart';
 export 'src/types/passport_data_result.dart';
 export 'src/types/active_authentication.dart';
 export 'src/types/verification_response.dart';
+export 'src/types/irma_session_pointer.dart';
