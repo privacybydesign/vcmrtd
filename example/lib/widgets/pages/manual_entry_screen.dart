@@ -5,9 +5,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:intl/intl.dart';
-
-import '../../helpers/document_type_extract.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+
+class ManualEntryRouteParams {
+  final DocumentType documentType;
+
+  ManualEntryRouteParams({required this.documentType});
+
+  static ManualEntryRouteParams fromQueryParams(Map<String, String> params) {
+    return ManualEntryRouteParams(documentType: stringToDocumentType(params['document_type']!));
+  }
+
+  Map<String, String> toQueryParams() {
+    return {'document_type': documentTypeToString(documentType)};
+  }
+}
 
 /// Simple manual entry screen for passport data
 class ManualEntryScreen extends StatefulWidget {

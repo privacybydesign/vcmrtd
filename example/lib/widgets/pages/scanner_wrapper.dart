@@ -2,12 +2,25 @@
 // Provides callbacks for the scanner page to integrate with navigation
 
 import 'package:flutter/material.dart';
-import 'package:vcmrtdapp/helpers/document_type_extract.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:mrz_parser/mrz_parser.dart';
 
 import 'scan_screen.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+
+class MrzReaderRouteParams {
+  final DocumentType documentType;
+
+  MrzReaderRouteParams({required this.documentType});
+
+  static MrzReaderRouteParams fromQueryParams(Map<String, String> params) {
+    return MrzReaderRouteParams(documentType: stringToDocumentType(params['document_type']!));
+  }
+
+  Map<String, String> toQueryParams() {
+    return {'document_type': documentTypeToString(documentType)};
+  }
+}
 
 /// Wrapper around ScannerPage to handle navigation callbacks
 class ScannerWrapper extends StatefulWidget {

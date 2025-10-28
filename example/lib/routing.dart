@@ -13,6 +13,16 @@ extension CustomRouteExtensions on BuildContext {
     final path = Uri(path: '/nfc_reading', queryParameters: params.toQueryParams());
     push(path.toString());
   }
+
+  void pushMrzReaderScreen(MrzReaderRouteParams params) {
+    final path = Uri(path: '/mrz_reader', queryParameters: params.toQueryParams());
+    push(path.toString());
+  }
+
+  void pushManualEntryScreen(ManualEntryRouteParams params) {
+    final path = Uri(path: '/manual_entry', queryParameters: params.toQueryParams());
+    push(path.toString());
+  }
 }
 
 final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
@@ -26,11 +36,8 @@ GoRouter createRouter() {
         path: '/select_doc_type',
         builder: (context, state) {
           return DocumentTypeSelectionScreen(
-            onPassportSelected: () {
-              context.push('/mrz_reader');
-            },
-            onDrivingLicenceSelected: () {
-              context.push('/mrz_reader');
+            onDocumentTypeSelected: (docType) {
+              context.pushMrzReaderScreen(MrzReaderRouteParams(documentType: docType));
             },
           );
         },
@@ -38,11 +45,12 @@ GoRouter createRouter() {
       GoRoute(
         path: '/mrz_reader',
         builder: (context, state) {
+          final params = MrzReaderRouteParams.fromQueryParams(state.uri.queryParameters);
           return ScannerWrapper(
             onMrzScanned: (result) {
               context.pushNfcReadingScreen(
                 NfcReadingRouteParams(
-                  documentType: DocumentType.passport,
+                  documentType: params.documentType,
                   docNumber: result.documentNumber,
                   dateOfBirth: result.birthDate,
                   dateOfExpiry: result.expiryDate,
@@ -50,10 +58,31 @@ GoRouter createRouter() {
               );
             },
             onManualEntry: () {
-              context.push('/manual_entry');
+              context.pushManualEntryScreen(ManualEntryRouteParams(documentType: params.documentType));
             },
             onCancel: context.pop,
             onBack: context.pop,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/manual_entry',
+        builder: (context, state) {
+          final params = ManualEntryRouteParams.fromQueryParams(state.uri.queryParameters);
+          return ManualEntryScreen(
+            documentType: params.documentType,
+            onBack: context.pop,
+            onMrzEntered: (mrz) {},
+            onDataEntered: (String docNumber, DateTime dob, DateTime expiry) {
+              context.pushNfcReadingScreen(
+                NfcReadingRouteParams(
+                  docNumber: docNumber,
+                  dateOfBirth: dob,
+                  dateOfExpiry: expiry,
+                  documentType: params.documentType,
+                ),
+              );
+            },
           );
         },
       ),
@@ -65,28 +94,7 @@ GoRouter createRouter() {
             params: params,
             onCancel: context.pop,
             onSuccess: (result, data) {
-              context.go('/result', extra: {'result': result, 'data': data});
-            },
-          );
-        },
-      ),
-      GoRoute(
-        path: '/manual_entry',
-        builder: (context, state) {
-          final docType = DocumentType.passport;
-          return ManualEntryScreen(
-            documentType: docType,
-            onBack: context.pop,
-            onMrzEntered: (mrz) {},
-            onDataEntered: (String docNumber, DateTime dob, DateTime expiry) {
-              context.pushNfcReadingScreen(
-                NfcReadingRouteParams(
-                  docNumber: docNumber,
-                  dateOfBirth: dob,
-                  dateOfExpiry: expiry,
-                  documentType: docType,
-                ),
-              );
+              context.go('/result', extra: {'result': result, 'data': data, 'document_type': params.documentType});
             },
           );
         },
@@ -95,7 +103,7 @@ GoRouter createRouter() {
         path: '/result',
         builder: (context, state) {
           final s = state.extra as Map<String, dynamic>;
-          final ty = s['type'] as DocumentType;
+          final ty = s['document_type'] as DocumentType;
 
           return switch (ty) {
             DocumentType.passport => PassportDataScreen(

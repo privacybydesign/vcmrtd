@@ -1,15 +1,9 @@
 // Created by Crt Vavros, copyright © 2022 ZeroPass. All rights reserved.
 import 'dart:typed_data';
 import 'package:vcmrtd/internal.dart';
-import 'package:vcmrtd/src/types/data.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtd/extensions.dart';
-import 'package:vcmrtd/src/proto/access_key.dart';
 import 'package:logging/logging.dart';
-
-import 'proto/iso7816/icc.dart';
-import 'proto/iso7816/response_apdu.dart';
-import 'proto/mrtd_api.dart';
 
 class DocumentError implements Exception {
   final String message;
