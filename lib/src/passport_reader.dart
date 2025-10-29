@@ -409,14 +409,18 @@ class _Session {
   }
 
   Future<void> authenticate() async {
-    final pace = isPace();
-    final accessKey = DBAKey(documentNumber, birthDate, expiryDate, paceMode: pace);
+    final isPaceMode = isPace();
+    final accessKey = DBAKey(documentNumber, birthDate, expiryDate, paceMode: isPaceMode);
 
-    if (pace) {
-      await passport.startSessionPACE(accessKey, result.cardAccess!);
-    } else {
-      await passport.startSession(accessKey);
-    }
+    result
+      ..isPACE = isPaceMode
+      ..isDBA = accessKey.PACE_REF_KEY_TAG == 0x01;
+
+    final session = isPaceMode
+        ? passport.startSessionPACE(accessKey, result.cardAccess!)
+        : passport.startSession(accessKey);
+
+    await session;
   }
 
   bool isPace() {
