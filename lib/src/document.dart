@@ -1,15 +1,9 @@
 // Created by Crt Vavros, copyright © 2022 ZeroPass. All rights reserved.
 import 'dart:typed_data';
 import 'package:vcmrtd/internal.dart';
-import 'package:vcmrtd/src/types/data.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtd/extensions.dart';
-import 'package:vcmrtd/src/proto/access_key.dart';
 import 'package:logging/logging.dart';
-
-import 'proto/iso7816/icc.dart';
-import 'proto/iso7816/response_apdu.dart';
-import 'proto/mrtd_api.dart';
 
 class DocumentError implements Exception {
   final String message;
@@ -52,6 +46,10 @@ abstract class Document {
     _log.debug("Session established");
   }
 
+  void reset() {
+    _api.icc.sm = null;
+  }
+
   /// Starts new Secure Messaging session with passport
   /// using PACE (Password Authenticated Connection Establishment) protocol.
   /// Can throw [ComProviderError] on connection failure.
@@ -59,6 +57,7 @@ abstract class Document {
   /// if BAC session is not supported.
   Future<void> startSessionPACE(final AccessKey accessKey, EfCardAccess efCardAccess) async {
     _log.debug("Starting session");
+    // await _selectDF1();
     await _exec(() => _api.initSessionViaPACE(accessKey, efCardAccess));
     _log.debug("Session established");
   }

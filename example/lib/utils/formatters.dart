@@ -83,7 +83,7 @@ String formatDG15(final EfDG15 dg15) {
     final tvExp = TLV.decode(tvKeySeq.value.sublist(tvModule.encodedLen));
 
     str +=
-    "RSA\n"
+        "RSA\n"
         "    exponent: ${tvExp.value.hex()}\n"
         "    modulus: ${tvModule.value.hex()}";
   } else {

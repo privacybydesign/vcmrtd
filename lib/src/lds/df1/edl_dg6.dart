@@ -35,19 +35,15 @@ class EDL_DG6 {
     final data = EDL_DG6();
 
     try {
-
       final tlv = TLV.fromBytes(bytes);
 
       if (tlv.tag == BIOMETRIC_INFORMATION_GROUP_TEMPLATE_TAG) {
         _parseBiometricGroup(data, tlv.value);
-      } else {
-      }
+      } else {}
 
       if (data.imageData != null) {
-        final preview = data.imageData!.take(10).map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
-      } else {
-      }
-    } catch (e, stackTrace) {
+      } else {}
+    } catch (e) {
       throw Exception("Error Decoding DG6: $e");
     }
 
@@ -100,11 +96,8 @@ class EDL_DG6 {
   }
 
   static void _parseFacialImageData(EDL_DG6 data, Uint8List bytes) {
-
     // Verify "FAC\0" header
-    if (bytes.length < 4 ||
-        bytes[0] != 0x46 || bytes[1] != 0x41 ||
-        bytes[2] != 0x43 || bytes[3] != 0x00) {
+    if (bytes.length < 4 || bytes[0] != 0x46 || bytes[1] != 0x41 || bytes[2] != 0x43 || bytes[3] != 0x00) {
       // Try to use raw data anyway
       data.imageData = bytes;
       return;
@@ -113,19 +106,15 @@ class EDL_DG6 {
     int offset = 4;
 
     // Version number (4 bytes) - should be "010\0"
-    final version = _extractInt(bytes, offset, 4);
     offset += 4;
 
     // Length of record (4 bytes)
-    final lengthOfRecord = _extractInt(bytes, offset, 4);
     offset += 4;
 
     // Number of facial images (2 bytes)
-    final numberOfFacialImages = _extractInt(bytes, offset, 2);
     offset += 2;
 
     // Facial record data length (4 bytes)
-    final facialRecordDataLength = _extractInt(bytes, offset, 4);
     offset += 4;
 
     // Number of feature points (2 bytes)
@@ -157,7 +146,6 @@ class EDL_DG6 {
     offset += nrFeaturePoints * 8;
 
     // Face image type (1 byte)
-    final faceImageType = bytes[offset];
     offset += 1;
 
     // Image data type (1 byte) - 0 = JPEG, 1 = JPEG2000
@@ -165,11 +153,9 @@ class EDL_DG6 {
     offset += 1;
 
     // Image width (2 bytes)
-    final imageWidth = _extractInt(bytes, offset, 2);
     offset += 2;
 
     // Image height (2 bytes)
-    final imageHeight = _extractInt(bytes, offset, 2);
     offset += 2;
 
     // Image color space (1 byte)
@@ -189,13 +175,12 @@ class EDL_DG6 {
 
     // Verify image format
     if (data.imageData!.length > 4) {
-      final preview = data.imageData!.take(10).map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
-
       // Double check with magic bytes
       if (data.imageData![0] == 0xFF && data.imageData![1] == 0xD8) {
-      } else if (data.imageData![0] == 0x00 && data.imageData![1] == 0x00 &&
-          data.imageData![2] == 0x00 && data.imageData![3] == 0x0C) {
-      }
+      } else if (data.imageData![0] == 0x00 &&
+          data.imageData![1] == 0x00 &&
+          data.imageData![2] == 0x00 &&
+          data.imageData![3] == 0x0C) {}
     }
   }
 
@@ -215,7 +200,6 @@ class EDL_DG6 {
           break;
 
         case FORMAT_TYPE_TAG:
-          final formatBytes = tlv.value.take(4).map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
           break;
       }
 
@@ -229,10 +213,7 @@ class EDL_DG6 {
     } else if (length == 2) {
       return (data[start] << 8) | data[start + 1];
     } else if (length == 4) {
-      return (data[start] << 24) |
-      (data[start + 1] << 16) |
-      (data[start + 2] << 8) |
-      data[start + 3];
+      return (data[start] << 24) | (data[start + 1] << 16) | (data[start + 2] << 8) | data[start + 3];
     }
     return 0;
   }

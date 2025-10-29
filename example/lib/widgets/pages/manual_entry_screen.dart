@@ -5,13 +5,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:intl/intl.dart';
-
-import '../../helpers/document_type_extract.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+
+class ManualEntryRouteParams {
+  final DocumentType documentType;
+
+  ManualEntryRouteParams({required this.documentType});
+
+  static ManualEntryRouteParams fromQueryParams(Map<String, String> params) {
+    return ManualEntryRouteParams(documentType: stringToDocumentType(params['document_type']!));
+  }
+
+  Map<String, String> toQueryParams() {
+    return {'document_type': documentTypeToString(documentType)};
+  }
+}
 
 /// Simple manual entry screen for passport data
 class ManualEntryScreen extends StatefulWidget {
-  final VoidCallback onContinue;
   final VoidCallback onBack;
   final Function(String docNumber, DateTime dob, DateTime expiry)? onDataEntered;
   final Function(String mrzString)? onMrzEntered;
@@ -19,11 +30,10 @@ class ManualEntryScreen extends StatefulWidget {
 
   const ManualEntryScreen({
     super.key,
-    required this.onContinue,
     required this.onBack,
-    this.onMrzEntered,
     this.onDataEntered,
     required this.documentType,
+    required this.onMrzEntered,
   });
 
   @override
@@ -56,10 +66,10 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PlatformScaffold(
-      appBar: PlatformAppBar(
-        title: Text('Enter ${widget.documentType.displayName} Details'),
-        leading: PlatformIconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBack),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Enter Passport Details'),
+        leading: IconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBack),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -389,9 +399,6 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
         widget.onMrzEntered!(_mrzController.text.trim().toUpperCase());
       }
     }
-
-    // Continue to next screen
-    widget.onContinue();
   }
 
   Widget _buildHeaderCard() {

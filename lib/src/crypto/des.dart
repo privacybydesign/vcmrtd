@@ -181,7 +181,7 @@ class DESedeCipher extends DESCipher {
   ///
   /// [key] length must be 8, 16 or 24 bytes.
   /// [iv] length must be 8 bytes.
-  DESedeCipher({required final Uint8List key, required final Uint8List iv}) : super(key: key, iv: iv);
+  DESedeCipher({required super.key, required super.iv});
 
   /// Sets new key. [key] length must be 8, 16 or 24 bytes.
   @override

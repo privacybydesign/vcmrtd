@@ -2,15 +2,29 @@
 // Provides callbacks for the scanner page to integrate with navigation
 
 import 'package:flutter/material.dart';
-import 'package:vcmrtdapp/helpers/document_type_extract.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
+import 'package:mrz_parser/mrz_parser.dart';
 
 import 'scan_screen.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
+class MrzReaderRouteParams {
+  final DocumentType documentType;
+
+  MrzReaderRouteParams({required this.documentType});
+
+  static MrzReaderRouteParams fromQueryParams(Map<String, String> params) {
+    return MrzReaderRouteParams(documentType: stringToDocumentType(params['document_type']!));
+  }
+
+  Map<String, String> toQueryParams() {
+    return {'document_type': documentTypeToString(documentType)};
+  }
+}
+
 /// Wrapper around ScannerPage to handle navigation callbacks
 class ScannerWrapper extends StatefulWidget {
-  final Function(dynamic) onMrzScanned;
+  final Function(MRZResult) onMrzScanned;
   final VoidCallback onManualEntry;
   final VoidCallback onCancel;
   final VoidCallback onBack;
@@ -34,13 +48,10 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    return PlatformScaffold(
-      material: (_, __) => MaterialScaffoldData(backgroundColor: Colors.black, extendBody: true),
-      cupertino: (_, __) => CupertinoPageScaffoldData(backgroundColor: Colors.black),
-      appBar: PlatformAppBar(
-        backgroundColor: Colors.black,
-        title: Text('Scan ${widget.documentType.displayName}'),
-        leading: PlatformIconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBack),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Scan ${_getDocumentTypeName()}'),
+        leading: IconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBack),
       ),
       body: Stack(
         children: [
@@ -100,23 +111,21 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
           children: [
             _buildOverlayCard(context),
             const SizedBox(height: 20),
-            PlatformElevatedButton(
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black),
               onPressed: () {
                 widget.onManualEntry();
               },
-              material: (_, __) => MaterialElevatedButtonData(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black),
-              ),
-              cupertino: (_, __) => CupertinoElevatedButtonData(color: Colors.white),
-              child: Text(
-                'Enter ${widget.documentType.displayName} details manually',
-                style: TextStyle(color: Colors.black),
-              ),
+              child: Text('Enter ${_getDocumentTypeName()} details manually', style: TextStyle(color: Colors.black)),
             ),
             const SizedBox(height: 12),
           ],
         ),
       ),
     );
+  }
+
+  String _getDocumentTypeName() {
+    return widget.documentType.displayName;
   }
 }

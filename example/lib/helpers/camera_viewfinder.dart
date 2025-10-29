@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_commons/google_mlkit_commons.dart';
+import 'package:vcmrtdapp/routing.dart';
 import 'camera_overlay.dart';
 
 class MRZCameraView extends StatefulWidget {
@@ -23,7 +24,7 @@ class MRZCameraView extends StatefulWidget {
   MRZCameraViewState createState() => MRZCameraViewState();
 }
 
-class MRZCameraViewState extends State<MRZCameraView> {
+class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
   CameraController? _controller;
   int _cameraIndex = 1;
   List<CameraDescription> cameras = [];
@@ -32,6 +33,15 @@ class MRZCameraViewState extends State<MRZCameraView> {
   void initState() {
     super.initState();
     initCamera();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      routeObserver.subscribe(this, route);
+    }
   }
 
   Future<void> initCamera() async {
@@ -244,5 +254,36 @@ class MRZCameraViewState extends State<MRZCameraView> {
         bytesPerRow: plane.bytesPerRow, // used only in iOS
       ),
     );
+  }
+
+  @override
+  void didPush() async {
+    // Called when the current route has been pushed.
+    await _startLiveFeed();
+  }
+
+  @override
+  void didPushNext() async {
+    // Called when a new route has been pushed, and this route is no longer visible.
+    await _stopLiveFeed();
+  }
+
+  // Called when the top route has been popped and this route shows again.
+  @override
+  void didPopNext() async {
+    // For some reason an exception is sometimes triggered when going back from a session screen.
+    // This doesn't have any effect for the user, but in order to prevent it from showing up in
+    // Sentry logging we catch it here and pretend like nothing happened...
+    try {
+      await _startLiveFeed();
+    } catch (e) {
+      debugPrint('error while starting live feed: $e');
+    }
+  }
+
+  // Called when this route is popped.
+  @override
+  void didPop() async {
+    await _stopLiveFeed();
   }
 }

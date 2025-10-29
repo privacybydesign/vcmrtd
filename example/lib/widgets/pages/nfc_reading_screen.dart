@@ -1,251 +1,173 @@
-import 'dart:typed_data';
-
-import 'package:vcmrtd/extensions.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
-import 'package:logging/logging.dart';
-import 'package:vcmrtdapp/helpers/document_type_extract.dart';
-import 'package:vcmrtdapp/helpers/read_data_groups.dart';
-import 'package:vcmrtdapp/models/mrtd_data.dart';
-import 'package:vcmrtdapp/models/document_result.dart';
+import 'package:vcmrtdapp/providers/active_authenticiation_provider.dart';
+import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
+import 'package:vcmrtdapp/providers/passport_reader_provider.dart';
 import 'package:vcmrtdapp/widgets/common/animated_nfc_status_widget.dart';
+import 'package:vcmrtdapp/widgets/pages/nfc_guidance_screen.dart';
 
-class NfcReadingScreen extends StatefulWidget {
-  final dynamic mrzResult;
-  final String? manualDocNumber;
-  final DateTime? manualDob;
-  final DateTime? manualExpiry;
+class NfcReadingRouteParams {
+  final String docNumber;
+  final DateTime dateOfBirth;
+  final DateTime dateOfExpiry;
+  final String? countryCode;
   final DocumentType documentType;
-  final Document? document;
-  final String? sessionId;
-  final Uint8List? nonce;
-  final Function(MrtdData, DocumentResult)? onDataRead;
-  final VoidCallback? onCancel;
 
-  const NfcReadingScreen({
-    super.key,
-    this.mrzResult,
-    this.manualDocNumber,
-    this.manualDob,
-    this.manualExpiry,
+  NfcReadingRouteParams({
     required this.documentType,
-    this.document,
-    this.sessionId,
-    this.nonce,
-    this.onDataRead,
-    this.onCancel,
+    required this.docNumber,
+    required this.dateOfBirth,
+    required this.dateOfExpiry,
+    this.countryCode,
   });
 
-  @override
-  State<NfcReadingScreen> createState() => _NfcReadingScreenState();
+  Map<String, String> toQueryParams() {
+    return {
+      'doc_number': docNumber,
+      'date_of_birth': dateOfBirth.toIso8601String(),
+      'date_of_expiry': dateOfExpiry.toIso8601String(),
+      if (countryCode != null) 'country_code': countryCode!,
+      'document_type': switch (documentType) {
+        DocumentType.passport => 'passport',
+        DocumentType.driverLicense => 'drivers_license',
+      },
+    };
+  }
+
+  static NfcReadingRouteParams fromQueryParams(Map<String, String> params) {
+    final docType = params['document_type']!;
+    return NfcReadingRouteParams(
+      docNumber: params['doc_number']!,
+      dateOfBirth: DateTime.parse(params['date_of_birth']!),
+      dateOfExpiry: DateTime.parse(params['date_of_expiry']!),
+      countryCode: params['country_code'],
+      documentType: switch (docType) {
+        'passport' => DocumentType.passport,
+        'drivers_license' => DocumentType.driverLicense,
+        _ => throw Exception('unexpected document type: $docType'),
+      },
+    );
+  }
 }
 
-class _NfcReadingScreenState extends State<NfcReadingScreen> {
-  final NfcProvider _nfc = NfcProvider();
-  String _alertMessage = "";
-  NFCReadingState _nfcState = NFCReadingState.idle;
-  double _readingProgress = 0.0;
-  final _log = Logger("vcmrtd.app");
-  bool _isCancelled = false;
+class NfcReadingScreen extends ConsumerStatefulWidget {
+  const NfcReadingScreen({required this.params, required this.onCancel, required this.onSuccess, super.key});
+
+  final NfcReadingRouteParams params;
+
+  final Function() onCancel;
+  final Function(PassportDataResult, MrtdData) onSuccess;
 
   @override
+  ConsumerState<NfcReadingScreen> createState() => _NfcReadingScreenState();
+}
+
+class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
+  @override
   Widget build(BuildContext context) {
+    final passportState = ref.watch(passportReaderProvider);
+
+    if (passportState is PassportReaderPending) {
+      return NfcGuidanceScreen(onStartReading: startReading, onBack: context.pop);
+    }
+
     return Scaffold(
+      appBar: AppBar(title: Text('Scan passport')),
       body: Center(
         child: AnimatedNFCStatusWidget(
-          state: _nfcState,
-          message: _alertMessage,
-          progress: _readingProgress,
-          onRetry: _nfcState == NFCReadingState.error ? _retryNfcReading : null,
-          onCancel: _canShowCancel() ? _handleCancellation : null,
+          state: _mapState(passportState),
+          message: '',
+          progress: progressForState(passportState),
+          onRetry: retry,
+          onCancel: cancel,
         ),
       ),
     );
   }
 
-  @override
-  void initState() {
-    super.initState();
-
-    _processDBAAuthentication();
+  NFCReadingState _mapState(PassportReaderState state) {
+    return switch (state) {
+      PassportReaderPending() => NFCReadingState.idle,
+      PassportReaderCancelled() => NFCReadingState.error,
+      PassportReaderCancelling() => NFCReadingState.cancelling,
+      PassportReaderFailed() => NFCReadingState.error,
+      PassportReaderConnecting() => NFCReadingState.connecting,
+      PassportReaderReadingCardAccess() => NFCReadingState.authenticating,
+      PassportReaderAuthenticating() => NFCReadingState.authenticating,
+      PassportReaderReadingDataGroup() ||
+      PassportReaderReadingSOD() ||
+      PassportReaderReadingCOM() => NFCReadingState.reading,
+      PassportReaderActiveAuthentication() => NFCReadingState.authenticating,
+      PassportReaderSuccess() => NFCReadingState.success,
+      _ => throw Exception('unexpected state: $state'),
+    };
   }
 
-  void _processDBAAuthentication() async {
-    String docNumber;
-    // Passport fields
-    DateTime birthDate;
-    DateTime expiryDate;
-
-    bool paceMode = false;
-
-    if (widget.documentType == DocumentType.passport) {
-      // Use either MRZ data or manual entry data
-      if (widget.mrzResult != null) {
-        docNumber = widget.mrzResult!.documentNumber;
-        birthDate = widget.mrzResult!.birthDate;
-        expiryDate = widget.mrzResult!.expiryDate;
-
-        // Set PACE mode based on country code if available
-        if (widget.mrzResult!.countryCode == "NLD") {
-          paceMode = true;
-        }
-      } else if (widget.manualDocNumber != null && widget.manualDob != null && widget.manualExpiry != null) {
-        docNumber = widget.manualDocNumber!;
-        birthDate = widget.manualDob!;
-        expiryDate = widget.manualExpiry!;
-      } else {
-        setState(() {
-          _alertMessage =
-              "No ${widget.documentType.displayName} data available. Please go back and enter your passport information.";
-          _nfcState = NFCReadingState.error;
-        });
-        return;
-      }
-      // DBAKey needs to be refactored to work with driver's licence, for now we force pace with can key directly on driver's licence
-      final bacKeySeed = DBAKey(docNumber, birthDate, expiryDate, paceMode: paceMode);
-      _readMRTD(accessKey: bacKeySeed, isPace: paceMode);
-    } else if (widget.documentType == DocumentType.driverLicense) {
-      docNumber = widget.mrzResult!.documentNumber;
-      final canKey = CanKey(docNumber);
-      paceMode = true;
-      _readMRTD(accessKey: canKey, isPace: paceMode);
-    }
+  Future<void> cancel() async {
+    await ref.read(passportReaderProvider.notifier).cancel();
   }
 
-  void _readMRTD({required AccessKey accessKey, bool isPace = false}) async {
+  Future<void> retry() async {
+    ref.read(passportReaderProvider.notifier).reset();
+    startReading();
+  }
+
+  Future<void> startReading() async {
     try {
-      setState(() {
-        _alertMessage = "Hold your phone near the ${widget.documentType.displayName} photo page";
-        _nfcState = NFCReadingState.waiting;
-      });
+      NonceAndSessionId? nonceAndSessionId;
 
-      try {
-        bool demo = false;
-        if (!demo) {
-          if (_isCancelled) return;
-          await _nfc.connect(iosAlertMessage: "Hold your phone near Biometric ${widget.documentType.displayName}");
-        }
-
-        if (_isCancelled) return;
-        final Document document = widget.documentType == DocumentType.passport ? Passport(_nfc) : DrivingLicence(_nfc);
-        setState(() {
-          _alertMessage = "Connecting to ${widget.documentType.displayName.toLowerCase()}...";
-          _nfcState = NFCReadingState.connecting;
-        });
-
-        if (_isCancelled) return;
-        await performDocumentReading(
-          document: document,
-          nfcProvider: _nfc,
-          accessKey: accessKey,
-          isPace: isPace,
-          documentType: widget.documentType,
-          log: _log,
-          sessionId: widget.sessionId,
-          nonce: widget.nonce,
-          updateStatus: ({String? message, NFCReadingState? state, double? progress}) {
-            if (!mounted) {
-              return;
-            }
-            setState(() {
-              if (message != null) {
-                _alertMessage = message;
-              }
-              if (state != null) {
-                _nfcState = state;
-              }
-              if (progress != null) {
-                _readingProgress = progress;
-              }
-            });
-          },
-          onDataRead: widget.onDataRead,
-        );
-      } on Exception catch (e) {
-        if (!_isCancelled) {
-          _handleDocumentError(e);
-        }
-      } finally {
-        await _cleanupNfcConnection();
+      if (ref.read(activeAuthenticationProvider)) {
+        nonceAndSessionId = await ref.read(passportIssuerProvider).startSessionAtPassportIssuer();
       }
-    } on Exception catch (e) {
-      if (!_isCancelled) {
-        _log.error("Read MRTD error: $e");
+
+      final result = await ref
+          .read(passportReaderProvider.notifier)
+          .readWithMRZ(
+            iosNfcMessages: _createIosNfcMessageMapper(),
+            documentNumber: widget.params.docNumber,
+            birthDate: widget.params.dateOfBirth,
+            expiryDate: widget.params.dateOfExpiry,
+            countryCode: widget.params.countryCode,
+            activeAuthenticationParams: nonceAndSessionId,
+          );
+      if (result != null) {
+        final (pdr, mrtd) = result;
+        widget.onSuccess(pdr, mrtd);
       }
-    }
-  }
-
-  void _handleDocumentError(Exception e) {
-    final se = e.toString().toLowerCase();
-    String alertMsg = "An error has occurred while reading ${widget.documentType.displayName.toLowerCase()}!";
-
-    if (e is DocumentError) {
-      if (se.contains("security status not satisfied")) {
-        alertMsg =
-            "Failed to initiate session with ${widget.documentType.displayName.toLowerCase()}.\nCheck input data!";
-      }
-      _log.error("PassportError: ${e.message}");
-    } else {
-      _log.error(
-        "An exception was encountered while trying to read ${widget.documentType.displayName.toLowerCase()}: $e",
-      );
-    }
-
-    if (se.contains('timeout')) {
-      alertMsg = "Timeout while waiting for ${widget.documentType.displayName.toLowerCase()} tag";
-    } else if (se.contains("tag was lost")) {
-      alertMsg = "Tag was lost. Please try again!";
-    } else if (se.contains("invalidated by user")) {
-      alertMsg = "";
-    }
-
-    setState(() {
-      _alertMessage = alertMsg;
-      _nfcState = NFCReadingState.error;
-    });
-  }
-
-  Future<void> _cleanupNfcConnection() async {
-    if (_alertMessage.isNotEmpty) {
-      await _nfc.disconnect(iosErrorMessage: _alertMessage);
-    } else {
-      await _nfc.disconnect(iosAlertMessage: "Finished");
-    }
-  }
-
-  void _retryNfcReading() {
-    setState(() {
-      _alertMessage = "";
-      _nfcState = NFCReadingState.idle;
-      _readingProgress = 0.0;
-      _isCancelled = false;
-    });
-    _processDBAAuthentication();
-  }
-
-  bool _canShowCancel() {
-    return _nfcState == NFCReadingState.waiting ||
-        _nfcState == NFCReadingState.connecting ||
-        _nfcState == NFCReadingState.reading;
-  }
-
-  void _handleCancellation() async {
-    setState(() {
-      _isCancelled = true;
-      _nfcState = NFCReadingState.cancelling;
-      _alertMessage = "Cancelling...";
-    });
-
-    try {
-      // Cleanup NFC connection
-      await _cleanupNfcConnection();
-
-      // Call the cancel callback to navigate back
-      widget.onCancel?.call();
     } catch (e) {
-      _log.error("Error during cancellation: $e");
-      // Even if cleanup fails, still navigate back
-      widget.onCancel?.call();
+      debugPrint('failed to read passport: $e');
     }
+  }
+
+  IosNfcMessageMapper _createIosNfcMessageMapper() {
+    String progressFormatter(double progress) {
+      const numStages = 10;
+      final prog = (progress * numStages).toInt();
+      return '🟢' * prog + '⚪️' * (numStages - prog);
+    }
+
+    return (state) {
+      final progress = progressFormatter(progressForState(state));
+
+      final message = switch (state) {
+        PassportReaderPending() => 'Hold your phone close to photo',
+        PassportReaderCancelled() => 'Session cancelled by user',
+        PassportReaderCancelling() => 'Cancelling...',
+        PassportReaderFailed() => 'Tag lost, try again.',
+        PassportReaderConnecting() => 'Connecting...',
+        PassportReaderReadingCOM() => 'Reading Ef.COM',
+        PassportReaderReadingCardAccess() => 'Reading Ef.CardAccess',
+        PassportReaderAuthenticating() => 'Authenticating',
+        PassportReaderReadingDataGroup() => 'Reading passport data',
+        PassportReaderReadingSOD() => 'Reading Ef.SOD',
+        PassportReaderActiveAuthentication() => 'Performing security verification...',
+        PassportReaderSuccess() => 'Success!',
+        _ => '',
+      };
+
+      return '$progress\n$message';
+    };
   }
 }

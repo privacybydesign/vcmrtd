@@ -14,32 +14,37 @@ dependency_overrides:
       ref: master
 
 dependencies:
+  flutter:
+    sdk: flutter
   archive: ^4.0.2
   collection: ^1.19.0
   convert: ^3.1.2
   crypto: ^3.0.6
   expandable: ^5.0.1
+  http: ^1.5.0
   fixnum: ^1.1.1
   flutter_nfc_kit: ^3.6.0-rc.6
   intl: ^0.20.2
+  json_annotation:
+    ^4.9.0
     #git:
   #  url: https://github.com/ZeroPass/flutter_nfc_kit.git
   logging: ^1.3.0
   meta: ^1.15.0
   tripledes_nullsafety: ^1.0.3
+  flutter_riverpod: ^2.6.1
   pointycastle:
     git:
       url: https://github.com/privacybydesign/pc-dart.git
       ref: master
   diffie_hellman: ^0.1.2
   logger: ^2.3.0
-  
 
 dev_dependencies:
-  flutter:      # needed for flutter_nfc_kit
-    sdk: flutter
+  json_serializable: ^6.6.1
+  build_runner: ^2.5.4
   flutter_lints: ^6.0.0
   flutter_test: # needed for flutter_nfc_kit
     sdk: flutter
-  lints: ^6.0.0
   test: ^1.16.5
+  lints: ^6.0.0
