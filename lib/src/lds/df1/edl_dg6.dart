@@ -42,7 +42,6 @@ class EDL_DG6 {
       } else {}
 
       if (data.imageData != null) {
-        final preview = data.imageData!.take(10).map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
       } else {}
     } catch (e) {
       throw Exception("Error Decoding DG6: $e");
@@ -107,19 +106,15 @@ class EDL_DG6 {
     int offset = 4;
 
     // Version number (4 bytes) - should be "010\0"
-    final version = _extractInt(bytes, offset, 4);
     offset += 4;
 
     // Length of record (4 bytes)
-    final lengthOfRecord = _extractInt(bytes, offset, 4);
     offset += 4;
 
     // Number of facial images (2 bytes)
-    final numberOfFacialImages = _extractInt(bytes, offset, 2);
     offset += 2;
 
     // Facial record data length (4 bytes)
-    final facialRecordDataLength = _extractInt(bytes, offset, 4);
     offset += 4;
 
     // Number of feature points (2 bytes)
@@ -151,7 +146,6 @@ class EDL_DG6 {
     offset += nrFeaturePoints * 8;
 
     // Face image type (1 byte)
-    final faceImageType = bytes[offset];
     offset += 1;
 
     // Image data type (1 byte) - 0 = JPEG, 1 = JPEG2000
@@ -159,11 +153,9 @@ class EDL_DG6 {
     offset += 1;
 
     // Image width (2 bytes)
-    final imageWidth = _extractInt(bytes, offset, 2);
     offset += 2;
 
     // Image height (2 bytes)
-    final imageHeight = _extractInt(bytes, offset, 2);
     offset += 2;
 
     // Image color space (1 byte)
@@ -183,7 +175,6 @@ class EDL_DG6 {
 
     // Verify image format
     if (data.imageData!.length > 4) {
-      final preview = data.imageData!.take(10).map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
 
       // Double check with magic bytes
       if (data.imageData![0] == 0xFF && data.imageData![1] == 0xD8) {
@@ -210,7 +201,6 @@ class EDL_DG6 {
           break;
 
         case FORMAT_TYPE_TAG:
-          final formatBytes = tlv.value.take(4).map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
           break;
       }
 
