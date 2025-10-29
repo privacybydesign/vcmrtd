@@ -78,24 +78,18 @@ class PassportReader extends StateNotifier<PassportReaderState> {
       return null;
     }
 
-    try {
-      await session.readCardAccess();
-    } catch(e) {
-      debugPrint('failed to read card access: $e');
+    if (session.isPace()) {
+      _setState(PassportReaderReadingCardAccess());
+      try {
+        await _reconnectionLoop(session: session, authenticate: false, whenConnected: session.readCardAccess);
+        if (state is PassportReaderCancelled) {
+          return null;
+        }
+      } catch (e) {
+        await _failure(session, 'Failure reading Ef.CardAccess: $e');
+        return null;
+      }
     }
-
-    // if (session.isPace()) {
-    //   _setState(PassportReaderReadingCardAccess());
-    //   try {
-    //     await _reconnectionLoop(session: session, authenticate: false, whenConnected: session.readCardAccess);
-    //     if (state is PassportReaderCancelled) {
-    //       return null;
-    //     }
-    //   } catch (e) {
-    //     await _failure(session, 'Failure reading Ef.CardAccess: $e');
-    //     return null;
-    //   }
-    // }
 
     _setState(PassportReaderAuthenticating());
     try {
@@ -426,7 +420,7 @@ class _Session {
   }
 
   bool isPace() {
-    return countryCode == null || paceCountriesAlpha3.contains(countryCode!.toUpperCase());
+    return countryCode != null && paceCountriesAlpha3.contains(countryCode!.toUpperCase());
   }
 
   Future<void> readDataGroup(DataGroupConfig config) async {
