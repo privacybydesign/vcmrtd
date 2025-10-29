@@ -78,6 +78,12 @@ class PassportReader extends StateNotifier<PassportReaderState> {
       return null;
     }
 
+    try {
+      await session.readCardAccess();
+    } catch(e) {
+      debugPrint('failed to read card access: $e');
+    }
+
     // if (session.isPace()) {
     //   _setState(PassportReaderReadingCardAccess());
     //   try {
