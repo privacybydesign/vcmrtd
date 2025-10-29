@@ -78,15 +78,17 @@ class PassportReader extends StateNotifier<PassportReaderState> {
       return null;
     }
 
-    _setState(PassportReaderReadingCardAccess());
-    try {
-      await _reconnectionLoop(session: session, authenticate: false, whenConnected: session.readCardAccess);
-      if (state is PassportReaderCancelled) {
+    if (session.isPace()) {
+      _setState(PassportReaderReadingCardAccess());
+      try {
+        await _reconnectionLoop(session: session, authenticate: false, whenConnected: session.readCardAccess);
+        if (state is PassportReaderCancelled) {
+          return null;
+        }
+      } catch (e) {
+        await _failure(session, 'Failure reading Ef.CardAccess: $e');
         return null;
       }
-    } catch (e) {
-      await _failure(session, 'Failure reading Ef.CardAccess: $e');
-      return null;
     }
 
     _setState(PassportReaderAuthenticating());
@@ -407,14 +409,18 @@ class _Session {
   }
 
   Future<void> authenticate() async {
-    final isPaceCandidate = countryCode == null || paceCountriesAlpha3.contains(countryCode!.toUpperCase());
-    final accessKey = DBAKey(documentNumber, birthDate, expiryDate, paceMode: isPaceCandidate);
+    final pace = isPace();
+    final accessKey = DBAKey(documentNumber, birthDate, expiryDate, paceMode: pace);
 
-    if (isPaceCandidate) {
+    if (pace) {
       await passport.startSessionPACE(accessKey, result.cardAccess!);
     } else {
       await passport.startSession(accessKey);
     }
+  }
+
+  bool isPace() {
+    return countryCode == null || paceCountriesAlpha3.contains(countryCode!.toUpperCase());
   }
 
   Future<void> readDataGroup(DataGroupConfig config) async {
