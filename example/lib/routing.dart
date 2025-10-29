@@ -44,6 +44,7 @@ GoRouter createRouter() {
                   docNumber: result.documentNumber,
                   dateOfBirth: result.birthDate,
                   dateOfExpiry: result.expiryDate,
+                  countryCode: result.countryCode,
                 ),
               );
             },
