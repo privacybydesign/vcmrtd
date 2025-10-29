@@ -78,18 +78,18 @@ class PassportReader extends StateNotifier<PassportReaderState> {
       return null;
     }
 
-    if (session.isPace()) {
-      _setState(PassportReaderReadingCardAccess());
-      try {
-        await _reconnectionLoop(session: session, authenticate: false, whenConnected: session.readCardAccess);
-        if (state is PassportReaderCancelled) {
-          return null;
-        }
-      } catch (e) {
-        await _failure(session, 'Failure reading Ef.CardAccess: $e');
-        return null;
-      }
-    }
+    // if (session.isPace()) {
+    //   _setState(PassportReaderReadingCardAccess());
+    //   try {
+    //     await _reconnectionLoop(session: session, authenticate: false, whenConnected: session.readCardAccess);
+    //     if (state is PassportReaderCancelled) {
+    //       return null;
+    //     }
+    //   } catch (e) {
+    //     await _failure(session, 'Failure reading Ef.CardAccess: $e');
+    //     return null;
+    //   }
+    // }
 
     _setState(PassportReaderAuthenticating());
     try {
