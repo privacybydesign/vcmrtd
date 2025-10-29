@@ -7,15 +7,15 @@ import 'package:vcmrtd/extensions.dart';
 import 'package:vcmrtd/src/types/data_group_config.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
-typedef IosNfcMessageMapper = String Function(PassportReaderState);
+typedef IosNfcMessageMapper = String Function(DocumentReaderState);
 
-class PassportReader extends StateNotifier<PassportReaderState> {
+class PassportReader extends StateNotifier<DocumentReaderState> {
   final NfcProvider _nfc;
   bool _isCancelled = false;
   List<String> _log = [];
   IosNfcMessageMapper? _iosNfcMessageMapper;
 
-  PassportReader(this._nfc) : super(PassportReaderPending()) {
+  PassportReader(this._nfc) : super(DocumentReaderPending()) {
     checkNfcAvailability();
   }
 
@@ -24,7 +24,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
     try {
       NfcStatus status = await NfcProvider.nfcStatus;
       if (status != NfcStatus.enabled) {
-        state = PassportReaderNfcUnavailable();
+        state = DocumentReaderNfcUnavailable();
       }
       _addLog('NFC status: $status');
     } catch (e) {
@@ -38,7 +38,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
 
   void reset() {
     _isCancelled = false;
-    state = PassportReaderPending();
+    state = DocumentReaderPending();
   }
 
   Future<void> cancel() async {
@@ -56,7 +56,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
     await _initRead(iosNfcMessages);
 
     // when nfc is unavailable we can't scan it...
-    if (state is PassportReaderNfcUnavailable) {
+    if (state is DocumentReaderNfcUnavailable) {
       return null;
     }
 
@@ -70,7 +70,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
       activeAuthenticationParams: activeAuthenticationParams,
     );
 
-    _setState(PassportReaderConnecting());
+    _setState(DocumentReaderConnecting());
     try {
       await _reconnectionLoop(session: session, authenticate: false, whenConnected: session.init);
     } catch (e) {
@@ -79,10 +79,10 @@ class PassportReader extends StateNotifier<PassportReaderState> {
     }
 
     if (session.isPace()) {
-      _setState(PassportReaderReadingCardAccess());
+      _setState(DocumentReaderReadingCardAccess());
       try {
         await _reconnectionLoop(session: session, authenticate: false, whenConnected: session.readCardAccess);
-        if (state is PassportReaderCancelled) {
+        if (state is DocumentReaderCancelled) {
           return null;
         }
       } catch (e) {
@@ -91,10 +91,10 @@ class PassportReader extends StateNotifier<PassportReaderState> {
       }
     }
 
-    _setState(PassportReaderAuthenticating());
+    _setState(DocumentReaderAuthenticating());
     try {
       await _reconnectionLoop(session: session, authenticate: false, whenConnected: session.authenticate);
-      if (state is PassportReaderCancelled) {
+      if (state is DocumentReaderCancelled) {
         return null;
       }
     } catch (e) {
@@ -102,10 +102,10 @@ class PassportReader extends StateNotifier<PassportReaderState> {
       return null;
     }
 
-    _setState(PassportReaderReadingCOM());
+    _setState(DocumentReaderReadingCOM());
     try {
       await _reconnectionLoop(session: session, authenticate: true, whenConnected: session.readCom);
-      if (state is PassportReaderCancelled) {
+      if (state is DocumentReaderCancelled) {
         return null;
       }
     } catch (e) {
@@ -114,10 +114,10 @@ class PassportReader extends StateNotifier<PassportReaderState> {
     }
 
     for (final c in _createConfigs()) {
-      _setState(PassportReaderReadingDataGroup(dataGroup: c.name, progress: c.progressStage));
+      _setState(DocumentReaderReadingDataGroup(dataGroup: c.name, progress: c.progressStage));
       try {
         await _reconnectionLoop(session: session, authenticate: true, whenConnected: () => session.readDataGroup(c));
-        if (state is PassportReaderCancelled) {
+        if (state is DocumentReaderCancelled) {
           return null;
         }
       } catch (e) {
@@ -126,10 +126,10 @@ class PassportReader extends StateNotifier<PassportReaderState> {
       }
     }
 
-    _setState(PassportReaderReadingSOD());
+    _setState(DocumentReaderReadingSOD());
     try {
       await _reconnectionLoop(session: session, authenticate: true, whenConnected: session.readSod);
-      if (state is PassportReaderCancelled) {
+      if (state is DocumentReaderCancelled) {
         return null;
       }
     } catch (e) {
@@ -137,10 +137,10 @@ class PassportReader extends StateNotifier<PassportReaderState> {
       return null;
     }
 
-    _setState(PassportReaderActiveAuthentication());
+    _setState(DocumentReaderActiveAuthentication());
     try {
       await _reconnectionLoop(session: session, authenticate: true, whenConnected: session.performActiveAuthentication);
-      if (state is PassportReaderCancelled) {
+      if (state is DocumentReaderCancelled) {
         return null;
       }
     } catch (e) {
@@ -148,7 +148,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
       return null;
     }
 
-    _setState(PassportReaderSuccess());
+    _setState(DocumentReaderSuccess());
 
     await session.dispose();
     final result = session.finish();
@@ -156,12 +156,12 @@ class PassportReader extends StateNotifier<PassportReaderState> {
   }
 
   Future<void> _setToCancelState(_Session session) async {
-    await _setState(PassportReaderCancelling());
+    await _setState(DocumentReaderCancelling());
     await session.dispose();
     if (!mounted) {
       return;
     }
-    await _setState(PassportReaderCancelled());
+    await _setState(DocumentReaderCancelled());
   }
 
   bool _isCancelException(Exception e) {
@@ -221,7 +221,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
     }
   }
 
-  Future<void> _setState(PassportReaderState s) async {
+  Future<void> _setState(DocumentReaderState s) async {
     if (!mounted) {
       return;
     }
@@ -243,7 +243,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
     _iosNfcMessageMapper = mapper;
     _isCancelled = false;
     await checkNfcAvailability();
-    if (state is! PassportReaderNfcUnavailable && _nfc.isConnected()) {
+    if (state is! DocumentReaderNfcUnavailable && _nfc.isConnected()) {
       await _nfc.disconnect();
     }
   }
@@ -251,7 +251,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
   Future<void> _failure(_Session session, String message) async {
     _addLog(message);
     final logs = '$message:\n${getLogs()}';
-    state = PassportReaderFailed(error: PassportReadingError.unknown, logs: logs);
+    state = DocumentReaderFailed(error: DocumentReadingError.unknown, logs: logs);
     await session.dispose();
   }
 
@@ -465,60 +465,60 @@ class _Session {
 // ===============================================================
 // all the different states the passport reader can be in
 
-class PassportReaderState {}
+class DocumentReaderState {}
 
-class PassportReaderNfcUnavailable extends PassportReaderState {}
+class DocumentReaderNfcUnavailable extends DocumentReaderState {}
 
-class PassportReaderPending extends PassportReaderState {}
+class DocumentReaderPending extends DocumentReaderState {}
 
-class PassportReaderCancelled extends PassportReaderState {}
+class DocumentReaderCancelled extends DocumentReaderState {}
 
-class PassportReaderCancelling extends PassportReaderState {}
+class DocumentReaderCancelling extends DocumentReaderState {}
 
-class PassportReaderFailed extends PassportReaderState {
-  PassportReaderFailed({required this.error, required this.logs});
+class DocumentReaderFailed extends DocumentReaderState {
+  DocumentReaderFailed({required this.error, required this.logs});
   final String logs;
-  final PassportReadingError error;
+  final DocumentReadingError error;
 }
 
-class PassportReaderConnecting extends PassportReaderState {}
+class DocumentReaderConnecting extends DocumentReaderState {}
 
-class PassportReaderReadingCardAccess extends PassportReaderState {}
+class DocumentReaderReadingCardAccess extends DocumentReaderState {}
 
-class PassportReaderReadingSOD extends PassportReaderState {}
+class DocumentReaderReadingSOD extends DocumentReaderState {}
 
-class PassportReaderReadingCOM extends PassportReaderState {}
+class DocumentReaderReadingCOM extends DocumentReaderState {}
 
-class PassportReaderAuthenticating extends PassportReaderState {}
+class DocumentReaderAuthenticating extends DocumentReaderState {}
 
-class PassportReaderReadingDataGroup extends PassportReaderState {
-  PassportReaderReadingDataGroup({required this.dataGroup, required this.progress});
+class DocumentReaderReadingDataGroup extends DocumentReaderState {
+  DocumentReaderReadingDataGroup({required this.dataGroup, required this.progress});
   final String dataGroup;
   final double progress;
 }
 
-class PassportReaderActiveAuthentication extends PassportReaderState {}
+class DocumentReaderActiveAuthentication extends DocumentReaderState {}
 
-class PassportReaderSuccess extends PassportReaderState {
-  PassportReaderSuccess();
+class DocumentReaderSuccess extends DocumentReaderState {
+  DocumentReaderSuccess();
 }
 
-enum PassportReadingError { unknown, timeoutWaitingForTag, tagLost, failedToInitiateSession, invalidatedByUser }
+enum DocumentReadingError { unknown, timeoutWaitingForTag, tagLost, failedToInitiateSession, invalidatedByUser }
 
-double progressForState(PassportReaderState state) {
+double progressForState(DocumentReaderState state) {
   return switch (state) {
-    PassportReaderPending() => 0.0,
-    PassportReaderCancelled() => 0.0,
-    PassportReaderCancelling() => 0.0,
-    PassportReaderFailed() => 0.0,
-    PassportReaderConnecting() => 0.1,
-    PassportReaderReadingCardAccess() => 0.2,
-    PassportReaderAuthenticating() => 0.3,
-    PassportReaderReadingCOM() => 0.4,
-    PassportReaderReadingDataGroup(:final progress) => 0.5 + progress / 4.0,
-    PassportReaderReadingSOD() => 0.8,
-    PassportReaderActiveAuthentication() => 0.9,
-    PassportReaderSuccess() => 1.0,
+    DocumentReaderPending() => 0.0,
+    DocumentReaderCancelled() => 0.0,
+    DocumentReaderCancelling() => 0.0,
+    DocumentReaderFailed() => 0.0,
+    DocumentReaderConnecting() => 0.1,
+    DocumentReaderReadingCardAccess() => 0.2,
+    DocumentReaderAuthenticating() => 0.3,
+    DocumentReaderReadingCOM() => 0.4,
+    DocumentReaderReadingDataGroup(:final progress) => 0.5 + progress / 4.0,
+    DocumentReaderReadingSOD() => 0.8,
+    DocumentReaderActiveAuthentication() => 0.9,
+    DocumentReaderSuccess() => 1.0,
     _ => throw Exception('unexpected state: $state'),
   };
 }

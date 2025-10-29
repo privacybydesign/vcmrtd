@@ -69,7 +69,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
   Widget build(BuildContext context) {
     final passportState = ref.watch(passportReaderProvider);
 
-    if (passportState is PassportReaderPending) {
+    if (passportState is DocumentReaderPending) {
       return NfcGuidanceScreen(onStartReading: startReading, onBack: context.pop);
     }
 
@@ -87,20 +87,20 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
     );
   }
 
-  NFCReadingState _mapState(PassportReaderState state) {
+  NFCReadingState _mapState(DocumentReaderState state) {
     return switch (state) {
-      PassportReaderPending() => NFCReadingState.idle,
-      PassportReaderCancelled() => NFCReadingState.error,
-      PassportReaderCancelling() => NFCReadingState.cancelling,
-      PassportReaderFailed() => NFCReadingState.error,
-      PassportReaderConnecting() => NFCReadingState.connecting,
-      PassportReaderReadingCardAccess() => NFCReadingState.authenticating,
-      PassportReaderAuthenticating() => NFCReadingState.authenticating,
-      PassportReaderReadingDataGroup() ||
-      PassportReaderReadingSOD() ||
-      PassportReaderReadingCOM() => NFCReadingState.reading,
-      PassportReaderActiveAuthentication() => NFCReadingState.authenticating,
-      PassportReaderSuccess() => NFCReadingState.success,
+      DocumentReaderPending() => NFCReadingState.idle,
+      DocumentReaderCancelled() => NFCReadingState.error,
+      DocumentReaderCancelling() => NFCReadingState.cancelling,
+      DocumentReaderFailed() => NFCReadingState.error,
+      DocumentReaderConnecting() => NFCReadingState.connecting,
+      DocumentReaderReadingCardAccess() => NFCReadingState.authenticating,
+      DocumentReaderAuthenticating() => NFCReadingState.authenticating,
+      DocumentReaderReadingDataGroup() ||
+      DocumentReaderReadingSOD() ||
+      DocumentReaderReadingCOM() => NFCReadingState.reading,
+      DocumentReaderActiveAuthentication() => NFCReadingState.authenticating,
+      DocumentReaderSuccess() => NFCReadingState.success,
       _ => throw Exception('unexpected state: $state'),
     };
   }
@@ -152,18 +152,18 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
       final progress = progressFormatter(progressForState(state));
 
       final message = switch (state) {
-        PassportReaderPending() => 'Hold your phone close to photo',
-        PassportReaderCancelled() => 'Session cancelled by user',
-        PassportReaderCancelling() => 'Cancelling...',
-        PassportReaderFailed() => 'Tag lost, try again.',
-        PassportReaderConnecting() => 'Connecting...',
-        PassportReaderReadingCOM() => 'Reading Ef.COM',
-        PassportReaderReadingCardAccess() => 'Reading Ef.CardAccess',
-        PassportReaderAuthenticating() => 'Authenticating',
-        PassportReaderReadingDataGroup() => 'Reading passport data',
-        PassportReaderReadingSOD() => 'Reading Ef.SOD',
-        PassportReaderActiveAuthentication() => 'Performing security verification...',
-        PassportReaderSuccess() => 'Success!',
+        DocumentReaderPending() => 'Hold your phone close to photo',
+        DocumentReaderCancelled() => 'Session cancelled by user',
+        DocumentReaderCancelling() => 'Cancelling...',
+        DocumentReaderFailed() => 'Tag lost, try again.',
+        DocumentReaderConnecting() => 'Connecting...',
+        DocumentReaderReadingCOM() => 'Reading Ef.COM',
+        DocumentReaderReadingCardAccess() => 'Reading Ef.CardAccess',
+        DocumentReaderAuthenticating() => 'Authenticating',
+        DocumentReaderReadingDataGroup() => 'Reading passport data',
+        DocumentReaderReadingSOD() => 'Reading Ef.SOD',
+        DocumentReaderActiveAuthentication() => 'Performing security verification...',
+        DocumentReaderSuccess() => 'Success!',
         _ => '',
       };
 
