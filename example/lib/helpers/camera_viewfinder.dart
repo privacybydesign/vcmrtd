@@ -49,11 +49,11 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
 
     try {
       if (cameras.any(
-        (element) => element.lensDirection == widget.initialDirection && element.sensorOrientation == 90,
+            (element) => element.lensDirection == widget.initialDirection && element.sensorOrientation == 90,
       )) {
         _cameraIndex = cameras.indexOf(
           cameras.firstWhere(
-            (element) => element.lensDirection == widget.initialDirection && element.sensorOrientation == 90,
+                (element) => element.lensDirection == widget.initialDirection && element.sensorOrientation == 90,
           ),
         );
       } else {
