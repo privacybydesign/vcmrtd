@@ -175,7 +175,6 @@ class EDL_DG6 {
 
     // Verify image format
     if (data.imageData!.length > 4) {
-
       // Double check with magic bytes
       if (data.imageData![0] == 0xFF && data.imageData![1] == 0xD8) {
       } else if (data.imageData![0] == 0x00 &&
