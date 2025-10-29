@@ -44,7 +44,7 @@ class EDL_DG6 {
       if (data.imageData != null) {
         final preview = data.imageData!.take(10).map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
       } else {}
-    } catch (e, stackTrace) {
+    } catch (e) {
       throw Exception("Error Decoding DG6: $e");
     }
 

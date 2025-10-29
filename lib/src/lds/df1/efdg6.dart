@@ -19,7 +19,7 @@ class EfDG6 extends DataGroup {
   final DocumentType documentType;
   EDL_DG6? edlImageData;
 
-  EfDG6.fromBytes(Uint8List data, this.documentType) : super.fromBytes(data);
+  EfDG6.fromBytes(super.data, this.documentType) : super.fromBytes();
 
   @override
   int get fid => FID;

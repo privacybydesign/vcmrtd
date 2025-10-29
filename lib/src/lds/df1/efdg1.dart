@@ -18,7 +18,7 @@ class EfDG1 extends DataGroup {
 
   late final PassportMRZ _mrz;
 
-  EfDG1.fromBytes(Uint8List data, this.documentType) : super.fromBytes(data);
+  EfDG1.fromBytes(super.data, this.documentType) : super.fromBytes();
 
   @override
   int get fid => FID;
