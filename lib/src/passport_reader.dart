@@ -390,13 +390,13 @@ class _Session {
       // the user while the tag was already outside of reach, the retry mechanism will
       // still kick in, causing it to hang at reconnecting.
       if (Platform.isIOS) {
-        await nfc.reconnect().timeout(Duration(seconds: 2));
+        await nfc.reconnect().timeout(Duration(seconds: 10));
       } else {
         await nfc.disconnect();
-        await nfc.connect().timeout(Duration(seconds: 2));
+        await nfc.connect().timeout(Duration(seconds: 10));
       }
     } else {
-      await nfc.connect().timeout(Duration(seconds: 2));
+      await nfc.connect().timeout(Duration(seconds: 10));
     }
   }
 
