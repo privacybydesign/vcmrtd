@@ -12,8 +12,8 @@ import 'mrtd_data_widget.dart';
 /// Widget to display list of MRTD data
 class MrtdDataListWidget extends StatelessWidget {
   final MrtdData? mrtdData;
-
-  const MrtdDataListWidget({super.key, this.mrtdData});
+  final DocumentType documentType;
+  const MrtdDataListWidget({super.key, this.mrtdData, required this.documentType});
 
   List<Widget> _buildDataWidgets() {
     List<Widget> list = [];
@@ -52,12 +52,16 @@ class MrtdDataListWidget extends StatelessWidget {
 
     // EF.COM
     if (mrtdData!.com != null) {
-      list.add(MrtdDataWidget(header: 'EF.COM', collapsedText: '', dataText: formatEfCom(mrtdData!.com!)));
+      list.add(
+        MrtdDataWidget(header: 'EF.COM', collapsedText: '', dataText: formatEfCom(mrtdData!.com!, documentType)),
+      );
     }
 
     // EF.DG1 (MRZ)
     if (mrtdData!.dg1 != null) {
-      list.add(MrtdDataWidget(header: 'EF.DG1', collapsedText: '', dataText: formatMRZ(mrtdData!.dg1!.mrz)));
+      list.add(
+        MrtdDataWidget(header: 'EF.DG1', collapsedText: '', dataText: formatMRZ(mrtdData!.dg1!.passportData!.mrz)),
+      );
     }
 
     if (mrtdData!.dg2 != null) {

@@ -1,8 +1,6 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:vcmrtd/src/types/irma_session_pointer.dart';
-import 'package:vcmrtd/src/types/verification_response.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
 /// Interface for passport issuance http requests so they can be mocked/spied in the integration tests

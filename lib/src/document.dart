@@ -1,17 +1,14 @@
 // Created by Crt Vavros, copyright © 2022 ZeroPass. All rights reserved.
 import 'dart:typed_data';
+import 'package:vcmrtd/internal.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtd/extensions.dart';
 import 'package:logging/logging.dart';
 
-import 'proto/iso7816/icc.dart';
-import 'proto/iso7816/response_apdu.dart';
-import 'proto/mrtd_api.dart';
-
-class PassportError implements Exception {
+class DocumentError implements Exception {
   final String message;
   final StatusWord? code;
-  PassportError(this.message, {this.code});
+  DocumentError(this.message, {this.code});
   @override
   String toString() => message;
 }
@@ -25,22 +22,22 @@ enum _DF {
   DF1,
 }
 
-class Passport {
-  static const aaChallengeLen = 8;
-
-  final _log = Logger("passport");
+abstract class Document {
+  final Logger _log;
   final MrtdApi _api;
   _DF _dfSelected = _DF.None;
 
-  /// Constructs new [Passport] instance with communication [provider].
-  /// [provider] should be already connected.
-  Passport(final ComProvider provider) : _api = MrtdApi(provider);
+  Uint8List get applicationAID;
+  DocumentType get documentType;
+
+  Document(ComProvider provider, String loggerName) : _api = MrtdApi(provider), _log = Logger(loggerName);
+
+  /// ------------- start secure messaging (supports: BAC, PACE) ---------------
 
   /// Starts new Secure Messaging session with passport
   /// using Document Basic Access [keys].
-  ///
   /// Can throw [ComProviderError] on connection failure.
-  /// Throws [PassportError] when provided [keys] are invalid or
+  /// Throws [DocumentError] when provided [keys] are invalid or
   /// if BAC session is not supported.
   Future<void> startSession(final DBAKey keys) async {
     _log.debug("Starting session");
@@ -55,9 +52,8 @@ class Passport {
 
   /// Starts new Secure Messaging session with passport
   /// using PACE (Password Authenticated Connection Establishment) protocol.
-  ///
   /// Can throw [ComProviderError] on connection failure.
-  /// Throws [PassportError] when provided [keys] are invalid or
+  /// Throws [DocumentError] when provided [keys] are invalid or
   /// if BAC session is not supported.
   Future<void> startSessionPACE(final AccessKey accessKey, EfCardAccess efCardAccess) async {
     _log.debug("Starting session");
@@ -66,12 +62,14 @@ class Passport {
     _log.debug("Session established");
   }
 
+  // ----------- chip authentication (happens mostly after BAC or PACE) ---------
+
   /// Executes Active Authentication command with [challenge] and
   /// returns signature bytes. The [challenge] should be 8 bytes long.
   /// Session with passport should be already established before calling this function.
   ///
   /// Can throw [ComProviderError] on connection error.
-  /// Throws [PassportError] if invalid [challenge] length, AA is not supported
+  /// Throws [DocumentError] if invalid [challenge] length, AA is not supported
   /// or if calling this function prior establishing session with passport.
   ///
   /// Note: AA is not available if EF.DG15 file is missing from passport.
@@ -80,38 +78,25 @@ class Passport {
     return await _exec(() => _api.activeAuthenticate(challenge));
   }
 
-  /// Reads file EF.CardAccess from passport.
-  ///
-  /// Can throw [ComProviderError] on connection error.
-  /// Throws [PassportError] if file doesn't exist.
-  ///
-  /// Note: Might not be available if PACE is not supported
-  Future<EfCardAccess> readEfCardAccess() async {
-    _log.debug("Reading EF.CardAccess");
-
-    await _selectMF();
-    return EfCardAccess.fromBytes(await _exec(() => _api.readFileBySFI(EfCardAccess.SFI)));
-  }
-
-  /// Reads file EF.CardSecurity from passport.
-  /// Session with passport via PACE protocol
-  /// should be established prior calling this function.
-  ///
-  /// Note: PACE protocol is not supported yet.
-  ///
-  /// Can throw [ComProviderError] on connection error.
-  /// Throws [PassportError] if file doesn't exist or
-  /// if session was not established via PACE protocol.
-  Future<EfCardSecurity> readEfCardSecurity() async {
-    _log.debug("Reading EF.CardSecurity");
-    await _selectMF();
-    return EfCardSecurity.fromBytes(await _exec(() => _api.readFileBySFI(EfCardSecurity.SFI)));
+  // ------------------ helpers, selectors, etc -------------------------
+  Future<T> _exec<T>(Function f) async {
+    try {
+      return await f();
+    } on ICCError catch (e) {
+      var msg = e.sw.description();
+      if (e.sw.sw1 == 0x63 && e.sw.sw2 == 0xcf) {
+        // some older passports return sw=63cf when data to establish session is wrong. (Wrong DBAKeys)
+        msg = StatusWord.securityStatusNotSatisfied.description();
+      }
+      throw DocumentError(msg, code: e.sw);
+    } on MrtdApiError catch (e) {
+      throw DocumentError(e.message, code: e.code);
+    }
   }
 
   /// Reads file EF.COM from passport.
   /// Session with passport should be already
   /// established before calling this function.
-  ///
   /// Can throw [ComProviderError] on connection error.
   /// Throws [PassportError] if file doesn't exist or
   /// if calling this function prior establishing session with passport.
@@ -121,17 +106,71 @@ class Passport {
     return EfCOM.fromBytes(await _exec(() => _api.readFileBySFI(EfCOM.SFI)));
   }
 
+  /// Reads file EF.CardAccess from passport.
+  /// Can throw [ComProviderError] on connection error.
+  /// Throws [DocumentError] if file doesn't exist.
+  ///
+  /// Note: Might not be available if PACE is not supported
+  Future<EfCardAccess> readEfCardAccess() async {
+    _log.debug("Reading EF.CardAccess");
+
+    await _selectMF();
+    return EfCardAccess.fromBytes(await _exec(() => _api.readFileBySFI(EfCardAccess.SFI)));
+  }
+
+  Future<void> _selectDF1() async {
+    if (_dfSelected != _DF.DF1) {
+      _log.debug("Selecting DF1");
+      await _exec(() => _api.selectEMrtdApplication(applicationAID));
+      _dfSelected = _DF.DF1;
+    }
+  }
+
+  Future<void> _selectMF() async {
+    if (_dfSelected != _DF.MF) {
+      _log.debug("Selecting MF");
+      await _exec(() => _api.selectMasterFile());
+      _dfSelected = _DF.MF;
+    }
+  }
+
+  /// Reads file EF.CardSecurity from passport.
+  /// Session with passport via PACE protocol
+  /// should be established prior calling this function.
+  /// Note: PACE protocol is not supported yet.
+  /// Can throw [ComProviderError] on connection error.
+  /// Throws [DocumentError] if file doesn't exist or
+  /// if session was not established via PACE protocol.
+  Future<EfCardSecurity> readEfCardSecurity() async {
+    _log.debug("Reading EF.CardSecurity");
+    await _selectMF();
+    return EfCardSecurity.fromBytes(await _exec(() => _api.readFileBySFI(EfCardSecurity.SFI)));
+  }
+
+  /// Reads file EF.SOD.
+  /// Session with passport should be already
+  /// established before calling this function.
+  /// Can throw [ComProviderError] on connection error.
+  /// Throws [DocumentError] if file doesn't exist or
+  /// if calling this function prior establishing session with passport.
+  Future<EfSOD> readEfSOD() async {
+    _log.debug("Reading EF.SOD");
+    await _selectDF1();
+    return EfSOD.fromBytes(await _exec(() => _api.readFileBySFI(EfSOD.SFI)));
+  }
+
+  // data group readers --------------------------------
   /// Reads file EF.DG1 from passport.
   /// Session with passport should be already
   /// established before calling this function.
   ///
   /// Can throw [ComProviderError] on connection error.
-  /// Throws [PassportError] if file doesn't exist or
+  /// Throws [DocumentError] if file doesn't exist or
   /// if calling this function prior establishing session with passport.
-  Future<EfDG1> readEfDG1() async {
+  Future<EfDG1> readEfDG1(DocumentType documentType) async {
     await _selectDF1();
     _log.debug("Reading EF.DG1");
-    return EfDG1.fromBytes(await _exec(() => _api.readFileBySFI(EfDG1.SFI)));
+    return EfDG1.fromBytes(await _exec(() => _api.readFileBySFI(EfDG1.SFI)), documentType);
   }
 
   /// Reads file EF.DG2 from passport.
@@ -139,7 +178,7 @@ class Passport {
   /// established before calling this function.
   ///
   /// Can throw [ComProviderError] on connection error.
-  /// Throws [PassportError] if file doesn't exist or
+  /// Throws [DocumentError] if file doesn't exist or
   /// if calling this function prior establishing session with passport.
   Future<EfDG2> readEfDG2() async {
     _log.debug("Reading EF.DG2");
@@ -152,9 +191,9 @@ class Passport {
   /// established before calling this function.
   ///
   /// Can throw [ComProviderError] on connection error.
-  /// Throws [PassportError] if file doesn't exist or
+  /// Throws [DocumentError] if file doesn't exist or
   /// if calling this function prior establishing session with passport.
-  /// [PassportError] is also thrown if extended authentication is required
+  /// [DocumentError] is also thrown if extended authentication is required
   /// but wasn't successfully executed first.
   ///
   /// Note: Extended authentication not supported.
@@ -169,9 +208,9 @@ class Passport {
   /// established before calling this function.
   ///
   /// Can throw [ComProviderError] on connection error.
-  /// Throws [PassportError] if file doesn't exist or
+  /// Throws [DocumentError] if file doesn't exist or
   /// if calling this function prior establishing session with passport.
-  /// [PassportError] is also thrown if extended authentication is required
+  /// [DocumentError] is also thrown if extended authentication is required
   /// but wasn't successfully executed first.
   ///
   /// Note: Extended authentication not supported.
@@ -186,7 +225,7 @@ class Passport {
   /// established before calling this function.
   ///
   /// Can throw [ComProviderError] on connection error.
-  /// Throws [PassportError] if file doesn't exist or
+  /// Throws [DocumentError] if file doesn't exist or
   /// if calling this function prior establishing session with passport.
   Future<EfDG5> readEfDG5() async {
     _log.debug("Reading EF.DG5");
@@ -199,12 +238,12 @@ class Passport {
   /// established before calling this function.
   ///
   /// Can throw [ComProviderError] on connection error.
-  /// Throws [PassportError] if file doesn't exist or
+  /// Throws [DocumentError] if file doesn't exist or
   /// if calling this function prior establishing session with passport.
-  Future<EfDG6> readEfDG6() async {
+  Future<EfDG6> readEfDG6(DocumentType document) async {
     _log.debug("Reading EF.DG6");
     await _selectDF1();
-    return EfDG6.fromBytes(await _exec(() => _api.readFileBySFI(EfDG6.SFI)));
+    return EfDG6.fromBytes(await _exec(() => _api.readFileBySFI(EfDG6.SFI)), document);
   }
 
   /// Reads file EF.DG7 from passport.
@@ -212,7 +251,7 @@ class Passport {
   /// established before calling this function.
   ///
   /// Can throw [ComProviderError] on connection error.
-  /// Throws [PassportError] if file doesn't exist or
+  /// Throws [DocumentError] if file doesn't exist or
   /// if calling this function prior establishing session with passport.
   Future<EfDG7> readEfDG7() async {
     _log.debug("Reading EF.DG7");
@@ -225,7 +264,7 @@ class Passport {
   /// established before calling this function.
   ///
   /// Can throw [ComProviderError] on connection error.
-  /// Throws [PassportError] if file doesn't exist or
+  /// Throws [DocumentError] if file doesn't exist or
   /// if calling this function prior establishing session with passport.
   Future<EfDG8> readEfDG8() async {
     _log.debug("Reading EF.DG8");
@@ -238,7 +277,7 @@ class Passport {
   /// established before calling this function.
   ///
   /// Can throw [ComProviderError] on connection error.
-  /// Throws [PassportError] if file doesn't exist or
+  /// Throws [DocumentError] if file doesn't exist or
   /// if calling this function prior establishing session with passport.
   Future<EfDG9> readEfDG9() async {
     _log.debug("Reading EF.DG9");
@@ -251,7 +290,7 @@ class Passport {
   /// established before calling this function.
   ///
   /// Can throw [ComProviderError] on connection error.
-  /// Throws [PassportError] if file doesn't exist or
+  /// Throws [DocumentError] if file doesn't exist or
   /// if calling this function prior establishing session with passport.
   Future<EfDG10> readEfDG10() async {
     _log.debug("Reading EF.DG10");
@@ -264,7 +303,7 @@ class Passport {
   /// established before calling this function.
   ///
   /// Can throw [ComProviderError] on connection error.
-  /// Throws [PassportError] if file doesn't exist or
+  /// Throws [DocumentError] if file doesn't exist or
   /// if calling this function prior establishing session with passport.
   Future<EfDG11> readEfDG11() async {
     _log.debug("Reading EF.DG11");
@@ -277,7 +316,7 @@ class Passport {
   /// established before calling this function.
   ///
   /// Can throw [ComProviderError] on connection error.
-  /// Throws [PassportError] if file doesn't exist or
+  /// Throws [DocumentError] if file doesn't exist or
   /// if calling this function prior establishing session with passport.
   Future<EfDG12> readEfDG12() async {
     _log.debug("Reading EF.DG12");
@@ -290,7 +329,7 @@ class Passport {
   /// established before calling this function.
   ///
   /// Can throw [ComProviderError] on connection error.
-  /// Throws [PassportError] if file doesn't exist or
+  /// Throws [DocumentError] if file doesn't exist or
   /// if calling this function prior establishing session with passport.
   Future<EfDG13> readEfDG13() async {
     _log.debug("Reading EF.DG13");
@@ -303,7 +342,7 @@ class Passport {
   /// established before calling this function.
   ///
   /// Can throw [ComProviderError] on connection error.
-  /// Throws [PassportError] if file doesn't exist or
+  /// Throws [DocumentError] if file doesn't exist or
   /// if calling this function prior establishing session with passport.
   Future<EfDG14> readEfDG14() async {
     await _selectDF1();
@@ -316,7 +355,7 @@ class Passport {
   /// established before calling this function.
   ///
   /// Can throw [ComProviderError] on connection error.
-  /// Throws [PassportError] if file doesn't exist or
+  /// Throws [DocumentError] if file doesn't exist or
   /// if calling this function prior establishing session with passport.
   Future<EfDG15> readEfDG15() async {
     _log.debug("Reading EF.DG15");
@@ -329,55 +368,31 @@ class Passport {
   /// established before calling this function.
   ///
   /// Can throw [ComProviderError] on connection error.
-  /// Throws [PassportError] if file doesn't exist or
+  /// Throws [DocumentError] if file doesn't exist or
   /// if calling this function prior establishing session with passport.
   Future<EfDG16> readEfDG16() async {
     _log.debug("Reading EF.DG16");
     await _selectDF1();
     return EfDG16.fromBytes(await _exec(() => _api.readFileBySFI(EfDG16.SFI)));
   }
+}
 
-  /// Reads file EF.SOD.
-  /// Session with passport should be already
-  /// established before calling this function.
-  ///
-  /// Can throw [ComProviderError] on connection error.
-  /// Throws [PassportError] if file doesn't exist or
-  /// if calling this function prior establishing session with passport.
-  Future<EfSOD> readEfSOD() async {
-    _log.debug("Reading EF.SOD");
-    await _selectDF1();
-    return EfSOD.fromBytes(await _exec(() => _api.readFileBySFI(EfSOD.SFI)));
-  }
+class Passport extends Document {
+  Passport(ComProvider provider) : super(provider, "passport");
 
-  Future<void> _selectMF() async {
-    if (_dfSelected != _DF.MF) {
-      _log.debug("Selecting MF");
-      await _exec(() => _api.selectMasterFile());
-      _dfSelected = _DF.MF;
-    }
-  }
+  @override
+  Uint8List get applicationAID => DF1.PassportAID;
 
-  Future<void> _selectDF1() async {
-    if (_dfSelected != _DF.DF1) {
-      _log.debug("Selecting DF1");
-      await _exec(() => _api.selectEMrtdApplication());
-      _dfSelected = _DF.DF1;
-    }
-  }
+  @override
+  DocumentType get documentType => DocumentType.passport;
+}
 
-  Future<T> _exec<T>(Function f) async {
-    try {
-      return await f();
-    } on ICCError catch (e) {
-      var msg = e.sw.description();
-      if (e.sw.sw1 == 0x63 && e.sw.sw2 == 0xcf) {
-        // some older passports return sw=63cf when data to establish session is wrong. (Wrong DBAKeys)
-        msg = StatusWord.securityStatusNotSatisfied.description();
-      }
-      throw PassportError(msg, code: e.sw);
-    } on MrtdApiError catch (e) {
-      throw PassportError(e.message, code: e.code);
-    }
-  }
+class DrivingLicence extends Document {
+  DrivingLicence(ComProvider provider) : super(provider, "driverslicence");
+
+  @override
+  Uint8List get applicationAID => DF1.DriverAID;
+
+  @override
+  DocumentType get documentType => DocumentType.driverLicense;
 }

@@ -10,12 +10,12 @@ import 'package:vcmrtd/src/proto/dba_key.dart';
 void main() {
   test('BAC key seed test', () {
     // Test vectors taken from: https://www.icao.int/publications/Documents/9303_p11_cons_en.pdf Appendix D to Part 11  section D.2
-    var mrz = MRZ(
+    var mrz = PassportMRZ(
       Uint8List.fromList("I<UTOSTEVENSON<<PETER<JOHN<<<<<<<<<<D23145890<UTO3407127M95071227349<<<8".codeUnits),
     );
     expect(DBAKey.fromMRZ(mrz).keySeed, "b366ad857ddca2b08c0e299811714730".parseHex());
 
-    mrz = MRZ(
+    mrz = PassportMRZ(
       Uint8List.fromList("I<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<L898902C<3UTO6908061F9406236<<<<<<<2".codeUnits),
     ); // Note: composite CD changed from 8 to 2
     expect(
@@ -23,7 +23,7 @@ void main() {
       "239ab9cb282daf66231dc5a4df6bfbae".parseHex(),
     );
 
-    mrz = MRZ(
+    mrz = PassportMRZ(
       Uint8List.fromList(
         "I<UTOD23145890<7349<<<<<<<<<<<3407127M9507122UTO<<<<<<<<<<<2STEVENSON<<PETER<JOHN<<<<<<<<<".codeUnits,
       ),
@@ -33,7 +33,7 @@ void main() {
       "b366ad857ddca2b08c0e299811714730".parseHex(),
     );
 
-    mrz = MRZ(
+    mrz = PassportMRZ(
       Uint8List.fromList(
         "I<UTOL898902C<3<<<<<<<<<<<<<<<6908061F9406236UTO<<<<<<<<<<<2ERIKSSON<<ANNA<MARIA<<<<<<<<<<".codeUnits,
       ),
@@ -45,7 +45,7 @@ void main() {
     // Test vectors taken from Appendix D.3 to Part 11 of ICAO 9303 p11 doc.
     // ref: https://www.icao.int/publications/Documents/9303_p11_cons_en.pdf
 
-    final tvMRZ = MRZ(
+    final tvMRZ = PassportMRZ(
       Uint8List.fromList(
         "I<UTOL898902C<3<<<<<<<<<<<<<<<6908061F9406236UTO<<<<<<<<<<<2ERIKSSON<<ANNA<MARIA<<<<<<<<<<".codeUnits,
       ),

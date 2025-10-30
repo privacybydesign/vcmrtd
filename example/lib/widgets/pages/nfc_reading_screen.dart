@@ -1,6 +1,6 @@
+import 'package:vcmrtd/vcmrtd.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:vcmrtd/vcmrtd.dart';
 import 'package:flutter/material.dart';
 import 'package:vcmrtdapp/providers/active_authenticiation_provider.dart';
 import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
@@ -13,8 +13,10 @@ class NfcReadingRouteParams {
   final DateTime dateOfBirth;
   final DateTime dateOfExpiry;
   final String? countryCode;
+  final DocumentType documentType;
 
   NfcReadingRouteParams({
+    required this.documentType,
     required this.docNumber,
     required this.dateOfBirth,
     required this.dateOfExpiry,
@@ -27,15 +29,25 @@ class NfcReadingRouteParams {
       'date_of_birth': dateOfBirth.toIso8601String(),
       'date_of_expiry': dateOfExpiry.toIso8601String(),
       if (countryCode != null) 'country_code': countryCode!,
+      'document_type': switch (documentType) {
+        DocumentType.passport => 'passport',
+        DocumentType.driverLicense => 'drivers_license',
+      },
     };
   }
 
   static NfcReadingRouteParams fromQueryParams(Map<String, String> params) {
+    final docType = params['document_type']!;
     return NfcReadingRouteParams(
       docNumber: params['doc_number']!,
       dateOfBirth: DateTime.parse(params['date_of_birth']!),
       dateOfExpiry: DateTime.parse(params['date_of_expiry']!),
       countryCode: params['country_code'],
+      documentType: switch (docType) {
+        'passport' => DocumentType.passport,
+        'drivers_license' => DocumentType.driverLicense,
+        _ => throw Exception('unexpected document type: $docType'),
+      },
     );
   }
 }

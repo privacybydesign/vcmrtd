@@ -9,7 +9,6 @@ import 'iso7816/icc.dart';
 import 'iso7816/response_apdu.dart';
 
 import '../com/com_provider.dart';
-import '../lds/df1/df1.dart';
 import '../lds/tlv.dart';
 import '../lds/efcard_access.dart';
 import '../utils.dart';
@@ -85,9 +84,9 @@ class MrtdApi {
   /// Selects eMRTD application (DF1) applet.
   /// Can throw [ICCError] if command is sent to invalid MRTD document.
   /// Can throw [ComProviderError] in case connection with MRTD is lost.
-  Future<void> selectEMrtdApplication() async {
+  Future<void> selectEMrtdApplication(Uint8List applicationAID) async {
     _log.debug("Selecting eMRTD application");
-    await icc.selectFileByDFName(dfName: DF1.AID, p2: _defaultSelectP2);
+    await icc.selectFileByDFName(dfName: applicationAID, p2: _defaultSelectP2);
   }
 
   /// Selects Master File (MF).

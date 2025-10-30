@@ -6,7 +6,7 @@ import 'package:vcmrtdapp/widgets/pages/data_screen_widgets/profile_picture.dart
 import 'info_row.dart';
 
 class PersonalDataSection extends StatelessWidget {
-  final MRZ mrz;
+  final PassportMRZ mrz;
   final EfDG2 dg2;
 
   const PersonalDataSection({super.key, required this.mrz, required this.dg2});

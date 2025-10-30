@@ -1,12 +1,5 @@
 import 'dart:typed_data';
 
-///
-/// Class repesents one Data Row in a Data Field. MRTD additional data
-/// is stored in communication messages.
-/// Structure:
-///   [Tag, Length, Value]
-///
-
 class DataRowException implements Exception {
   final String message;
   DataRowException(this.message);
@@ -14,6 +7,12 @@ class DataRowException implements Exception {
   String toString() => "DataRowException: $message";
 }
 
+///
+/// Class repesents one Data Row in a Data Field. MRTD additional data
+/// is stored in communication messages.
+/// Structure:
+///   [Tag, Length, Value]
+///
 class DataRow {
   late int tag;
   late int length;

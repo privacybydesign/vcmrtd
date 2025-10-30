@@ -1,19 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtdapp/providers/active_authenticiation_provider.dart';
 import 'package:vcmrtdapp/theme/text_styles.dart';
 
-typedef DocumentTypeCallback = void Function();
-
 class DocumentTypeSelectionScreen extends StatelessWidget {
-  final DocumentTypeCallback onPassportSelected;
-  final DocumentTypeCallback onDrivingLicenceSelected;
+  final Function(DocumentType) onDocumentTypeSelected;
 
-  const DocumentTypeSelectionScreen({
-    super.key,
-    required this.onPassportSelected,
-    required this.onDrivingLicenceSelected,
-  });
+  const DocumentTypeSelectionScreen({super.key, required this.onDocumentTypeSelected});
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +36,7 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
                   subtitle: 'Use a machine readable passport',
                   icon: Icons.book,
                   accentColor: const Color(0xFF6b6868),
-                  onTap: onPassportSelected,
+                  onTap: () => onDocumentTypeSelected(DocumentType.passport),
                   showBadge: true,
                   badgeText: 'Most common',
                 ),
@@ -53,7 +47,7 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
                   subtitle: 'Use a machine readable driving licence. Currently works primarily with Dutch licences.',
                   icon: Icons.directions_car,
                   accentColor: const Color(0xFF2196F3),
-                  onTap: onDrivingLicenceSelected,
+                  onTap: () => onDocumentTypeSelected(DocumentType.driverLicense),
                 ),
               ],
             ),
@@ -79,7 +73,7 @@ class _Header extends ConsumerWidget {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: const Color(0xFF6b6868).withOpacity(0.1),
+                color: const Color(0xFF6b6868).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(40),
               ),
               child: const Icon(Icons.document_scanner, size: 40, color: Color(0xFF6b6868)),
@@ -152,7 +146,7 @@ class _OptionCard extends StatelessWidget {
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: accentColor.withOpacity(0.1),
+                        color: accentColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(icon, color: accentColor, size: 24),

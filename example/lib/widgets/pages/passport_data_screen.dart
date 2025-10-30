@@ -12,18 +12,23 @@ import '../../widgets/pages/data_screen_widgets/web_banner.dart';
 
 import 'data_screen_widgets/verify_result.dart';
 
-class DataScreen extends ConsumerStatefulWidget {
+class PassportDataScreen extends ConsumerStatefulWidget {
   final MrtdData mrtdData;
   final PassportDataResult passportDataResult;
   final VoidCallback onBackPressed;
 
-  const DataScreen({super.key, required this.mrtdData, required this.onBackPressed, required this.passportDataResult});
+  const PassportDataScreen({
+    super.key,
+    required this.mrtdData,
+    required this.onBackPressed,
+    required this.passportDataResult,
+  });
 
   @override
-  ConsumerState<DataScreen> createState() => _DataScreenState();
+  ConsumerState<PassportDataScreen> createState() => _PassportDataScreenState();
 }
 
-class _DataScreenState extends ConsumerState<DataScreen> {
+class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
   VerificationResponse? _verificationResponse;
 
   @override
@@ -42,7 +47,7 @@ class _DataScreenState extends ConsumerState<DataScreen> {
               // Return to Web banner if opened via universal link
               if (widget.passportDataResult.sessionId != null)
                 WebBanner(sessionId: widget.passportDataResult.sessionId!),
-              PersonalDataSection(mrz: widget.mrtdData.dg1!.mrz, dg2: widget.mrtdData.dg2!),
+              PersonalDataSection(mrz: widget.mrtdData.dg1!.passportData!.mrz, dg2: widget.mrtdData.dg2!),
               const SizedBox(height: 20),
               SecurityContent(mrtdData: widget.mrtdData),
               const SizedBox(height: 20),

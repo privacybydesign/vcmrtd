@@ -261,7 +261,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
         tag: EfDG1.TAG,
         name: 'DG1',
         progressStage: 0.1,
-        readFunction: (p, mrtdData) async => mrtdData.dg1 = await p.readEfDG1(),
+        readFunction: (p, mrtdData) async => mrtdData.dg1 = await p.readEfDG1(DocumentType.passport),
       ),
       DataGroupConfig(
         tag: EfDG2.TAG,
@@ -276,10 +276,10 @@ class PassportReader extends StateNotifier<PassportReaderState> {
         readFunction: (p, mrtdData) async => mrtdData.dg5 = await p.readEfDG5(),
       ),
       DataGroupConfig(
-        tag: EfDG6.TAG,
+        tag: EfDG6.getTag(DocumentType.passport),
         name: 'DG6',
         progressStage: 0.5,
-        readFunction: (p, mrtdData) async => mrtdData.dg6 = await p.readEfDG6(),
+        readFunction: (p, mrtdData) async => mrtdData.dg6 = await p.readEfDG6(DocumentType.passport),
       ),
       DataGroupConfig(
         tag: EfDG7.TAG,
