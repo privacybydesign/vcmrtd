@@ -48,6 +48,7 @@ GoRouter createRouter() {
         builder: (context, state) {
           final params = MrzReaderRouteParams.fromQueryParams(state.uri.queryParameters);
           return ScannerWrapper(
+            documentType: params.documentType,
             onMrzScanned: (result) {
               context.pushNfcReadingScreen(
                 NfcReadingRouteParams(
@@ -94,8 +95,12 @@ GoRouter createRouter() {
           return NfcReadingScreen(
             params: params,
             onCancel: context.pop,
-            onSuccess: (passport, result) {
-              context.go('/result', extra: {'passport': passport, 'result': result, 'document_type': params.documentType});
+            onSuccess: (document, result) {
+              context.go('/result', extra: {
+                'document': document,
+                'result': result,
+                'document_type': params.documentType,
+              });
             },
           );
         },
@@ -105,15 +110,16 @@ GoRouter createRouter() {
         builder: (context, state) {
           final s = state.extra as Map<String, dynamic>;
           final ty = s['document_type'] as DocumentType;
+          final result = s['result'] as PassportDataResult;
 
           return switch (ty) {
             DocumentType.passport => PassportDataScreen(
-              passport: s['passport'] as PassportData,
-              passportDataResult: s['result'] as PassportDataResult,
+              passport: s['document'] as PassportData,
+              passportDataResult: result,
               onBackPressed: () => context.go('/select_doc_type'),
             ),
             DocumentType.driverLicense => DrivingLicenceDataScreen(
-              mrtdData: MrtdData(),
+              drivingLicence: s['document'] as DrivingLicenceData,
               onBackPressed: () => context.go('/select_doc_type'),
             ),
           };

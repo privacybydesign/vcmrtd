@@ -1,52 +1,61 @@
 import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
-class DrivingLicenceDataScreen extends StatelessWidget {
-  final MrtdData mrtdData;
+
+class DrivingLicenceDataScreen extends ConsumerStatefulWidget {
+  final DrivingLicenceData drivingLicence;
   final VoidCallback onBackPressed;
 
-  const DrivingLicenceDataScreen({super.key, required this.mrtdData, required this.onBackPressed});
+  const DrivingLicenceDataScreen(
+      {super.key, required this.drivingLicence, required this.onBackPressed});
 
   @override
+  ConsumerState<DrivingLicenceDataScreen> createState() => _DrivingLicenceDataScreenState();
+  }
+
+
+
+
+  class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScreen> {
+  @override
   Widget build(BuildContext context) {
-    final edlData = mrtdData.dg1?.edlData;
-    final imageData = mrtdData.dg6?.imageData;
+    final imageData = widget.drivingLicence.photoImageData;
 
     return PlatformScaffold(
       appBar: PlatformAppBar(
         title: const Text('Driving Licence Data'),
-        leading: PlatformIconButton(icon: Icon(PlatformIcons(context).back), onPressed: onBackPressed),
+        leading: PlatformIconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBackPressed),
       ),
       body: SafeArea(
-        child: edlData == null
-            ? const Center(child: Text('No driving licence data available'))
-            : ListView(
-                padding: const EdgeInsets.all(16.0),
-                children: [
-                  // Photo section
-                  if (imageData != null) ...[_buildPhotoSection(imageData), const SizedBox(height: 24)],
+        child: ListView(
+          padding: const EdgeInsets.all(16.0),
+          children: [
+            // Photo section
+            if (imageData != null) ...[_buildPhotoSection(imageData), const SizedBox(height: 24)],
 
-                  _buildSection('Personal Information', [
-                    _buildDataRow('Surname', edlData.holderSurname),
-                    _buildDataRow('Other Names', edlData.holderOtherName),
-                    _buildDataRow('Date of Birth', _formatDate(edlData.dateOfBirth)),
-                    _buildDataRow('Place of Birth', edlData.placeOfBirth),
-                  ]),
-                  const SizedBox(height: 24),
-                  _buildSection('Document Information', [
-                    _buildDataRow('Document Number', edlData.documentNumber),
-                    _buildDataRow('Issuing Member State', edlData.issuingMemberState),
-                    _buildDataRow('Issuing Authority', edlData.issuingAuthority),
-                    _buildDataRow('Date of Issue', _formatDate(edlData.dateOfIssue)),
-                    _buildDataRow('Date of Expiry', _formatDate(edlData.dateOfExpiry)),
-                  ]),
-                ],
-              ),
+            _buildSection('Personal Information', [
+              _buildDataRow('Surname', widget.drivingLicence.holderSurname),
+              _buildDataRow('Other Names', widget.drivingLicence.holderOtherName),
+              _buildDataRow('Date of Birth', _formatDate(widget.drivingLicence.dateOfBirth)),
+              _buildDataRow('Place of Birth', widget.drivingLicence.placeOfBirth),
+            ]),
+            const SizedBox(height: 24),
+            _buildSection('Document Information', [
+              _buildDataRow('Document Number', widget.drivingLicence.documentNumber),
+              _buildDataRow('Issuing Member State', widget.drivingLicence.issuingMemberState),
+              _buildDataRow('Issuing Authority', widget.drivingLicence.issuingAuthority),
+              _buildDataRow('Date of Issue', _formatDate(widget.drivingLicence.dateOfIssue)),
+              _buildDataRow('Date of Expiry', _formatDate(widget.drivingLicence.dateOfExpiry)),
+            ]),
+          ],
+        ),
       ),
     );
   }
+}
 
   Widget _buildPhotoSection(Uint8List imageData) {
     return Center(
@@ -124,4 +133,4 @@ class DrivingLicenceDataScreen extends StatelessWidget {
 
     return '$day/$month/$year';
   }
-}
+

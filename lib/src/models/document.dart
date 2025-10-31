@@ -89,4 +89,64 @@ class PassportData implements DocumentData {
 }
 
 class DrivingLicenceData implements DocumentData {
+  // From DG1
+  final String? issuingMemberState;
+  final String? holderSurname;
+  final String? holderOtherName;
+  final String? dateOfBirth;
+  final String? placeOfBirth;
+  final String? dateOfIssue;
+  final String? dateOfExpiry;
+  final String? issuingAuthority;
+  final String? documentNumber;
+
+  // From DG6 (photo)
+  final Uint8List? photoImageData;
+  final ImageType? photoImageType;
+  final int? patronHeaderVersion;
+  final int? biometricType;
+  final int? numberOfInstances;
+
+  // Raw bytes for unparsed DGs
+  final Uint8List? dg2RawBytes;
+  final Uint8List? dg3RawBytes;
+  final Uint8List? dg4RawBytes;
+  final Uint8List? dg5RawBytes;
+  final Uint8List? dg7RawBytes;
+  final Uint8List? dg8RawBytes;
+  final Uint8List? dg9RawBytes;
+  final Uint8List? dg10RawBytes;
+  final Uint8List? dg11RawBytes;
+  final Uint8List? dg12RawBytes;
+  final Uint8List? dg13RawBytes;
+  final Uint8List? dg14RawBytes;
+
+  DrivingLicenceData({
+    this.issuingMemberState,
+    this.holderSurname,
+    this.holderOtherName,
+    this.dateOfBirth,
+    this.placeOfBirth,
+    this.dateOfIssue,
+    this.dateOfExpiry,
+    this.issuingAuthority,
+    this.documentNumber,
+    this.photoImageData,
+    this.photoImageType,
+    this.patronHeaderVersion,
+    this.biometricType,
+    this.numberOfInstances,
+    this.dg2RawBytes,
+    this.dg3RawBytes,
+    this.dg4RawBytes,
+    this.dg5RawBytes,
+    this.dg7RawBytes,
+    this.dg8RawBytes,
+    this.dg9RawBytes,
+    this.dg10RawBytes,
+    this.dg11RawBytes,
+    this.dg12RawBytes,
+    this.dg13RawBytes,
+    this.dg14RawBytes,
+  });
 }

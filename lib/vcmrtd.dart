@@ -41,6 +41,7 @@ export 'src/passport_issuer.dart';
 export 'src/proto/dba_key.dart';
 export 'src/proto/access_key.dart';
 export 'src/parsers/passport_parser.dart';
+export 'src/parsers/driving_licence_parser.dart';
 export 'src/models/document.dart';
 export 'src/data_group_reader.dart';
 export 'src/types/mrtd_data.dart';
