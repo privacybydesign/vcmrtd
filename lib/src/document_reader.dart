@@ -4,18 +4,25 @@ import 'package:flutter/foundation.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/extensions.dart';
-import 'package:vcmrtd/src/types/data_group_config.dart';
+import 'package:vcmrtd/src/data_group_reader.dart';
+import 'package:vcmrtd/src/models/document.dart';
+import 'package:vcmrtd/src/parsers/document_parser.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+
+import 'lds/df1/passportDGs.dart';
 
 typedef IosNfcMessageMapper = String Function(DocumentReaderState);
 
-class PassportReader extends StateNotifier<DocumentReaderState> {
+class DocumentReader<DocType extends DocumentData> extends StateNotifier<DocumentReaderState> {
+  final DocumentParser<DocType> parser;
+  final DataGroupReader reader;
   final NfcProvider _nfc;
+
   bool _isCancelled = false;
   List<String> _log = [];
   IosNfcMessageMapper? _iosNfcMessageMapper;
 
-  PassportReader(this._nfc) : super(DocumentReaderPending()) {
+  DocumentReader(this.parser, this.reader, this._nfc) : super(DocumentReaderPending()) {
     checkNfcAvailability();
   }
 
@@ -45,7 +52,7 @@ class PassportReader extends StateNotifier<DocumentReaderState> {
     _isCancelled = true;
   }
 
-  Future<(PassportDataResult, MrtdData)?> readWithMRZ({
+  Future<(DocType, PassportDataResult)?> readWithMRZ({
     required String documentNumber,
     required DateTime birthDate,
     required DateTime expiryDate,
@@ -55,20 +62,22 @@ class PassportReader extends StateNotifier<DocumentReaderState> {
   }) async {
     await _initRead(iosNfcMessages);
 
-    // when nfc is unavailable we can't scan it...
     if (state is DocumentReaderNfcUnavailable) {
       return null;
     }
 
     final session = _Session(
       nfc: _nfc,
-      passport: Passport(_nfc),
+      reader: reader,
       documentNumber: documentNumber,
       birthDate: birthDate,
       expiryDate: expiryDate,
       countryCode: countryCode,
-      activeAuthenticationParams: activeAuthenticationParams,
     );
+
+    final Map<String, String> dataGroups = {};
+    EfSOD? sod;
+    Uint8List? aaSig;
 
     _setState(DocumentReaderConnecting());
     try {
@@ -114,9 +123,29 @@ class PassportReader extends StateNotifier<DocumentReaderState> {
     }
 
     for (final c in _createConfigs()) {
-      _setState(DocumentReaderReadingDataGroup(dataGroup: c.name, progress: c.progressStage));
+      final tagValues = session.com!.dgTags.map((t) => t.value).toSet();
+
+
+
+      if (!tagValues.contains(c.tag.value)) {
+        continue;
+      }
+
+      _setState(DocumentReaderReadingDataGroup(dataGroup: c.name, progress: c.progress));
       try {
-        await _reconnectionLoop(session: session, authenticate: true, whenConnected: () => session.readDataGroup(c));
+        await _reconnectionLoop(
+          session: session,
+          authenticate: true,
+          whenConnected: () async {
+            final bytes = await c.readFn();
+            c.parseFn(bytes);
+
+            final hexData = bytes.hex();
+            if (hexData.isNotEmpty) {
+              dataGroups[c.name] = hexData;
+            }
+          },
+        );
         if (state is DocumentReaderCancelled) {
           return null;
         }
@@ -128,31 +157,54 @@ class PassportReader extends StateNotifier<DocumentReaderState> {
 
     _setState(DocumentReaderReadingSOD());
     try {
-      await _reconnectionLoop(session: session, authenticate: true, whenConnected: session.readSod);
+      await _reconnectionLoop(
+          session: session,
+          authenticate: true,
+          whenConnected: () async => sod = await reader.readEfSOD()
+      );
       if (state is DocumentReaderCancelled) {
         return null;
       }
     } catch (e) {
-      await _failure(session, 'Failure active authentication: $e');
+      await _failure(session, 'Failure reading SOD: $e');
       return null;
     }
 
-    _setState(DocumentReaderActiveAuthentication());
-    try {
-      await _reconnectionLoop(session: session, authenticate: true, whenConnected: session.performActiveAuthentication);
-      if (state is DocumentReaderCancelled) {
+    if (activeAuthenticationParams != null && session.com!.dgTags.contains(PassportEfDG15.TAG.value)) {
+      _setState(DocumentReaderActiveAuthentication());
+      try {
+        await _reconnectionLoop(
+          session: session,
+          authenticate: true,
+          whenConnected: () async => aaSig = await reader.activeAuthenticate(
+              stringToUint8List(activeAuthenticationParams.nonce)
+          ),
+        );
+        if (state is DocumentReaderCancelled) {
+          return null;
+        }
+      } catch (e) {
+        await _failure(session, 'Failure active authentication: $e');
         return null;
       }
-    } catch (e) {
-      await _failure(session, 'Failure active authentication: $e');
-      return null;
     }
 
     _setState(DocumentReaderSuccess());
 
     await session.dispose();
-    final result = session.finish();
-    return (result, session.result);
+
+    final document = parser.createDocument();
+    final result = PassportDataResult(
+      dataGroups: dataGroups,
+      efSod: sod?.toBytes().hex() ?? '',
+      nonce: activeAuthenticationParams != null
+          ? stringToUint8List(activeAuthenticationParams.nonce)
+          : null,
+      sessionId: activeAuthenticationParams?.sessionId,
+      aaSignature: aaSig,
+    );
+
+    return (document, result);
   }
 
   Future<void> _setToCancelState(_Session session) async {
@@ -255,127 +307,65 @@ class PassportReader extends StateNotifier<DocumentReaderState> {
     await session.dispose();
   }
 
-  List<DataGroupConfig> _createConfigs() {
+  List<_DGConfig> _createConfigs() {
     return [
-      DataGroupConfig(
-        tag: EfDG1.TAG,
-        name: 'DG1',
-        progressStage: 0.1,
-        readFunction: (p, mrtdData) async => mrtdData.dg1 = await p.readEfDG1(DocumentType.passport),
-      ),
-      DataGroupConfig(
-        tag: EfDG2.TAG,
-        name: 'DG2',
-        progressStage: 0.2,
-        readFunction: (p, mrtdData) async => mrtdData.dg2 = await p.readEfDG2(),
-      ),
-      DataGroupConfig(
-        tag: EfDG5.TAG,
-        name: 'DG5',
-        progressStage: 0.4,
-        readFunction: (p, mrtdData) async => mrtdData.dg5 = await p.readEfDG5(),
-      ),
-      DataGroupConfig(
-        tag: EfDG6.getTag(DocumentType.passport),
-        name: 'DG6',
-        progressStage: 0.5,
-        readFunction: (p, mrtdData) async => mrtdData.dg6 = await p.readEfDG6(DocumentType.passport),
-      ),
-      DataGroupConfig(
-        tag: EfDG7.TAG,
-        name: 'DG7',
-        progressStage: 0.6,
-        readFunction: (p, mrtdData) async => mrtdData.dg7 = await p.readEfDG7(),
-      ),
-      DataGroupConfig(
-        tag: EfDG8.TAG,
-        name: 'DG8',
-        progressStage: 0.7,
-        readFunction: (p, mrtdData) async => mrtdData.dg8 = await p.readEfDG8(),
-      ),
-      DataGroupConfig(
-        tag: EfDG9.TAG,
-        name: 'DG9',
-        progressStage: 0.75,
-        readFunction: (p, mrtdData) async => mrtdData.dg9 = await p.readEfDG9(),
-      ),
-      DataGroupConfig(
-        tag: EfDG10.TAG,
-        name: 'DG10',
-        progressStage: 0.8,
-        readFunction: (p, mrtdData) async => mrtdData.dg10 = await p.readEfDG10(),
-      ),
-      DataGroupConfig(
-        tag: EfDG11.TAG,
-        name: 'DG11',
-        progressStage: 0.85,
-        readFunction: (p, mrtdData) async => mrtdData.dg11 = await p.readEfDG11(),
-      ),
-      DataGroupConfig(
-        tag: EfDG12.TAG,
-        name: 'DG12',
-        progressStage: 0.9,
-        readFunction: (p, mrtdData) async => mrtdData.dg12 = await p.readEfDG12(),
-      ),
-      DataGroupConfig(
-        tag: EfDG13.TAG,
-        name: 'DG13',
-        progressStage: 0.9,
-        readFunction: (p, mrtdData) async => mrtdData.dg13 = await p.readEfDG13(),
-      ),
-      DataGroupConfig(
-        tag: EfDG14.TAG,
-        name: 'DG14',
-        progressStage: 0.95,
-        readFunction: (p, mrtdData) async => mrtdData.dg14 = await p.readEfDG14(),
-      ),
-      DataGroupConfig(
-        tag: EfDG15.TAG,
-        name: 'DG15',
-        progressStage: 0.9,
-        readFunction: (passport, data) async => data.dg15 = await passport.readEfDG15(),
-      ),
-      DataGroupConfig(
-        tag: EfDG16.TAG,
-        name: 'DG16',
-        progressStage: 1.0,
-        readFunction: (p, mrtdData) async => mrtdData.dg16 = await p.readEfDG16(),
-      ),
+      _DGConfig(PassportEfDG1.TAG, 'DG1', 0.1, reader.readDG1, parser.parseDG1),
+      _DGConfig(PassportEfDG2.TAG, 'DG2', 0.2, reader.readDG2, parser.parseDG2),
+      _DGConfig(PassportEfDG3.TAG, 'DG3', 0.3, reader.readDG3, parser.parseDG3),
+      _DGConfig(PassportEfDG4.TAG, 'DG4', 0.35, reader.readDG4, parser.parseDG4),
+      _DGConfig(PassportEfDG5.TAG, 'DG5', 0.4, reader.readDG5, parser.parseDG5),
+      _DGConfig(PassportEfDG6.TAG, 'DG6', 0.5, reader.readDG6, parser.parseDG6),
+      _DGConfig(PassportEfDG7.TAG, 'DG7', 0.6, reader.readDG7, parser.parseDG7),
+      _DGConfig(PassportEfDG8.TAG, 'DG8', 0.7, reader.readDG8, parser.parseDG8),
+      _DGConfig(PassportEfDG9.TAG, 'DG9', 0.75, reader.readDG9, parser.parseDG9),
+      _DGConfig(PassportEfDG10.TAG, 'DG10', 0.8, reader.readDG10, parser.parseDG10),
+      _DGConfig(PassportEfDG11.TAG, 'DG11', 0.85, reader.readDG11, parser.parseDG11),
+      _DGConfig(PassportEfDG12.TAG, 'DG12', 0.9, reader.readDG12, parser.parseDG12),
+      _DGConfig(PassportEfDG13.TAG, 'DG13', 0.9, reader.readDG13, parser.parseDG13),
+      _DGConfig(PassportEfDG14.TAG, 'DG14', 0.95, reader.readDG14, parser.parseDG14),
+      _DGConfig(PassportEfDG15.TAG, 'DG15', 0.9, reader.readDG15, parser.parseDG15),
+      _DGConfig(PassportEfDG16.TAG, 'DG16', 1.0, reader.readDG16, parser.parseDG16),
     ];
   }
 }
 
-// =====================================================================================
+class _DGConfig {
+  final DgTag tag;
+  final String name;
+  final double progress;
+  final Future<Uint8List> Function() readFn;
+  final void Function(Uint8List) parseFn;
+
+  _DGConfig(this.tag, this.name, this.progress, this.readFn, this.parseFn);
+}
 
 class _Session {
   static const Set<String> paceCountriesAlpha3 = {
-    'AUT', 'BEL', 'BGR', 'HRV', 'CYP', 'CZE', 'DNK', 'EST', 'FIN', 'FRA', 'DEU', 'GRC', // EU 27
-    'HUN', 'IRL', 'ITA', 'LVA', 'LTU', 'LUX', 'MLT', 'NLD', 'POL', 'PRT', 'ROU', 'SVK', // EU 27
-    'SVN', 'ESP', 'SWE', // EU 27
-    'ISL', 'LIE', 'NOR', // EEA
-    'CHE', // Switzerland
-    'GBR', // Great Britain
+    'AUT', 'BEL', 'BGR', 'HRV', 'CYP', 'CZE', 'DNK', 'EST', 'FIN', 'FRA', 'DEU', 'GRC',
+    'HUN', 'IRL', 'ITA', 'LVA', 'LTU', 'LUX', 'MLT', 'NLD', 'POL', 'PRT', 'ROU', 'SVK',
+    'SVN', 'ESP', 'SWE',
+    'ISL', 'LIE', 'NOR',
+    'CHE',
+    'GBR',
   };
 
   final NfcProvider nfc;
+  final DataGroupReader reader;
   final String documentNumber;
   final DateTime birthDate;
   final DateTime expiryDate;
   final String? countryCode;
-  final NonceAndSessionId? activeAuthenticationParams;
-  Passport passport;
 
-  final MrtdData result = MrtdData();
-  final Map<String, String> dataGroups = {};
+  EfCardAccess? cardAccess;
+  EfCOM? com;
 
   _Session({
     required this.nfc,
-    required this.passport,
+    required this.reader,
     required this.documentNumber,
     required this.birthDate,
     required this.expiryDate,
     required this.countryCode,
-    required this.activeAuthenticationParams,
   });
 
   Future<void> init() async {
@@ -383,12 +373,7 @@ class _Session {
   }
 
   Future<void> retryConnection() async {
-    passport = Passport(nfc);
-
     if (nfc.isConnected()) {
-      // want to use a timeout here because on ios when the session was cancelled by
-      // the user while the tag was already outside of reach, the retry mechanism will
-      // still kick in, causing it to hang at reconnecting.
       if (Platform.isIOS) {
         await nfc.reconnect().timeout(Duration(seconds: 2));
       } else {
@@ -401,11 +386,11 @@ class _Session {
   }
 
   Future<void> readCardAccess() async {
-    result.cardAccess = await passport.readEfCardAccess();
+    cardAccess = await reader.readEfCardAccess();
   }
 
   Future<void> readCom() async {
-    result.com = await passport.readEfCOM();
+    com = await reader.readEfCOM();
   }
 
   Future<void> authenticate() async {
@@ -413,9 +398,9 @@ class _Session {
     final accessKey = DBAKey(documentNumber, birthDate, expiryDate, paceMode: pace);
 
     if (pace) {
-      await passport.startSessionPACE(accessKey, result.cardAccess!);
+      await reader.startSessionPACE(accessKey, cardAccess!);
     } else {
-      await passport.startSession(accessKey);
+      await reader.startSession(accessKey);
     }
   }
 
@@ -423,47 +408,10 @@ class _Session {
     return countryCode != null && paceCountriesAlpha3.contains(countryCode!.toUpperCase());
   }
 
-  Future<void> readDataGroup(DataGroupConfig config) async {
-    if (!result.com!.dgTags.contains(config.tag)) {
-      return;
-    }
-    final dg = await config.readFunction(passport, result);
-    final hexData = dg.toBytes().hex();
-    if (hexData.isNotEmpty) {
-      dataGroups[config.name] = hexData;
-    }
-  }
-
-  Future<void> readSod() async {
-    result.sod = await passport.readEfSOD();
-  }
-
-  Future<void> performActiveAuthentication() async {
-    if (activeAuthenticationParams == null || !result.com!.dgTags.contains(EfDG15.TAG)) {
-      return;
-    }
-    result.aaSig = await passport.activeAuthenticate(stringToUint8List(activeAuthenticationParams!.nonce));
-  }
-
-  PassportDataResult finish() {
-    final efSodHex = result.sod?.toBytes().hex() ?? '';
-
-    return PassportDataResult(
-      dataGroups: dataGroups,
-      efSod: efSodHex,
-      nonce: activeAuthenticationParams != null ? stringToUint8List(activeAuthenticationParams!.nonce) : null,
-      sessionId: activeAuthenticationParams?.sessionId,
-      aaSignature: result.aaSig,
-    );
-  }
-
   Future<void> dispose() async {
     await nfc.disconnect();
   }
 }
-
-// ===============================================================
-// all the different states the passport reader can be in
 
 class DocumentReaderState {}
 

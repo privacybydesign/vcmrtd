@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtd/src/models/document.dart';
 import 'package:vcmrtdapp/widgets/pages/data_screen_widgets/profile_picture.dart';
 
 import 'info_row.dart';
 
 class PersonalDataSection extends StatelessWidget {
-  final PassportMRZ mrz;
-  final EfDG2 dg2;
+  final PassportData passport;
 
-  const PersonalDataSection({super.key, required this.mrz, required this.dg2});
+  const PersonalDataSection({super.key, required this.passport});
 
   @override
   Widget build(BuildContext context) {
@@ -45,11 +44,10 @@ class PersonalDataSection extends StatelessWidget {
   Widget _buildPersonalContent() {
     return Column(
       children: [
-        // Profile picture and basic info
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ProfilePictureWidget(imageData: dg2.imageData, imageType: dg2.imageType),
+            ProfilePictureWidget(imageData: passport.photoImageData, imageType: passport.photoImageType),
             const SizedBox(width: 20),
             Expanded(child: _buildBasicInfo()),
           ],
@@ -64,17 +62,17 @@ class PersonalDataSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        InfoRow(label: 'Full Name', value: '${mrz.firstName} ${mrz.lastName}', iconData: Icons.person_outline),
+        InfoRow(label: 'Full Name', value: '${passport.mrz!.firstName} ${passport.mrz!.lastName}', iconData: Icons.person_outline),
         const SizedBox(height: 12),
-        InfoRow(label: 'Nationality', value: mrz.nationality, iconData: Icons.flag_outlined),
+        InfoRow(label: 'Nationality', value: passport.mrz!.nationality, iconData: Icons.flag_outlined),
         const SizedBox(height: 12),
         InfoRow(
           label: 'Document',
-          value: '${mrz.documentCode} ${mrz.documentNumber}',
+          value: '${passport.mrz!.documentCode} ${passport.mrz!.documentNumber}',
           iconData: Icons.document_scanner_outlined,
         ),
         const SizedBox(height: 12),
-        InfoRow(label: 'Gender', value: mrz.gender, iconData: Icons.person_pin_outlined),
+        InfoRow(label: 'Gender', value: passport.mrz!.gender, iconData: Icons.person_pin_outlined),
       ],
     );
   }
@@ -94,7 +92,7 @@ class PersonalDataSection extends StatelessWidget {
               Expanded(
                 child: InfoRow(
                   label: 'Date of Birth',
-                  value: DateFormat.yMMMd().format(mrz.dateOfBirth),
+                  value: DateFormat.yMMMd().format(passport.mrz!.dateOfBirth),
                   iconData: Icons.cake_outlined,
                 ),
               ),
@@ -102,7 +100,7 @@ class PersonalDataSection extends StatelessWidget {
               Expanded(
                 child: InfoRow(
                   label: 'Expiry Date',
-                  value: DateFormat.yMMMd().format(mrz.dateOfExpiry),
+                  value: DateFormat.yMMMd().format(passport.mrz!.dateOfExpiry),
                   iconData: Icons.event_outlined,
                 ),
               ),
@@ -112,17 +110,17 @@ class PersonalDataSection extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: InfoRow(label: 'Country', value: mrz.country, iconData: Icons.public_outlined),
+                child: InfoRow(label: 'Country', value: passport.mrz!.country, iconData: Icons.public_outlined),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: InfoRow(label: 'Version', value: mrz.version.name, iconData: Icons.info_outline),
+                child: InfoRow(label: 'Version', value: passport.mrz!.version.name, iconData: Icons.info_outline),
               ),
             ],
           ),
-          if (mrz.optionalData.isNotEmpty) ...[
+          if (passport.mrz!.optionalData.isNotEmpty) ...[
             const SizedBox(height: 12),
-            InfoRow(label: 'Optional Data', value: mrz.optionalData, iconData: Icons.data_object_outlined),
+            InfoRow(label: 'Optional Data', value: passport.mrz!.optionalData, iconData: Icons.data_object_outlined),
           ],
         ],
       ),

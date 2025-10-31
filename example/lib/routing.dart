@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtd/src/models/document.dart';
 import 'package:vcmrtdapp/widgets/pages/document_selection_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/driving_licence_data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/manual_entry_screen.dart';
@@ -93,8 +94,8 @@ GoRouter createRouter() {
           return NfcReadingScreen(
             params: params,
             onCancel: context.pop,
-            onSuccess: (result, data) {
-              context.go('/result', extra: {'result': result, 'data': data, 'document_type': params.documentType});
+            onSuccess: (passport, result) {
+              context.go('/result', extra: {'passport': passport, 'result': result, 'document_type': params.documentType});
             },
           );
         },
@@ -107,12 +108,12 @@ GoRouter createRouter() {
 
           return switch (ty) {
             DocumentType.passport => PassportDataScreen(
-              mrtdData: s['data'] as MrtdData,
+              passport: s['passport'] as PassportData,
               passportDataResult: s['result'] as PassportDataResult,
               onBackPressed: () => context.go('/select_doc_type'),
             ),
             DocumentType.driverLicense => DrivingLicenceDataScreen(
-              mrtdData: s['data'] as MrtdData,
+              mrtdData: MrtdData(),
               onBackPressed: () => context.go('/select_doc_type'),
             ),
           };

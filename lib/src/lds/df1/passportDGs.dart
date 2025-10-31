@@ -87,7 +87,7 @@ class PassportEfDG5 {
 class PassportEfDG6 {
   static const FID = 0x0106;
   static const SFI = 0x06;
-  static const TAG_PASSPORT = DgTag(0x66);
+  static const TAG = DgTag(0x66);
 }
 
 class PassportEfDG7 {

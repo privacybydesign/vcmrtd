@@ -1,10 +1,11 @@
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtd/src/models/document.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:vcmrtdapp/providers/active_authenticiation_provider.dart';
 import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
-import 'package:vcmrtdapp/providers/passport_reader_provider.dart';
+import 'package:vcmrtdapp/providers/reader_providers.dart';
 import 'package:vcmrtdapp/widgets/common/animated_nfc_status_widget.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_guidance_screen.dart';
 
@@ -58,7 +59,7 @@ class NfcReadingScreen extends ConsumerStatefulWidget {
   final NfcReadingRouteParams params;
 
   final Function() onCancel;
-  final Function(PassportDataResult, MrtdData) onSuccess;
+  final Function(PassportData, PassportDataResult) onSuccess;
 
   @override
   ConsumerState<NfcReadingScreen> createState() => _NfcReadingScreenState();
@@ -125,16 +126,16 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
       final result = await ref
           .read(passportReaderProvider.notifier)
           .readWithMRZ(
-            iosNfcMessages: _createIosNfcMessageMapper(),
-            documentNumber: widget.params.docNumber,
-            birthDate: widget.params.dateOfBirth,
-            expiryDate: widget.params.dateOfExpiry,
-            countryCode: widget.params.countryCode,
-            activeAuthenticationParams: nonceAndSessionId,
-          );
+        iosNfcMessages: _createIosNfcMessageMapper(),
+        documentNumber: widget.params.docNumber,
+        birthDate: widget.params.dateOfBirth,
+        expiryDate: widget.params.dateOfExpiry,
+        countryCode: widget.params.countryCode,
+        activeAuthenticationParams: nonceAndSessionId,
+      );
       if (result != null) {
-        final (pdr, mrtd) = result;
-        widget.onSuccess(pdr, mrtd);
+        final (passport, passportDataResult) = result;
+        widget.onSuccess(passport, passportDataResult);
       }
     } catch (e) {
       debugPrint('failed to read passport: $e');

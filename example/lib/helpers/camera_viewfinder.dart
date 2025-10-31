@@ -215,7 +215,6 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
 
     // get image format
     final format = InputImageFormatValue.fromRawValue(image.format.raw);
-    print('format: $format');
 
     // For camera feed that supports only yuv_420_888
     if (format == null || Platform.isAndroid && format == InputImageFormat.yuv_420_888) {

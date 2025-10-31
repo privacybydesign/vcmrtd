@@ -3,6 +3,7 @@ import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtd/src/models/document.dart';
 import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
 
 import '../../widgets/pages/data_screen_widgets/personal_data_section.dart';
@@ -13,13 +14,13 @@ import '../../widgets/pages/data_screen_widgets/web_banner.dart';
 import 'data_screen_widgets/verify_result.dart';
 
 class PassportDataScreen extends ConsumerStatefulWidget {
-  final MrtdData mrtdData;
+  final PassportData passport;
   final PassportDataResult passportDataResult;
   final VoidCallback onBackPressed;
 
   const PassportDataScreen({
     super.key,
-    required this.mrtdData,
+    required this.passport,
     required this.onBackPressed,
     required this.passportDataResult,
   });
@@ -44,12 +45,11 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Return to Web banner if opened via universal link
               if (widget.passportDataResult.sessionId != null)
                 WebBanner(sessionId: widget.passportDataResult.sessionId!),
-              PersonalDataSection(mrz: widget.mrtdData.dg1!.passportData!.mrz, dg2: widget.mrtdData.dg2!),
+              PersonalDataSection(passport: widget.passport),
               const SizedBox(height: 20),
-              SecurityContent(mrtdData: widget.mrtdData),
+              SecurityContent(passport: widget.passport),
               const SizedBox(height: 20),
               if (widget.passportDataResult.sessionId != null) ...[
                 const SizedBox(height: 20),
@@ -86,7 +86,6 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
     }
   }
 
-  /// Handle return to web functionality
   Future<void> _returnToIssue() async {
     final issuer = ref.read(passportIssuerProvider);
 
@@ -99,7 +98,6 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
     }
   }
 
-  /// Show success dialog after successful return
   void _showReturnSuccessDialog() {
     showDialog(
       context: context,
@@ -109,7 +107,7 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
         title: const Text('Success!'),
         content: const Text(
           'Your passport data has been securely transmitted to the web application. '
-          'You can now close this app or scan another passport.',
+              'You can now close this app or scan another passport.',
         ),
         actions: [
           TextButton(
@@ -123,7 +121,6 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
     );
   }
 
-  /// Show error dialog if return fails
   void _showReturnErrorDialog(String error) {
     showDialog(
       context: context,
@@ -150,7 +147,7 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              _returnToIssue(); // Retry
+              _returnToIssue();
             },
             child: const Text('Retry'),
           ),
