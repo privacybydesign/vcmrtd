@@ -78,7 +78,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
       return null;
     }
 
-    if (session.isPace()) {
+    if (session.canUsePace()) {
       _setState(PassportReaderReadingCardAccess());
       try {
         await _reconnectionLoop(session: session, authenticate: false, whenConnected: session.readCardAccess);
@@ -409,7 +409,7 @@ class _Session {
   }
 
   Future<void> authenticate() async {
-    final isPaceMode = isPace();
+    final isPaceMode = canUsePace();
     final accessKey = DBAKey(documentNumber, birthDate, expiryDate, paceMode: isPaceMode);
 
     result
@@ -423,7 +423,14 @@ class _Session {
     await session;
   }
 
-  bool isPace() {
+  bool canUsePace() {
+    // On iOS PACE doesn't work with older passport models
+    // TODO: figure out if we can detect whether an older passport is being used
+    if (Platform.isIOS) {
+      return false;
+    }
+
+    // Otherwise we just decide based on the country code
     return countryCode != null && paceCountriesAlpha3.contains(countryCode!.toUpperCase());
   }
 
