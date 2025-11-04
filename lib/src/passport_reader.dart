@@ -361,15 +361,6 @@ class PassportReader extends StateNotifier<PassportReaderState> {
 enum _AuthMethod { none, bac, pace }
 
 class _Session {
-  static const Set<String> paceCountriesAlpha3 = {
-    'AUT', 'BEL', 'BGR', 'HRV', 'CYP', 'CZE', 'DNK', 'EST', 'FIN', 'FRA', 'DEU', 'GRC', // EU 27
-    'HUN', 'IRL', 'ITA', 'LVA', 'LTU', 'LUX', 'MLT', 'NLD', 'POL', 'PRT', 'ROU', 'SVK', // EU 27
-    'SVN', 'ESP', 'SWE', // EU 27
-    'ISL', 'LIE', 'NOR', // EEA
-    'CHE', // Switzerland
-    'GBR', // Great Britain
-  };
-
   final NfcProvider nfc;
   final String documentNumber;
   final DateTime birthDate;
