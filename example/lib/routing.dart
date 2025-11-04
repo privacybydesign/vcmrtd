@@ -49,14 +49,13 @@ GoRouter createRouter() {
           final params = MrzReaderRouteParams.fromQueryParams(state.uri.queryParameters);
           return ScannerWrapper(
             documentType: params.documentType,
-            onMrzScanned: (MrzScanResult scanResult) {
+            onMrzScanned: (result) {
               context.pushNfcReadingScreen(
                 NfcReadingRouteParams(
-                  documentType: scanResult.documentType,
-                  docNumber: scanResult.documentNumber,
-                  dateOfBirth: scanResult.dateOfBirth,
-                  dateOfExpiry: scanResult.dateOfExpiry,
-                  countryCode: scanResult.countryCode,
+                  documentType: params.documentType,
+                  docNumber: result.documentNumber,
+                  dateOfBirth: result.birthDate,
+                  dateOfExpiry: result.expiryDate,
                 ),
               );
             },

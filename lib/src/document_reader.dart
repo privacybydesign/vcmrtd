@@ -395,12 +395,12 @@ class _Session {
 
   Future<void> authenticate() async {
     final pace = isPace();
-    // final accessKey = DBAKey(documentNumber, birthDate, expiryDate, paceMode: pace);
-    final accessKey = CanKey(documentNumber);
+    final accessKey = DBAKey(documentNumber, birthDate, expiryDate, paceMode: pace);
+
     if (pace) {
       await reader.startSessionPACE(accessKey, cardAccess!);
     } else {
-      await reader.startSession(accessKey as DBAKey);
+      await reader.startSession(accessKey);
     }
   }
 
