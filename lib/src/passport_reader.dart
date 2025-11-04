@@ -72,16 +72,23 @@ class PassportReader extends StateNotifier<PassportReaderState> {
 
     _setState(PassportReaderConnecting());
     try {
-      await _reconnectionLoop(session: session, authenticate: false, whenConnected: session.init);
+      await _reconnectionLoop(session: session, authMethod: _AuthMethod.none, whenConnected: session.init);
     } catch (e) {
       await _failure(session, 'Failure during init: $e');
       return null;
     }
 
-    if (session.canUsePace()) {
+    // first try the BAC method
+    _AuthMethod method = _AuthMethod.bac;
+    _setState(PassportReaderAuthenticating());
+    final bacSuccess = await session.tryAuthenticateWithBAC();
+
+    // if that's not available continue with PACE
+    if (!bacSuccess) {
+      method = _AuthMethod.pace;
       _setState(PassportReaderReadingCardAccess());
       try {
-        await _reconnectionLoop(session: session, authenticate: false, whenConnected: session.readCardAccess);
+        await _reconnectionLoop(session: session, authMethod: _AuthMethod.none, whenConnected: session.readCardAccess);
         if (state is PassportReaderCancelled) {
           return null;
         }
@@ -89,22 +96,25 @@ class PassportReader extends StateNotifier<PassportReaderState> {
         await _failure(session, 'Failure reading Ef.CardAccess: $e');
         return null;
       }
-    }
-
-    _setState(PassportReaderAuthenticating());
-    try {
-      await _reconnectionLoop(session: session, authenticate: false, whenConnected: session.authenticate);
-      if (state is PassportReaderCancelled) {
+      _setState(PassportReaderAuthenticating());
+      try {
+        await _reconnectionLoop(
+          session: session,
+          authMethod: _AuthMethod.none,
+          whenConnected: session.authenticateWithPACE,
+        );
+        if (state is PassportReaderCancelled) {
+          return null;
+        }
+      } catch (e) {
+        await _failure(session, 'Failure authenticating: $e');
         return null;
       }
-    } catch (e) {
-      await _failure(session, 'Failure authenticating: $e');
-      return null;
     }
 
     _setState(PassportReaderReadingCOM());
     try {
-      await _reconnectionLoop(session: session, authenticate: true, whenConnected: session.readCom);
+      await _reconnectionLoop(session: session, authMethod: method, whenConnected: session.readCom);
       if (state is PassportReaderCancelled) {
         return null;
       }
@@ -116,7 +126,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
     for (final c in _createConfigs()) {
       _setState(PassportReaderReadingDataGroup(dataGroup: c.name, progress: c.progressStage));
       try {
-        await _reconnectionLoop(session: session, authenticate: true, whenConnected: () => session.readDataGroup(c));
+        await _reconnectionLoop(session: session, authMethod: method, whenConnected: () => session.readDataGroup(c));
         if (state is PassportReaderCancelled) {
           return null;
         }
@@ -128,7 +138,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
 
     _setState(PassportReaderReadingSOD());
     try {
-      await _reconnectionLoop(session: session, authenticate: true, whenConnected: session.readSod);
+      await _reconnectionLoop(session: session, authMethod: method, whenConnected: session.readSod);
       if (state is PassportReaderCancelled) {
         return null;
       }
@@ -139,7 +149,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
 
     _setState(PassportReaderActiveAuthentication());
     try {
-      await _reconnectionLoop(session: session, authenticate: true, whenConnected: session.performActiveAuthentication);
+      await _reconnectionLoop(session: session, authMethod: method, whenConnected: session.performActiveAuthentication);
       if (state is PassportReaderCancelled) {
         return null;
       }
@@ -170,7 +180,7 @@ class PassportReader extends StateNotifier<PassportReaderState> {
 
   Future<void> _reconnectionLoop({
     required _Session session,
-    required bool authenticate,
+    required _AuthMethod authMethod,
     required Function whenConnected,
     int numAttempts = 5,
   }) async {
@@ -207,12 +217,13 @@ class PassportReader extends StateNotifier<PassportReaderState> {
           _addLog('Retry connection failed: $e');
         }
 
-        if (authenticate) {
+        if (authMethod != _AuthMethod.none) {
           try {
             if (_isCancelled || _isCancelException(e)) {
               return await _setToCancelState(session);
             }
-            await session.authenticate();
+
+            authMethod == _AuthMethod.bac ? await session.authenticateWithBAC() : await session.authenticateWithPACE();
           } catch (e) {
             _addLog('Retry authenticate failed: $e');
           }
@@ -347,16 +358,9 @@ class PassportReader extends StateNotifier<PassportReaderState> {
 
 // =====================================================================================
 
-class _Session {
-  static const Set<String> paceCountriesAlpha3 = {
-    'AUT', 'BEL', 'BGR', 'HRV', 'CYP', 'CZE', 'DNK', 'EST', 'FIN', 'FRA', 'DEU', 'GRC', // EU 27
-    'HUN', 'IRL', 'ITA', 'LVA', 'LTU', 'LUX', 'MLT', 'NLD', 'POL', 'PRT', 'ROU', 'SVK', // EU 27
-    'SVN', 'ESP', 'SWE', // EU 27
-    'ISL', 'LIE', 'NOR', // EEA
-    'CHE', // Switzerland
-    'GBR', // Great Britain
-  };
+enum _AuthMethod { none, bac, pace }
 
+class _Session {
   final NfcProvider nfc;
   final String documentNumber;
   final DateTime birthDate;
@@ -408,30 +412,23 @@ class _Session {
     result.com = await passport.readEfCOM();
   }
 
-  Future<void> authenticate() async {
-    final isPaceMode = canUsePace();
-    final accessKey = DBAKey(documentNumber, birthDate, expiryDate, paceMode: isPaceMode);
-
-    result
-      ..isPACE = isPaceMode
-      ..isDBA = accessKey.PACE_REF_KEY_TAG == 0x01;
-
-    final session = isPaceMode
-        ? passport.startSessionPACE(accessKey, result.cardAccess!)
-        : passport.startSession(accessKey);
-
-    await session;
-  }
-
-  bool canUsePace() {
-    // On iOS PACE doesn't work with older passport models
-    // TODO: figure out if we can detect whether an older passport is being used
-    if (Platform.isIOS) {
+  Future<bool> tryAuthenticateWithBAC() async {
+    try {
+      await authenticateWithBAC();
+      return true;
+    } catch (e) {
       return false;
     }
+  }
 
-    // Otherwise we just decide based on the country code
-    return countryCode != null && paceCountriesAlpha3.contains(countryCode!.toUpperCase());
+  Future<void> authenticateWithBAC() async {
+    final accessKey = DBAKey(documentNumber, birthDate, expiryDate, paceMode: false);
+    await passport.startSession(accessKey);
+  }
+
+  Future<void> authenticateWithPACE() async {
+    final accessKey = DBAKey(documentNumber, birthDate, expiryDate, paceMode: true);
+    await passport.startSessionPACE(accessKey, result.cardAccess!);
   }
 
   Future<void> readDataGroup(DataGroupConfig config) async {
