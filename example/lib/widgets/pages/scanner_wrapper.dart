@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:mrz_parser/mrz_parser.dart';
+import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
 
 import 'scan_screen.dart';
 import 'package:vcmrtd/vcmrtd.dart';
@@ -24,7 +25,7 @@ class MrzReaderRouteParams {
 
 /// Wrapper around ScannerPage to handle navigation callbacks
 class ScannerWrapper extends StatefulWidget {
-  final Function(MRZResult) onMrzScanned;
+  final Function(ScannedMRZ) onMrzScanned;
   final VoidCallback onManualEntry;
   final VoidCallback onCancel;
   final VoidCallback onBack;
@@ -57,14 +58,10 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
         children: [
           ScannerPage(
             documentType: widget.documentType,
-            onSuccess: (dynamic result) {
+            onSuccess: (scannedMrz) {
               if (!_hasNavigated) {
                 _hasNavigated = true;
-                if (result != null) {
-                  widget.onMrzScanned(result);
-                } else {
-                  widget.onCancel();
-                }
+                  widget.onMrzScanned(scannedMrz);
               }
             },
           ),
