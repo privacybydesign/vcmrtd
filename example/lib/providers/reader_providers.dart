@@ -6,13 +6,13 @@ final passportReaderProvider = StateNotifierProvider.autoDispose<DocumentReader<
   ref,
 ) {
   final nfc = NfcProvider();
-  final reader = DataGroupReader(nfc, DF1.PassportAID);
+  final dgReader = DataGroupReader(nfc, DF1.PassportAID);
   final parser = PassportParser();
-  final r = DocumentReader(parser, reader, nfc);
+  final docReader = DocumentReader(parser, dgReader, nfc);
 
   // when the widget is no longer used, we want to cancel the reader
-  ref.onDispose(r.cancel);
-  return r;
+  ref.onDispose(docReader.cancel);
+  return docReader;
 });
 
 final passportUrlProvider = StateProvider((ref) => '');
@@ -20,11 +20,11 @@ final passportUrlProvider = StateProvider((ref) => '');
 final drivingLicenceReaderProvider =
     StateNotifierProvider.autoDispose<DocumentReader<DrivingLicenceData>, DocumentReaderState>((ref) {
       final nfc = NfcProvider();
-      final reader = DataGroupReader(nfc, DF1.DriverAID);
+      final dgReader = DataGroupReader(nfc, DF1.DriverAID);
       final parser = DrivingLicenceParser();
-      final r = DocumentReader(parser, reader, nfc);
+      final docReader = DocumentReader(parser, dgReader, nfc);
 
-      ref.onDispose(r.cancel);
+      ref.onDispose(docReader.cancel);
 
-      return r;
+      return docReader;
     });

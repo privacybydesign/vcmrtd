@@ -79,16 +79,13 @@ class PassportParser implements DocumentParser<PassportData> {
   }
 
   @override
-  void parseDG1(Uint8List bytes) {
+  PassportEfDG1? parseDG1(Uint8List bytes) {
     final tlv = TLV.fromBytes(bytes);
 
-    // Check for outer DG1 tag (0x61), not MRZ tag
     if (tlv.tag != PassportEfDG1.TAG.value) {
-      // Changed from 0x5F1F to PassportEfDG1.TAG.value
-      throw EfParseError("Invalid DG1 tag=${tlv.tag.hex()}, expected tag=${PassportEfDG1.TAG.value.hex()}");
+      throw EfParseError("Invalid tag=${tlv.tag.hex()}, expected tag=${PassportEfDG1.TAG.value.hex()}");
     }
 
-    // Now extract the inner MRZ tag (0x5F1F) from the value
     final mrzTlv = TLV.fromBytes(tlv.value);
     if (mrzTlv.tag != 0x5F1F) {
       throw EfParseError("Invalid MRZ tag=${mrzTlv.tag.hex()}, expected tag=5F1F");
@@ -96,6 +93,8 @@ class PassportParser implements DocumentParser<PassportData> {
 
     final mrz = PassportMRZ(mrzTlv.value);
     _dg1 = PassportEfDG1(mrz);
+
+    return _dg1;
   }
 
   @override
@@ -130,9 +129,9 @@ class PassportParser implements DocumentParser<PassportData> {
   void _parseBIT(Uint8List stream, int index) {
     final tvl = TLV.decode(stream);
 
-    if (tvl.tag.value != 0x7F60) {
-      // BIOMETRIC_INFORMATION_TEMPLATE_TAG
-      throw EfParseError("Invalid object tag=${tvl.tag.value.hex()}, expected tag=7F60");
+    if (tvl.tag.value != PassportEfDG2.BITT) {
+      throw EfParseError(
+          "Invalid object tag=${tvl.tag.value.hex()}, expected tag=7F60");
     }
 
     var bht = TLV.decode(tvl.value);
@@ -145,6 +144,7 @@ class PassportParser implements DocumentParser<PassportData> {
       _parseBiometricDataBlock(sbh);
     }
   }
+
 
   List<DecodedTV> _parseBHT(Uint8List stream) {
     final bht = TLV.decode(stream);
@@ -167,7 +167,7 @@ class PassportParser implements DocumentParser<PassportData> {
     return elements;
   }
 
-  void _parseBiometricDataBlock(List<DecodedTV> sbh) {
+  PassportEfDG2? _parseBiometricDataBlock(List<DecodedTV> sbh) {
     var firstBlock = sbh.first;
     if (firstBlock.tag.value != 0x5F2E && firstBlock.tag.value != 0x7F2E) {
       throw EfParseError("Invalid object tag=${firstBlock.tag.value.hex()}, expected tag=5F2E or 7F2E");
@@ -276,6 +276,8 @@ class PassportParser implements DocumentParser<PassportData> {
       imageData: imageData,
       imageType: imageType,
     );
+    return _dg2;
+
   }
 
   int _extractContent(Uint8List data, {required int start, required int end}) {

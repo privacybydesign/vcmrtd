@@ -17,6 +17,10 @@ class PassportEfDG2 {
   static const SFI = 0x02;
   static const TAG = DgTag(0x75);
 
+  static const BIGT= 0x7F61;
+  static const BICT = 0x02;
+  static const BITT = 0x7F60;
+
   final int versionNumber;
   final int lengthOfRecord;
   final int numberOfFacialImages;

@@ -24,14 +24,14 @@ class DocumentError implements Exception {
 
 class DocumentReader<DocType extends DocumentData> extends StateNotifier<DocumentReaderState> {
   final DocumentParser<DocType> parser;
-  final DataGroupReader reader;
+  final DataGroupReader dgReader;
   final NfcProvider _nfc;
 
   bool _isCancelled = false;
   List<String> _log = [];
   IosNfcMessageMapper? _iosNfcMessageMapper;
 
-  DocumentReader(this.parser, this.reader, this._nfc) : super(DocumentReaderPending()) {
+  DocumentReader(this.parser, this.dgReader, this._nfc) : super(DocumentReaderPending()) {
     checkNfcAvailability();
   }
 
@@ -77,7 +77,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
 
     final session = _Session(
       nfc: _nfc,
-      reader: reader,
+      dgReader: dgReader,
       documentNumber: documentNumber,
       birthDate: birthDate,
       expiryDate: expiryDate,
@@ -167,7 +167,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
       await _reconnectionLoop(
         session: session,
         authenticate: true,
-        whenConnected: () async => sod = await reader.readEfSOD(),
+        whenConnected: () async => sod = await dgReader.readEfSOD(),
       );
       if (state is DocumentReaderCancelled) {
         return null;
@@ -184,7 +184,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
           session: session,
           authenticate: true,
           whenConnected: () async =>
-              aaSig = await reader.activeAuthenticate(stringToUint8List(activeAuthenticationParams.nonce)),
+              aaSig = await dgReader.activeAuthenticate(stringToUint8List(activeAuthenticationParams.nonce)),
         );
         if (state is DocumentReaderCancelled) {
           return null;
@@ -313,26 +313,27 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
 
   List<_DGConfig> _createConfigs() {
     return [
-      _DGConfig(PassportEfDG1.TAG, 'DG1', 0.1, reader.readDG1, parser.parseDG1),
-      _DGConfig(PassportEfDG2.TAG, 'DG2', 0.2, reader.readDG2, parser.parseDG2),
-      _DGConfig(PassportEfDG3.TAG, 'DG3', 0.3, reader.readDG3, parser.parseDG3),
-      _DGConfig(PassportEfDG4.TAG, 'DG4', 0.35, reader.readDG4, parser.parseDG4),
-      _DGConfig(PassportEfDG5.TAG, 'DG5', 0.4, reader.readDG5, parser.parseDG5),
-      _DGConfig(PassportEfDG6.TAG, 'DG6', 0.5, reader.readDG6, parser.parseDG6),
-      _DGConfig(PassportEfDG7.TAG, 'DG7', 0.6, reader.readDG7, parser.parseDG7),
-      _DGConfig(PassportEfDG8.TAG, 'DG8', 0.7, reader.readDG8, parser.parseDG8),
-      _DGConfig(PassportEfDG9.TAG, 'DG9', 0.75, reader.readDG9, parser.parseDG9),
-      _DGConfig(PassportEfDG10.TAG, 'DG10', 0.8, reader.readDG10, parser.parseDG10),
-      _DGConfig(PassportEfDG11.TAG, 'DG11', 0.85, reader.readDG11, parser.parseDG11),
-      _DGConfig(PassportEfDG12.TAG, 'DG12', 0.9, reader.readDG12, parser.parseDG12),
-      _DGConfig(PassportEfDG13.TAG, 'DG13', 0.9, reader.readDG13, parser.parseDG13),
-      _DGConfig(PassportEfDG14.TAG, 'DG14', 0.95, reader.readDG14, parser.parseDG14),
-      _DGConfig(PassportEfDG15.TAG, 'DG15', 0.9, reader.readDG15, parser.parseDG15),
-      _DGConfig(PassportEfDG16.TAG, 'DG16', 1.0, reader.readDG16, parser.parseDG16),
+      _DGConfig(PassportEfDG1.TAG, 'DG1', 0.1, dgReader.readDG1, parser.parseDG1),
+      _DGConfig(PassportEfDG2.TAG, 'DG2', 0.2, dgReader.readDG2, parser.parseDG2),
+      _DGConfig(PassportEfDG3.TAG, 'DG3', 0.3, dgReader.readDG3, parser.parseDG3),
+      _DGConfig(PassportEfDG4.TAG, 'DG4', 0.35, dgReader.readDG4, parser.parseDG4),
+      _DGConfig(PassportEfDG5.TAG, 'DG5', 0.4, dgReader.readDG5, parser.parseDG5),
+      _DGConfig(PassportEfDG6.TAG, 'DG6', 0.5, dgReader.readDG6, parser.parseDG6),
+      _DGConfig(PassportEfDG7.TAG, 'DG7', 0.6, dgReader.readDG7, parser.parseDG7),
+      _DGConfig(PassportEfDG8.TAG, 'DG8', 0.7, dgReader.readDG8, parser.parseDG8),
+      _DGConfig(PassportEfDG9.TAG, 'DG9', 0.75, dgReader.readDG9, parser.parseDG9),
+      _DGConfig(PassportEfDG10.TAG, 'DG10', 0.8, dgReader.readDG10, parser.parseDG10),
+      _DGConfig(PassportEfDG11.TAG, 'DG11', 0.85, dgReader.readDG11, parser.parseDG11),
+      _DGConfig(PassportEfDG12.TAG, 'DG12', 0.9, dgReader.readDG12, parser.parseDG12),
+      _DGConfig(PassportEfDG13.TAG, 'DG13', 0.9, dgReader.readDG13, parser.parseDG13),
+      _DGConfig(PassportEfDG14.TAG, 'DG14', 0.95, dgReader.readDG14, parser.parseDG14),
+      _DGConfig(PassportEfDG15.TAG, 'DG15', 0.9, dgReader.readDG15, parser.parseDG15),
+      _DGConfig(PassportEfDG16.TAG, 'DG16', 1.0, dgReader.readDG16, parser.parseDG16),
     ];
   }
 }
 
+// ---
 class _DGConfig {
   final DgTag tag;
   final String name;
@@ -380,7 +381,7 @@ class _Session {
   };
 
   final NfcProvider nfc;
-  final DataGroupReader reader;
+  final DataGroupReader dgReader;
   final String documentNumber;
   final DateTime birthDate;
   final DateTime expiryDate;
@@ -391,7 +392,7 @@ class _Session {
 
   _Session({
     required this.nfc,
-    required this.reader,
+    required this.dgReader,
     required this.documentNumber,
     required this.birthDate,
     required this.expiryDate,
@@ -416,11 +417,11 @@ class _Session {
   }
 
   Future<void> readCardAccess() async {
-    cardAccess = await reader.readEfCardAccess();
+    cardAccess = await dgReader.readEfCardAccess();
   }
 
   Future<void> readCom() async {
-    com = await reader.readEfCOM();
+    com = await dgReader.readEfCOM();
   }
 
   Future<void> authenticate() async {
@@ -428,9 +429,9 @@ class _Session {
     final accessKey = DBAKey(documentNumber, birthDate, expiryDate, paceMode: pace);
 
     if (pace) {
-      await reader.startSessionPACE(accessKey, cardAccess!);
+      await dgReader.startSessionPACE(accessKey, cardAccess!);
     } else {
-      await reader.startSession(accessKey);
+      await dgReader.startSession(accessKey);
     }
   }
 
