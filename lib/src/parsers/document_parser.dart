@@ -1,7 +1,6 @@
 import 'dart:typed_data';
 import '../models/document.dart';
 
-
 abstract class DocumentParser<DocType extends DocumentData> {
   void parseDG1(Uint8List bytes) {
     throw UnimplementedError('DG1 parsing not implemented for this document type');

@@ -16,8 +16,6 @@ class DataGroupReader {
     : _api = MrtdApi(provider),
       _log = Logger("Data Group bytes reader");
 
-
-
   Future<void> startSession(DBAKey keys) async {
     await _selectDF1();
     await _exec(() => _api.initSessionViaBAC(keys));
@@ -65,20 +63,17 @@ class DataGroupReader {
     return await _exec(() => _api.readFileBySFI(0x06));
   }
 
-
   Future<Uint8List> readDG7() async {
     await _selectDF1();
     _log.debug("Reading EF.DG7");
     return await _exec(() => _api.readFileBySFI(0x07));
   }
 
-
   Future<Uint8List> readDG8() async {
     await _selectDF1();
     _log.debug("Reading EF.DG8");
     return await _exec(() => _api.readFileBySFI(0x08));
   }
-
 
   Future<Uint8List> readDG9() async {
     await _selectDF1();
@@ -92,13 +87,11 @@ class DataGroupReader {
     return await _exec(() => _api.readFileBySFI(0x0A));
   }
 
-
   Future<Uint8List> readDG11() async {
     await _selectDF1();
     _log.debug("Reading EF.DG11");
     return await _exec(() => _api.readFileBySFI(0x0B));
   }
-
 
   Future<Uint8List> readDG12() async {
     await _selectDF1();
@@ -106,13 +99,11 @@ class DataGroupReader {
     return await _exec(() => _api.readFileBySFI(0x0C));
   }
 
-
   Future<Uint8List> readDG13() async {
     await _selectDF1();
     _log.debug("Reading EF.DG13");
     return await _exec(() => _api.readFileBySFI(0x0D));
   }
-
 
   Future<Uint8List> readDG14() async {
     await _selectDF1();
@@ -126,13 +117,11 @@ class DataGroupReader {
     return await _exec(() => _api.readFileBySFI(0x0F));
   }
 
-
   Future<Uint8List> readDG16() async {
     await _selectDF1();
     _log.debug("Reading EF.DG16");
     return await _exec(() => _api.readFileBySFI(0x10));
   }
-
 
   // ICC communication commands
 

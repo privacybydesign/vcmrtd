@@ -96,11 +96,10 @@ GoRouter createRouter() {
             params: params,
             onCancel: context.pop,
             onSuccess: (document, result) {
-              context.go('/result', extra: {
-                'document': document,
-                'result': result,
-                'document_type': params.documentType,
-              });
+              context.go(
+                '/result',
+                extra: {'document': document, 'result': result, 'document_type': params.documentType},
+              );
             },
           );
         },

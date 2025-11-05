@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:vcmrtdapp/providers/active_authenticiation_provider.dart';
 import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
-import 'package:vcmrtdapp/providers/passport_reader_provider.dart';
 import 'package:vcmrtdapp/widgets/common/animated_nfc_status_widget.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_guidance_screen.dart';
 
@@ -80,9 +79,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
       return NfcGuidanceScreen(onStartReading: startReading, onBack: context.pop);
     }
 
-    final title = widget.params.documentType == DocumentType.passport
-        ? 'Scan passport'
-        : 'Scan driving license';
+    final title = widget.params.documentType == DocumentType.passport ? 'Scan passport' : 'Scan driving license';
 
     return Scaffold(
       appBar: AppBar(title: Text(title)),
@@ -148,13 +145,13 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
       final result = await ref
           .read(readerProvider.notifier)
           .readWithMRZ(
-        iosNfcMessages: _createIosNfcMessageMapper(),
-        documentNumber: widget.params.docNumber,
-        birthDate: widget.params.dateOfBirth,
-        expiryDate: widget.params.dateOfExpiry,
-        countryCode: widget.params.countryCode,
-        activeAuthenticationParams: nonceAndSessionId,
-      );
+            iosNfcMessages: _createIosNfcMessageMapper(),
+            documentNumber: widget.params.docNumber,
+            birthDate: widget.params.dateOfBirth,
+            expiryDate: widget.params.dateOfExpiry,
+            countryCode: widget.params.countryCode,
+            activeAuthenticationParams: nonceAndSessionId,
+          );
       if (result != null) {
         final (document, passportDataResult) = result;
         widget.onSuccess(document, passportDataResult);
@@ -171,9 +168,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
       return '🟢' * prog + '⚪️' * (numStages - prog);
     }
 
-    final docName = widget.params.documentType == DocumentType.passport
-        ? 'passport'
-        : 'driving license';
+    final docName = widget.params.documentType == DocumentType.passport ? 'passport' : 'driving license';
 
     return (state) {
       final progress = progressFormatter(progressForState(state));

@@ -14,7 +14,7 @@ class SecurityContent extends StatelessWidget {
   Widget _buildSecurityDetails() {
     int dgCount = 0;
 
-    if (passport.mrz != null ) dgCount++;
+    if (passport.mrz != null) dgCount++;
     if (passport.photoImageData != null) dgCount++;
     if (passport.dg3RawBytes != null) dgCount++;
     if (passport.dg4RawBytes != null) dgCount++;

@@ -61,7 +61,7 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
             onSuccess: (scannedMrz) {
               if (!_hasNavigated) {
                 _hasNavigated = true;
-                  widget.onMrzScanned(scannedMrz);
+                widget.onMrzScanned(scannedMrz);
               }
             },
           ),

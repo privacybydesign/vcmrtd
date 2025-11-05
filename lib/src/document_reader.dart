@@ -9,9 +9,18 @@ import 'package:vcmrtd/src/models/document.dart';
 import 'package:vcmrtd/src/parsers/document_parser.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
+import '../internal.dart';
 import 'lds/df1/passportDGs.dart';
 
 typedef IosNfcMessageMapper = String Function(DocumentReaderState);
+
+class DocumentError implements Exception {
+  final String message;
+  final StatusWord? code;
+  DocumentError(this.message, {this.code});
+  @override
+  String toString() => message;
+}
 
 class DocumentReader<DocType extends DocumentData> extends StateNotifier<DocumentReaderState> {
   final DocumentParser<DocType> parser;
@@ -125,8 +134,6 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
     for (final c in _createConfigs()) {
       final tagValues = session.com!.dgTags.map((t) => t.value).toSet();
 
-
-
       if (!tagValues.contains(c.tag.value)) {
         continue;
       }
@@ -158,9 +165,9 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
     _setState(DocumentReaderReadingSOD());
     try {
       await _reconnectionLoop(
-          session: session,
-          authenticate: true,
-          whenConnected: () async => sod = await reader.readEfSOD()
+        session: session,
+        authenticate: true,
+        whenConnected: () async => sod = await reader.readEfSOD(),
       );
       if (state is DocumentReaderCancelled) {
         return null;
@@ -176,9 +183,8 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
         await _reconnectionLoop(
           session: session,
           authenticate: true,
-          whenConnected: () async => aaSig = await reader.activeAuthenticate(
-              stringToUint8List(activeAuthenticationParams.nonce)
-          ),
+          whenConnected: () async =>
+              aaSig = await reader.activeAuthenticate(stringToUint8List(activeAuthenticationParams.nonce)),
         );
         if (state is DocumentReaderCancelled) {
           return null;
@@ -197,9 +203,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
     final result = PassportDataResult(
       dataGroups: dataGroups,
       efSod: sod?.toBytes().hex() ?? '',
-      nonce: activeAuthenticationParams != null
-          ? stringToUint8List(activeAuthenticationParams.nonce)
-          : null,
+      nonce: activeAuthenticationParams != null ? stringToUint8List(activeAuthenticationParams.nonce) : null,
       sessionId: activeAuthenticationParams?.sessionId,
       aaSignature: aaSig,
     );
@@ -341,10 +345,36 @@ class _DGConfig {
 
 class _Session {
   static const Set<String> paceCountriesAlpha3 = {
-    'AUT', 'BEL', 'BGR', 'HRV', 'CYP', 'CZE', 'DNK', 'EST', 'FIN', 'FRA', 'DEU', 'GRC',
-    'HUN', 'IRL', 'ITA', 'LVA', 'LTU', 'LUX', 'MLT', 'NLD', 'POL', 'PRT', 'ROU', 'SVK',
-    'SVN', 'ESP', 'SWE',
-    'ISL', 'LIE', 'NOR',
+    'AUT',
+    'BEL',
+    'BGR',
+    'HRV',
+    'CYP',
+    'CZE',
+    'DNK',
+    'EST',
+    'FIN',
+    'FRA',
+    'DEU',
+    'GRC',
+    'HUN',
+    'IRL',
+    'ITA',
+    'LVA',
+    'LTU',
+    'LUX',
+    'MLT',
+    'NLD',
+    'POL',
+    'PRT',
+    'ROU',
+    'SVK',
+    'SVN',
+    'ESP',
+    'SWE',
+    'ISL',
+    'LIE',
+    'NOR',
     'CHE',
     'GBR',
   };

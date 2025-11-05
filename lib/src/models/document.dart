@@ -6,7 +6,6 @@ import '../../vcmrtd.dart';
 
 abstract class DocumentData {}
 
-
 class PassportData implements DocumentData {
   // From DG1
   final PassportMRZ? mrz;

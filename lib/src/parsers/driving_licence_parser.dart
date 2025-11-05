@@ -177,7 +177,8 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
   void parseDG6(Uint8List bytes) {
     final tlv = TLV.fromBytes(bytes);
 
-    if (tlv.tag == 0x7F61) { // BIOMETRIC_INFORMATION_GROUP_TEMPLATE_TAG
+    if (tlv.tag == 0x7F61) {
+      // BIOMETRIC_INFORMATION_GROUP_TEMPLATE_TAG
       _parseBiometricGroup(tlv.value);
     }
   }
@@ -188,7 +189,8 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
     while (offset < bytes.length) {
       final tlv = TLV.decode(bytes.sublist(offset));
 
-      if (tlv.tag.value == 0x7F60) { // BIOMETRIC_INFORMATION_TEMPLATE_TAG
+      if (tlv.tag.value == 0x7F60) {
+        // BIOMETRIC_INFORMATION_TEMPLATE_TAG
         _parseBiometricTemplate(tlv.value);
       }
 
@@ -202,7 +204,8 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
     while (offset < bytes.length) {
       final tlv = TLV.decode(bytes.sublist(offset));
 
-      if (tlv.tag.value == 0x5F2E) { // BIOMETRIC_DATA_BLOCK_TAG
+      if (tlv.tag.value == 0x5F2E) {
+        // BIOMETRIC_DATA_BLOCK_TAG
         _parseFacialImageData(tlv.value);
       }
 
@@ -212,16 +215,9 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
 
   void _parseFacialImageData(Uint8List bytes) {
     // Verify "FAC\0" header
-    if (bytes.length < 4 ||
-        bytes[0] != 0x46 ||
-        bytes[1] != 0x41 ||
-        bytes[2] != 0x43 ||
-        bytes[3] != 0x00) {
+    if (bytes.length < 4 || bytes[0] != 0x46 || bytes[1] != 0x41 || bytes[2] != 0x43 || bytes[3] != 0x00) {
       // Try to use raw data anyway
-      _dg6 = DrivingLicenceEfDG6(
-        imageData: bytes,
-        imageType: null,
-      );
+      _dg6 = DrivingLicenceEfDG6(imageData: bytes, imageType: null);
       return;
     }
 
@@ -348,10 +344,7 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
     } else if (length == 3) {
       return (data[start] << 16) | (data[start + 1] << 8) | data[start + 2];
     } else if (length == 4) {
-      return (data[start] << 24) |
-      (data[start + 1] << 16) |
-      (data[start + 2] << 8) |
-      data[start + 3];
+      return (data[start] << 24) | (data[start + 1] << 16) | (data[start + 2] << 8) | data[start + 3];
     }
     return 0;
   }
@@ -395,7 +388,4 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
   void parseDG14(Uint8List bytes) {
     _dg14RawBytes = bytes;
   }
-
-
-
 }

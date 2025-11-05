@@ -9,7 +9,6 @@ import '../models/document.dart';
 import 'document_parser.dart';
 
 class PassportParser implements DocumentParser<PassportData> {
-
   // Groups with parsing logic
   PassportEfDG1? _dg1;
   PassportEfDG2? _dg2;
@@ -78,23 +77,21 @@ class PassportParser implements DocumentParser<PassportData> {
       dg16RawBytes: _dg16RawBytes,
     );
   }
+
   @override
   void parseDG1(Uint8List bytes) {
     final tlv = TLV.fromBytes(bytes);
 
     // Check for outer DG1 tag (0x61), not MRZ tag
-    if (tlv.tag != PassportEfDG1.TAG.value) {  // Changed from 0x5F1F to PassportEfDG1.TAG.value
-      throw EfParseError(
-          "Invalid DG1 tag=${tlv.tag.hex()}, expected tag=${PassportEfDG1.TAG.value.hex()}"
-      );
+    if (tlv.tag != PassportEfDG1.TAG.value) {
+      // Changed from 0x5F1F to PassportEfDG1.TAG.value
+      throw EfParseError("Invalid DG1 tag=${tlv.tag.hex()}, expected tag=${PassportEfDG1.TAG.value.hex()}");
     }
 
     // Now extract the inner MRZ tag (0x5F1F) from the value
     final mrzTlv = TLV.fromBytes(tlv.value);
     if (mrzTlv.tag != 0x5F1F) {
-      throw EfParseError(
-          "Invalid MRZ tag=${mrzTlv.tag.hex()}, expected tag=5F1F"
-      );
+      throw EfParseError("Invalid MRZ tag=${mrzTlv.tag.hex()}, expected tag=5F1F");
     }
 
     final mrz = PassportMRZ(mrzTlv.value);
@@ -111,13 +108,15 @@ class PassportParser implements DocumentParser<PassportData> {
     final data = tlv.value;
     final bigt = TLV.decode(data);
 
-    if (bigt.tag.value != 0x7F61) {  // BIOMETRIC_INFORMATION_GROUP_TEMPLATE_TAG
+    if (bigt.tag.value != 0x7F61) {
+      // BIOMETRIC_INFORMATION_GROUP_TEMPLATE_TAG
       throw EfParseError("Invalid object tag=${bigt.tag.value.hex()}, expected tag=7F61");
     }
 
     final bict = TLV.decode(bigt.value);
 
-    if (bict.tag.value != 0x02) {  // BIOMETRIC_INFORMATION_COUNT_TAG
+    if (bict.tag.value != 0x02) {
+      // BIOMETRIC_INFORMATION_COUNT_TAG
       throw EfParseError("Invalid object tag=${bict.tag.value.hex()}, expected tag=02");
     }
 
@@ -131,13 +130,15 @@ class PassportParser implements DocumentParser<PassportData> {
   void _parseBIT(Uint8List stream, int index) {
     final tvl = TLV.decode(stream);
 
-    if (tvl.tag.value != 0x7F60) {  // BIOMETRIC_INFORMATION_TEMPLATE_TAG
+    if (tvl.tag.value != 0x7F60) {
+      // BIOMETRIC_INFORMATION_TEMPLATE_TAG
       throw EfParseError("Invalid object tag=${tvl.tag.value.hex()}, expected tag=7F60");
     }
 
     var bht = TLV.decode(tvl.value);
 
-    if (bht.tag.value == 0x7D) {  // SMT_TAG
+    if (bht.tag.value == 0x7D) {
+      // SMT_TAG
       // TODO: Statically protected BIT not implemented
     } else if ((bht.tag.value & 0xA0) == 0xA0) {
       var sbh = _parseBHT(tvl.value);
@@ -148,7 +149,8 @@ class PassportParser implements DocumentParser<PassportData> {
   List<DecodedTV> _parseBHT(Uint8List stream) {
     final bht = TLV.decode(stream);
 
-    if (bht.tag.value != 0xA1) {  // BIOMETRIC_HEADER_TEMPLATE_BASE_TAG
+    if (bht.tag.value != 0xA1) {
+      // BIOMETRIC_HEADER_TEMPLATE_BASE_TAG
       throw EfParseError("Invalid object tag=${bht.tag.value.hex()}, expected tag=A1");
     }
 
@@ -168,9 +170,7 @@ class PassportParser implements DocumentParser<PassportData> {
   void _parseBiometricDataBlock(List<DecodedTV> sbh) {
     var firstBlock = sbh.first;
     if (firstBlock.tag.value != 0x5F2E && firstBlock.tag.value != 0x7F2E) {
-      throw EfParseError(
-          "Invalid object tag=${firstBlock.tag.value.hex()}, expected tag=5F2E or 7F2E"
-      );
+      throw EfParseError("Invalid object tag=${firstBlock.tag.value.hex()}, expected tag=5F2E or 7F2E");
     }
 
     var data = firstBlock.value;
@@ -184,7 +184,8 @@ class PassportParser implements DocumentParser<PassportData> {
     final versionNumber = _extractContent(data, start: offset, end: offset + 4);
     offset += 4;
 
-    if (versionNumber != 0x30313000) {  // VERSION_NUMBER
+    if (versionNumber != 0x30313000) {
+      // VERSION_NUMBER
       throw EfParseError("Version of Biometric data is not valid");
     }
 
@@ -221,7 +222,7 @@ class PassportParser implements DocumentParser<PassportData> {
     final poseAngleUncertainty = _extractContent(data, start: offset, end: offset + 3);
     offset += 3;
 
-    offset += nrFeaturePoints * 8;  // Skip features
+    offset += nrFeaturePoints * 8; // Skip features
 
     final faceImageType = _extractContent(data, start: offset, end: offset + 1);
     offset += 1;
@@ -286,9 +287,6 @@ class PassportParser implements DocumentParser<PassportData> {
     return data.sublist(start, end).buffer.asByteData().getInt32(0);
   }
 
-
-
-
   @override
   void parseDG3(Uint8List bytes) {
     _dg3RawBytes = bytes;
@@ -324,7 +322,6 @@ class PassportParser implements DocumentParser<PassportData> {
     _dg9RawBytes = bytes;
   }
 
-
   @override
   void parseDG10(Uint8List bytes) {
     _dg10RawBytes = bytes;
@@ -340,7 +337,8 @@ class PassportParser implements DocumentParser<PassportData> {
     final data = tlv.value;
     final tagListTag = TLV.decode(data);
 
-    if (tagListTag.tag.value != 0x5c) {  // TAG_LIST_TAG
+    if (tagListTag.tag.value != 0x5c) {
+      // TAG_LIST_TAG
       throw EfParseError("Invalid version object tag=${tagListTag.tag.value.hex()}, expected tag=5c");
     }
 
@@ -367,43 +365,43 @@ class PassportParser implements DocumentParser<PassportData> {
       tagListBytesRead += uvtv.encodedLen;
 
       switch (uvtv.tag.value) {
-        case 0x5F0E:  // FULL_NAME_TAG
+        case 0x5F0E: // FULL_NAME_TAG
           nameOfHolder = utf8.decode(uvtv.value);
           break;
-        case 0x5F10:  // PERSONAL_NUMBER_TAG
+        case 0x5F10: // PERSONAL_NUMBER_TAG
           personalNumber = utf8.decode(uvtv.value);
           break;
-        case 0x5F0F:  // OTHER_NAME_TAG
+        case 0x5F0F: // OTHER_NAME_TAG
           otherNames.add(utf8.decode(uvtv.value));
           break;
-        case 0x5F2B:  // FULL_DATE_OF_BIRTH_TAG
+        case 0x5F2B: // FULL_DATE_OF_BIRTH_TAG
           fullDateOfBirth = String.fromCharCodes(uvtv.value).parseDate();
           break;
-        case 0x5F11:  // PLACE_OF_BIRTH_TAG
+        case 0x5F11: // PLACE_OF_BIRTH_TAG
           placeOfBirth.add(utf8.decode(uvtv.value));
           break;
-        case 0x5F42:  // PERMANENT_ADDRESS_TAG
+        case 0x5F42: // PERMANENT_ADDRESS_TAG
           permanentAddress.add(utf8.decode(uvtv.value));
           break;
-        case 0x5F12:  // TELEPHONE_TAG
+        case 0x5F12: // TELEPHONE_TAG
           telephone = utf8.decode(uvtv.value);
           break;
-        case 0x5F13:  // PROFESSION_TAG
+        case 0x5F13: // PROFESSION_TAG
           profession = utf8.decode(uvtv.value);
           break;
-        case 0x5F14:  // TITLE_TAG
+        case 0x5F14: // TITLE_TAG
           title = utf8.decode(uvtv.value);
           break;
-        case 0x5F15:  // PERSONAL_SUMMARY_TAG
+        case 0x5F15: // PERSONAL_SUMMARY_TAG
           personalSummary = utf8.decode(uvtv.value);
           break;
-        case 0x5F16:  // PROOF_OF_CITIZENSHIP_TAG
+        case 0x5F16: // PROOF_OF_CITIZENSHIP_TAG
           proofOfCitizenship = uvtv.value;
           break;
-        case 0x5F17:  // OTHER_VALID_TD_NUMBERS_TAG
+        case 0x5F17: // OTHER_VALID_TD_NUMBERS_TAG
           otherValidTDNumbers.add(utf8.decode(uvtv.value));
           break;
-        case 0x5F18:  // CUSTODY_INFORMATION_TAG
+        case 0x5F18: // CUSTODY_INFORMATION_TAG
           custodyInformation = utf8.decode(uvtv.value);
           break;
       }
@@ -436,7 +434,8 @@ class PassportParser implements DocumentParser<PassportData> {
     final data = tlv.value;
     final tagListTag = TLV.decode(data);
 
-    if (tagListTag.tag.value != 0x5c) {  // TAG_LIST_TAG
+    if (tagListTag.tag.value != 0x5c) {
+      // TAG_LIST_TAG
       throw EfParseError("Invalid version object tag=${tagListTag.tag.value.hex()}, expected tag=5c");
     }
 
@@ -451,19 +450,16 @@ class PassportParser implements DocumentParser<PassportData> {
       tagListBytesRead += uvtv.encodedLen;
 
       switch (uvtv.tag.value) {
-        case 0x5F19:  // ISSUING_AUTHORITY_TAG
+        case 0x5F19: // ISSUING_AUTHORITY_TAG
           issuingAuthority = utf8.decode(uvtv.value);
           break;
-        case 0x5F26:  // DATE_OF_ISSUE_TAG
+        case 0x5F26: // DATE_OF_ISSUE_TAG
           dateOfIssue = String.fromCharCodes(uvtv.value).parseDate();
           break;
       }
     }
 
-    _dg12 = PassportEfDG12(
-      issuingAuthority: issuingAuthority,
-      dateOfIssue: dateOfIssue,
-    );
+    _dg12 = PassportEfDG12(issuingAuthority: issuingAuthority, dateOfIssue: dateOfIssue);
   }
 
   @override
@@ -495,5 +491,4 @@ class PassportParser implements DocumentParser<PassportData> {
   void parseDG16(Uint8List bytes) {
     _dg16RawBytes = bytes;
   }
-
 }

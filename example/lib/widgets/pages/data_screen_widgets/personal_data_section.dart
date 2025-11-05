@@ -62,7 +62,11 @@ class PersonalDataSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        InfoRow(label: 'Full Name', value: '${passport.mrz!.firstName} ${passport.mrz!.lastName}', iconData: Icons.person_outline),
+        InfoRow(
+          label: 'Full Name',
+          value: '${passport.mrz!.firstName} ${passport.mrz!.lastName}',
+          iconData: Icons.person_outline,
+        ),
         const SizedBox(height: 12),
         InfoRow(label: 'Nationality', value: passport.mrz!.nationality, iconData: Icons.flag_outlined),
         const SizedBox(height: 12),

@@ -107,7 +107,7 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
         title: const Text('Success!'),
         content: const Text(
           'Your passport data has been securely transmitted to the web application. '
-              'You can now close this app or scan another passport.',
+          'You can now close this app or scan another passport.',
         ),
         actions: [
           TextButton(

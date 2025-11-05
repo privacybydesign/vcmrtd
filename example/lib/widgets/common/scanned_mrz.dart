@@ -1,4 +1,3 @@
-
 import 'package:mrz_parser/mrz_parser.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
@@ -7,11 +6,7 @@ sealed class ScannedMRZ {
   final String countryCode;
   final DocumentType documentType;
 
-  ScannedMRZ({
-    required this.documentNumber,
-    required this.countryCode,
-    required this.documentType,
-  });
+  ScannedMRZ({required this.documentNumber, required this.countryCode, required this.documentType});
 }
 
 class ScannedPassportMRZ extends ScannedMRZ {
@@ -36,15 +31,10 @@ class ScannedPassportMRZ extends ScannedMRZ {
 }
 
 class ScannedDriverLicenseMRZ extends ScannedMRZ {
-  ScannedDriverLicenseMRZ({
-    required super.documentNumber,
-    required super.countryCode,
-  }) : super(documentType: DocumentType.driverLicense);
+  ScannedDriverLicenseMRZ({required super.documentNumber, required super.countryCode})
+    : super(documentType: DocumentType.driverLicense);
 
   factory ScannedDriverLicenseMRZ.fromMRZResult(MRZResult mrz) {
-    return ScannedDriverLicenseMRZ(
-      documentNumber: mrz.documentNumber,
-      countryCode: mrz.countryCode,
-    );
+    return ScannedDriverLicenseMRZ(documentNumber: mrz.documentNumber, countryCode: mrz.countryCode);
   }
 }
