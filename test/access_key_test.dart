@@ -8,6 +8,7 @@ import 'package:vcmrtd/src/proto/dba_key.dart';
 import 'package:vcmrtd/src/proto/can_key.dart';
 
 import 'package:vcmrtd/src/extension/string_apis.dart';
+import 'package:vcmrtd/src/types/document_type.dart';
 
 void main() {
   test('DBA key testing (for BAC and PACE)', () {
@@ -27,7 +28,7 @@ void main() {
   });
 
   test('CAN key testing', () {
-    CanKey canKey = CanKey("123456");
+    CanKey canKey = CanKey("123456", DocumentType.passport);
     final tvKPiForPace = "591468cda83d65219cccb8560233600f".parseHex();
     expect(canKey.Kpi(CipherAlgorithm.AES, KEY_LENGTH.s128), tvKPiForPace);
   });

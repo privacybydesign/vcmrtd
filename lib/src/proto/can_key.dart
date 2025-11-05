@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:vcmrtd/src/lds/asn1ObjectIdentifiers.dart';
 import 'package:logging/logging.dart';
 import 'package:vcmrtd/extensions.dart';
+import 'package:vcmrtd/src/types/document_type.dart';
 
 import '../crypto/kdf.dart';
 import 'access_key.dart';
@@ -25,21 +26,37 @@ class CanKey extends AccessKey {
 
   late Uint8List _can;
 
-  /// Constructs [CanKey] using passport CAN number [Uint8List].
-  CanKey(String canNumber) {
+  /// Constructs [CanKey] using document specific CAN key string [Uint8List].
+  CanKey(String canNumber, DocumentType docType) {
     //docs https://www.icao.int/Meetings/TAG-MRTD/Documents/Tag-Mrtd-20/TagMrtd-20_WP020_en.pdf
-    //3.1.6 CAN is 6 digits long
-    final RegExp regex = RegExp(r'^\d{10}$');
-    if (!regex.hasMatch(canNumber)) {
-      throw CanKeysError("AccessKey.CanKeys; Code must be exactly 10 digits and only contain numbers");
+    //3.1.6 CAN is 6 digits long for passports but 10 character document number for driving licences
+    // Therefore we need the the document type to determine the regex
+    final RegExp passportRegex = RegExp(r'^\d{6}$');
+    final RegExp drivingRegex = RegExp(r'^[A-Z0-9]{10}$');
+    late int canLength;
+
+    if (docType == DocumentType.passport) {
+      if (!passportRegex.hasMatch(canNumber)) {
+        throw CanKeysError("AccessKey.CanKeys; Code must be exactly 6 digits and only contain numbers for passports.");
+      }
+      canLength = 6;
     }
 
-    Uint8List canNumberInList = Uint8List(10);
-    for (int i = 0; i < 10; i++) {
-      canNumberInList[i] = canNumber.codeUnitAt(i);
+    if (docType == DocumentType.driverLicense) {
+      if (!passportRegex.hasMatch(canNumber)) {
+        throw CanKeysError(
+          "AccessKey.CanKeys; Code must be exactly 10 character capital alphanumerics for driving licences.",
+        );
+      }
+      canLength = 10;
     }
 
-    _can = canNumberInList;
+    Uint8List canNumberBytes = Uint8List(canLength);
+    for (int i = 0; i < canLength; i++) {
+      canNumberBytes[i] = canNumber.codeUnitAt(i);
+    }
+
+    _can = canNumberBytes;
   }
 
   /// Returns K-pi [kpi] to be used in PACE protocol.
