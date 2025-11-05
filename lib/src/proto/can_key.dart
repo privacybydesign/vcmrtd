@@ -43,7 +43,7 @@ class CanKey extends AccessKey {
     }
 
     if (docType == DocumentType.driverLicense) {
-      if (!passportRegex.hasMatch(canNumber)) {
+      if (!drivingRegex.hasMatch(canNumber)) {
         throw CanKeysError(
           "AccessKey.CanKeys; Code must be exactly 10 character capital alphanumerics for driving licences.",
         );
