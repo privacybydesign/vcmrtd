@@ -425,8 +425,8 @@ class _Session {
   }
 
   bool isPace() {
-    return (documentType == DocumentType.driverLicense) &&
-        (countryCode != null && paceCountriesAlpha3.contains(countryCode!.toUpperCase()));
+    return (documentType == DocumentType.driverLicense) ||
+        (paceCountriesAlpha3.contains(countryCode!.toUpperCase()));
   }
 
   Future<void> dispose() async {

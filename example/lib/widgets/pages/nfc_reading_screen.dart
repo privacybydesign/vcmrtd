@@ -32,7 +32,7 @@ class NfcReadingRouteParams {
     if (scannedMRZ is ScannedPassportMRZ) {
       final passport = scannedMRZ as ScannedPassportMRZ;
       baseParams['date_of_birth'] = passport.dateOfBirth.toIso8601String();
-      baseParams['date_of_expiry'] = passport.dateOfBirth.toIso8601String();
+      baseParams['date_of_expiry'] = passport.dateOfExpiry.toIso8601String();
 
     }
     return baseParams;
