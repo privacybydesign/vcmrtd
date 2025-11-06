@@ -171,7 +171,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
       return null;
     }
 
-    if (activeAuthenticationParams != null && session.com!.dgTags.contains(PassportEfDG15.TAG.value)) {
+    if (activeAuthenticationParams != null && session.com!.dgTags.contains(PassportEfDG15.TAG)) {
       _setState(DocumentReaderActiveAuthentication());
       try {
         await _reconnectionLoop(
