@@ -1,13 +1,30 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:vcmrtd/src/models/document.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import '../extension/byte_reader.dart';
 import '../lds/df1/dLicenceDGs.dart';
 
 import 'document_parser.dart';
 
 class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
+  // TLV tag constants for DG1
+  static const int _DG1_CONTAINER_TAG = 0x5F02;
+  static const int _ISSUING_MEMBER_STATE_TAG = 0x5F03;
+  static const int _HOLDER_SURNAME_TAG = 0x5F04;
+  static const int _HOLDER_OTHER_NAME_TAG = 0x5F05;
+  static const int _DATE_OF_BIRTH_TAG = 0x5F06;
+  static const int _PLACE_OF_BIRTH_TAG = 0x5F07;
+  static const int _DATE_OF_ISSUE_TAG = 0x5F0A;
+  static const int _DATE_OF_EXPIRY_TAG = 0x5F0B;
+  static const int _ISSUING_AUTHORITY_TAG = 0x5F0C;
+  static const int _DOCUMENT_NUMBER_TAG = 0x5F0E;
+
+  // TLV tag constants for DG6 (biometric data)
+  static const int _BIOMETRIC_GROUP_TEMPLATE_TAG = 0x7F61;
+  static const int _BIOMETRIC_INFO_TEMPLATE_TAG = 0x7F60;
+  static const int _BIOMETRIC_DATA_BLOCK_TAG = 0x5F2E;
+
   // Groups with parsing logic
   DrivingLicenceEfDG1? _dg1;
   DrivingLicenceEfDG6? _dg6;
@@ -80,8 +97,8 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
       try {
         final tagValue = TLV.decode(bytes.sublist(offset));
 
-        // Parse nested TLVs inside 0x5F02 tag
-        if (tagValue.tag.value == 0x5F02) {
+        // Parse nested TLVs inside container tag
+        if (tagValue.tag.value == _DG1_CONTAINER_TAG) {
           int innerOffset = 0;
           final innerBytes = tagValue.value;
 
@@ -90,31 +107,31 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
               final tlv = TLV.decode(innerBytes.sublist(innerOffset));
 
               switch (tlv.tag.value) {
-                case 0x5F03: // ISSUING_MEMBER_STATE_TAG
+                case _ISSUING_MEMBER_STATE_TAG:
                   issuingMemberState = utf8.decode(tlv.value);
                   break;
-                case 0x5F04: // HOLDER_SURNAME_TAG
+                case _HOLDER_SURNAME_TAG:
                   holderSurname = utf8.decode(tlv.value);
                   break;
-                case 0x5F05: // HOLDER_OTHER_NAME_TAG
+                case _HOLDER_OTHER_NAME_TAG:
                   holderOtherName = utf8.decode(tlv.value);
                   break;
-                case 0x5F06: // DATE_OF_BIRTH_TAG
+                case _DATE_OF_BIRTH_TAG:
                   dateOfBirth = _decodeBcd(tlv.value);
                   break;
-                case 0x5F07: // PLACE_OF_BIRTH_TAG
+                case _PLACE_OF_BIRTH_TAG:
                   placeOfBirth = utf8.decode(tlv.value);
                   break;
-                case 0x5F0A: // DATE_OF_ISSUE_TAG
+                case _DATE_OF_ISSUE_TAG:
                   dateOfIssue = _decodeBcd(tlv.value);
                   break;
-                case 0x5F0B: // DATE_OF_EXPIRY_TAG
+                case _DATE_OF_EXPIRY_TAG:
                   dateOfExpiry = _decodeBcd(tlv.value);
                   break;
-                case 0x5F0C: // ISSUING_AUTHORITY_TAG
+                case _ISSUING_AUTHORITY_TAG:
                   issuingAuthority = utf8.decode(tlv.value);
                   break;
-                case 0x5F0E: // DOCUMENT_NUMBER_TAG
+                case _DOCUMENT_NUMBER_TAG:
                   documentNumber = utf8.decode(tlv.value);
                   break;
               }
@@ -177,8 +194,7 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
   void parseDG6(Uint8List bytes) {
     final tlv = TLV.fromBytes(bytes);
 
-    if (tlv.tag == 0x7F61) {
-      // BIOMETRIC_INFORMATION_GROUP_TEMPLATE_TAG
+    if (tlv.tag == _BIOMETRIC_GROUP_TEMPLATE_TAG) {
       _parseBiometricGroup(tlv.value);
     }
   }
@@ -189,8 +205,7 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
     while (offset < bytes.length) {
       final tlv = TLV.decode(bytes.sublist(offset));
 
-      if (tlv.tag.value == 0x7F60) {
-        // BIOMETRIC_INFORMATION_TEMPLATE_TAG
+      if (tlv.tag.value == _BIOMETRIC_INFO_TEMPLATE_TAG) {
         _parseBiometricTemplate(tlv.value);
       }
 
@@ -204,8 +219,7 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
     while (offset < bytes.length) {
       final tlv = TLV.decode(bytes.sublist(offset));
 
-      if (tlv.tag.value == 0x5F2E) {
-        // BIOMETRIC_DATA_BLOCK_TAG
+      if (tlv.tag.value == _BIOMETRIC_DATA_BLOCK_TAG) {
         _parseFacialImageData(tlv.value);
       }
 
@@ -214,103 +228,45 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
   }
 
   void _parseFacialImageData(Uint8List bytes) {
+    final reader = ByteReader(bytes);
+
     // Verify "FAC\0" header
-    if (bytes.length < 4 || bytes[0] != 0x46 || bytes[1] != 0x41 || bytes[2] != 0x43 || bytes[3] != 0x00) {
-      // Try to use raw data anyway
+    if (!reader.hasRemaining(4) ||
+        bytes[0] != 0x46 ||
+        bytes[1] != 0x41 ||
+        bytes[2] != 0x43 ||
+        bytes[3] != 0x00) {
       _dg6 = DrivingLicenceEfDG6(imageData: bytes, imageType: null);
       return;
     }
+    reader.skip(4); // Skip "FAC\0"
 
-    int offset = 4;
+    final versionNumber = reader.readInt(4);
+    final lengthOfRecord = reader.readInt(4);
+    final numberOfFacialImages = reader.readInt(2);
+    final facialRecordDataLength = reader.readInt(4);
+    final nrFeaturePoints = reader.readInt(2);
+    final gender = reader.readInt(1);
+    final eyeColor = reader.readInt(1);
+    final hairColor = reader.readInt(1);
+    final featureMask = reader.readInt(3);
+    final expression = reader.readInt(2);
+    final poseAngle = reader.readInt(3);
+    final poseAngleUncertainty = reader.readInt(3);
 
-    // Version number (4 bytes)
-    final versionNumber = _extractInt(bytes, offset, 4);
-    offset += 4;
+    reader.skip(nrFeaturePoints * 8); // Skip feature points
 
-    // Length of record (4 bytes)
-    final lengthOfRecord = _extractInt(bytes, offset, 4);
-    offset += 4;
-
-    // Number of facial images (2 bytes)
-    final numberOfFacialImages = _extractInt(bytes, offset, 2);
-    offset += 2;
-
-    // Facial record data length (4 bytes)
-    final facialRecordDataLength = _extractInt(bytes, offset, 4);
-    offset += 4;
-
-    // Number of feature points (2 bytes)
-    final nrFeaturePoints = _extractInt(bytes, offset, 2);
-    offset += 2;
-
-    // Gender (1 byte)
-    final gender = _extractInt(bytes, offset, 1);
-    offset += 1;
-
-    // Eye color (1 byte)
-    final eyeColor = _extractInt(bytes, offset, 1);
-    offset += 1;
-
-    // Hair color (1 byte)
-    final hairColor = _extractInt(bytes, offset, 1);
-    offset += 1;
-
-    // Feature mask (3 bytes)
-    final featureMask = _extractInt(bytes, offset, 3);
-    offset += 3;
-
-    // Expression (2 bytes)
-    final expression = _extractInt(bytes, offset, 2);
-    offset += 2;
-
-    // Pose angle (3 bytes)
-    final poseAngle = _extractInt(bytes, offset, 3);
-    offset += 3;
-
-    // Pose angle uncertainty (3 bytes)
-    final poseAngleUncertainty = _extractInt(bytes, offset, 3);
-    offset += 3;
-
-    // Skip feature points (8 bytes each)
-    offset += nrFeaturePoints * 8;
-
-    // Face image type (1 byte)
-    final faceImageType = _extractInt(bytes, offset, 1);
-    offset += 1;
-
-    // Image data type (1 byte) - 0 = JPEG, 1 = JPEG2000
-    final imageDataType = bytes[offset];
+    final faceImageType = reader.readInt(1);
+    final imageDataType = reader.readInt(1);
     final imageType = imageDataType == 0 ? ImageType.jpeg : ImageType.jpeg2000;
-    offset += 1;
+    final imageWidth = reader.readInt(2);
+    final imageHeight = reader.readInt(2);
+    final imageColorSpace = reader.readInt(1);
+    final sourceType = reader.readInt(1);
+    final deviceType = reader.readInt(2);
+    final quality = reader.readInt(2);
+    final imageData = reader.readBytes(bytes.length - reader.position);
 
-    // Image width (2 bytes)
-    final imageWidth = _extractInt(bytes, offset, 2);
-    offset += 2;
-
-    // Image height (2 bytes)
-    final imageHeight = _extractInt(bytes, offset, 2);
-    offset += 2;
-
-    // Image color space (1 byte)
-    final imageColorSpace = _extractInt(bytes, offset, 1);
-    offset += 1;
-
-    // Source type (1 byte)
-    final sourceType = _extractInt(bytes, offset, 1);
-    offset += 1;
-
-    // Device type (2 bytes)
-    final deviceType = _extractInt(bytes, offset, 2);
-    offset += 2;
-
-    // Quality (2 bytes)
-    final quality = _extractInt(bytes, offset, 2);
-    offset += 2;
-
-    // Now the actual image data starts
-    final imageData = bytes.sublist(offset);
-
-    // Create DrivingLicenceEfDG6 object
     _dg6 = DrivingLicenceEfDG6(
       versionNumber: versionNumber,
       lengthOfRecord: lengthOfRecord,
@@ -336,18 +292,6 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
     );
   }
 
-  int _extractInt(Uint8List data, int start, int length) {
-    if (length == 1) {
-      return data[start];
-    } else if (length == 2) {
-      return (data[start] << 8) | data[start + 1];
-    } else if (length == 3) {
-      return (data[start] << 16) | (data[start + 1] << 8) | data[start + 2];
-    } else if (length == 4) {
-      return (data[start] << 24) | (data[start + 1] << 16) | (data[start + 2] << 8) | data[start + 3];
-    }
-    return 0;
-  }
 
   @override
   void parseDG7(Uint8List bytes) {

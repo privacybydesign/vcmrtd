@@ -7,6 +7,23 @@ import 'package:vcmrtd/vcmrtd.dart';
 enum _DF { None, MF, DF1 }
 
 class DataGroupReader {
+  static const int DG1_SFI = 0x01;
+  static const int DG2_SFI = 0x02;
+  static const int DG3_SFI = 0x03;
+  static const int DG4_SFI = 0x04;
+  static const int DG5_SFI = 0x05;
+  static const int DG6_SFI = 0x06;
+  static const int DG7_SFI = 0x07;
+  static const int DG8_SFI = 0x08;
+  static const int DG9_SFI = 0x09;
+  static const int DG10_SFI = 0x0A;
+  static const int DG11_SFI = 0x0B;
+  static const int DG12_SFI = 0x0C;
+  static const int DG13_SFI = 0x0D;
+  static const int DG14_SFI = 0x0E;
+  static const int DG15_SFI = 0x0F;
+  static const int DG16_SFI = 0x10;
+
   final MrtdApi _api;
   final Logger _log;
   final Uint8List _applicationAID;
@@ -14,120 +31,115 @@ class DataGroupReader {
   _DF _dfSelected = _DF.None;
 
   DataGroupReader(ComProvider provider, this._applicationAID, this.accessKey)
-    : _api = MrtdApi(provider),
-      _log = Logger("Data Group bytes reader");
+      : _api = MrtdApi(provider),
+        _log = Logger("Data Group bytes reader");
 
   Future<void> startSession() async {
     if (accessKey is DBAKey) {
       await _selectDF1();
       await _exec(() => _api.initSessionViaBAC(accessKey as DBAKey));
     }
-
   }
 
   Future<void> startSessionPACE(EfCardAccess efCardAccess) async {
     await _exec(() => _api.initSessionViaPACE(accessKey, efCardAccess));
   }
 
-  // Read raw data group bytes
-
   Future<Uint8List> readDG1() async {
     await _selectDF1();
     _log.debug("Reading EF.DG1");
-    return await _exec(() => _api.readFileBySFI(0x01));
+    return await _exec(() => _api.readFileBySFI(DG1_SFI));
   }
 
   Future<Uint8List> readDG2() async {
     await _selectDF1();
     _log.debug("Reading EF.DG2");
-    return await _exec(() => _api.readFileBySFI(0x02));
+    return await _exec(() => _api.readFileBySFI(DG2_SFI));
   }
 
   Future<Uint8List> readDG3() async {
     await _selectDF1();
     _log.debug("Reading EF.DG3");
-    return await _exec(() => _api.readFileBySFI(0x03));
+    return await _exec(() => _api.readFileBySFI(DG3_SFI));
   }
 
   Future<Uint8List> readDG4() async {
     await _selectDF1();
     _log.debug("Reading EF.DG4");
-    return await _exec(() => _api.readFileBySFI(0x04));
+    return await _exec(() => _api.readFileBySFI(DG4_SFI));
   }
 
   Future<Uint8List> readDG5() async {
     await _selectDF1();
     _log.debug("Reading EF.DG5");
-    return await _exec(() => _api.readFileBySFI(0x05));
+    return await _exec(() => _api.readFileBySFI(DG5_SFI));
   }
 
   Future<Uint8List> readDG6() async {
     await _selectDF1();
     _log.debug("Reading EF.DG6");
-    return await _exec(() => _api.readFileBySFI(0x06));
+    return await _exec(() => _api.readFileBySFI(DG6_SFI));
   }
 
   Future<Uint8List> readDG7() async {
     await _selectDF1();
     _log.debug("Reading EF.DG7");
-    return await _exec(() => _api.readFileBySFI(0x07));
+    return await _exec(() => _api.readFileBySFI(DG7_SFI));
   }
 
   Future<Uint8List> readDG8() async {
     await _selectDF1();
     _log.debug("Reading EF.DG8");
-    return await _exec(() => _api.readFileBySFI(0x08));
+    return await _exec(() => _api.readFileBySFI(DG8_SFI));
   }
 
   Future<Uint8List> readDG9() async {
     await _selectDF1();
     _log.debug("Reading EF.DG9");
-    return await _exec(() => _api.readFileBySFI(0x09));
+    return await _exec(() => _api.readFileBySFI(DG9_SFI));
   }
 
   Future<Uint8List> readDG10() async {
     await _selectDF1();
     _log.debug("Reading EF.DG10");
-    return await _exec(() => _api.readFileBySFI(0x0A));
+    return await _exec(() => _api.readFileBySFI(DG10_SFI));
   }
 
   Future<Uint8List> readDG11() async {
     await _selectDF1();
     _log.debug("Reading EF.DG11");
-    return await _exec(() => _api.readFileBySFI(0x0B));
+    return await _exec(() => _api.readFileBySFI(DG11_SFI));
   }
 
   Future<Uint8List> readDG12() async {
     await _selectDF1();
     _log.debug("Reading EF.DG12");
-    return await _exec(() => _api.readFileBySFI(0x0C));
+    return await _exec(() => _api.readFileBySFI(DG12_SFI));
   }
 
   Future<Uint8List> readDG13() async {
     await _selectDF1();
     _log.debug("Reading EF.DG13");
-    return await _exec(() => _api.readFileBySFI(0x0D));
+    return await _exec(() => _api.readFileBySFI(DG13_SFI));
   }
 
   Future<Uint8List> readDG14() async {
     await _selectDF1();
     _log.debug("Reading EF.DG14");
-    return await _exec(() => _api.readFileBySFI(0x0E));
+    return await _exec(() => _api.readFileBySFI(DG14_SFI));
   }
 
   Future<Uint8List> readDG15() async {
     await _selectDF1();
     _log.debug("Reading EF.DG15");
-    return await _exec(() => _api.readFileBySFI(0x0F));
+    return await _exec(() => _api.readFileBySFI(DG15_SFI));
   }
 
   Future<Uint8List> readDG16() async {
     await _selectDF1();
     _log.debug("Reading EF.DG16");
-    return await _exec(() => _api.readFileBySFI(0x10));
+    return await _exec(() => _api.readFileBySFI(DG16_SFI));
   }
-
-  // ICC communication commands
 
   Future<EfCOM> readEfCOM() async {
     await _selectDF1();
@@ -151,7 +163,6 @@ class DataGroupReader {
     return await _exec(() => _api.activeAuthenticate(challenge));
   }
 
-  // Selects document specific application on ICC
   Future<void> _selectDF1() async {
     if (_dfSelected != _DF.DF1) {
       _log.debug("Selecting DF1");
@@ -160,7 +171,6 @@ class DataGroupReader {
     }
   }
 
-  // Selects master file
   Future<void> _selectMF() async {
     if (_dfSelected != _DF.MF) {
       _log.debug("Selecting MF");
