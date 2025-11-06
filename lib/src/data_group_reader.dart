@@ -10,18 +10,22 @@ class DataGroupReader {
   final MrtdApi _api;
   final Logger _log;
   final Uint8List _applicationAID;
+  final AccessKey accessKey;
   _DF _dfSelected = _DF.None;
 
-  DataGroupReader(ComProvider provider, this._applicationAID)
+  DataGroupReader(ComProvider provider, this._applicationAID, this.accessKey)
     : _api = MrtdApi(provider),
       _log = Logger("Data Group bytes reader");
 
-  Future<void> startSession(DBAKey keys) async {
-    await _selectDF1();
-    await _exec(() => _api.initSessionViaBAC(keys));
+  Future<void> startSession() async {
+    if (accessKey is DBAKey) {
+      await _selectDF1();
+      await _exec(() => _api.initSessionViaBAC(accessKey as DBAKey));
+    }
+
   }
 
-  Future<void> startSessionPACE(AccessKey accessKey, EfCardAccess efCardAccess) async {
+  Future<void> startSessionPACE(EfCardAccess efCardAccess) async {
     await _exec(() => _api.initSessionViaPACE(accessKey, efCardAccess));
   }
 

@@ -4,8 +4,6 @@ import 'package:flutter/foundation.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/extensions.dart';
-import 'package:vcmrtd/src/data_group_reader.dart';
-import 'package:vcmrtd/src/models/document.dart';
 import 'package:vcmrtd/src/parsers/document_parser.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
@@ -26,12 +24,14 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
   final DocumentParser<DocType> parser;
   final DataGroupReader dgReader;
   final NfcProvider _nfc;
+  final DocumentType documentType;
+
 
   bool _isCancelled = false;
   List<String> _log = [];
   IosNfcMessageMapper? _iosNfcMessageMapper;
 
-  DocumentReader(this.parser, this.dgReader, this._nfc) : super(DocumentReaderPending()) {
+  DocumentReader(this.parser, this.dgReader, this._nfc, this.documentType) : super(DocumentReaderPending()) {
     checkNfcAvailability();
   }
 
@@ -61,11 +61,8 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
     _isCancelled = true;
   }
 
-  Future<(DocType, PassportDataResult)?> readWithMRZ({
-    required String documentNumber,
-    required DateTime birthDate,
-    required DateTime expiryDate,
-    required String? countryCode,
+  Future<(DocType, PassportDataResult)?> readDocument({
+    required String countryCode,
     required IosNfcMessageMapper iosNfcMessages,
     NonceAndSessionId? activeAuthenticationParams,
   }) async {
@@ -78,10 +75,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
     final session = _Session(
       nfc: _nfc,
       dgReader: dgReader,
-      documentNumber: documentNumber,
-      birthDate: birthDate,
-      expiryDate: expiryDate,
-      countryCode: countryCode,
+      countryCode: countryCode, documentType: documentType,
     );
 
     final Map<String, String> dataGroups = {};
@@ -382,21 +376,17 @@ class _Session {
 
   final NfcProvider nfc;
   final DataGroupReader dgReader;
-  final String documentNumber;
-  final DateTime birthDate;
-  final DateTime expiryDate;
-  final String? countryCode;
+  final String countryCode;
+  final DocumentType documentType;
 
   EfCardAccess? cardAccess;
   EfCOM? com;
 
   _Session({
+    required this.documentType,
+    required this.countryCode,
     required this.nfc,
     required this.dgReader,
-    required this.documentNumber,
-    required this.birthDate,
-    required this.expiryDate,
-    required this.countryCode,
   });
 
   Future<void> init() async {
@@ -426,17 +416,17 @@ class _Session {
 
   Future<void> authenticate() async {
     final pace = isPace();
-    final accessKey = DBAKey(documentNumber, birthDate, expiryDate, paceMode: pace);
 
     if (pace) {
-      await dgReader.startSessionPACE(accessKey, cardAccess!);
+      await dgReader.startSessionPACE(cardAccess!);
     } else {
-      await dgReader.startSession(accessKey);
+      await dgReader.startSession();
     }
   }
 
   bool isPace() {
-    return countryCode != null && paceCountriesAlpha3.contains(countryCode!.toUpperCase());
+    return (documentType == DocumentType.driverLicense) &&
+        (countryCode != null && paceCountriesAlpha3.contains(countryCode!.toUpperCase()));
   }
 
   Future<void> dispose() async {

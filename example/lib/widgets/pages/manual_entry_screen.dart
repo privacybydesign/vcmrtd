@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:intl/intl.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
 
 class ManualEntryRouteParams {
   final DocumentType documentType;
@@ -21,19 +22,16 @@ class ManualEntryRouteParams {
   }
 }
 
-/// Simple manual entry screen for passport data
 class ManualEntryScreen extends StatefulWidget {
   final VoidCallback onBack;
-  final Function(String docNumber, DateTime dob, DateTime expiry)? onDataEntered;
-  final Function(String mrzString)? onMrzEntered;
+  final Function(ScannedMRZ) onManualEntryComplete;
   final DocumentType documentType;
 
   const ManualEntryScreen({
     super.key,
     required this.onBack,
-    this.onDataEntered,
+    required this.onManualEntryComplete,
     required this.documentType,
-    required this.onMrzEntered,
   });
 
   @override
@@ -43,12 +41,9 @@ class ManualEntryScreen extends StatefulWidget {
 class _ManualEntryScreenState extends State<ManualEntryScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // Passport fields
   final _docNumberController = TextEditingController();
   final _dobController = TextEditingController();
   final _expiryController = TextEditingController();
-
-  // Driver's licence fields
   final _mrzController = TextEditingController();
 
   DateTime? _selectedDob;
@@ -79,19 +74,13 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Header section
                 _buildHeaderCard(),
-
                 const SizedBox(height: 32),
-                // show manual entry based on the document
                 if (widget.documentType == DocumentType.passport)
                   ..._buildPassportFields()
                 else
                   ..._buildDriverLicenseFields(),
-
                 const SizedBox(height: 24),
-
-                // Error message
                 if (_errorMessage.isNotEmpty)
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -111,8 +100,6 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                       ],
                     ),
                   ),
-
-                // Continue Button
                 PlatformElevatedButton(
                   onPressed: _handleContinue,
                   child: const Padding(
@@ -120,10 +107,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                     child: Text('Continue to NFC Reading', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
                   ),
                 ),
-
                 const SizedBox(height: 16),
-
-                // Help text
                 _buildHelpText(),
               ],
             ),
@@ -148,12 +132,12 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
           Text(
             widget.documentType == DocumentType.passport
                 ? '• Passport Number: Usually at the top right of the photo page\n'
-                      '• Date of Birth: Listed as "Date of birth" or "DOB"\n'
-                      '• Expiry Date: Listed as "Date of expiry" or "Valid until"'
+                '• Date of Birth: Listed as "Date of birth" or "DOB"\n'
+                '• Expiry Date: Listed as "Date of expiry" or "Valid until"'
                 : '• The MRZ is at the bottom of the front side of your driver\'s licence\n'
-                      '• You can also get this by scanning the QR Code on the back of your driver\'s licence\n '
-                      '• It\'s a single line of exactly 30 characters\n'
-                      '• Starts with "D1", "D2", or "D3"',
+                '• You can also get this by scanning the QR Code on the back of your driver\'s licence\n'
+                '• It\'s a single line of exactly 30 characters\n'
+                '• Starts with "D1", "D2", or "D3"',
             style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280), height: 1.4),
           ),
         ],
@@ -163,7 +147,6 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
 
   List<Widget> _buildPassportFields() {
     return [
-      // Document Number Field
       _buildInputCard(
         title: '${widget.documentType.displayName} Number',
         hint: 'Enter your ${widget.documentType.displayName.toLowerCase()} number',
@@ -189,8 +172,6 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
         ),
       ),
       const SizedBox(height: 16),
-
-      // Date of Birth Field
       _buildInputCard(
         title: 'Date of Birth',
         hint: 'Select your date of birth',
@@ -212,8 +193,6 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
         ),
       ),
       const SizedBox(height: 16),
-
-      // Expiry Date Field
       _buildInputCard(
         title: 'Expiry Date',
         hint: 'Select ${widget.documentType.displayName.toLowerCase()} expiry date',
@@ -273,7 +252,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                 return null;
               },
               onChanged: (value) {
-                setState(() {}); // Update character count
+                setState(() {});
               },
             ),
             const SizedBox(height: 8),
@@ -297,7 +276,12 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
     ];
   }
 
-  Widget _buildInputCard({required String title, required String hint, required IconData icon, required Widget child}) {
+  Widget _buildInputCard({
+    required String title,
+    required String hint,
+    required IconData icon,
+    required Widget child,
+  }) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -339,7 +323,6 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
         : DateTime(now.year + 10, now.month, now.day);
 
     final DateTime firstDate = isDateOfBirth ? DateTime(1900) : now;
-
     final DateTime lastDate = isDateOfBirth ? now : DateTime(2050);
 
     final DateTime? picked = await showDatePicker(
@@ -349,9 +332,9 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
       lastDate: lastDate,
       builder: (context, child) {
         return Theme(
-          data: Theme.of(
-            context,
-          ).copyWith(colorScheme: Theme.of(context).colorScheme.copyWith(primary: const Color(0xFF6b6868))),
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(primary: const Color(0xFF6b6868)),
+          ),
           child: child!,
         );
       },
@@ -367,7 +350,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
           _selectedExpiry = picked;
           _expiryController.text = formatter.format(picked);
         }
-        _errorMessage = ''; // Clear any previous error
+        _errorMessage = '';
       });
     }
   }
@@ -381,23 +364,41 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
       return;
     }
 
-    if (widget.documentType == DocumentType.passport) {
-      // Passport flow - validate dates and call onDataEntered
-      if (_selectedDob == null || _selectedExpiry == null) {
-        setState(() {
-          _errorMessage = 'Please fill in all required fields';
-        });
-        return;
-      }
+    final scannedMrz = switch (widget.documentType) {
+      DocumentType.passport => _createScannedPassport(),
+      DocumentType.driverLicense => _createScannedDriverLicense(),
+    };
 
-      if (widget.onDataEntered != null) {
-        widget.onDataEntered!(_docNumberController.text.trim().toUpperCase(), _selectedDob!, _selectedExpiry!);
-      }
-    } else {
-      // Driver's license flow - call onMrzEntered with MRZ string
-      if (widget.onMrzEntered != null) {
-        widget.onMrzEntered!(_mrzController.text.trim().toUpperCase());
-      }
+    if (scannedMrz != null) {
+      widget.onManualEntryComplete(scannedMrz);
+    }
+  }
+
+  ScannedPassportMRZ? _createScannedPassport() {
+    if (_selectedDob == null || _selectedExpiry == null) {
+      setState(() {
+        _errorMessage = 'Please fill in all required fields';
+      });
+      return null;
+    }
+
+    return ScannedPassportMRZ.fromManualEntry(
+      documentNumber: _docNumberController.text.trim().toUpperCase(),
+      dateOfBirth: _selectedDob!,
+      dateOfExpiry: _selectedExpiry!,
+    );
+  }
+
+  ScannedDriverLicenseMRZ? _createScannedDriverLicense() {
+    try {
+      return ScannedDriverLicenseMRZ.fromManualEntry(
+        mrzString: _mrzController.text.trim().toUpperCase(),
+      );
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Failed to parse MRZ: $e';
+      });
+      return null;
     }
   }
 

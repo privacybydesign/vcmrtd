@@ -1,5 +1,4 @@
 import 'package:vcmrtd/vcmrtd.dart';
-import 'package:vcmrtd/src/models/document.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
@@ -9,48 +8,58 @@ import 'package:vcmrtdapp/widgets/common/animated_nfc_status_widget.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_guidance_screen.dart';
 
 import '../../providers/reader_providers.dart';
+import '../common/scanned_mrz.dart';
 
 class NfcReadingRouteParams {
-  final String docNumber;
-  final DateTime dateOfBirth;
-  final DateTime dateOfExpiry;
-  final String? countryCode;
+  final ScannedMRZ scannedMRZ;
   final DocumentType documentType;
 
+
   NfcReadingRouteParams({
+    required this.scannedMRZ,
     required this.documentType,
-    required this.docNumber,
-    required this.dateOfBirth,
-    required this.dateOfExpiry,
-    this.countryCode,
   });
 
   Map<String, String> toQueryParams() {
-    return {
-      'doc_number': docNumber,
-      'date_of_birth': dateOfBirth.toIso8601String(),
-      'date_of_expiry': dateOfExpiry.toIso8601String(),
-      if (countryCode != null) 'country_code': countryCode!,
+    final baseParams = {
+      'doc_number': scannedMRZ.documentNumber,
+      'country_code': scannedMRZ.countryCode,
       'document_type': switch (documentType) {
         DocumentType.passport => 'passport',
         DocumentType.driverLicense => 'drivers_license',
       },
     };
+    if (scannedMRZ is ScannedPassportMRZ) {
+      final passport = scannedMRZ as ScannedPassportMRZ;
+      baseParams['date_of_birth'] = passport.dateOfBirth.toIso8601String();
+      baseParams['date_of_expiry'] = passport.dateOfBirth.toIso8601String();
+
+    }
+    return baseParams;
   }
 
   static NfcReadingRouteParams fromQueryParams(Map<String, String> params) {
     final docType = params['document_type']!;
-    return NfcReadingRouteParams(
-      docNumber: params['doc_number']!,
-      dateOfBirth: DateTime.parse(params['date_of_birth']!),
-      dateOfExpiry: DateTime.parse(params['date_of_expiry']!),
-      countryCode: params['country_code'],
-      documentType: switch (docType) {
-        'passport' => DocumentType.passport,
-        'drivers_license' => DocumentType.driverLicense,
-        _ => throw Exception('unexpected document type: $docType'),
-      },
-    );
+    final documentType = switch (docType) {
+      'passport' => DocumentType.passport,
+      'drivers_license' => DocumentType.driverLicense,
+      _ => throw Exception('unexpected document type: $docType'),
+    };
+
+    final scannedMRZ = switch (documentType) {
+      DocumentType.passport => ScannedPassportMRZ(
+        documentNumber: params['doc_number']!,
+        countryCode: params['country_code']!,
+        dateOfBirth: DateTime.parse(params['date_of_birth']!),
+        dateOfExpiry: DateTime.parse(params['date_of_expiry']!),
+      ),
+      DocumentType.driverLicense => ScannedDriverLicenseMRZ(
+        documentNumber: params['doc_number']!,
+        countryCode: params['country_code']!,
+      ),
+    };
+
+    return NfcReadingRouteParams(scannedMRZ: scannedMRZ, documentType: documentType);
   }
 }
 
@@ -67,13 +76,17 @@ class NfcReadingScreen extends ConsumerStatefulWidget {
 }
 
 class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
+  late ScannedMRZ scannedMRZ;
   @override
   Widget build(BuildContext context) {
+
+    scannedMRZ = widget.params.scannedMRZ;
+
     final readerProvider = widget.params.documentType == DocumentType.passport
         ? passportReaderProvider
         : drivingLicenceReaderProvider;
 
-    final state = ref.watch(readerProvider);
+    final state = ref.watch(readerProvider(scannedMRZ));
 
     if (state is DocumentReaderPending) {
       return NfcGuidanceScreen(onStartReading: startReading, onBack: context.pop);
@@ -118,7 +131,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
         ? passportReaderProvider
         : drivingLicenceReaderProvider;
 
-    await ref.read(readerProvider.notifier).cancel();
+    await ref.read(readerProvider(scannedMRZ).notifier).cancel();
   }
 
   Future<void> retry() async {
@@ -126,7 +139,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
         ? passportReaderProvider
         : drivingLicenceReaderProvider;
 
-    ref.read(readerProvider.notifier).reset();
+    ref.read(readerProvider(scannedMRZ).notifier).reset();
     startReading();
   }
 
@@ -141,15 +154,11 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
       if (ref.read(activeAuthenticationProvider)) {
         nonceAndSessionId = await ref.read(passportIssuerProvider).startSessionAtPassportIssuer();
       }
-
       final result = await ref
-          .read(readerProvider.notifier)
-          .readWithMRZ(
+          .read(readerProvider(scannedMRZ).notifier)
+          .readDocument(
             iosNfcMessages: _createIosNfcMessageMapper(),
-            documentNumber: widget.params.docNumber,
-            birthDate: widget.params.dateOfBirth,
-            expiryDate: widget.params.dateOfExpiry,
-            countryCode: widget.params.countryCode,
+            countryCode: widget.params.scannedMRZ.countryCode,
             activeAuthenticationParams: nonceAndSessionId,
           );
       if (result != null) {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vcmrtd/vcmrtd.dart';
-import 'package:vcmrtd/src/models/document.dart';
+import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
 import 'package:vcmrtdapp/widgets/pages/document_selection_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/driving_licence_data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/manual_entry_screen.dart';
@@ -52,10 +52,8 @@ GoRouter createRouter() {
             onMrzScanned: (result) {
               context.pushNfcReadingScreen(
                 NfcReadingRouteParams(
+                  scannedMRZ: result,
                   documentType: params.documentType,
-                  docNumber: result.documentNumber,
-                  dateOfBirth: result.birthDate,
-                  dateOfExpiry: result.expiryDate,
                 ),
               );
             },
@@ -74,13 +72,10 @@ GoRouter createRouter() {
           return ManualEntryScreen(
             documentType: params.documentType,
             onBack: context.pop,
-            onMrzEntered: (mrz) {},
-            onDataEntered: (String docNumber, DateTime dob, DateTime expiry) {
+            onManualEntryComplete: (scannedMrz) {
               context.pushNfcReadingScreen(
                 NfcReadingRouteParams(
-                  docNumber: docNumber,
-                  dateOfBirth: dob,
-                  dateOfExpiry: expiry,
+                  scannedMRZ: scannedMrz,
                   documentType: params.documentType,
                 ),
               );
