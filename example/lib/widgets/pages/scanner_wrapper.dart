@@ -3,7 +3,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
-import 'package:mrz_parser/mrz_parser.dart';
 import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
 
 import 'scan_screen.dart';
