@@ -132,12 +132,16 @@ class PassportParser implements DocumentParser<PassportData> {
     final data = tlv.value;
     final bigt = TLV.decode(data);
     if (bigt.tag.value != BIOMETRIC_INFORMATION_GROUP_TEMPLATE_TAG) {
-      throw EfParseError("Invalid object tag=${bigt.tag.value.hex()}, expected tag=${BIOMETRIC_INFORMATION_GROUP_TEMPLATE_TAG.hex()}");
+      throw EfParseError(
+        "Invalid object tag=${bigt.tag.value.hex()}, expected tag=${BIOMETRIC_INFORMATION_GROUP_TEMPLATE_TAG.hex()}",
+      );
     }
 
     final bict = TLV.decode(bigt.value);
     if (bict.tag.value != BIOMETRIC_INFORMATION_COUNT_TAG) {
-      throw EfParseError("Invalid object tag=${bict.tag.value.hex()}, expected tag=${BIOMETRIC_INFORMATION_COUNT_TAG.hex()}");
+      throw EfParseError(
+        "Invalid object tag=${bict.tag.value.hex()}, expected tag=${BIOMETRIC_INFORMATION_COUNT_TAG.hex()}",
+      );
     }
     int bitCount = (bict.value[0] & 0xFF);
     for (var i = 0; i < bitCount; i++) {
@@ -148,7 +152,9 @@ class PassportParser implements DocumentParser<PassportData> {
   void _parseBIT(Uint8List stream, int index) {
     final tvl = TLV.decode(stream);
     if (tvl.tag.value != BIOMETRIC_INFORMATION_TEMPLATE_TAG) {
-      throw EfParseError("Invalid object tag=${tvl.tag.value.hex()}, expected tag=${BIOMETRIC_INFORMATION_TEMPLATE_TAG.hex()}");
+      throw EfParseError(
+        "Invalid object tag=${tvl.tag.value.hex()}, expected tag=${BIOMETRIC_INFORMATION_TEMPLATE_TAG.hex()}",
+      );
     }
     var bht = TLV.decode(tvl.value);
     if (bht.tag.value == SMT_TAG) {
@@ -162,7 +168,9 @@ class PassportParser implements DocumentParser<PassportData> {
   List<DecodedTV> _parseBHT(Uint8List stream) {
     final bht = TLV.decode(stream);
     if (bht.tag.value != BIOMETRIC_HEADER_TEMPLATE_TAG) {
-      throw EfParseError("Invalid object tag=${bht.tag.value.hex()}, expected tag=${BIOMETRIC_HEADER_TEMPLATE_TAG.hex()}");
+      throw EfParseError(
+        "Invalid object tag=${bht.tag.value.hex()}, expected tag=${BIOMETRIC_HEADER_TEMPLATE_TAG.hex()}",
+      );
     }
     int bhtLength = stream.length;
     int bytesRead = bht.encodedLen;
@@ -179,7 +187,9 @@ class PassportParser implements DocumentParser<PassportData> {
     final firstBlock = sbh.first;
     if (firstBlock.tag.value != BIOMETRIC_DATA_BLOCK_TAG_PRIMARY &&
         firstBlock.tag.value != BIOMETRIC_DATA_BLOCK_TAG_ALTERNATE) {
-      throw EfParseError("Invalid object tag=${firstBlock.tag.value.hex()}, expected tag=${BIOMETRIC_DATA_BLOCK_TAG_PRIMARY.hex()} or ${BIOMETRIC_DATA_BLOCK_TAG_ALTERNATE.hex()}");
+      throw EfParseError(
+        "Invalid object tag=${firstBlock.tag.value.hex()}, expected tag=${BIOMETRIC_DATA_BLOCK_TAG_PRIMARY.hex()} or ${BIOMETRIC_DATA_BLOCK_TAG_ALTERNATE.hex()}",
+      );
     }
     final data = firstBlock.value;
     final br = ByteReader(data);
@@ -268,7 +278,9 @@ class PassportParser implements DocumentParser<PassportData> {
     final data = tlv.value;
     final tagListTag = TLV.decode(data);
     if (tagListTag.tag.value != TAG_LIST_TAG) {
-      throw EfParseError("Invalid version object tag=${tagListTag.tag.value.hex()}, expected tag=${TAG_LIST_TAG.hex()}");
+      throw EfParseError(
+        "Invalid version object tag=${tagListTag.tag.value.hex()}, expected tag=${TAG_LIST_TAG.hex()}",
+      );
     }
     var tagListLength = tlv.value.length;
     int tagListBytesRead = tagListTag.encodedLen;
@@ -356,7 +368,9 @@ class PassportParser implements DocumentParser<PassportData> {
     final data = tlv.value;
     final tagListTag = TLV.decode(data);
     if (tagListTag.tag.value != TAG_LIST_TAG) {
-      throw EfParseError("Invalid version object tag=${tagListTag.tag.value.hex()}, expected tag=${TAG_LIST_TAG.hex()}");
+      throw EfParseError(
+        "Invalid version object tag=${tagListTag.tag.value.hex()}, expected tag=${TAG_LIST_TAG.hex()}",
+      );
     }
     var tagListLength = tlv.value.length;
     int tagListBytesRead = tagListTag.encodedLen;

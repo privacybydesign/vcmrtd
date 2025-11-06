@@ -71,10 +71,10 @@ void main() {
     //                 - CD for date of expiry was changed to 2
     //                 - CD for doc. no. was changed to 2
     //                 - CD for composite was changed to0
-     var tvDG1TD2 =
+    var tvDG1TD2 =
         "614B5F1F48493C415441534D4954483C3C4A4F484E3C543C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3132333435363738393C484D44373430363232314D31303132333132303132323C3C3C30"
             .parseHex();
-     dg1 = pParser.parseDG1(tvDG1TD2);
+    dg1 = pParser.parseDG1(tvDG1TD2);
     // expect(dg1.toBytes(), tvDG1TD2);
     expect(dg1?.mrz.version, MRZVersion.td2);
     expect(dg1?.mrz.documentCode, 'I');
@@ -113,7 +113,7 @@ void main() {
     tvDG1TD3 =
         "615B5F1F58503C443C3C4D55535445524D414E4E3C3C4552494B413C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C3C433131543030324A4D34443C3C3936303831323246323331303331343C3C3C3C3C3C3C3C3C3C3C3C3C3C3034"
             .parseHex();
-     dg1 = pParser.parseDG1(tvDG1TD3);
+    dg1 = pParser.parseDG1(tvDG1TD3);
     // expect(dg1td3.toBytes(), tvDG1TD3);
     expect(dg1?.mrz.version, MRZVersion.td3);
     expect(dg1?.mrz.documentCode, 'P');
@@ -129,17 +129,8 @@ void main() {
     expect(dg1?.mrz.optionalData2, null);
 
     // Fuzz testing
-    expect(
-          () => pParser.parseDG1(Uint8List(0)),
-      throwsTLVError(message: "Can't decode empty encodedTag"),
-    );
-    expect(
-          () => pParser.parseDG1("00".parseHex()),
-      throwsTLVError(message: "Can't decode empty encodedLength"),
-    );
-    expect(
-      () => pParser.parseDG1("1C00".parseHex()),
-      throwsEfParseError(message: "Invalid tag=1C, expected tag=61"),
-    );
+    expect(() => pParser.parseDG1(Uint8List(0)), throwsTLVError(message: "Can't decode empty encodedTag"));
+    expect(() => pParser.parseDG1("00".parseHex()), throwsTLVError(message: "Can't decode empty encodedLength"));
+    expect(() => pParser.parseDG1("1C00".parseHex()), throwsEfParseError(message: "Invalid tag=1C, expected tag=61"));
   });
 }

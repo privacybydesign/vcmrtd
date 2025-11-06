@@ -14,11 +14,7 @@ class NfcReadingRouteParams {
   final ScannedMRZ scannedMRZ;
   final DocumentType documentType;
 
-
-  NfcReadingRouteParams({
-    required this.scannedMRZ,
-    required this.documentType,
-  });
+  NfcReadingRouteParams({required this.scannedMRZ, required this.documentType});
 
   Map<String, String> toQueryParams() {
     final baseParams = {
@@ -33,7 +29,6 @@ class NfcReadingRouteParams {
       final passport = scannedMRZ as ScannedPassportMRZ;
       baseParams['date_of_birth'] = passport.dateOfBirth.toIso8601String();
       baseParams['date_of_expiry'] = passport.dateOfExpiry.toIso8601String();
-
     }
     return baseParams;
   }
@@ -79,7 +74,6 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
   late ScannedMRZ scannedMRZ;
   @override
   Widget build(BuildContext context) {
-
     scannedMRZ = widget.params.scannedMRZ;
 
     final readerProvider = widget.params.documentType == DocumentType.passport

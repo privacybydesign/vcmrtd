@@ -132,12 +132,12 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
           Text(
             widget.documentType == DocumentType.passport
                 ? '• Passport Number: Usually at the top right of the photo page\n'
-                '• Date of Birth: Listed as "Date of birth" or "DOB"\n'
-                '• Expiry Date: Listed as "Date of expiry" or "Valid until"'
+                      '• Date of Birth: Listed as "Date of birth" or "DOB"\n'
+                      '• Expiry Date: Listed as "Date of expiry" or "Valid until"'
                 : '• The MRZ is at the bottom of the front side of your driver\'s licence\n'
-                '• You can also get this by scanning the QR Code on the back of your driver\'s licence\n'
-                '• It\'s a single line of exactly 30 characters\n'
-                '• Starts with "D1", "D2", or "D3"',
+                      '• You can also get this by scanning the QR Code on the back of your driver\'s licence\n'
+                      '• It\'s a single line of exactly 30 characters\n'
+                      '• Starts with "D1", "D2", or "D3"',
             style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280), height: 1.4),
           ),
         ],
@@ -276,12 +276,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
     ];
   }
 
-  Widget _buildInputCard({
-    required String title,
-    required String hint,
-    required IconData icon,
-    required Widget child,
-  }) {
+  Widget _buildInputCard({required String title, required String hint, required IconData icon, required Widget child}) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -332,9 +327,9 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
       lastDate: lastDate,
       builder: (context, child) {
         return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(primary: const Color(0xFF6b6868)),
-          ),
+          data: Theme.of(
+            context,
+          ).copyWith(colorScheme: Theme.of(context).colorScheme.copyWith(primary: const Color(0xFF6b6868))),
           child: child!,
         );
       },
@@ -391,9 +386,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
 
   ScannedDriverLicenseMRZ? _createScannedDriverLicense() {
     try {
-      return ScannedDriverLicenseMRZ.fromManualEntry(
-        mrzString: _mrzController.text.trim().toUpperCase(),
-      );
+      return ScannedDriverLicenseMRZ.fromManualEntry(mrzString: _mrzController.text.trim().toUpperCase());
     } catch (e) {
       setState(() {
         _errorMessage = 'Failed to parse MRZ: $e';

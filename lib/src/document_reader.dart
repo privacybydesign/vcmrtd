@@ -26,7 +26,6 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
   final NfcProvider _nfc;
   final DocumentType documentType;
 
-
   bool _isCancelled = false;
   List<String> _log = [];
   IosNfcMessageMapper? _iosNfcMessageMapper;
@@ -72,11 +71,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
       return null;
     }
 
-    final session = _Session(
-      nfc: _nfc,
-      dgReader: dgReader,
-      countryCode: countryCode, documentType: documentType,
-    );
+    final session = _Session(nfc: _nfc, dgReader: dgReader, countryCode: countryCode, documentType: documentType);
 
     final Map<String, String> dataGroups = {};
     EfSOD? sod;
@@ -382,12 +377,7 @@ class _Session {
   EfCardAccess? cardAccess;
   EfCOM? com;
 
-  _Session({
-    required this.documentType,
-    required this.countryCode,
-    required this.nfc,
-    required this.dgReader,
-  });
+  _Session({required this.documentType, required this.countryCode, required this.nfc, required this.dgReader});
 
   Future<void> init() async {
     await nfc.connect();
@@ -425,8 +415,7 @@ class _Session {
   }
 
   bool isPace() {
-    return (documentType == DocumentType.driverLicense) ||
-        (paceCountriesAlpha3.contains(countryCode!.toUpperCase()));
+    return (documentType == DocumentType.driverLicense) || (paceCountriesAlpha3.contains(countryCode!.toUpperCase()));
   }
 
   Future<void> dispose() async {

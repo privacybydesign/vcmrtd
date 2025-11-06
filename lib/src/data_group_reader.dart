@@ -31,8 +31,8 @@ class DataGroupReader {
   _DF _dfSelected = _DF.None;
 
   DataGroupReader(ComProvider provider, this._applicationAID, this.accessKey)
-      : _api = MrtdApi(provider),
-        _log = Logger("Data Group bytes reader");
+    : _api = MrtdApi(provider),
+      _log = Logger("Data Group bytes reader");
 
   Future<void> startSession() async {
     if (accessKey is DBAKey) {

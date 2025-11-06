@@ -51,10 +51,7 @@ GoRouter createRouter() {
             documentType: params.documentType,
             onMrzScanned: (result) {
               context.pushNfcReadingScreen(
-                NfcReadingRouteParams(
-                  scannedMRZ: result,
-                  documentType: params.documentType,
-                ),
+                NfcReadingRouteParams(scannedMRZ: result, documentType: params.documentType),
               );
             },
             onManualEntry: () {
@@ -74,10 +71,7 @@ GoRouter createRouter() {
             onBack: context.pop,
             onManualEntryComplete: (scannedMrz) {
               context.pushNfcReadingScreen(
-                NfcReadingRouteParams(
-                  scannedMRZ: scannedMrz,
-                  documentType: params.documentType,
-                ),
+                NfcReadingRouteParams(scannedMRZ: scannedMrz, documentType: params.documentType),
               );
             },
           );

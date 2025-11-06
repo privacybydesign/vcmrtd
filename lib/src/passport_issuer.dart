@@ -80,7 +80,6 @@ class DefaultPassportIssuer implements PassportIssuer {
     return VerificationResponse.fromJson(responseBody);
   }
 
-
   Future<dynamic> _getIrmaSessionJwt(String hostName, Map<String, dynamic> payload) async {
     final String jsonPayload = json.encode(payload);
     final storeResp = await http.post(

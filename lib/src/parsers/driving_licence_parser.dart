@@ -231,11 +231,7 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
     final reader = ByteReader(bytes);
 
     // Verify "FAC\0" header
-    if (!reader.hasRemaining(4) ||
-        bytes[0] != 0x46 ||
-        bytes[1] != 0x41 ||
-        bytes[2] != 0x43 ||
-        bytes[3] != 0x00) {
+    if (!reader.hasRemaining(4) || bytes[0] != 0x46 || bytes[1] != 0x41 || bytes[2] != 0x43 || bytes[3] != 0x00) {
       _dg6 = DrivingLicenceEfDG6(imageData: bytes, imageType: null);
       return;
     }
@@ -291,7 +287,6 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
       imageType: imageType,
     );
   }
-
 
   @override
   void parseDG7(Uint8List bytes) {

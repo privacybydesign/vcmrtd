@@ -88,7 +88,6 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
     }
   }
 
-
   Future<void> _returnToIssue() async {
     final issuer = ref.read(passportIssuerProvider);
 

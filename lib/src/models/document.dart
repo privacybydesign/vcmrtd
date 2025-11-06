@@ -4,7 +4,6 @@ import 'package:vcmrtd/src/lds/mrz.dart';
 
 import '../../vcmrtd.dart';
 
-
 enum ImageType { jpeg, jpeg2000 }
 
 abstract class DocumentData {}
