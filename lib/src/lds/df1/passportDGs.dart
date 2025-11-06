@@ -40,8 +40,8 @@ class PassportEfDG2 {
   final int sourceType;
   final int deviceType;
   final int quality;
-  final Uint8List? imageData;
-  final ImageType? imageType;
+  final Uint8List imageData;
+  final ImageType imageType;
 
   PassportEfDG2({
     required this.versionNumber,
@@ -63,8 +63,8 @@ class PassportEfDG2 {
     required this.sourceType,
     required this.deviceType,
     required this.quality,
-    this.imageData,
-    this.imageType,
+    required this.imageData,
+    required this.imageType,
   });
 }
 

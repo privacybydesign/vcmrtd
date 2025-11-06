@@ -10,11 +10,11 @@ import 'document_parser.dart';
 
 class PassportParser implements DocumentParser<PassportData> {
   // Groups with parsing logic
-  PassportEfDG1? _dg1;
-  PassportEfDG2? _dg2;
-  PassportEfDG11? _dg11;
-  PassportEfDG12? _dg12;
-  PassportEfDG15? _dg15;
+  late PassportEfDG1 _dg1; // Mandatory
+  late PassportEfDG2 _dg2; // Mandatory
+  PassportEfDG11? _dg11; // Optional DG
+  PassportEfDG12? _dg12; // Optional DG
+  PassportEfDG15? _dg15; // Optional DG
 
   // Raw bytes
   Uint8List? _dg3RawBytes;
@@ -33,13 +33,13 @@ class PassportParser implements DocumentParser<PassportData> {
   PassportData createDocument() {
     return PassportData(
       // DG1 - required
-      mrz: _dg1!.mrz,
+      mrz: _dg1.mrz,
 
       // DG2 - photo (extract key fields)
-      photoImageData: _dg2?.imageData,
-      photoImageType: _dg2?.imageType,
-      photoImageWidth: _dg2?.imageWidth,
-      photoImageHeight: _dg2?.imageHeight,
+      photoImageData: _dg2.imageData,
+      photoImageType: _dg2.imageType,
+      photoImageWidth: _dg2.imageWidth,
+      photoImageHeight: _dg2.imageHeight,
 
       // DG11 - additional personal details
       nameOfHolder: _dg11?.nameOfHolder,
