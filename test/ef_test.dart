@@ -2,8 +2,6 @@
 import 'dart:typed_data';
 
 import 'package:test/test.dart';
-import 'package:vcmrtd/internal.dart';
-import 'package:vcmrtd/src/lds/df1/passportDGs.dart';
 
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtd/extensions.dart';
