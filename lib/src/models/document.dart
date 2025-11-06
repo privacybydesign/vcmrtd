@@ -11,13 +11,13 @@ abstract class DocumentData {}
 
 class PassportData implements DocumentData {
   // From DG1
-  final PassportMRZ? mrz;
+  final PassportMRZ mrz;
 
   // From DG2 (photo)
-  final Uint8List? photoImageData;
-  final ImageType? photoImageType;
-  final int? photoImageWidth;
-  final int? photoImageHeight;
+  final Uint8List photoImageData;
+  final ImageType photoImageType;
+  final int photoImageWidth;
+  final int photoImageHeight;
 
   // From DG11 (additional personal details)
   final String? nameOfHolder;
@@ -56,10 +56,10 @@ class PassportData implements DocumentData {
 
   PassportData({
     required this.mrz,
-    this.photoImageData,
-    this.photoImageType,
-    this.photoImageWidth,
-    this.photoImageHeight,
+    required this.photoImageData,
+    required this.photoImageType,
+    required this.photoImageWidth,
+    required this.photoImageHeight,
     this.nameOfHolder,
     this.otherNames,
     this.personalNumber,

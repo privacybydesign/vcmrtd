@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:vcmrtd/src/models/document.dart';
+import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtdapp/widgets/pages/data_screen_widgets/profile_picture.dart';
 
 import 'info_row.dart';
@@ -64,19 +64,19 @@ class PersonalDataSection extends StatelessWidget {
       children: [
         InfoRow(
           label: 'Full Name',
-          value: '${passport.mrz!.firstName} ${passport.mrz!.lastName}',
+          value: '${passport.mrz.firstName} ${passport.mrz.lastName}',
           iconData: Icons.person_outline,
         ),
         const SizedBox(height: 12),
-        InfoRow(label: 'Nationality', value: passport.mrz!.nationality, iconData: Icons.flag_outlined),
+        InfoRow(label: 'Nationality', value: passport.mrz.nationality, iconData: Icons.flag_outlined),
         const SizedBox(height: 12),
         InfoRow(
           label: 'Document',
-          value: '${passport.mrz!.documentCode} ${passport.mrz!.documentNumber}',
+          value: '${passport.mrz.documentCode} ${passport.mrz.documentNumber}',
           iconData: Icons.document_scanner_outlined,
         ),
         const SizedBox(height: 12),
-        InfoRow(label: 'Gender', value: passport.mrz!.gender, iconData: Icons.person_pin_outlined),
+        InfoRow(label: 'Gender', value: passport.mrz.gender, iconData: Icons.person_pin_outlined),
       ],
     );
   }
@@ -96,7 +96,7 @@ class PersonalDataSection extends StatelessWidget {
               Expanded(
                 child: InfoRow(
                   label: 'Date of Birth',
-                  value: DateFormat.yMMMd().format(passport.mrz!.dateOfBirth),
+                  value: DateFormat.yMMMd().format(passport.mrz.dateOfBirth),
                   iconData: Icons.cake_outlined,
                 ),
               ),
@@ -104,7 +104,7 @@ class PersonalDataSection extends StatelessWidget {
               Expanded(
                 child: InfoRow(
                   label: 'Expiry Date',
-                  value: DateFormat.yMMMd().format(passport.mrz!.dateOfExpiry),
+                  value: DateFormat.yMMMd().format(passport.mrz.dateOfExpiry),
                   iconData: Icons.event_outlined,
                 ),
               ),
@@ -114,17 +114,17 @@ class PersonalDataSection extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: InfoRow(label: 'Country', value: passport.mrz!.country, iconData: Icons.public_outlined),
+                child: InfoRow(label: 'Country', value: passport.mrz.country, iconData: Icons.public_outlined),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: InfoRow(label: 'Version', value: passport.mrz!.version.name, iconData: Icons.info_outline),
+                child: InfoRow(label: 'Version', value: passport.mrz.version.name, iconData: Icons.info_outline),
               ),
             ],
           ),
-          if (passport.mrz!.optionalData.isNotEmpty) ...[
+          if (passport.mrz.optionalData.isNotEmpty) ...[
             const SizedBox(height: 12),
-            InfoRow(label: 'Optional Data', value: passport.mrz!.optionalData, iconData: Icons.data_object_outlined),
+            InfoRow(label: 'Optional Data', value: passport.mrz.optionalData, iconData: Icons.data_object_outlined),
           ],
         ],
       ),

@@ -3,7 +3,6 @@ import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vcmrtd/vcmrtd.dart';
-import 'package:vcmrtd/src/models/document.dart';
 import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
 
 import '../../widgets/pages/data_screen_widgets/personal_data_section.dart';

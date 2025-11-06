@@ -12,24 +12,24 @@ class SecurityContent extends StatelessWidget {
   }
 
   Widget _buildSecurityDetails() {
-    int dgCount = 0;
-
-    if (passport.mrz != null) dgCount++;
-    if (passport.photoImageData != null) dgCount++;
-    if (passport.dg3RawBytes != null) dgCount++;
-    if (passport.dg4RawBytes != null) dgCount++;
-    if (passport.dg5RawBytes != null) dgCount++;
-    if (passport.dg6RawBytes != null) dgCount++;
-    if (passport.dg7RawBytes != null) dgCount++;
-    if (passport.dg8RawBytes != null) dgCount++;
-    if (passport.dg9RawBytes != null) dgCount++;
-    if (passport.dg10RawBytes != null) dgCount++;
-    if (passport.nameOfHolder != null) dgCount++;
-    if (passport.issuingAuthority != null) dgCount++;
-    if (passport.dg13RawBytes != null) dgCount++;
-    if (passport.dg14RawBytes != null) dgCount++;
-    if (passport.aaPublicKey != null) dgCount++;
-    if (passport.dg16RawBytes != null) dgCount++;
+    final dgCount = [
+      passport.mrz,
+      passport.photoImageData,
+      passport.dg3RawBytes,
+      passport.dg4RawBytes,
+      passport.dg5RawBytes,
+      passport.dg6RawBytes,
+      passport.dg7RawBytes,
+      passport.dg8RawBytes,
+      passport.dg9RawBytes,
+      passport.dg10RawBytes,
+      passport.nameOfHolder,
+      passport.issuingAuthority,
+      passport.dg13RawBytes,
+      passport.dg14RawBytes,
+      passport.aaPublicKey,
+      passport.dg16RawBytes,
+    ].nonNulls.length;
 
     return Container(
       padding: const EdgeInsets.all(16),
