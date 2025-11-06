@@ -79,11 +79,15 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
     final issuer = ref.read(passportIssuerProvider);
 
     try {
-      _verificationResponse = await issuer.verifyPassport(widget.passportDataResult);
+      final result = await issuer.verifyPassport(widget.passportDataResult);
+      setState(() {
+        _verificationResponse = result;
+      });
     } catch (e) {
       _showReturnErrorDialog(e.toString());
     }
   }
+
 
   Future<void> _returnToIssue() async {
     final issuer = ref.read(passportIssuerProvider);

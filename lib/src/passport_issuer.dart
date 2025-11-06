@@ -58,7 +58,12 @@ class DefaultPassportIssuer implements PassportIssuer {
 
   @override
   Future<VerificationResponse> verifyPassport(PassportDataResult passportDataResult) async {
+    final NonceAndSessionId session = await startSessionAtPassportIssuer();
+
     final payload = passportDataResult.toJson();
+    payload['session_id'] = session.sessionId;
+    payload['nonce'] = session.nonce;
+
     final String jsonPayload = json.encode(payload);
 
     final response = await http.post(
@@ -66,9 +71,15 @@ class DefaultPassportIssuer implements PassportIssuer {
       headers: {'Content-Type': 'application/json'},
       body: jsonPayload,
     );
+
+    if (response.statusCode != 200) {
+      throw Exception('Verification request failed: ${response.statusCode} ${response.body}');
+    }
+
     final responseBody = jsonDecode(response.body);
     return VerificationResponse.fromJson(responseBody);
   }
+
 
   Future<dynamic> _getIrmaSessionJwt(String hostName, Map<String, dynamic> payload) async {
     final String jsonPayload = json.encode(payload);
