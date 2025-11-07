@@ -1,4 +1,5 @@
 //  Created by Crt Vavros, copyright © 2022 ZeroPass. All rights reserved.
+import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:test/test.dart';
 import 'dart:typed_data';
@@ -339,6 +340,30 @@ void main() {
   });
 
   group('Date YYMMDD format test', () {
+    test('Parsing DateTime from YYYYMMDD', () {
+      expect('19891109'.parseDate(), DateTime(1989, 11, 9));
+      expect('19760501'.parseDate(), DateTime(1976, 05, 01));
+      expect('20000215'.parseDate(), DateTime(2000, 02, 15));
+      expect('20111111'.parseDate(), DateTime(2011, 11, 11));
+      expect('20121212'.parseDate(), DateTime(2012, 12, 12));
+      expect('20201212'.parseDate(), DateTime(2020, 12, 12));
+    });
+
+    test('Parsing DateTime from binary coded YYYYMMDD date', () {
+      final testCases = [
+        ([25, 137, 17, 9], DateTime(1989, 11, 9)),
+        ([25, 118, 5, 1], DateTime(1976, 05, 01)),
+        ([32, 0, 2, 21], DateTime(2000, 02, 15)),
+        ([32, 6, 8, 48], DateTime(2006, 08, 30)),
+        ([32, 17, 17, 17], DateTime(2011, 11, 11)),
+        ([32, 18, 18, 18], DateTime(2012, 12, 12)),
+      ];
+
+      for (final (encodedDate, expectedResult) in testCases) {
+        expect(Uint8List.fromList(encodedDate).binaryDecodeCCYYMMDD(), expectedResult);
+      }
+    });
+
     test('Converting DateTime to YYMMDD format string', () {
       expect(DateTime(1989, 11, 9).formatYYMMDD(), '891109');
       expect(DateTime(1976, 05, 01).formatYYMMDD(), '760501');
@@ -348,7 +373,7 @@ void main() {
       expect(DateTime(2012, 12, 12).formatYYMMDD(), '121212');
     });
 
-    test('Converting DateTime to YYMMDD format string', () {
+    test('Parsing DateTime from YYMMDD format string', () {
       expect('891109'.parseDateYYMMDD(), DateTime(1989, 11, 9));
       expect('760501'.parseDateYYMMDD(), DateTime(1976, 05, 01));
       expect('000215'.parseDateYYMMDD(), DateTime(2000, 02, 15));

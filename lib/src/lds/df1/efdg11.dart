@@ -113,7 +113,9 @@ class EfDG11 extends DataGroup {
           _otherNames.add(utf8.decode(uvtv.value));
           break;
         case FULL_DATE_OF_BIRTH_TAG:
-          _fullDateOfBirth = String.fromCharCodes(uvtv.value).parseDate();
+          _fullDateOfBirth = uvtv.value.length == 4
+              ? uvtv.value.toDate()
+              : String.fromCharCodes(uvtv.value).parseDate();
           break;
         case PLACE_OF_BIRTH_TAG:
           _placeOfBirth.add(utf8.decode(uvtv.value));
