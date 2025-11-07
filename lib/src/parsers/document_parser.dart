@@ -30,13 +30,9 @@ abstract class DocumentParser<DocType extends DocumentData> {
 
   void parseDG14(Uint8List bytes);
 
-  void parseDG15(Uint8List bytes) {
-    throw UnimplementedError('DG15 parsing not implemented for this document type');
-  }
+  void parseDG15(Uint8List bytes);
 
-  void parseDG16(Uint8List bytes) {
-    throw UnimplementedError('DG16 parsing not implemented for this document type');
-  }
+  void parseDG16(Uint8List bytes);
 
   DocType createDocument();
 }

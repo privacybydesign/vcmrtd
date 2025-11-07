@@ -335,4 +335,14 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
   void parseDG14(Uint8List bytes) {
     _dg14RawBytes = bytes;
   }
+
+  @override
+  void parseDG15(Uint8List bytes) {
+    throw UnimplementedError("Data Group 15 doesn't exist for Driving Licences");
+  }
+
+  @override
+  void parseDG16(Uint8List bytes) {
+    throw UnimplementedError("Data Group 16 doesn't exist for Driving Licences");
+  }
 }
