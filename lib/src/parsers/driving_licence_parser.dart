@@ -26,20 +26,20 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
   static const int _BIOMETRIC_DATA_BLOCK_TAG = 0x5F2E;
 
   // Groups with parsing logic
-  DrivingLicenceEfDG1? _dg1;
-  DrivingLicenceEfDG6? _dg6;
+  late DrivingLicenceEfDG1 _dg1;
+  late DrivingLicenceEfDG6 _dg6;
 
   // Raw bytes for other data groups
   Uint8List? _dg2RawBytes;
   Uint8List? _dg3RawBytes;
   Uint8List? _dg4RawBytes;
-  Uint8List? _dg5RawBytes;
+  late Uint8List _dg5RawBytes;
   Uint8List? _dg7RawBytes;
   Uint8List? _dg8RawBytes;
   Uint8List? _dg9RawBytes;
   Uint8List? _dg10RawBytes;
-  Uint8List? _dg11RawBytes;
-  Uint8List? _dg12RawBytes;
+  late Uint8List _dg11RawBytes;
+  late Uint8List _dg12RawBytes;
   Uint8List? _dg13RawBytes;
   Uint8List? _dg14RawBytes;
 
@@ -47,19 +47,19 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
   DrivingLicenceData createDocument() {
     return DrivingLicenceData(
       // DG1 - holder information
-      issuingMemberState: _dg1?.issuingMemberState,
-      holderSurname: _dg1?.holderSurname,
-      holderOtherName: _dg1?.holderOtherName,
-      dateOfBirth: _dg1?.dateOfBirth,
-      placeOfBirth: _dg1?.placeOfBirth,
-      dateOfIssue: _dg1?.dateOfIssue,
-      dateOfExpiry: _dg1?.dateOfExpiry,
-      issuingAuthority: _dg1?.issuingAuthority,
-      documentNumber: _dg1?.documentNumber,
+      issuingMemberState: _dg1.issuingMemberState,
+      holderSurname: _dg1.holderSurname,
+      holderOtherName: _dg1.holderOtherName,
+      dateOfBirth: _dg1.dateOfBirth,
+      placeOfBirth: _dg1.placeOfBirth,
+      dateOfIssue: _dg1.dateOfIssue,
+      dateOfExpiry: _dg1.dateOfExpiry,
+      issuingAuthority: _dg1.issuingAuthority,
+      documentNumber: _dg1.documentNumber,
 
       // DG6 - photo
-      photoImageData: _dg6?.imageData,
-      photoImageType: _dg6?.imageType,
+      photoImageData: _dg6.imageData,
+      photoImageType: _dg6.imageType,
 
       // Raw bytes for other data groups
       dg2RawBytes: _dg2RawBytes,
@@ -79,71 +79,75 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
 
   @override
   void parseDG1(Uint8List bytes) {
-    int offset = 0;
-    final bytesLength = bytes.length;
+    // Unwrap outer 0x61 tag
+    final outerTlv = TLV.decode(bytes);
+    final childrenBytes = outerTlv.value;
 
     // Temporary storage for building the object
-    String? issuingMemberState;
-    String? holderSurname;
-    String? holderOtherName;
-    String? dateOfBirth;
-    String? placeOfBirth;
-    String? dateOfIssue;
-    String? dateOfExpiry;
-    String? issuingAuthority;
-    String? documentNumber;
+    late String issuingMemberState;
+    late String holderSurname;
+    late String holderOtherName;
+    late String dateOfBirth;
+    late String placeOfBirth;
+    late String dateOfIssue;
+    late String dateOfExpiry;
+    late String issuingAuthority;
+    late String documentNumber;
 
-    while (offset < bytesLength) {
+    // Loop through siblings inside 0x61 (0x5F01, 0x5F02, etc.)
+    int offset = 0;
+    while (offset < childrenBytes.length) {
       try {
-        final tagValue = TLV.decode(bytes.sublist(offset));
+        final tlv = TLV.decode(childrenBytes.sublist(offset));
 
-        // Parse nested TLVs inside container tag
-        if (tagValue.tag.value == _DG1_CONTAINER_TAG) {
-          int innerOffset = 0;
-          final innerBytes = tagValue.value;
+        // Found 0x5F02 container with personal data
+        if (tlv.tag.value == _DG1_CONTAINER_TAG) {
+          int fieldOffset = 0;
+          final fieldBytes = tlv.value;
 
-          while (innerOffset < innerBytes.length) {
+          // Parse fields inside 0x5F02
+          while (fieldOffset < fieldBytes.length) {
             try {
-              final tlv = TLV.decode(innerBytes.sublist(innerOffset));
+              final fieldTlv = TLV.decode(fieldBytes.sublist(fieldOffset));
 
-              switch (tlv.tag.value) {
+              switch (fieldTlv.tag.value) {
                 case _ISSUING_MEMBER_STATE_TAG:
-                  issuingMemberState = utf8.decode(tlv.value);
+                  issuingMemberState = utf8.decode(fieldTlv.value);
                   break;
                 case _HOLDER_SURNAME_TAG:
-                  holderSurname = utf8.decode(tlv.value);
+                  holderSurname = utf8.decode(fieldTlv.value);
                   break;
                 case _HOLDER_OTHER_NAME_TAG:
-                  holderOtherName = utf8.decode(tlv.value);
+                  holderOtherName = utf8.decode(fieldTlv.value);
                   break;
                 case _DATE_OF_BIRTH_TAG:
-                  dateOfBirth = _decodeBcd(tlv.value);
+                  dateOfBirth = _decodeBcd(fieldTlv.value);
                   break;
                 case _PLACE_OF_BIRTH_TAG:
-                  placeOfBirth = utf8.decode(tlv.value);
+                  placeOfBirth = utf8.decode(fieldTlv.value);
                   break;
                 case _DATE_OF_ISSUE_TAG:
-                  dateOfIssue = _decodeBcd(tlv.value);
+                  dateOfIssue = _decodeBcd(fieldTlv.value);
                   break;
                 case _DATE_OF_EXPIRY_TAG:
-                  dateOfExpiry = _decodeBcd(tlv.value);
+                  dateOfExpiry = _decodeBcd(fieldTlv.value);
                   break;
                 case _ISSUING_AUTHORITY_TAG:
-                  issuingAuthority = utf8.decode(tlv.value);
+                  issuingAuthority = utf8.decode(fieldTlv.value);
                   break;
                 case _DOCUMENT_NUMBER_TAG:
-                  documentNumber = utf8.decode(tlv.value);
+                  documentNumber = utf8.decode(fieldTlv.value);
                   break;
               }
 
-              innerOffset += tlv.encodedLen;
+              fieldOffset += fieldTlv.encodedLen;
             } catch (e) {
               break;
             }
           }
         }
 
-        offset += tagValue.encodedLen;
+        offset += tlv.encodedLen;
       } catch (e) {
         break;
       }
@@ -192,10 +196,14 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
 
   @override
   void parseDG6(Uint8List bytes) {
-    final tlv = TLV.fromBytes(bytes);
+    // Unwrap outer 0x75 tag
+    final outerTlv = TLV.fromBytes(bytes);
 
-    if (tlv.tag == _BIOMETRIC_GROUP_TEMPLATE_TAG) {
-      _parseBiometricGroup(tlv.value);
+    final innerTlv = TLV.decode(outerTlv.value);
+
+    // Look for 0x7F61 inner tag inside
+    if (innerTlv.tag.value == _BIOMETRIC_GROUP_TEMPLATE_TAG) {
+      _parseBiometricGroup(innerTlv.value);
     }
   }
 
