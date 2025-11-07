@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/extensions.dart';
-import 'package:vcmrtd/src/extension/read_settings.dart';
 import 'package:vcmrtd/src/lds/df1/dLicenceDGs.dart';
 import 'package:vcmrtd/src/parsers/document_parser.dart';
 import 'package:vcmrtd/vcmrtd.dart';
@@ -21,6 +20,8 @@ class DocumentError implements Exception {
   @override
   String toString() => message;
 }
+
+enum _AuthMethod { none, bac, pace }
 
 class DocumentReader<DocType extends DocumentData> extends StateNotifier<DocumentReaderState> {
   final DocumentReaderSettings settings;
@@ -69,6 +70,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
     _isCancelled = true;
   }
 
+  // First to Auth method is BAC if fail set to PACE
   Future<(DocType, PassportDataResult)?> readDocument({
     required String countryCode,
     required IosNfcMessageMapper iosNfcMessages,
@@ -88,42 +90,45 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
 
     _setState(DocumentReaderConnecting());
     try {
-      await _reconnectionLoop(session: session, authenticate: false, whenConnected: session.init);
+      await _reconnectionLoop(session: session, authMethod: _AuthMethod.none, whenConnected: session.init);
     } catch (e) {
       await _failure(session, 'Failure during init: $e');
       return null;
     }
 
-    if (session.isPace()) {
+    _AuthMethod method = _AuthMethod.bac;
+    _setState(DocumentReaderAuthenticating());
+    final bacSuccess = await session.tryAuthenticateWithBAC();
+
+    if (!bacSuccess) {
+      method = _AuthMethod.pace;
       _setState(DocumentReaderReadingCardAccess());
       try {
-        await _reconnectionLoop(session: session, authenticate: false, whenConnected: session.readCardAccess);
-        if (state is DocumentReaderCancelled) {
-          return null;
-        }
+        await _reconnectionLoop(session: session, authMethod: _AuthMethod.none, whenConnected: session.readCardAccess);
+        if (state is DocumentReaderCancelled) return null;
       } catch (e) {
         await _failure(session, 'Failure reading Ef.CardAccess: $e');
         return null;
       }
-    }
 
-    _setState(DocumentReaderAuthenticating());
-    try {
-      await _reconnectionLoop(session: session, authenticate: false, whenConnected: session.authenticate);
-      if (state is DocumentReaderCancelled) {
+      _setState(DocumentReaderAuthenticating());
+      try {
+        await _reconnectionLoop(
+          session: session,
+          authMethod: _AuthMethod.none,
+          whenConnected: session.authenticateWithPACE,
+        );
+        if (state is DocumentReaderCancelled) return null;
+      } catch (e) {
+        await _failure(session, 'Failure authenticating with PACE: $e');
         return null;
       }
-    } catch (e) {
-      await _failure(session, 'Failure authenticating: $e');
-      return null;
     }
 
     _setState(DocumentReaderReadingCOM());
     try {
-      await _reconnectionLoop(session: session, authenticate: true, whenConnected: session.readCom);
-      if (state is DocumentReaderCancelled) {
-        return null;
-      }
+      await _reconnectionLoop(session: session, authMethod: method, whenConnected: session.readCom);
+      if (state is DocumentReaderCancelled) return null;
     } catch (e) {
       await _failure(session, 'Failure reading Ef.COM: $e');
       return null;
@@ -143,7 +148,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
       try {
         await _reconnectionLoop(
           session: session,
-          authenticate: true,
+          authMethod: method,
           whenConnected: () async {
             final bytes = await c.readFn();
             c.parseFn(bytes);
@@ -167,7 +172,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
     try {
       await _reconnectionLoop(
         session: session,
-        authenticate: true,
+        authMethod: method,
         whenConnected: () async => sod = await dgReader.readEfSOD(),
       );
       if (state is DocumentReaderCancelled) {
@@ -185,7 +190,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
       try {
         await _reconnectionLoop(
           session: session,
-          authenticate: true,
+          authMethod: method,
           whenConnected: () async =>
               aaSig = await dgReader.activeAuthenticate(stringToUint8List(activeAuthenticationParams.nonce)),
         );
@@ -229,7 +234,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
 
   Future<void> _reconnectionLoop({
     required _Session session,
-    required bool authenticate,
+    required _AuthMethod authMethod,
     required Function whenConnected,
     int numAttempts = 5,
   }) async {
@@ -252,13 +257,6 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
           return await _setToCancelState(session);
         }
         await Future.delayed(const Duration(milliseconds: 300));
-        if (!mounted) {
-          return;
-        }
-        if (_isCancelled) {
-          return await _setToCancelState(session);
-        }
-
         _addLog('Retry $i (Reason: $e)');
         try {
           await session.retryConnection();
@@ -266,12 +264,12 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
           _addLog('Retry connection failed: $e');
         }
 
-        if (authenticate) {
+        if (authMethod != _AuthMethod.none) {
           try {
             if (_isCancelled || _isCancelException(e)) {
               return await _setToCancelState(session);
             }
-            await session.authenticate();
+            authMethod == _AuthMethod.bac ? await session.authenticateWithBAC() : await session.authenticateWithPACE();
           } catch (e) {
             _addLog('Retry authenticate failed: $e');
           }
@@ -381,41 +379,6 @@ class _DGConfig {
 }
 
 class _Session {
-  static const Set<String> paceCountriesAlpha3 = {
-    'AUT',
-    'BEL',
-    'BGR',
-    'HRV',
-    'CYP',
-    'CZE',
-    'DNK',
-    'EST',
-    'FIN',
-    'FRA',
-    'DEU',
-    'GRC',
-    'HUN',
-    'IRL',
-    'ITA',
-    'LVA',
-    'LTU',
-    'LUX',
-    'MLT',
-    'NLD',
-    'POL',
-    'PRT',
-    'ROU',
-    'SVK',
-    'SVN',
-    'ESP',
-    'SWE',
-    'ISL',
-    'LIE',
-    'NOR',
-    'CHE',
-    'GBR',
-  };
-
   final NfcProvider nfc;
   final DataGroupReader dgReader;
   final String countryCode;
@@ -426,9 +389,7 @@ class _Session {
 
   _Session({required this.documentType, required this.countryCode, required this.nfc, required this.dgReader});
 
-  Future<void> init() async {
-    await nfc.connect();
-  }
+  Future<void> init() async => await nfc.connect();
 
   Future<void> retryConnection() async {
     if (nfc.isConnected()) {
@@ -451,23 +412,29 @@ class _Session {
     com = await dgReader.readEfCOM();
   }
 
-  Future<void> authenticate() async {
-    final pace = isPace();
+  Future<void> authenticateWithBAC() async {
+    await dgReader.startSession();
+  }
 
-    if (pace) {
-      await dgReader.startSessionPACE(cardAccess!);
-    } else {
-      await dgReader.startSession();
+  Future<void> authenticateWithPACE() async {
+    cardAccess ??= await dgReader.readEfCardAccess();
+    await dgReader.startSessionPACE(cardAccess!);
+  }
+
+  Future<bool> tryAuthenticateWithBAC() async {
+    if (documentType == DocumentType.driverLicense) {
+      return false;
+    }
+    try {
+      await authenticateWithBAC();
+      return true;
+    } catch (e) {
+      // If for any reason this failed set to false to try again with PACE
+      return false;
     }
   }
 
-  bool isPace() {
-    return (documentType == DocumentType.driverLicense) || (paceCountriesAlpha3.contains(countryCode.toUpperCase()));
-  }
-
-  Future<void> dispose() async {
-    await nfc.disconnect();
-  }
+  Future<void> dispose() async => await nfc.disconnect();
 }
 
 class DocumentReaderState {}
@@ -504,9 +471,7 @@ class DocumentReaderReadingDataGroup extends DocumentReaderState {
 
 class DocumentReaderActiveAuthentication extends DocumentReaderState {}
 
-class DocumentReaderSuccess extends DocumentReaderState {
-  DocumentReaderSuccess();
-}
+class DocumentReaderSuccess extends DocumentReaderState {}
 
 enum DocumentReadingError { unknown, timeoutWaitingForTag, tagLost, failedToInitiateSession, invalidatedByUser }
 
