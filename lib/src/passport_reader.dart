@@ -131,8 +131,12 @@ class PassportReader extends StateNotifier<PassportReaderState> {
           return null;
         }
       } catch (e) {
-        await _failure(session, 'Failure reading DG ${c.name}: $e');
-        return null;
+        if (c.mandatory) {
+          await _failure(session, 'Failure reading mandatory DG ${c.name}: $e');
+          return null;
+        } else {
+          _addLog('Failedure reading non-mandatory DG ${c.name} (continuing): $e');
+        }
       }
     }
 
@@ -271,84 +275,98 @@ class PassportReader extends StateNotifier<PassportReaderState> {
       DataGroupConfig(
         tag: EfDG1.TAG,
         name: 'DG1',
+        mandatory: true,
         progressStage: 0.1,
         readFunction: (p, mrtdData) async => mrtdData.dg1 = await p.readEfDG1(),
       ),
       DataGroupConfig(
         tag: EfDG2.TAG,
         name: 'DG2',
+        mandatory: true,
         progressStage: 0.2,
         readFunction: (p, mrtdData) async => mrtdData.dg2 = await p.readEfDG2(),
       ),
       DataGroupConfig(
         tag: EfDG5.TAG,
         name: 'DG5',
+        mandatory: false,
         progressStage: 0.4,
         readFunction: (p, mrtdData) async => mrtdData.dg5 = await p.readEfDG5(),
       ),
       DataGroupConfig(
         tag: EfDG6.TAG,
         name: 'DG6',
+        mandatory: false,
         progressStage: 0.5,
         readFunction: (p, mrtdData) async => mrtdData.dg6 = await p.readEfDG6(),
       ),
       DataGroupConfig(
         tag: EfDG7.TAG,
         name: 'DG7',
+        mandatory: false,
         progressStage: 0.6,
         readFunction: (p, mrtdData) async => mrtdData.dg7 = await p.readEfDG7(),
       ),
       DataGroupConfig(
         tag: EfDG8.TAG,
         name: 'DG8',
+        mandatory: false,
         progressStage: 0.7,
         readFunction: (p, mrtdData) async => mrtdData.dg8 = await p.readEfDG8(),
       ),
       DataGroupConfig(
         tag: EfDG9.TAG,
         name: 'DG9',
+        mandatory: false,
         progressStage: 0.75,
         readFunction: (p, mrtdData) async => mrtdData.dg9 = await p.readEfDG9(),
       ),
       DataGroupConfig(
         tag: EfDG10.TAG,
         name: 'DG10',
+        mandatory: false,
         progressStage: 0.8,
         readFunction: (p, mrtdData) async => mrtdData.dg10 = await p.readEfDG10(),
       ),
       DataGroupConfig(
         tag: EfDG11.TAG,
         name: 'DG11',
+        mandatory: false,
         progressStage: 0.85,
         readFunction: (p, mrtdData) async => mrtdData.dg11 = await p.readEfDG11(),
       ),
       DataGroupConfig(
         tag: EfDG12.TAG,
         name: 'DG12',
+        mandatory: false,
         progressStage: 0.9,
         readFunction: (p, mrtdData) async => mrtdData.dg12 = await p.readEfDG12(),
       ),
       DataGroupConfig(
         tag: EfDG13.TAG,
         name: 'DG13',
+        mandatory: false,
         progressStage: 0.9,
         readFunction: (p, mrtdData) async => mrtdData.dg13 = await p.readEfDG13(),
       ),
       DataGroupConfig(
         tag: EfDG14.TAG,
         name: 'DG14',
+        mandatory: false,
         progressStage: 0.95,
         readFunction: (p, mrtdData) async => mrtdData.dg14 = await p.readEfDG14(),
       ),
       DataGroupConfig(
         tag: EfDG15.TAG,
         name: 'DG15',
+        mandatory: true,
         progressStage: 0.9,
         readFunction: (passport, data) async => data.dg15 = await passport.readEfDG15(),
       ),
       DataGroupConfig(
         tag: EfDG16.TAG,
         name: 'DG16',
+        mandatory: false,
         progressStage: 1.0,
         readFunction: (p, mrtdData) async => mrtdData.dg16 = await p.readEfDG16(),
       ),
