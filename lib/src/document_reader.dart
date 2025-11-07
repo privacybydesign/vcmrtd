@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/extensions.dart';
+import 'package:vcmrtd/src/lds/df1/dLicenceDGs.dart';
 import 'package:vcmrtd/src/parsers/document_parser.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
@@ -120,7 +121,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
       return null;
     }
 
-    for (final c in _createConfigs()) {
+    for (final c in _createConfigs(session.documentType)) {
       final tagValues = session.com!.dgTags.map((t) => t.value).toSet();
 
       if (!tagValues.contains(c.tag.value)) {
@@ -146,7 +147,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
           return null;
         }
       } catch (e) {
-        await _failure(session, 'Failure reading DG ${c.name}: $e');
+        await _failure(session, 'Failure reading data group ${c.name}: $e');
         return null;
       }
     }
@@ -166,7 +167,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
       return null;
     }
 
-    if (activeAuthenticationParams != null && session.com!.dgTags.contains(PassportEfDG15.TAG)) {
+    if (activeAuthenticationParams != null && session.com!.dgTags.contains(PassportEfDG15.TAG) && documentType == DocumentType.passport) {
       _setState(DocumentReaderActiveAuthentication());
       try {
         await _reconnectionLoop(
@@ -300,7 +301,8 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
     await session.dispose();
   }
 
-  List<_DGConfig> _createConfigs() {
+  List<_DGConfig> _createConfigs(DocumentType documentType) {
+    if (documentType == DocumentType.passport) {
     return [
       _DGConfig(PassportEfDG1.TAG, 'DG1', 0.1, dgReader.readDG1, parser.parseDG1),
       _DGConfig(PassportEfDG2.TAG, 'DG2', 0.2, dgReader.readDG2, parser.parseDG2),
@@ -318,7 +320,19 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
       _DGConfig(PassportEfDG14.TAG, 'DG14', 0.95, dgReader.readDG14, parser.parseDG14),
       _DGConfig(PassportEfDG15.TAG, 'DG15', 0.9, dgReader.readDG15, parser.parseDG15),
       _DGConfig(PassportEfDG16.TAG, 'DG16', 1.0, dgReader.readDG16, parser.parseDG16),
-    ];
+    ];}
+    else {
+      return [
+        _DGConfig(DrivingLicenceEfDG1.TAG, 'DG1', 0.1, dgReader.readDG1, parser.parseDG1),
+
+    _DGConfig(DrivingLicenceEfDG5.TAG, 'DG5', 0.4, dgReader.readDG5, parser.parseDG5),
+    _DGConfig(DrivingLicenceEfDG6.TAG, 'DG6', 0.5, dgReader.readDG6, parser.parseDG6),
+    _DGConfig(DrivingLicenceEfDG11.TAG, 'DG11', 0.85, dgReader.readDG11, parser.parseDG11),
+    _DGConfig(DrivingLicenceEfDG12.TAG, 'DG12', 0.9, dgReader.readDG12, parser.parseDG12),
+    _DGConfig(DrivingLicenceEfDG13.TAG, 'DG13', 0.9, dgReader.readDG13, parser.parseDG13),
+      ];
+
+    }
   }
 }
 

@@ -91,18 +91,18 @@ class PassportData implements DocumentData {
 
 class DrivingLicenceData implements DocumentData {
   // From DG1
-  final String? issuingMemberState;
-  final String? holderSurname;
-  final String? holderOtherName;
-  final String? dateOfBirth;
-  final String? placeOfBirth;
-  final String? dateOfIssue;
-  final String? dateOfExpiry;
-  final String? issuingAuthority;
-  final String? documentNumber;
+  final String issuingMemberState;
+  final String holderSurname;
+  final String holderOtherName;
+  final String dateOfBirth;
+  final String placeOfBirth;
+  final String dateOfIssue;
+  final String dateOfExpiry;
+  final String issuingAuthority;
+  final String documentNumber;
 
   // From DG6 (photo)
-  final Uint8List? photoImageData;
+  final Uint8List photoImageData;
   final ImageType? photoImageType;
   final int? patronHeaderVersion;
   final int? biometricType;
@@ -123,16 +123,16 @@ class DrivingLicenceData implements DocumentData {
   final Uint8List? dg14RawBytes;
 
   DrivingLicenceData({
-    this.issuingMemberState,
-    this.holderSurname,
-    this.holderOtherName,
-    this.dateOfBirth,
-    this.placeOfBirth,
-    this.dateOfIssue,
-    this.dateOfExpiry,
-    this.issuingAuthority,
-    this.documentNumber,
-    this.photoImageData,
+    required this.issuingMemberState,
+    required this.holderSurname,
+    required this.holderOtherName,
+    required this.dateOfBirth,
+    required this.placeOfBirth,
+    required this.dateOfIssue,
+    required this.dateOfExpiry,
+    required this.issuingAuthority,
+    required this.documentNumber,
+    required this.photoImageData,
     this.photoImageType,
     this.patronHeaderVersion,
     this.biometricType,

@@ -29,7 +29,7 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
           padding: const EdgeInsets.all(16.0),
           children: [
             // Photo section
-            if (imageData != null) ...[_buildPhotoSection(imageData), const SizedBox(height: 24)],
+             ...[_buildPhotoSection(imageData), const SizedBox(height: 24)],
 
             _buildSection('Personal Information', [
               _buildDataRow('Surname', widget.drivingLicence.holderSurname),
