@@ -12,6 +12,7 @@ extension Uint8ListEncodeApis on Uint8List {
     return conv.hex.encoder.convert(this);
   }
 }
+
 extension Uint8ListDecodeApis on Uint8List {
   DateTime binaryDecodeCCYYMMDD() {
     // The date is in the format 'CCYYMMDD'

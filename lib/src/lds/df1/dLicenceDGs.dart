@@ -146,6 +146,7 @@ class DrivingLicenceEfDG12 {
   static const SFI = 0x0C;
   static const TAG = DgTag(0x71);
 }
+
 // Mandatory
 class DrivingLicenceEfDG13 {
   // Active authentication public key

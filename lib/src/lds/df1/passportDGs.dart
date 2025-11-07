@@ -4,7 +4,8 @@ import '../../../vcmrtd.dart';
 
 class PassportEfDG1 {
   // MRZ data
-  static const mandatory = true; // this flag is for when an optional group is in the com and reading or processing it fails
+  static const mandatory =
+      true; // this flag is for when an optional group is in the com and reading or processing it fails
   static const FID = 0x0101;
   static const SFI = 0x01;
   static const TAG = DgTag(0x61);

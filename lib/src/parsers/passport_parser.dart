@@ -311,10 +311,11 @@ class PassportParser implements DocumentParser<PassportData> {
           otherNames.add(utf8.decode(uvtv.value));
           break;
         case FULL_DATE_OF_BIRTH_TAG:
-        // Some countries store the full birth date in binary coded format
-        // even though that's not according to the spec
-          fullDateOfBirth = uvtv.value.length == 4 ?
-          uvtv.value.binaryDecodeCCYYMMDD() : String.fromCharCodes(uvtv.value).parseDate();
+          // Some countries store the full birth date in binary coded format
+          // even though that's not according to the spec
+          fullDateOfBirth = uvtv.value.length == 4
+              ? uvtv.value.binaryDecodeCCYYMMDD()
+              : String.fromCharCodes(uvtv.value).parseDate();
           break;
         case PLACE_OF_BIRTH_TAG:
           placeOfBirth.add(utf8.decode(uvtv.value));
