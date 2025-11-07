@@ -6,59 +6,55 @@ class DrivingLicenceEfDG1 {
   // Personal data
   static const FID = 0x0101;
   static const SFI = 0x01;
-  static const TAG = DgTag(0x6E);
+  static const TAG = DgTag(0x61);
 
-  final String? issuingMemberState;
-  final String? holderSurname;
-  final String? holderOtherName;
-  final String? dateOfBirth;
-  final String? placeOfBirth;
-  final String? dateOfIssue;
-  final String? dateOfExpiry;
-  final String? issuingAuthority;
-  final String? documentNumber;
+  final String issuingMemberState;
+  final String holderSurname;
+  final String holderOtherName;
+  final String dateOfBirth;
+  final String placeOfBirth;
+  final String dateOfIssue;
+  final String dateOfExpiry;
+  final String issuingAuthority;
+  final String documentNumber;
 
   DrivingLicenceEfDG1({
-    this.issuingMemberState,
-    this.holderSurname,
-    this.holderOtherName,
-    this.dateOfBirth,
-    this.placeOfBirth,
-    this.dateOfIssue,
-    this.dateOfExpiry,
-    this.issuingAuthority,
-    this.documentNumber,
+    required this.issuingMemberState,
+    required this.holderSurname,
+    required this.holderOtherName,
+    required this.dateOfBirth,
+    required this.placeOfBirth,
+    required this.dateOfIssue,
+    required this.dateOfExpiry,
+    required this.issuingAuthority,
+    required this.documentNumber,
   });
 }
 
 class DrivingLicenceEfDG2 {
-  // Driving license specific data (categories, restrictions, etc.)
   static const FID = 0x0102;
   static const SFI = 0x02;
-  static const TAG = DgTag(0x6F);
 }
 
 class DrivingLicenceEfDG3 {
-  // Additional personal data
   static const FID = 0x0103;
   static const SFI = 0x03;
-  static const TAG = DgTag(0x63);
 }
 
 class DrivingLicenceEfDG4 {
-  // Additional document data
   static const FID = 0x0104;
   static const SFI = 0x04;
-  static const TAG = DgTag(0x76);
 }
 
+// Mandatory
 class DrivingLicenceEfDG5 {
   // Portrait image
   static const FID = 0x0105;
   static const SFI = 0x05;
-  static const TAG = DgTag(0x65);
+  static const TAG = DgTag(0x67);
 }
 
+// Mandatory
 class DrivingLicenceEfDG6 {
   // Signature or usual mark image
   static const FID = 0x0106;
@@ -84,7 +80,7 @@ class DrivingLicenceEfDG6 {
   final int? sourceType;
   final int? deviceType;
   final int? quality;
-  final Uint8List? imageData;
+  final Uint8List imageData;
   final ImageType? imageType;
 
   DrivingLicenceEfDG6({
@@ -107,11 +103,12 @@ class DrivingLicenceEfDG6 {
     this.sourceType,
     this.deviceType,
     this.quality,
-    this.imageData,
-    this.imageType,
+    required this.imageData,
+    required this.imageType,
   });
 }
 
+// Mandatory
 class DrivingLicenceEfDG7 {
   // Fingerprint image
   static const FID = 0x0107;
@@ -120,50 +117,44 @@ class DrivingLicenceEfDG7 {
 }
 
 class DrivingLicenceEfDG8 {
-  // Iris image
   static const FID = 0x0108;
   static const SFI = 0x08;
-  static const TAG = DgTag(0x68);
 }
 
 class DrivingLicenceEfDG9 {
-  // Additional biometric data
   static const FID = 0x0109;
   static const SFI = 0x09;
-  static const TAG = DgTag(0x69);
 }
 
 class DrivingLicenceEfDG10 {
-  // Notations
   static const FID = 0x010A;
   static const SFI = 0x0A;
-  static const TAG = DgTag(0x6A);
 }
 
+// Mandatory
 class DrivingLicenceEfDG11 {
-  // Optional data
+  // Contains BSN
   static const FID = 0x010B;
   static const SFI = 0x0B;
-  static const TAG = DgTag(0x6B);
-}
-
-class DrivingLicenceEfDG12 {
-  // Reserved for future use
-  static const FID = 0x010C;
-  static const SFI = 0x0C;
-  static const TAG = DgTag(0x6C);
-}
-
-class DrivingLicenceEfDG13 {
-  // Reserved for future use
-  static const FID = 0x010D;
-  static const SFI = 0x0D;
   static const TAG = DgTag(0x6D);
 }
 
+// Mandatory
+class DrivingLicenceEfDG12 {
+  // MRZ used for PACE and Non-Match Alert
+  static const FID = 0x010C;
+  static const SFI = 0x0C;
+  static const TAG = DgTag(0x71);
+}
+// Mandatory
+class DrivingLicenceEfDG13 {
+  // Active authentication public key
+  static const FID = 0x010D;
+  static const SFI = 0x0D;
+  static const TAG = DgTag(0x6f);
+}
+
 class DrivingLicenceEfDG14 {
-  // Reserved for future use / Security options
   static const FID = 0x010E;
   static const SFI = 0x0E;
-  static const TAG = DgTag(0x77);
 }
