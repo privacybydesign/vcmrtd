@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/extensions.dart';
+import 'package:vcmrtd/src/extension/read_settings.dart';
 import 'package:vcmrtd/src/lds/df1/dLicenceDGs.dart';
 import 'package:vcmrtd/src/parsers/document_parser.dart';
 import 'package:vcmrtd/vcmrtd.dart';
@@ -22,6 +23,7 @@ class DocumentError implements Exception {
 }
 
 class DocumentReader<DocType extends DocumentData> extends StateNotifier<DocumentReaderState> {
+  final DocumentReaderSettings settings;
   final DocumentParser<DocType> parser;
   final DataGroupReader dgReader;
   final NfcProvider _nfc;
@@ -31,7 +33,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
   List<String> _log = [];
   IosNfcMessageMapper? _iosNfcMessageMapper;
 
-  DocumentReader(this.parser, this.dgReader, this._nfc, this.documentType) : super(DocumentReaderPending()) {
+  DocumentReader(this.parser, this.dgReader, this._nfc, this.documentType, {this.settings = const DocumentReaderSettings()}) : super(DocumentReaderPending()) {
     checkNfcAvailability();
   }
 
@@ -127,7 +129,10 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
       if (!tagValues.contains(c.tag.value)) {
         continue;
       }
-
+      if (c.skip) {
+        _addLog('Skipping ${c.name} (configured to skip)');
+        continue;
+      }
       _setState(DocumentReaderReadingDataGroup(dataGroup: c.name, progress: c.progress));
       try {
         await _reconnectionLoop(
@@ -304,32 +309,31 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
   List<_DGConfig> _createConfigs(DocumentType documentType) {
     if (documentType == DocumentType.passport) {
     return [
-      _DGConfig(PassportEfDG1.TAG, 'DG1', 0.1, dgReader.readDG1, parser.parseDG1),
-      _DGConfig(PassportEfDG2.TAG, 'DG2', 0.2, dgReader.readDG2, parser.parseDG2),
-      _DGConfig(PassportEfDG3.TAG, 'DG3', 0.3, dgReader.readDG3, parser.parseDG3),
-      _DGConfig(PassportEfDG4.TAG, 'DG4', 0.35, dgReader.readDG4, parser.parseDG4),
-      _DGConfig(PassportEfDG5.TAG, 'DG5', 0.4, dgReader.readDG5, parser.parseDG5),
-      _DGConfig(PassportEfDG6.TAG, 'DG6', 0.5, dgReader.readDG6, parser.parseDG6),
-      _DGConfig(PassportEfDG7.TAG, 'DG7', 0.6, dgReader.readDG7, parser.parseDG7),
-      _DGConfig(PassportEfDG8.TAG, 'DG8', 0.7, dgReader.readDG8, parser.parseDG8),
-      _DGConfig(PassportEfDG9.TAG, 'DG9', 0.75, dgReader.readDG9, parser.parseDG9),
-      _DGConfig(PassportEfDG10.TAG, 'DG10', 0.8, dgReader.readDG10, parser.parseDG10),
-      _DGConfig(PassportEfDG11.TAG, 'DG11', 0.85, dgReader.readDG11, parser.parseDG11),
-      _DGConfig(PassportEfDG12.TAG, 'DG12', 0.9, dgReader.readDG12, parser.parseDG12),
-      _DGConfig(PassportEfDG13.TAG, 'DG13', 0.9, dgReader.readDG13, parser.parseDG13),
-      _DGConfig(PassportEfDG14.TAG, 'DG14', 0.95, dgReader.readDG14, parser.parseDG14),
-      _DGConfig(PassportEfDG15.TAG, 'DG15', 0.9, dgReader.readDG15, parser.parseDG15),
-      _DGConfig(PassportEfDG16.TAG, 'DG16', 1.0, dgReader.readDG16, parser.parseDG16),
+      _DGConfig(PassportEfDG1.TAG, settings.shouldSkip('DG1'), 'DG1', 0.1, dgReader.readDG1, parser.parseDG1),
+      _DGConfig(PassportEfDG2.TAG, settings.shouldSkip('DG2'), 'DG2', 0.2, dgReader.readDG2, parser.parseDG2),
+      _DGConfig(PassportEfDG3.TAG, settings.shouldSkip('DG3'), 'DG3', 0.3, dgReader.readDG3, parser.parseDG3),
+      _DGConfig(PassportEfDG4.TAG, settings.shouldSkip('DG4'), 'DG4', 0.35, dgReader.readDG4, parser.parseDG4),
+      _DGConfig(PassportEfDG5.TAG, settings.shouldSkip('DG5'), 'DG5', 0.4, dgReader.readDG5, parser.parseDG5),
+      _DGConfig(PassportEfDG6.TAG, settings.shouldSkip('DG6'), 'DG6', 0.5, dgReader.readDG6, parser.parseDG6),
+      _DGConfig(PassportEfDG7.TAG, settings.shouldSkip('DG7'), 'DG7', 0.6, dgReader.readDG7, parser.parseDG7),
+      _DGConfig(PassportEfDG8.TAG, settings.shouldSkip('DG8'), 'DG8', 0.7, dgReader.readDG8, parser.parseDG8),
+      _DGConfig(PassportEfDG9.TAG, settings.shouldSkip('DG9'), 'DG9', 0.75, dgReader.readDG9, parser.parseDG9),
+      _DGConfig(PassportEfDG10.TAG, settings.shouldSkip('DG10'), 'DG10', 0.8, dgReader.readDG10, parser.parseDG10),
+      _DGConfig(PassportEfDG11.TAG, settings.shouldSkip('DG11'), 'DG11', 0.85, dgReader.readDG11, parser.parseDG11),
+      _DGConfig(PassportEfDG12.TAG, settings.shouldSkip('DG12'), 'DG12', 0.9, dgReader.readDG12, parser.parseDG12),
+      _DGConfig(PassportEfDG13.TAG, settings.shouldSkip('DG13'), 'DG13', 0.9, dgReader.readDG13, parser.parseDG13),
+      _DGConfig(PassportEfDG14.TAG, settings.shouldSkip('DG14'), 'DG14', 0.95, dgReader.readDG14, parser.parseDG14),
+      _DGConfig(PassportEfDG15.TAG, settings.shouldSkip('DG15'), 'DG15', 0.9, dgReader.readDG15, parser.parseDG15),
+      _DGConfig(PassportEfDG16.TAG, settings.shouldSkip('DG16'), 'DG16', 1.0, dgReader.readDG16, parser.parseDG16),
     ];}
     else {
       return [
-        _DGConfig(DrivingLicenceEfDG1.TAG, 'DG1', 0.1, dgReader.readDG1, parser.parseDG1),
-
-    _DGConfig(DrivingLicenceEfDG5.TAG, 'DG5', 0.4, dgReader.readDG5, parser.parseDG5),
-    _DGConfig(DrivingLicenceEfDG6.TAG, 'DG6', 0.5, dgReader.readDG6, parser.parseDG6),
-    _DGConfig(DrivingLicenceEfDG11.TAG, 'DG11', 0.85, dgReader.readDG11, parser.parseDG11),
-    _DGConfig(DrivingLicenceEfDG12.TAG, 'DG12', 0.9, dgReader.readDG12, parser.parseDG12),
-    _DGConfig(DrivingLicenceEfDG13.TAG, 'DG13', 0.9, dgReader.readDG13, parser.parseDG13),
+        _DGConfig(DrivingLicenceEfDG1.TAG, settings.shouldSkip('DG1'), 'DG1', 0.1, dgReader.readDG1, parser.parseDG1),
+        _DGConfig(DrivingLicenceEfDG5.TAG, settings.shouldSkip('DG5'), 'DG5', 0.4, dgReader.readDG5, parser.parseDG5),
+        _DGConfig(DrivingLicenceEfDG6.TAG, settings.shouldSkip('DG6'), 'DG6', 0.5, dgReader.readDG6, parser.parseDG6),
+        _DGConfig(DrivingLicenceEfDG11.TAG, settings.shouldSkip('DG11'), 'DG11', 0.85, dgReader.readDG11, parser.parseDG11),
+        _DGConfig(DrivingLicenceEfDG12.TAG, settings.shouldSkip('DG12'), 'DG12', 0.9, dgReader.readDG12, parser.parseDG12),
+        _DGConfig(DrivingLicenceEfDG13.TAG, settings.shouldSkip('DG13'), 'DG13', 0.9, dgReader.readDG13, parser.parseDG13),
       ];
 
     }
@@ -338,13 +342,14 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
 
 // ---
 class _DGConfig {
+  final bool skip;
   final DgTag tag;
   final String name;
   final double progress;
   final Future<Uint8List> Function() readFn;
   final void Function(Uint8List) parseFn;
 
-  _DGConfig(this.tag, this.name, this.progress, this.readFn, this.parseFn);
+  _DGConfig(this.tag,this.skip, this.name, this.progress, this.readFn, this.parseFn);
 }
 
 class _Session {

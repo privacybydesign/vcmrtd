@@ -4,6 +4,7 @@ import '../../../vcmrtd.dart';
 
 class PassportEfDG1 {
   // MRZ data
+  static const mandatory = true; // this flag is for when an optional group is in the com and reading or processing it fails
   static const FID = 0x0101;
   static const SFI = 0x01;
   static const TAG = DgTag(0x61);
@@ -13,6 +14,7 @@ class PassportEfDG1 {
 
 class PassportEfDG2 {
   // Passport photo data
+  static const mandatory = true;
   static const FID = 0x0102;
   static const SFI = 0x02;
   static const TAG = DgTag(0x75);
@@ -70,6 +72,7 @@ class PassportEfDG2 {
 
 class PassportEfDG3 {
   // Fingerprint data, commonly not needed for privacy reasons
+  static const mandatory = false;
   static const FID = 0x0103;
   static const SFI = 0x03;
   static const TAG = DgTag(0x63);
@@ -77,48 +80,56 @@ class PassportEfDG3 {
 
 class PassportEfDG4 {
   // Iris data
+  static const mandatory = false;
   static const FID = 0x0104;
   static const SFI = 0x04;
   static const TAG = DgTag(0x76);
 }
 
 class PassportEfDG5 {
+  static const mandatory = false;
   static const FID = 0x0105;
   static const SFI = 0x05;
   static const TAG = DgTag(0x65);
 }
 
 class PassportEfDG6 {
+  static const mandatory = false;
   static const FID = 0x0106;
   static const SFI = 0x06;
   static const TAG = DgTag(0x66);
 }
 
 class PassportEfDG7 {
+  static const mandatory = false;
   static const FID = 0x0107;
   static const SFI = 0x07;
   static const TAG = DgTag(0x67);
 }
 
 class PassportEfDG8 {
+  static const mandatory = false;
   static const FID = 0x0108;
   static const SFI = 0x08;
   static const TAG = DgTag(0x68);
 }
 
 class PassportEfDG9 {
+  static const mandatory = false;
   static const FID = 0x0109;
   static const SFI = 0x09;
   static const TAG = DgTag(0x69);
 }
 
 class PassportEfDG10 {
+  static const mandatory = false;
   static const FID = 0x010A;
   static const SFI = 0x0A;
   static const TAG = DgTag(0x6A);
 }
 
 class PassportEfDG11 {
+  static const mandatory = false;
   static const FID = 0x010B;
   static const SFI = 0x0B;
   static const TAG = DgTag(0x6B);
@@ -155,6 +166,7 @@ class PassportEfDG11 {
 }
 
 class PassportEfDG12 {
+  static const mandatory = false;
   static const FID = 0x010C;
   static const SFI = 0x0C;
   static const TAG = DgTag(0x6C);
@@ -166,18 +178,21 @@ class PassportEfDG12 {
 }
 
 class PassportEfDG13 {
+  static const mandatory = false;
   static const FID = 0x010D;
   static const SFI = 0x0D;
   static const TAG = DgTag(0x6D);
 }
 
 class PassportEfDG14 {
+  static const mandatory = false;
   static const FID = 0x010E;
   static const SFI = 0x0E;
   static const TAG = DgTag(0x6E);
 }
 
 class PassportEfDG15 {
+  static const mandatory = false;
   static const FID = 0x010F;
   static const SFI = 0x0F;
   static const TAG = DgTag(0x6F);
@@ -188,6 +203,7 @@ class PassportEfDG15 {
 }
 
 class PassportEfDG16 {
+  static const mandatory = false;
   static const FID = 0x0110;
   static const SFI = 0x10;
   static const TAG = DgTag(0x70);

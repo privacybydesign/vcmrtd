@@ -6,7 +6,6 @@ import 'package:vcmrtd/extensions.dart';
 import '../../vcmrtd.dart';
 import '../extension/byte_reader.dart';
 import '../lds/df1/passportDGs.dart';
-import '../models/document.dart';
 import 'document_parser.dart';
 
 class PassportParser implements DocumentParser<PassportData> {
@@ -36,6 +35,7 @@ class PassportParser implements DocumentParser<PassportData> {
   static const int PERMANENT_ADDRESS_TAG = 0x5F42;
   static const int DATE_OF_ISSUE_TAG = 0x5F26;
 
+  // Only DG1 and DG2 is mandatory
   late PassportEfDG1 _dg1;
   late PassportEfDG2 _dg2;
   PassportEfDG11? _dg11;
@@ -311,7 +311,10 @@ class PassportParser implements DocumentParser<PassportData> {
           otherNames.add(utf8.decode(uvtv.value));
           break;
         case FULL_DATE_OF_BIRTH_TAG:
-          fullDateOfBirth = String.fromCharCodes(uvtv.value).parseDate();
+        // Some countries store the full birth date in binary coded format
+        // even though that's not according to the spec
+          fullDateOfBirth = uvtv.value.length == 4 ?
+          uvtv.value.binaryDecodeCCYYMMDD() : String.fromCharCodes(uvtv.value).parseDate();
           break;
         case PLACE_OF_BIRTH_TAG:
           placeOfBirth.add(utf8.decode(uvtv.value));
