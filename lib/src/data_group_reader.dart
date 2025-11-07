@@ -42,6 +42,7 @@ class DataGroupReader {
   }
 
   Future<void> startSessionPACE(EfCardAccess efCardAccess) async {
+    await _selectMF();
     await _exec(() => _api.initSessionViaPACE(accessKey, efCardAccess));
   }
 
