@@ -3,7 +3,7 @@ import 'package:vcmrtd/vcmrtd.dart';
 class DataGroupConfig {
   final dynamic tag;
   final String name;
-  final bool allowFailure;
+  final bool mandatory;
   final double progressStage;
   final Future<DataGroup> Function(Passport, MrtdData) readFunction;
 
@@ -12,6 +12,6 @@ class DataGroupConfig {
     required this.name,
     required this.progressStage,
     required this.readFunction,
-    required this.allowFailure,
+    required this.mandatory,
   });
 }
