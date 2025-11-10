@@ -1,6 +1,5 @@
 import 'dart:typed_data';
 
-import 'package:vcmrtd/src/lds/mrz.dart';
 
 import '../../vcmrtd.dart';
 

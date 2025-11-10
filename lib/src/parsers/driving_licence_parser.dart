@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:vcmrtd/src/parsers/data_groups.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import '../extension/byte_reader.dart';
 import '../lds/df1/dLicenceDGs.dart';
