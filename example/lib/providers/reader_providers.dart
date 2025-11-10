@@ -14,8 +14,8 @@ final passportReaderProvider = StateNotifierProvider.autoDispose
       final dgReader = DataGroupReader(nfc, DF1.PassportAID, accessKey);
       final parser = PassportParser();
       final docReader = DocumentReader(
-        parser: parser,
-        dgReader: dgReader,
+        documentParser: parser,
+        dataGroupReader: dgReader,
         nfc: nfc,
         config: DocumentReaderConfig(readIfAvailable: {DataGroups.dg1, DataGroups.dg2, DataGroups.dg15}),
       );
@@ -36,8 +36,8 @@ final drivingLicenceReaderProvider = StateNotifierProvider.autoDispose
       final dgReader = DataGroupReader(nfc, DF1.DriverAID, accessKey);
       final parser = DrivingLicenceParser();
       final docReader = DocumentReader(
-        parser: parser,
-        dgReader: dgReader,
+        documentParser: parser,
+        dataGroupReader: dgReader,
         nfc: nfc,
         config: DocumentReaderConfig(readIfAvailable: {}),
       );

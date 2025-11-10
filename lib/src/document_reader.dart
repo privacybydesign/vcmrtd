@@ -31,8 +31,8 @@ class DocumentReaderConfig {
 
 class DocumentReader<DocType extends DocumentData> extends StateNotifier<DocumentReaderState> {
   final DocumentReaderConfig config;
-  final DocumentParser<DocType> parser;
-  final DataGroupReader dgReader;
+  final DocumentParser<DocType> documentParser;
+  final DataGroupReader dataGroupReader;
   final NfcProvider nfc;
 
   bool _isCancelled = false;
@@ -41,7 +41,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
   List<String> _log = [];
   IosNfcMessageMapper? _iosNfcMessageMapper;
 
-  DocumentReader({required this.parser, required this.dgReader, required this.nfc, required this.config})
+  DocumentReader({required this.documentParser, required this.dataGroupReader, required this.nfc, required this.config})
     : super(DocumentReaderPending()) {
     checkNfcAvailability();
   }
@@ -74,7 +74,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
 
   Future<bool> tryAuthenticateWithBAC() async {
     try {
-      await dgReader.startSession();
+      await dataGroupReader.startSession();
       return true;
     } catch (e) {
       return false;
@@ -105,7 +105,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
       try {
         await _reconnectionLoop(
           authMethod: _AuthMethod.none,
-          whenConnected: () async => _cardAccess = await dgReader.readEfCardAccess(),
+          whenConnected: () async => _cardAccess = await dataGroupReader.readEfCardAccess(),
         );
         if (state is DocumentReaderCancelled) return null;
       } catch (e) {
@@ -117,7 +117,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
       try {
         await _reconnectionLoop(
           authMethod: _AuthMethod.none,
-          whenConnected: () async => dgReader.startSessionPACE(_cardAccess!),
+          whenConnected: () async => dataGroupReader.startSessionPACE(_cardAccess!),
         );
         if (state is DocumentReaderCancelled) return null;
       } catch (e) {
@@ -128,7 +128,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
 
     _setState(DocumentReaderReadingCOM());
     try {
-      await _reconnectionLoop(authMethod: method, whenConnected: () async => _com = await dgReader.readEfCOM());
+      await _reconnectionLoop(authMethod: method, whenConnected: () async => _com = await dataGroupReader.readEfCOM());
       if (state is DocumentReaderCancelled) return null;
     } catch (e) {
       await _failure('Failure reading Ef.COM: $e');
@@ -139,22 +139,22 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
     final dataGroupsAvailableInDocument = _com!.dgTags.map((t) => t.value).toSet();
 
     for (final (dataGroup, read, parse, progress) in [
-      (DataGroups.dg1, dgReader.readDG1, parser.parseDG1, 0.1),
-      (DataGroups.dg2, dgReader.readDG2, parser.parseDG2, 0.2),
-      (DataGroups.dg3, dgReader.readDG3, parser.parseDG3, 0.3),
-      (DataGroups.dg4, dgReader.readDG4, parser.parseDG4, 0.35),
-      (DataGroups.dg5, dgReader.readDG5, parser.parseDG5, 0.4),
-      (DataGroups.dg6, dgReader.readDG6, parser.parseDG6, 0.5),
-      (DataGroups.dg7, dgReader.readDG7, parser.parseDG7, 0.6),
-      (DataGroups.dg8, dgReader.readDG8, parser.parseDG8, 0.7),
-      (DataGroups.dg9, dgReader.readDG9, parser.parseDG9, 0.75),
-      (DataGroups.dg10, dgReader.readDG10, parser.parseDG10, 0.8),
-      (DataGroups.dg11, dgReader.readDG11, parser.parseDG11, 0.85),
-      (DataGroups.dg12, dgReader.readDG12, parser.parseDG12, 0.9),
-      (DataGroups.dg13, dgReader.readDG13, parser.parseDG13, 0.9),
-      (DataGroups.dg14, dgReader.readDG14, parser.parseDG14, 0.95),
-      (DataGroups.dg15, dgReader.readDG15, parser.parseDG15, 0.9),
-      (DataGroups.dg16, dgReader.readDG16, parser.parseDG16, 1.0),
+      (DataGroups.dg1, dataGroupReader.readDG1, documentParser.parseDG1, 0.1),
+      (DataGroups.dg2, dataGroupReader.readDG2, documentParser.parseDG2, 0.2),
+      (DataGroups.dg3, dataGroupReader.readDG3, documentParser.parseDG3, 0.3),
+      (DataGroups.dg4, dataGroupReader.readDG4, documentParser.parseDG4, 0.35),
+      (DataGroups.dg5, dataGroupReader.readDG5, documentParser.parseDG5, 0.4),
+      (DataGroups.dg6, dataGroupReader.readDG6, documentParser.parseDG6, 0.5),
+      (DataGroups.dg7, dataGroupReader.readDG7, documentParser.parseDG7, 0.6),
+      (DataGroups.dg8, dataGroupReader.readDG8, documentParser.parseDG8, 0.7),
+      (DataGroups.dg9, dataGroupReader.readDG9, documentParser.parseDG9, 0.75),
+      (DataGroups.dg10, dataGroupReader.readDG10, documentParser.parseDG10, 0.8),
+      (DataGroups.dg11, dataGroupReader.readDG11, documentParser.parseDG11, 0.85),
+      (DataGroups.dg12, dataGroupReader.readDG12, documentParser.parseDG12, 0.9),
+      (DataGroups.dg13, dataGroupReader.readDG13, documentParser.parseDG13, 0.9),
+      (DataGroups.dg14, dataGroupReader.readDG14, documentParser.parseDG14, 0.95),
+      (DataGroups.dg15, dataGroupReader.readDG15, documentParser.parseDG15, 0.9),
+      (DataGroups.dg16, dataGroupReader.readDG16, documentParser.parseDG16, 1.0),
     ]) {
       // the data group should never be read according to the config
       if (!config.shouldRead(dataGroup)) {
@@ -162,7 +162,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
       }
 
       // the data group about to be read is not inside of the passport
-      if (!dataGroupsAvailableInDocument.contains(parser.tagForDataGroup(dataGroup)?.value)) {
+      if (!dataGroupsAvailableInDocument.contains(documentParser.tagForDataGroup(dataGroup)?.value)) {
         continue;
       }
 
@@ -192,7 +192,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
     _setState(DocumentReaderReadingSOD());
     EfSOD? sod;
     try {
-      await _reconnectionLoop(authMethod: method, whenConnected: () async => sod = await dgReader.readEfSOD());
+      await _reconnectionLoop(authMethod: method, whenConnected: () async => sod = await dataGroupReader.readEfSOD());
       if (state is DocumentReaderCancelled) {
         return null;
       }
@@ -208,7 +208,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
         await _reconnectionLoop(
           authMethod: method,
           whenConnected: () async {
-            aaSig = await dgReader.activeAuthenticate(stringToUint8List(activeAuthenticationParams.nonce));
+            aaSig = await dataGroupReader.activeAuthenticate(stringToUint8List(activeAuthenticationParams.nonce));
           },
         );
         if (state is DocumentReaderCancelled) {
@@ -224,7 +224,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
 
     await nfc.disconnect();
 
-    final document = parser.createDocument();
+    final document = documentParser.createDocument();
     final result = RawDocumentData(
       dataGroups: dataGroups,
       efSod: sod?.toBytes().hex() ?? '',
@@ -299,8 +299,8 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
               return await _setToCancelState();
             }
             authMethod == _AuthMethod.bac
-                ? await dgReader.startSession()
-                : await dgReader.startSessionPACE(_cardAccess!);
+                ? await dataGroupReader.startSession()
+                : await dataGroupReader.startSessionPACE(_cardAccess!);
           } catch (e) {
             _addLog('Retry authenticate failed: $e');
           }
