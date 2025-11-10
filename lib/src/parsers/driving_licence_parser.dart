@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:vcmrtd/src/parsers/data_groups.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import '../extension/byte_reader.dart';
 import '../lds/df1/dLicenceDGs.dart';
@@ -42,6 +43,28 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
   late Uint8List _dg12RawBytes;
   Uint8List? _dg13RawBytes;
   Uint8List? _dg14RawBytes;
+
+  @override
+  DgTag? tagForDataGroup(DataGroups dg) {
+    return switch (dg) {
+      DataGroups.dg1 => DrivingLicenceEfDG1.TAG,
+      DataGroups.dg2 => null,
+      DataGroups.dg3 => null,
+      DataGroups.dg4 => null,
+      DataGroups.dg5 => DrivingLicenceEfDG5.TAG,
+      DataGroups.dg6 => DrivingLicenceEfDG6.TAG,
+      DataGroups.dg7 => DrivingLicenceEfDG7.TAG,
+      DataGroups.dg8 => null,
+      DataGroups.dg9 => null,
+      DataGroups.dg10 => null,
+      DataGroups.dg11 => DrivingLicenceEfDG11.TAG,
+      DataGroups.dg12 => DrivingLicenceEfDG12.TAG,
+      DataGroups.dg13 => DrivingLicenceEfDG13.TAG,
+      DataGroups.dg14 => null,
+      DataGroups.dg15 => null,
+      DataGroups.dg16 => null,
+    };
+  }
 
   @override
   DrivingLicenceData createDocument() {

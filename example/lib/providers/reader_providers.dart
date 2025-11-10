@@ -17,9 +17,7 @@ final passportReaderProvider = StateNotifierProvider.autoDispose
         parser: parser,
         dgReader: dgReader,
         nfc: nfc,
-        config: DocumentReaderConfig(
-          readIfAvailable: {DataGroups.dg1: DgTag(0x61), DataGroups.dg2: DgTag(0x75), DataGroups.dg15: DgTag(0x6F)},
-        ),
+        config: DocumentReaderConfig(readIfAvailable: {DataGroups.dg1, DataGroups.dg2, DataGroups.dg15}),
       );
 
       ref.onDispose(docReader.cancel);

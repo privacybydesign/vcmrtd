@@ -1,7 +1,9 @@
 import 'dart:typed_data';
-import '../models/document.dart';
+import 'package:vcmrtd/vcmrtd.dart';
 
 abstract class DocumentParser<DocType extends DocumentData> {
+  DgTag? tagForDataGroup(DataGroups dg);
+
   void parseDG1(Uint8List bytes);
 
   void parseDG2(Uint8List bytes);
