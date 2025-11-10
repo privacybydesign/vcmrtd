@@ -29,6 +29,20 @@ android {
         versionName = flutter.versionName
     }
 
+    flavorDimensions = ["distribution"]
+
+    productFlavors {
+        playstore {
+            dimension = "distribution"
+            // Full functionality with MLKit
+        }
+
+        fdroid {
+            dimension = "distribution"
+            // F-Droid compatible build without proprietary dependencies
+        }
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
@@ -92,4 +106,17 @@ dependencies {
     // Gemalto JP2 Decoder
     // https://mvnrepository.com/artifact/com.gemalto.jp2/jp2-android
     implementation 'com.gemalto.jp2:jp2-android:1.0.3'
+}
+
+// Exclude MLKit dependencies for FDroid builds
+// Note: This removes proprietary Google ML Kit libraries from F-Droid builds
+configurations {
+    fdroidImplementation {
+        exclude group: 'com.google.android.gms', module: 'play-services-mlkit-text-recognition'
+        exclude group: 'com.google.mlkit', module: 'text-recognition'
+        exclude group: 'com.google.mlkit', module: 'text-recognition-chinese'
+        exclude group: 'com.google.mlkit', module: 'text-recognition-devanagari'
+        exclude group: 'com.google.mlkit', module: 'text-recognition-japanese'
+        exclude group: 'com.google.mlkit', module: 'text-recognition-korean'
+    }
 }

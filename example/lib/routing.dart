@@ -6,6 +6,7 @@ import 'package:vcmrtdapp/widgets/pages/document_selection_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/manual_entry_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_reading_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/scanner_wrapper.dart';
+import 'package:vcmrtdapp/services/build_config_service.dart';
 
 extension CustomRouteExtensions on BuildContext {
   void pushNfcReadingScreen(NfcReadingRouteParams params) {
@@ -25,11 +26,29 @@ GoRouter createRouter() {
         path: '/select_doc_type',
         builder: (context, state) {
           return DocumentTypeSelectionScreen(
-            onPassportSelected: () {
-              context.push('/mrz_reader');
+            onPassportSelected: () async {
+              // Check if scanner is available (Play Store build)
+              final isScannerAvailable = await BuildConfigService.isScannerAvailable();
+              if (!context.mounted) return;
+
+              if (isScannerAvailable) {
+                context.push('/mrz_reader');
+              } else {
+                // FDroid build: skip scanner, go directly to manual entry
+                context.push('/manual_entry');
+              }
             },
-            onDrivingLicenceSelected: () {
-              context.push('/mrz_reader');
+            onDrivingLicenceSelected: () async {
+              // Check if scanner is available (Play Store build)
+              final isScannerAvailable = await BuildConfigService.isScannerAvailable();
+              if (!context.mounted) return;
+
+              if (isScannerAvailable) {
+                context.push('/mrz_reader');
+              } else {
+                // FDroid build: skip scanner, go directly to manual entry
+                context.push('/manual_entry');
+              }
             },
           );
         },
