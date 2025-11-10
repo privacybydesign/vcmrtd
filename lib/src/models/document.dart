@@ -1,6 +1,5 @@
 import 'dart:typed_data';
 
-
 import '../../vcmrtd.dart';
 
 enum ImageType { jpeg, jpeg2000 }
