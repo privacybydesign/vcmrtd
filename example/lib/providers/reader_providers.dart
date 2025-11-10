@@ -14,11 +14,12 @@ final passportReaderProvider = StateNotifierProvider.autoDispose
       final dgReader = DataGroupReader(nfc, DF1.PassportAID, accessKey);
       final parser = PassportParser();
       final docReader = DocumentReader(
-        parser,
-        dgReader,
-        nfc,
-        DocumentType.passport,
-        settings: DocumentReaderSettings(skipDataGroups: {'DG11'}),
+        parser: parser,
+        dgReader: dgReader,
+        nfc: nfc,
+        config: DocumentReaderConfig(
+          readIfAvailable: {DataGroups.dg1: DgTag(0x61), DataGroups.dg2: DgTag(0x75), DataGroups.dg15: DgTag(0x6F)},
+        ),
       );
 
       ref.onDispose(docReader.cancel);
@@ -36,9 +37,13 @@ final drivingLicenceReaderProvider = StateNotifierProvider.autoDispose
       final accessKey = CanKey(scannedDriverLicenceMRZ.documentNumber, DocumentType.driverLicense);
       final dgReader = DataGroupReader(nfc, DF1.DriverAID, accessKey);
       final parser = DrivingLicenceParser();
-      final docReader = DocumentReader(parser, dgReader, nfc, DocumentType.driverLicense);
+      final docReader = DocumentReader(
+        parser: parser,
+        dgReader: dgReader,
+        nfc: nfc,
+        config: DocumentReaderConfig(readIfAvailable: {}),
+      );
 
       ref.onDispose(docReader.cancel);
-
       return docReader;
     });

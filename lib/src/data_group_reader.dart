@@ -193,8 +193,4 @@ class DataGroupReader {
       throw DocumentError(e.message, code: e.code);
     }
   }
-
-  void reset() {
-    _api.icc.sm = null;
-  }
 }

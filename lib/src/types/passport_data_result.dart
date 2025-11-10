@@ -5,7 +5,7 @@ import 'package:json_annotation/json_annotation.dart';
 part 'passport_data_result.g.dart';
 
 @JsonSerializable()
-class PassportDataResult {
+class RawDocumentData {
   @JsonKey(name: 'data_groups')
   final Map<String, String> dataGroups;
 
@@ -23,9 +23,9 @@ class PassportDataResult {
   @Uint8ListConverter()
   final Uint8List? aaSignature;
 
-  PassportDataResult({required this.dataGroups, required this.efSod, this.sessionId, this.nonce, this.aaSignature});
+  RawDocumentData({required this.dataGroups, required this.efSod, this.sessionId, this.nonce, this.aaSignature});
 
-  factory PassportDataResult.fromJson(Map<String, dynamic> json) => _$PassportDataResultFromJson(json);
+  factory RawDocumentData.fromJson(Map<String, dynamic> json) => _$PassportDataResultFromJson(json);
 
   Map<String, dynamic> toJson() => _$PassportDataResultToJson(this);
 }

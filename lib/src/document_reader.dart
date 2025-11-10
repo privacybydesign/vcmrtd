@@ -4,12 +4,10 @@ import 'package:flutter/foundation.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/extensions.dart';
-import 'package:vcmrtd/src/lds/df1/dLicenceDGs.dart';
 import 'package:vcmrtd/src/parsers/document_parser.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
 import '../internal.dart';
-import 'lds/df1/passportDGs.dart';
 
 typedef IosNfcMessageMapper = String Function(DocumentReaderState);
 
@@ -23,24 +21,54 @@ class DocumentError implements Exception {
 
 enum _AuthMethod { none, bac, pace }
 
+enum DataGroups { dg1, dg2, dg3, dg4, dg5, dg6, dg7, dg8, dg9, dg10, dg11, dg12, dg13, dg14, dg15, dg16 }
+
+extension on DataGroups {
+  String getName() {
+    return switch (this) {
+      DataGroups.dg1 => 'DG1',
+      DataGroups.dg2 => 'DG2',
+      DataGroups.dg3 => 'DG3',
+      DataGroups.dg4 => 'DG4',
+      DataGroups.dg5 => 'DG5',
+      DataGroups.dg6 => 'DG6',
+      DataGroups.dg7 => 'DG7',
+      DataGroups.dg8 => 'DG8',
+      DataGroups.dg9 => 'DG9',
+      DataGroups.dg10 => 'DG10',
+      DataGroups.dg11 => 'DG11',
+      DataGroups.dg12 => 'DG12',
+      DataGroups.dg13 => 'DG13',
+      DataGroups.dg14 => 'DG14',
+      DataGroups.dg15 => 'DG15',
+      DataGroups.dg16 => 'DG16',
+    };
+  }
+}
+
+class DocumentReaderConfig {
+  final Map<DataGroups, DgTag> readIfAvailable;
+
+  const DocumentReaderConfig({required this.readIfAvailable});
+
+  DgTag tagForDataGroup(DataGroups g) => readIfAvailable[g]!;
+  bool shouldRead(DataGroups g) => readIfAvailable.containsKey(g);
+}
+
 class DocumentReader<DocType extends DocumentData> extends StateNotifier<DocumentReaderState> {
-  final DocumentReaderSettings settings;
+  final DocumentReaderConfig config;
   final DocumentParser<DocType> parser;
   final DataGroupReader dgReader;
-  final NfcProvider _nfc;
-  final DocumentType documentType;
+  final NfcProvider nfc;
 
   bool _isCancelled = false;
+  EfCardAccess? _cardAccess;
+  EfCOM? _com;
   List<String> _log = [];
   IosNfcMessageMapper? _iosNfcMessageMapper;
 
-  DocumentReader(
-    this.parser,
-    this.dgReader,
-    this._nfc,
-    this.documentType, {
-    this.settings = const DocumentReaderSettings(),
-  }) : super(DocumentReaderPending()) {
+  DocumentReader({required this.parser, required this.dgReader, required this.nfc, required this.config})
+    : super(DocumentReaderPending()) {
     checkNfcAvailability();
   }
 
@@ -70,9 +98,17 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
     _isCancelled = true;
   }
 
+  Future<bool> tryAuthenticateWithBAC() async {
+    try {
+      await dgReader.startSession();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   // First to Auth method is BAC if fail set to PACE
-  Future<(DocType, PassportDataResult)?> readDocument({
-    required String countryCode,
+  Future<(DocType, RawDocumentData)?> readDocument({
     required IosNfcMessageMapper iosNfcMessages,
     NonceAndSessionId? activeAuthenticationParams,
   }) async {
@@ -82,80 +118,91 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
       return null;
     }
 
-    final session = _Session(nfc: _nfc, dgReader: dgReader, countryCode: countryCode, documentType: documentType);
-
-    final Map<String, String> dataGroups = {};
-    EfSOD? sod;
-    Uint8List? aaSig;
-
     _setState(DocumentReaderConnecting());
-    try {
-      await _reconnectionLoop(session: session, authMethod: _AuthMethod.none, whenConnected: session.init);
-    } catch (e) {
-      await _failure(session, 'Failure during init: $e');
-      return null;
-    }
+    await nfc.connect(iosAlertMessage: iosNfcMessages(DocumentReaderConnecting()));
 
     _AuthMethod method = _AuthMethod.bac;
     _setState(DocumentReaderAuthenticating());
-    final bacSuccess = await session.tryAuthenticateWithBAC();
+    final bacSuccess = await tryAuthenticateWithBAC();
 
     if (!bacSuccess) {
       method = _AuthMethod.pace;
       _setState(DocumentReaderReadingCardAccess());
       try {
-        await _reconnectionLoop(session: session, authMethod: _AuthMethod.none, whenConnected: session.readCardAccess);
+        await _reconnectionLoop(
+          authMethod: _AuthMethod.none,
+          whenConnected: () async => _cardAccess = await dgReader.readEfCardAccess(),
+        );
         if (state is DocumentReaderCancelled) return null;
       } catch (e) {
-        await _failure(session, 'Failure reading Ef.CardAccess: $e');
+        await _failure('Failure reading Ef.CardAccess: $e');
         return null;
       }
 
       _setState(DocumentReaderAuthenticating());
       try {
         await _reconnectionLoop(
-          session: session,
           authMethod: _AuthMethod.none,
-          whenConnected: session.authenticateWithPACE,
+          whenConnected: () async => dgReader.startSessionPACE(_cardAccess!),
         );
         if (state is DocumentReaderCancelled) return null;
       } catch (e) {
-        await _failure(session, 'Failure authenticating with PACE: $e');
+        await _failure('Failure authenticating with PACE: $e');
         return null;
       }
     }
 
     _setState(DocumentReaderReadingCOM());
     try {
-      await _reconnectionLoop(session: session, authMethod: method, whenConnected: session.readCom);
+      await _reconnectionLoop(authMethod: method, whenConnected: () async => _com = await dgReader.readEfCOM());
       if (state is DocumentReaderCancelled) return null;
     } catch (e) {
-      await _failure(session, 'Failure reading Ef.COM: $e');
+      await _failure('Failure reading Ef.COM: $e');
       return null;
     }
 
-    for (final c in _createConfigs(session.documentType)) {
-      final tagValues = session.com!.dgTags.map((t) => t.value).toSet();
+    final Map<String, String> dataGroups = {};
+    final dataGroupsAvailableInDocument = _com!.dgTags.map((t) => t.value).toSet();
 
-      if (!tagValues.contains(c.tag.value)) {
+    for (final (dataGroup, read, parse, progress) in [
+      (DataGroups.dg1, dgReader.readDG1, parser.parseDG1, 0.1),
+      (DataGroups.dg2, dgReader.readDG2, parser.parseDG2, 0.2),
+      (DataGroups.dg3, dgReader.readDG3, parser.parseDG3, 0.3),
+      (DataGroups.dg4, dgReader.readDG4, parser.parseDG4, 0.35),
+      (DataGroups.dg5, dgReader.readDG5, parser.parseDG5, 0.4),
+      (DataGroups.dg6, dgReader.readDG6, parser.parseDG6, 0.5),
+      (DataGroups.dg7, dgReader.readDG7, parser.parseDG7, 0.6),
+      (DataGroups.dg8, dgReader.readDG8, parser.parseDG8, 0.7),
+      (DataGroups.dg9, dgReader.readDG9, parser.parseDG9, 0.75),
+      (DataGroups.dg10, dgReader.readDG10, parser.parseDG10, 0.8),
+      (DataGroups.dg11, dgReader.readDG11, parser.parseDG11, 0.85),
+      (DataGroups.dg12, dgReader.readDG12, parser.parseDG12, 0.9),
+      (DataGroups.dg13, dgReader.readDG13, parser.parseDG13, 0.9),
+      (DataGroups.dg14, dgReader.readDG14, parser.parseDG14, 0.95),
+      (DataGroups.dg15, dgReader.readDG15, parser.parseDG15, 0.9),
+      (DataGroups.dg16, dgReader.readDG16, parser.parseDG16, 1.0),
+    ]) {
+      // the data group should never be read according to the config
+      if (!config.shouldRead(dataGroup)) {
         continue;
       }
-      if (c.skip) {
-        _addLog('Skipping ${c.name} (configured to skip)');
+
+      // the data group about to be read is not inside of the passport
+      if (!dataGroupsAvailableInDocument.contains(config.tagForDataGroup(dataGroup).value)) {
         continue;
       }
-      _setState(DocumentReaderReadingDataGroup(dataGroup: c.name, progress: c.progress));
+
+      _setState(DocumentReaderReadingDataGroup(dataGroup: dataGroup.getName(), progress: progress));
       try {
         await _reconnectionLoop(
-          session: session,
           authMethod: method,
           whenConnected: () async {
-            final bytes = await c.readFn();
-            c.parseFn(bytes);
+            final bytes = await read();
+            parse(bytes);
 
             final hexData = bytes.hex();
             if (hexData.isNotEmpty) {
-              dataGroups[c.name] = hexData;
+              dataGroups[dataGroup.getName()] = hexData;
             }
           },
         );
@@ -163,52 +210,48 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
           return null;
         }
       } catch (e) {
-        await _failure(session, 'Failure reading data group ${c.name}: $e');
+        await _failure('Failure reading data group $dataGroup: $e');
         return null;
       }
     }
 
     _setState(DocumentReaderReadingSOD());
+    EfSOD? sod;
     try {
-      await _reconnectionLoop(
-        session: session,
-        authMethod: method,
-        whenConnected: () async => sod = await dgReader.readEfSOD(),
-      );
+      await _reconnectionLoop(authMethod: method, whenConnected: () async => sod = await dgReader.readEfSOD());
       if (state is DocumentReaderCancelled) {
         return null;
       }
     } catch (e) {
-      await _failure(session, 'Failure reading SOD: $e');
+      await _failure('Failure reading SOD: $e');
       return null;
     }
 
-    if (activeAuthenticationParams != null &&
-        session.com!.dgTags.contains(PassportEfDG15.TAG) &&
-        documentType == DocumentType.passport) {
+    Uint8List? aaSig;
+    if (activeAuthenticationParams != null) {
       _setState(DocumentReaderActiveAuthentication());
       try {
         await _reconnectionLoop(
-          session: session,
           authMethod: method,
-          whenConnected: () async =>
-              aaSig = await dgReader.activeAuthenticate(stringToUint8List(activeAuthenticationParams.nonce)),
+          whenConnected: () async {
+            aaSig = await dgReader.activeAuthenticate(stringToUint8List(activeAuthenticationParams.nonce));
+          },
         );
         if (state is DocumentReaderCancelled) {
           return null;
         }
       } catch (e) {
-        await _failure(session, 'Failure active authentication: $e');
+        await _failure('Failure active authentication: $e');
         return null;
       }
     }
 
     _setState(DocumentReaderSuccess());
 
-    await session.dispose();
+    await nfc.disconnect();
 
     final document = parser.createDocument();
-    final result = PassportDataResult(
+    final result = RawDocumentData(
       dataGroups: dataGroups,
       efSod: sod?.toBytes().hex() ?? '',
       nonce: activeAuthenticationParams != null ? stringToUint8List(activeAuthenticationParams.nonce) : null,
@@ -219,9 +262,9 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
     return (document, result);
   }
 
-  Future<void> _setToCancelState(_Session session) async {
+  Future<void> _setToCancelState() async {
     await _setState(DocumentReaderCancelling());
-    await session.dispose();
+    await nfc.disconnect();
     if (!mounted) {
       return;
     }
@@ -232,8 +275,20 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
     return e.toString().toLowerCase().contains('session invalidated');
   }
 
+  Future<void> _retryConnection() async {
+    if (nfc.isConnected()) {
+      if (Platform.isIOS) {
+        await nfc.reconnect().timeout(Duration(seconds: 2));
+      } else {
+        await nfc.disconnect();
+        await nfc.connect().timeout(Duration(seconds: 2));
+      }
+    } else {
+      await nfc.connect().timeout(Duration(seconds: 2));
+    }
+  }
+
   Future<void> _reconnectionLoop({
-    required _Session session,
     required _AuthMethod authMethod,
     required Function whenConnected,
     int numAttempts = 5,
@@ -243,7 +298,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
         return;
       }
       if (_isCancelled) {
-        return await _setToCancelState(session);
+        return await _setToCancelState();
       }
       try {
         await whenConnected();
@@ -254,12 +309,12 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
           rethrow;
         }
         if (_isCancelled || _isCancelException(e)) {
-          return await _setToCancelState(session);
+          return await _setToCancelState();
         }
         await Future.delayed(const Duration(milliseconds: 300));
         _addLog('Retry $i (Reason: $e)');
         try {
-          await session.retryConnection();
+          await _retryConnection();
         } catch (e) {
           _addLog('Retry connection failed: $e');
         }
@@ -267,9 +322,11 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
         if (authMethod != _AuthMethod.none) {
           try {
             if (_isCancelled || _isCancelException(e)) {
-              return await _setToCancelState(session);
+              return await _setToCancelState();
             }
-            authMethod == _AuthMethod.bac ? await session.authenticateWithBAC() : await session.authenticateWithPACE();
+            authMethod == _AuthMethod.bac
+                ? await dgReader.startSession()
+                : await dgReader.startSessionPACE(_cardAccess!);
           } catch (e) {
             _addLog('Retry authenticate failed: $e');
           }
@@ -285,8 +342,8 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
     _addLog('Setting state to $s');
     state = s;
     final message = _iosNfcMessageMapper?.call(state);
-    if (message != null && _nfc.isConnected()) {
-      await _nfc.setIosAlertMessage(message);
+    if (message != null && nfc.isConnected()) {
+      await nfc.setIosAlertMessage(message);
     }
   }
 
@@ -300,141 +357,17 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
     _iosNfcMessageMapper = mapper;
     _isCancelled = false;
     await checkNfcAvailability();
-    if (state is! DocumentReaderNfcUnavailable && _nfc.isConnected()) {
-      await _nfc.disconnect();
+    if (state is! DocumentReaderNfcUnavailable && nfc.isConnected()) {
+      await nfc.disconnect();
     }
   }
 
-  Future<void> _failure(_Session session, String message) async {
+  Future<void> _failure(String message) async {
     _addLog(message);
     final logs = '$message:\n${getLogs()}';
     state = DocumentReaderFailed(error: DocumentReadingError.unknown, logs: logs);
-    await session.dispose();
+    await nfc.disconnect();
   }
-
-  List<_DGConfig> _createConfigs(DocumentType documentType) {
-    if (documentType == DocumentType.passport) {
-      return [
-        _DGConfig(PassportEfDG1.TAG, settings.shouldSkip('DG1'), 'DG1', 0.1, dgReader.readDG1, parser.parseDG1),
-        _DGConfig(PassportEfDG2.TAG, settings.shouldSkip('DG2'), 'DG2', 0.2, dgReader.readDG2, parser.parseDG2),
-        _DGConfig(PassportEfDG3.TAG, settings.shouldSkip('DG3'), 'DG3', 0.3, dgReader.readDG3, parser.parseDG3),
-        _DGConfig(PassportEfDG4.TAG, settings.shouldSkip('DG4'), 'DG4', 0.35, dgReader.readDG4, parser.parseDG4),
-        _DGConfig(PassportEfDG5.TAG, settings.shouldSkip('DG5'), 'DG5', 0.4, dgReader.readDG5, parser.parseDG5),
-        _DGConfig(PassportEfDG6.TAG, settings.shouldSkip('DG6'), 'DG6', 0.5, dgReader.readDG6, parser.parseDG6),
-        _DGConfig(PassportEfDG7.TAG, settings.shouldSkip('DG7'), 'DG7', 0.6, dgReader.readDG7, parser.parseDG7),
-        _DGConfig(PassportEfDG8.TAG, settings.shouldSkip('DG8'), 'DG8', 0.7, dgReader.readDG8, parser.parseDG8),
-        _DGConfig(PassportEfDG9.TAG, settings.shouldSkip('DG9'), 'DG9', 0.75, dgReader.readDG9, parser.parseDG9),
-        _DGConfig(PassportEfDG10.TAG, settings.shouldSkip('DG10'), 'DG10', 0.8, dgReader.readDG10, parser.parseDG10),
-        _DGConfig(PassportEfDG11.TAG, settings.shouldSkip('DG11'), 'DG11', 0.85, dgReader.readDG11, parser.parseDG11),
-        _DGConfig(PassportEfDG12.TAG, settings.shouldSkip('DG12'), 'DG12', 0.9, dgReader.readDG12, parser.parseDG12),
-        _DGConfig(PassportEfDG13.TAG, settings.shouldSkip('DG13'), 'DG13', 0.9, dgReader.readDG13, parser.parseDG13),
-        _DGConfig(PassportEfDG14.TAG, settings.shouldSkip('DG14'), 'DG14', 0.95, dgReader.readDG14, parser.parseDG14),
-        _DGConfig(PassportEfDG15.TAG, settings.shouldSkip('DG15'), 'DG15', 0.9, dgReader.readDG15, parser.parseDG15),
-        _DGConfig(PassportEfDG16.TAG, settings.shouldSkip('DG16'), 'DG16', 1.0, dgReader.readDG16, parser.parseDG16),
-      ];
-    } else {
-      return [
-        _DGConfig(DrivingLicenceEfDG1.TAG, settings.shouldSkip('DG1'), 'DG1', 0.1, dgReader.readDG1, parser.parseDG1),
-        _DGConfig(DrivingLicenceEfDG5.TAG, settings.shouldSkip('DG5'), 'DG5', 0.4, dgReader.readDG5, parser.parseDG5),
-        _DGConfig(DrivingLicenceEfDG6.TAG, settings.shouldSkip('DG6'), 'DG6', 0.5, dgReader.readDG6, parser.parseDG6),
-        _DGConfig(
-          DrivingLicenceEfDG11.TAG,
-          settings.shouldSkip('DG11'),
-          'DG11',
-          0.85,
-          dgReader.readDG11,
-          parser.parseDG11,
-        ),
-        _DGConfig(
-          DrivingLicenceEfDG12.TAG,
-          settings.shouldSkip('DG12'),
-          'DG12',
-          0.9,
-          dgReader.readDG12,
-          parser.parseDG12,
-        ),
-        _DGConfig(
-          DrivingLicenceEfDG13.TAG,
-          settings.shouldSkip('DG13'),
-          'DG13',
-          0.9,
-          dgReader.readDG13,
-          parser.parseDG13,
-        ),
-      ];
-    }
-  }
-}
-
-// ---
-class _DGConfig {
-  final bool skip;
-  final DgTag tag;
-  final String name;
-  final double progress;
-  final Future<Uint8List> Function() readFn;
-  final void Function(Uint8List) parseFn;
-
-  _DGConfig(this.tag, this.skip, this.name, this.progress, this.readFn, this.parseFn);
-}
-
-class _Session {
-  final NfcProvider nfc;
-  final DataGroupReader dgReader;
-  final String countryCode;
-  final DocumentType documentType;
-
-  EfCardAccess? cardAccess;
-  EfCOM? com;
-
-  _Session({required this.documentType, required this.countryCode, required this.nfc, required this.dgReader});
-
-  Future<void> init() async => await nfc.connect();
-
-  Future<void> retryConnection() async {
-    if (nfc.isConnected()) {
-      if (Platform.isIOS) {
-        await nfc.reconnect().timeout(Duration(seconds: 2));
-      } else {
-        await nfc.disconnect();
-        await nfc.connect().timeout(Duration(seconds: 2));
-      }
-    } else {
-      await nfc.connect().timeout(Duration(seconds: 2));
-    }
-  }
-
-  Future<void> readCardAccess() async {
-    cardAccess = await dgReader.readEfCardAccess();
-  }
-
-  Future<void> readCom() async {
-    com = await dgReader.readEfCOM();
-  }
-
-  Future<void> authenticateWithBAC() async {
-    await dgReader.startSession();
-  }
-
-  Future<void> authenticateWithPACE() async {
-    cardAccess ??= await dgReader.readEfCardAccess();
-    await dgReader.startSessionPACE(cardAccess!);
-  }
-
-  Future<bool> tryAuthenticateWithBAC() async {
-    if (documentType == DocumentType.driverLicense) {
-      return false;
-    }
-    try {
-      await authenticateWithBAC();
-      return true;
-    } catch (e) {
-      // If for any reason this failed set to false to try again with PACE
-      return false;
-    }
-  }
-
-  Future<void> dispose() async => await nfc.disconnect();
 }
 
 class DocumentReaderState {}
