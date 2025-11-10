@@ -142,22 +142,22 @@ class DataGroupReader {
     return await _exec(() => _api.readFileBySFI(DG16_SFI));
   }
 
-  Future<EfCOM> readEfCOM() async {
+  Future<Uint8List> readEfCOM() async {
     await _selectDF1();
     _log.debug("Reading EF.COM");
-    return EfCOM.fromBytes(await _exec(() => _api.readFileBySFI(EfCOM.SFI)));
+    return await _exec(() => _api.readFileBySFI(EfCOM.SFI));
   }
 
-  Future<EfSOD> readEfSOD() async {
+  Future<Uint8List> readEfSOD() async {
     await _selectDF1();
     _log.debug("Reading EF.SOD");
-    return EfSOD.fromBytes(await _exec(() => _api.readFileBySFI(EfSOD.SFI)));
+    return await _exec(() => _api.readFileBySFI(EfSOD.SFI));
   }
 
-  Future<EfCardAccess> readEfCardAccess() async {
+  Future<Uint8List> readEfCardAccess() async {
     await _selectMF();
     _log.debug("Reading EF.CardAccess");
-    return EfCardAccess.fromBytes(await _exec(() => _api.readFileBySFI(EfCardAccess.SFI)));
+    return await _exec(() => _api.readFileBySFI(EfCardAccess.SFI));
   }
 
   Future<Uint8List> activeAuthenticate(Uint8List challenge) async {

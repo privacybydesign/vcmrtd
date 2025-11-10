@@ -45,7 +45,11 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
   Uint8List? _dg14RawBytes;
 
   @override
-  DgTag? tagForDataGroup(DataGroups dg) {
+  bool documentContainsDataGroup(DataGroups dg) {
+    return com.dgTags.contains(_tagForDataGroup(dg));
+  }
+
+  DgTag? _tagForDataGroup(DataGroups dg) {
     return switch (dg) {
       DataGroups.dg1 => DrivingLicenceEfDG1.TAG,
       DataGroups.dg2 => null,

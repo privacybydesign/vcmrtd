@@ -9,7 +9,7 @@ import '../extension/byte_reader.dart';
 import '../lds/df1/passportDGs.dart';
 import 'document_parser.dart';
 
-class PassportParser implements DocumentParser<PassportData> {
+class PassportParser extends DocumentParser<PassportData> {
   static const int BIOMETRIC_INFORMATION_GROUP_TEMPLATE_TAG = 0x7F61;
   static const int BIOMETRIC_INFORMATION_COUNT_TAG = 0x02;
   static const int BIOMETRIC_INFORMATION_TEMPLATE_TAG = 0x7F60;
@@ -56,7 +56,11 @@ class PassportParser implements DocumentParser<PassportData> {
   Uint8List? _dg16RawBytes;
 
   @override
-  DgTag tagForDataGroup(DataGroups dg) {
+  bool documentContainsDataGroup(DataGroups dg) {
+    return com.dgTags.contains(_tagForDataGroup(dg));
+  }
+
+  DgTag _tagForDataGroup(DataGroups dg) {
     return switch (dg) {
       DataGroups.dg1 => PassportEfDG1.TAG,
       DataGroups.dg2 => PassportEfDG2.TAG,
