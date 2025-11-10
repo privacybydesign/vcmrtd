@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtdapp/providers/active_authenticiation_provider.dart';
 import 'package:vcmrtdapp/theme/text_styles.dart';
 
-typedef DocumentTypeCallback = void Function();
+typedef DocumentTypeCallback = Future<void> Function();
 
 class DocumentTypeSelectionScreen extends StatelessWidget {
   final DocumentTypeCallback onPassportSelected;

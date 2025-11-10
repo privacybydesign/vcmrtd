@@ -32,6 +32,16 @@ class MainActivity : FlutterActivity() {
                     result.notImplemented()
                 }
             }
+
+        // Build flavor detection channel
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "build_config")
+            .setMethodCallHandler { call, result ->
+                if (call.method == "getFlavor") {
+                    result.success(BuildConfig.FLAVOR)
+                } else {
+                    result.notImplemented()
+                }
+            }
     }
 
     override fun onNewIntent(intent: Intent) {
