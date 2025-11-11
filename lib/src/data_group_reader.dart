@@ -29,12 +29,22 @@ class DataGroupReader {
   final Uint8List _applicationAID;
   final AccessKey accessKey;
   _DF _dfSelected = _DF.None;
+  final bool enableBac;
+  final bool enablePace;
 
-  DataGroupReader(ComProvider provider, this._applicationAID, this.accessKey)
-    : _api = MrtdApi(provider),
-      _log = Logger("Data Group bytes reader");
+  DataGroupReader(
+    ComProvider provider,
+    this._applicationAID,
+    this.accessKey, {
+    this.enableBac = true,
+    this.enablePace = true,
+  }) : _api = MrtdApi(provider),
+       _log = Logger("Data Group bytes reader");
 
   Future<void> startSession() async {
+    if (!enableBac) {
+      throw Exception('try BAC while BAC was not enabled');
+    }
     if (accessKey is DBAKey) {
       await _selectDF1();
       await _exec(() => _api.initSessionViaBAC(accessKey as DBAKey));
@@ -42,6 +52,9 @@ class DataGroupReader {
   }
 
   Future<void> startSessionPACE(EfCardAccess efCardAccess) async {
+    if (!enablePace) {
+      throw Exception('try BAC while BAC was not enabled');
+    }
     await _selectMF();
     await _exec(() => _api.initSessionViaPACE(accessKey, efCardAccess));
   }

@@ -33,13 +33,22 @@ final drivingLicenceReaderProvider = StateNotifierProvider.autoDispose
     ) {
       final nfc = NfcProvider();
       final accessKey = CanKey(scannedDriverLicenceMRZ.documentNumber, DocumentType.driverLicense);
-      final dgReader = DataGroupReader(nfc, DF1.DriverAID, accessKey);
+      final dgReader = DataGroupReader(nfc, DF1.DriverAID, accessKey, enableBac: false);
       final parser = DrivingLicenceParser();
       final docReader = DocumentReader(
         documentParser: parser,
         dataGroupReader: dgReader,
         nfc: nfc,
-        config: DocumentReaderConfig(readIfAvailable: {}),
+        config: DocumentReaderConfig(
+          readIfAvailable: {
+            DataGroups.dg1,
+            DataGroups.dg5,
+            DataGroups.dg6,
+            DataGroups.dg11,
+            DataGroups.dg12,
+            DataGroups.dg13,
+          },
+        ),
       );
 
       ref.onDispose(docReader.cancel);
