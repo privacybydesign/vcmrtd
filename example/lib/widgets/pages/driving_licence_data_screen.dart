@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/vcmrtd.dart';
@@ -19,10 +20,10 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
   Widget build(BuildContext context) {
     final imageData = widget.drivingLicence.photoImageData;
 
-    return PlatformScaffold(
-      appBar: PlatformAppBar(
+    return Scaffold(
+      appBar: AppBar(
         title: const Text('Driving Licence Data'),
-        leading: PlatformIconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBackPressed),
+        leading: IconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBackPressed),
       ),
       body: SafeArea(
         child: ListView(
