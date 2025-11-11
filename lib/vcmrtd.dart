@@ -29,7 +29,6 @@ export 'src/parsers/data_groups.dart';
 export 'src/parsers/driving_licence_parser.dart';
 export 'src/models/document.dart';
 export 'src/data_group_reader.dart';
-export 'src/extension/read_settings.dart';
 export 'src/types/passport_data_result.dart';
 export 'src/types/active_authentication.dart';
 export 'src/types/verification_response.dart';
