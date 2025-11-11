@@ -246,6 +246,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
   }
 
   Future<void> _retryConnection() async {
+    dataGroupReader.reset();
     if (nfc.isConnected()) {
       if (Platform.isIOS) {
         await nfc.reconnect().timeout(Duration(seconds: 2));

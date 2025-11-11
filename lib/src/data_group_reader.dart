@@ -24,11 +24,12 @@ class DataGroupReader {
   static const int DG15_SFI = 0x0F;
   static const int DG16_SFI = 0x10;
 
-  final MrtdApi _api;
+  final ComProvider _com;
   final Logger _log;
   final Uint8List _applicationAID;
   final AccessKey accessKey;
   _DF _dfSelected = _DF.None;
+  MrtdApi _api;
   final bool enableBac;
   final bool enablePace;
 
@@ -38,8 +39,15 @@ class DataGroupReader {
     this.accessKey, {
     this.enableBac = true,
     this.enablePace = true,
-  }) : _api = MrtdApi(provider),
+  }) : _com = provider,
+       _api = MrtdApi(provider),
        _log = Logger("Data Group bytes reader");
+
+  /// reset all the secure messaging things
+  void reset() {
+    _api = MrtdApi(_com);
+    _dfSelected = _DF.None;
+  }
 
   Future<void> startSession() async {
     if (!enableBac) {
