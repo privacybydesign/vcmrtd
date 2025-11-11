@@ -11,10 +11,10 @@ abstract class PassportIssuer {
 
   /// Initiates the issuance session at the irma server and returns a session pointer,
   /// which the app will use to start the normal issuance session flow.
-  Future<IrmaSessionPointer> startIrmaIssuanceSession(PassportDataResult passportDataResult);
+  Future<IrmaSessionPointer> startIrmaIssuanceSession(RawDocumentData passportDataResult);
 
   /// Only verifies the passport scanning result without starting an irma issuance session
-  Future<VerificationResponse> verifyPassport(PassportDataResult passportDataResult);
+  Future<VerificationResponse> verifyPassport(RawDocumentData passportDataResult);
 }
 
 /// Default passport issuer implementation that is used in production and talks to actual
@@ -41,7 +41,7 @@ class DefaultPassportIssuer implements PassportIssuer {
 
   // Starts the issuance session with the irma server with passport scan result
   @override
-  Future<IrmaSessionPointer> startIrmaIssuanceSession(PassportDataResult passportDataResult) async {
+  Future<IrmaSessionPointer> startIrmaIssuanceSession(RawDocumentData passportDataResult) async {
     // Create secure data payload
     final payload = passportDataResult.toJson();
     // Get the signed IRMA JWT from the passport issuer
@@ -57,7 +57,7 @@ class DefaultPassportIssuer implements PassportIssuer {
   }
 
   @override
-  Future<VerificationResponse> verifyPassport(PassportDataResult passportDataResult) async {
+  Future<VerificationResponse> verifyPassport(RawDocumentData passportDataResult) async {
     final NonceAndSessionId session = await startSessionAtPassportIssuer();
 
     final payload = passportDataResult.toJson();
