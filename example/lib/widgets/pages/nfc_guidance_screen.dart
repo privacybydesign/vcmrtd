@@ -143,21 +143,12 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
       child: Stack(
         alignment: Alignment.center,
         children: [
-          Positioned(
-            bottom: 60,
-            child: isPassport
-                ? _buildPassportIllustration()
-                : _buildDrivingLicenceIllustration(),
-          ),
-          Positioned(
-            top: 60 + (_positionAnimation.value * 20),
-            child: _buildPhoneIllustration(),
-          ),
+          Positioned(bottom: 60, child: isPassport ? _buildPassportIllustration() : _buildDrivingLicenceIllustration()),
+          Positioned(top: 60 + (_positionAnimation.value * 20), child: _buildPhoneIllustration()),
         ],
       ),
     );
   }
-
 
   Widget _buildPhoneIllustration() {
     return Container(
@@ -276,13 +267,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
         ),
         border: Border.all(color: Color(0xFFB48DA3), width: 1.2),
         borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.15),
-            blurRadius: 3,
-            offset: const Offset(2, 2),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.15), blurRadius: 3, offset: const Offset(2, 2))],
       ),
       child: Padding(
         padding: const EdgeInsets.all(6),
@@ -355,8 +340,6 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
       ),
     );
   }
-
-
 
   Widget _buildInstructions() {
     return Column(
