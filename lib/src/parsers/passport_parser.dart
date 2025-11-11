@@ -8,7 +8,7 @@ import '../extension/byte_reader.dart';
 import '../lds/df1/passportDGs.dart';
 import 'document_parser.dart';
 
-class PassportParser implements DocumentParser<PassportData> {
+class PassportParser extends DocumentParser<PassportData> {
   static const int BIOMETRIC_INFORMATION_GROUP_TEMPLATE_TAG = 0x7F61;
   static const int BIOMETRIC_INFORMATION_COUNT_TAG = 0x02;
   static const int BIOMETRIC_INFORMATION_TEMPLATE_TAG = 0x7F60;
@@ -53,6 +53,32 @@ class PassportParser implements DocumentParser<PassportData> {
   Uint8List? _dg13RawBytes;
   Uint8List? _dg14RawBytes;
   Uint8List? _dg16RawBytes;
+
+  @override
+  bool documentContainsDataGroup(DataGroups dg) {
+    return com.dgTags.contains(_tagForDataGroup(dg));
+  }
+
+  DgTag _tagForDataGroup(DataGroups dg) {
+    return switch (dg) {
+      DataGroups.dg1 => PassportEfDG1.TAG,
+      DataGroups.dg2 => PassportEfDG2.TAG,
+      DataGroups.dg3 => PassportEfDG3.TAG,
+      DataGroups.dg4 => PassportEfDG4.TAG,
+      DataGroups.dg5 => PassportEfDG5.TAG,
+      DataGroups.dg6 => PassportEfDG6.TAG,
+      DataGroups.dg7 => PassportEfDG7.TAG,
+      DataGroups.dg8 => PassportEfDG8.TAG,
+      DataGroups.dg9 => PassportEfDG9.TAG,
+      DataGroups.dg10 => PassportEfDG10.TAG,
+      DataGroups.dg11 => PassportEfDG11.TAG,
+      DataGroups.dg12 => PassportEfDG12.TAG,
+      DataGroups.dg13 => PassportEfDG13.TAG,
+      DataGroups.dg14 => PassportEfDG14.TAG,
+      DataGroups.dg15 => PassportEfDG15.TAG,
+      DataGroups.dg16 => PassportEfDG16.TAG,
+    };
+  }
 
   @override
   PassportData createDocument() {

@@ -14,7 +14,7 @@ import 'data_screen_widgets/verify_result.dart';
 
 class PassportDataScreen extends ConsumerStatefulWidget {
   final PassportData passport;
-  final PassportDataResult passportDataResult;
+  final RawDocumentData passportDataResult;
   final VoidCallback onBackPressed;
 
   const PassportDataScreen({

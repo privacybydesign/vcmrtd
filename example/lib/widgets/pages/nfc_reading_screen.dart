@@ -64,7 +64,7 @@ class NfcReadingScreen extends ConsumerStatefulWidget {
   final NfcReadingRouteParams params;
 
   final Function() onCancel;
-  final Function(DocumentData, PassportDataResult) onSuccess;
+  final Function(DocumentData, RawDocumentData) onSuccess;
 
   @override
   ConsumerState<NfcReadingScreen> createState() => _NfcReadingScreenState();
@@ -150,11 +150,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
       }
       final result = await ref
           .read(readerProvider(scannedMRZ).notifier)
-          .readDocument(
-            iosNfcMessages: _createIosNfcMessageMapper(),
-            countryCode: widget.params.scannedMRZ.countryCode,
-            activeAuthenticationParams: nonceAndSessionId,
-          );
+          .readDocument(iosNfcMessages: _createIosNfcMessageMapper(), activeAuthenticationParams: nonceAndSessionId);
       if (result != null) {
         final (document, passportDataResult) = result;
         widget.onSuccess(document, passportDataResult);

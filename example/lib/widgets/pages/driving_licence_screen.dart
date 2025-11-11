@@ -8,10 +8,10 @@ class DrivingLicenceScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PlatformScaffold(
-      appBar: PlatformAppBar(
+    return Scaffold(
+      appBar: AppBar(
         title: const Text('Driving Licence'),
-        leading: PlatformIconButton(icon: Icon(PlatformIcons(context).back), onPressed: onBack),
+        leading: IconButton(icon: Icon(PlatformIcons(context).back), onPressed: onBack),
       ),
       body: SafeArea(
         child: Padding(

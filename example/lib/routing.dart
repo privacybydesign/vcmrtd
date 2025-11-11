@@ -97,7 +97,7 @@ GoRouter createRouter() {
         builder: (context, state) {
           final s = state.extra as Map<String, dynamic>;
           final ty = s['document_type'] as DocumentType;
-          final result = s['result'] as PassportDataResult;
+          final result = s['result'] as RawDocumentData;
 
           return switch (ty) {
             DocumentType.passport => PassportDataScreen(

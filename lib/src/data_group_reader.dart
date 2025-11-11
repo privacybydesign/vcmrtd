@@ -24,17 +24,35 @@ class DataGroupReader {
   static const int DG15_SFI = 0x0F;
   static const int DG16_SFI = 0x10;
 
-  final MrtdApi _api;
+  final ComProvider _com;
   final Logger _log;
   final Uint8List _applicationAID;
   final AccessKey accessKey;
   _DF _dfSelected = _DF.None;
+  MrtdApi _api;
+  final bool enableBac;
+  final bool enablePace;
 
-  DataGroupReader(ComProvider provider, this._applicationAID, this.accessKey)
-    : _api = MrtdApi(provider),
-      _log = Logger("Data Group bytes reader");
+  DataGroupReader(
+    ComProvider provider,
+    this._applicationAID,
+    this.accessKey, {
+    this.enableBac = true,
+    this.enablePace = true,
+  }) : _com = provider,
+       _api = MrtdApi(provider),
+       _log = Logger("Data Group bytes reader");
+
+  /// Reset all the api settings and start fresh
+  void reset() {
+    _api = MrtdApi(_com);
+    _dfSelected = _DF.None;
+  }
 
   Future<void> startSession() async {
+    if (!enableBac) {
+      throw Exception('trying BAC while BAC was not enabled');
+    }
     if (accessKey is DBAKey) {
       await _selectDF1();
       await _exec(() => _api.initSessionViaBAC(accessKey as DBAKey));
@@ -42,6 +60,9 @@ class DataGroupReader {
   }
 
   Future<void> startSessionPACE(EfCardAccess efCardAccess) async {
+    if (!enablePace) {
+      throw Exception('trying PACE while PACE was not enabled');
+    }
     await _selectMF();
     await _exec(() => _api.initSessionViaPACE(accessKey, efCardAccess));
   }
@@ -142,22 +163,22 @@ class DataGroupReader {
     return await _exec(() => _api.readFileBySFI(DG16_SFI));
   }
 
-  Future<EfCOM> readEfCOM() async {
+  Future<Uint8List> readEfCOM() async {
     await _selectDF1();
     _log.debug("Reading EF.COM");
-    return EfCOM.fromBytes(await _exec(() => _api.readFileBySFI(EfCOM.SFI)));
+    return await _exec(() => _api.readFileBySFI(EfCOM.SFI));
   }
 
-  Future<EfSOD> readEfSOD() async {
+  Future<Uint8List> readEfSOD() async {
     await _selectDF1();
     _log.debug("Reading EF.SOD");
-    return EfSOD.fromBytes(await _exec(() => _api.readFileBySFI(EfSOD.SFI)));
+    return await _exec(() => _api.readFileBySFI(EfSOD.SFI));
   }
 
-  Future<EfCardAccess> readEfCardAccess() async {
+  Future<Uint8List> readEfCardAccess() async {
     await _selectMF();
     _log.debug("Reading EF.CardAccess");
-    return EfCardAccess.fromBytes(await _exec(() => _api.readFileBySFI(EfCardAccess.SFI)));
+    return await _exec(() => _api.readFileBySFI(EfCardAccess.SFI));
   }
 
   Future<Uint8List> activeAuthenticate(Uint8List challenge) async {
@@ -192,9 +213,5 @@ class DataGroupReader {
     } on MrtdApiError catch (e) {
       throw DocumentError(e.message, code: e.code);
     }
-  }
-
-  void reset() {
-    _api.icc.sm = null;
   }
 }
