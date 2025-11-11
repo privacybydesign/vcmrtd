@@ -300,7 +300,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Text(
-              'Scan ${widget.documentType == DocumentType.passport ? 'Passport' : 'Driving License'}',
+              'Scan ${widget.documentType.displayName}',
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
           ),
