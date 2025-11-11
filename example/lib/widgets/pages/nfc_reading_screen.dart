@@ -83,7 +83,11 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
     final state = ref.watch(readerProvider(scannedMRZ));
 
     if (state is DocumentReaderPending) {
-      return NfcGuidanceScreen(onStartReading: startReading, onBack: context.pop);
+      return NfcGuidanceScreen(
+        onStartReading: startReading,
+        onBack: context.pop,
+        documentType: widget.params.documentType,
+      );
     }
 
     final title = widget.params.documentType == DocumentType.passport ? 'Scan passport' : 'Scan driving license';

@@ -13,8 +13,15 @@ class NfcGuidanceScreen extends StatefulWidget {
   final VoidCallback onStartReading;
   final VoidCallback onBack;
   final VoidCallback? onTroubleshooting;
+  final DocumentType documentType;
 
-  const NfcGuidanceScreen({super.key, required this.onStartReading, required this.onBack, this.onTroubleshooting});
+  const NfcGuidanceScreen({
+    super.key,
+    required this.onStartReading,
+    required this.onBack,
+    this.onTroubleshooting,
+    required this.documentType,
+  });
 
   @override
   State<NfcGuidanceScreen> createState() => _NfcGuidanceScreenState();
@@ -75,7 +82,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Read Passport via NFC'),
+        title: Text('Read ${widget.documentType.displayName} via NFC'),
         leading: IconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBack),
       ),
       body: SafeArea(
@@ -172,7 +179,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
     );
   }
 
-  Widget _buildPassportIllustration() {
+  Widget _buildPassportIllustration() { // TODO: Make an illustration for driving licence
     return RotatedBox(
       quarterTurns: 3,
       child: Container(
@@ -252,9 +259,9 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Place Your Phone on the Passport’s Photo Page',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF212121)),
+        Text(
+          "Place your phone on the ${widget.documentType.displayName} and press the 'Scan' button",
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF212121)),
         ),
 
         const SizedBox(height: 8),
@@ -263,23 +270,19 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(8)),
-          child: const Column(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              const Text(
                 'Tips for better results:',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Text(
-                '• Open the passport to the photo page\n'
-                '• Check where the NFC icon is on the passport\n'
-                '• Place your phone on the section of the passport with your photo\n'
-                '• Align the phone\'s NFC area with the chip (usually near the photo)\n'
-                '• Remove any phone case if reading fails\n'
-                '• Keep both devices still during reading\n'
-                '• The process takes 10–30 seconds',
-                style: TextStyle(fontSize: 14, color: Color(0xFF6B7280), height: 1.4),
+                '• Place your phone on the section of the ${widget.documentType.displayName} with your photo\n'
+                '• Remove phone case if reading fails\n'
+                '• The process may take 10–30 seconds',
+                style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280), height: 1.4),
               ),
             ],
           ),
@@ -294,9 +297,12 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
       children: [
         PlatformElevatedButton(
           onPressed: widget.onStartReading,
-          child: const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Text('Scan Passport', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              'Scan ${widget.documentType == DocumentType.passport ? 'Passport' : 'Driving License'}',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
           ),
         ),
         const SizedBox(height: 8),
