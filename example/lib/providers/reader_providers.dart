@@ -32,7 +32,7 @@ final passportReaderProvider = StateNotifierProvider.autoDispose
             DataGroups.dg13,
             DataGroups.dg14,
             DataGroups.dg15,
-            // DataGroups.dg16,
+            DataGroups.dg16,
           },
         ),
       );
