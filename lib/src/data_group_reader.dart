@@ -57,6 +57,11 @@ class DataGroupReader {
       await _selectDF1();
       await _exec(() => _api.initSessionViaBAC(accessKey as DBAKey));
     }
+    else if (accessKey is BapKey) {
+      await _selectDF1();
+      await _exec(() => _api.initSessionViaBAC(accessKey as BapKey));
+
+    }
   }
 
   Future<void> startSessionPACE(EfCardAccess efCardAccess) async {

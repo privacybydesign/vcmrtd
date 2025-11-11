@@ -58,13 +58,13 @@ class MrtdApi {
   /// Initializes Secure Messaging session via BAC protocol using [keys].
   /// Can throw [ICCError] if provided wrong keys.
   /// Can throw [ComProviderError] in case connection with MRTD is lost.
-  Future<void> initSessionViaBAC(final DBAKey keys) async {
+  Future<void> initSessionViaBAC(final BacKey key) async {
     _log.debug("Initiating SM session using BAC protocol");
-    await BAC.initSession(dbaKeys: keys, icc: icc);
+    await BAC.initSession(bacKey: key, icc: icc);
     _reinitSession = () async {
       _log.debug("Re-initiating SM session using BAC protocol");
       icc.sm = null;
-      await BAC.initSession(dbaKeys: keys, icc: icc);
+      await BAC.initSession(bacKey: key, icc: icc);
     };
   }
 

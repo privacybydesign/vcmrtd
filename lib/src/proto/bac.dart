@@ -20,6 +20,13 @@ import 'dba_key.dart';
 import 'mrtd_sm.dart';
 import 'ssc.dart';
 
+
+abstract class BacKey {
+  Uint8List get encKey; // 3DES Kenc
+  Uint8List get macKey; // Retail-MAC Kmac
+}
+
+
 class BACError implements Exception {
   final String message;
   BACError(this.message);
@@ -41,12 +48,12 @@ class BAC {
   static const eLen = sLen; // Encrypted cryptogram S length 32 bytes
   static const macLen = ISO9797.macAlg3_DigestLen; // 8 bytes
 
-  static Future<void> initSession({required DBAKey dbaKeys, required ICC icc}) async {
-    final Kenc = dbaKeys.encKey;
-    final Kmac = dbaKeys.macKey;
+  static Future<void> initSession({required BacKey bacKey, required ICC icc}) async {
+    final Kenc = bacKey.encKey;
+    final Kmac = bacKey.macKey;
 
     // We don't want to see these data in production logs
-    _log.sdVerbose("Key seed=${dbaKeys.keySeed.hex()}");
+    // _log.sdVerbose("Key seed=${(bacKey as DBAKey).keySeed.hex()}");
     _log.sdVerbose("Derived Kenc=${Kenc.hex()}");
     _log.sdVerbose("Derived Kmac=${Kmac.hex()}");
 
