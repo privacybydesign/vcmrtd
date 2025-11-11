@@ -43,7 +43,7 @@ class DataGroupReader {
        _api = MrtdApi(provider),
        _log = Logger("Data Group bytes reader");
 
-  /// reset all the secure messaging things
+  /// Reset all the api settings and start fresh
   void reset() {
     _api = MrtdApi(_com);
     _dfSelected = _DF.None;
@@ -51,7 +51,7 @@ class DataGroupReader {
 
   Future<void> startSession() async {
     if (!enableBac) {
-      throw Exception('try BAC while BAC was not enabled');
+      throw Exception('trying BAC while BAC was not enabled');
     }
     if (accessKey is DBAKey) {
       await _selectDF1();
@@ -61,7 +61,7 @@ class DataGroupReader {
 
   Future<void> startSessionPACE(EfCardAccess efCardAccess) async {
     if (!enablePace) {
-      throw Exception('try BAC while BAC was not enabled');
+      throw Exception('trying PACE while PACE was not enabled');
     }
     await _selectMF();
     await _exec(() => _api.initSessionViaPACE(accessKey, efCardAccess));
