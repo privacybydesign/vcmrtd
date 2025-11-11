@@ -136,7 +136,6 @@ class DHPace {
   DHpkcs3Engine? _engine;
   DHpkcs3Engine? _engineEphemeral;
   final DhParameterSpec _domainParameters; //only for override(testing) purposes
-
   bool get isPublicKeySet => _engine != null;
   BigInt get publicKey => _engine!.publicKey;
 

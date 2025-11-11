@@ -12,18 +12,23 @@ import '../../widgets/pages/data_screen_widgets/web_banner.dart';
 
 import 'data_screen_widgets/verify_result.dart';
 
-class DataScreen extends ConsumerStatefulWidget {
-  final MrtdData mrtdData;
-  final PassportDataResult passportDataResult;
+class PassportDataScreen extends ConsumerStatefulWidget {
+  final PassportData passport;
+  final RawDocumentData passportDataResult;
   final VoidCallback onBackPressed;
 
-  const DataScreen({super.key, required this.mrtdData, required this.onBackPressed, required this.passportDataResult});
+  const PassportDataScreen({
+    super.key,
+    required this.passport,
+    required this.onBackPressed,
+    required this.passportDataResult,
+  });
 
   @override
-  ConsumerState<DataScreen> createState() => _DataScreenState();
+  ConsumerState<PassportDataScreen> createState() => _PassportDataScreenState();
 }
 
-class _DataScreenState extends ConsumerState<DataScreen> {
+class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
   VerificationResponse? _verificationResponse;
 
   @override
@@ -39,12 +44,11 @@ class _DataScreenState extends ConsumerState<DataScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Return to Web banner if opened via universal link
               if (widget.passportDataResult.sessionId != null)
                 WebBanner(sessionId: widget.passportDataResult.sessionId!),
-              PersonalDataSection(mrz: widget.mrtdData.dg1!.mrz, dg2: widget.mrtdData.dg2!),
+              PersonalDataSection(passport: widget.passport),
               const SizedBox(height: 20),
-              SecurityContent(mrtdData: widget.mrtdData),
+              SecurityContent(passport: widget.passport),
               const SizedBox(height: 20),
               if (widget.passportDataResult.sessionId != null) ...[
                 const SizedBox(height: 20),
@@ -75,13 +79,15 @@ class _DataScreenState extends ConsumerState<DataScreen> {
     final issuer = ref.read(passportIssuerProvider);
 
     try {
-      _verificationResponse = await issuer.verifyPassport(widget.passportDataResult);
+      final result = await issuer.verifyPassport(widget.passportDataResult);
+      setState(() {
+        _verificationResponse = result;
+      });
     } catch (e) {
       _showReturnErrorDialog(e.toString());
     }
   }
 
-  /// Handle return to web functionality
   Future<void> _returnToIssue() async {
     final issuer = ref.read(passportIssuerProvider);
 
@@ -94,7 +100,6 @@ class _DataScreenState extends ConsumerState<DataScreen> {
     }
   }
 
-  /// Show success dialog after successful return
   void _showReturnSuccessDialog() {
     showDialog(
       context: context,
@@ -118,7 +123,6 @@ class _DataScreenState extends ConsumerState<DataScreen> {
     );
   }
 
-  /// Show error dialog if return fails
   void _showReturnErrorDialog(String error) {
     showDialog(
       context: context,
@@ -145,7 +149,7 @@ class _DataScreenState extends ConsumerState<DataScreen> {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              _returnToIssue(); // Retry
+              _returnToIssue();
             },
             child: const Text('Retry'),
           ),

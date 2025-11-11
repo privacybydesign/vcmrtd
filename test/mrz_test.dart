@@ -8,17 +8,17 @@ import 'utils.dart';
 void main() {
   test('Check digit test', () {
     // Test vectors taken from ICAO 9303-p3 Appendix A to part 3
-    expect(MRZ.calculateCheckDigit('520727'), 3); // Example 1
-    expect(MRZ.calculateCheckDigit('AB2134<<<'), 5); // Example 2
-    expect(MRZ.calculateCheckDigit('HA672242<658022549601086<<<<<<<<<<<<<<0'), 8); // Example 3
-    expect(MRZ.calculateCheckDigit('D231458907<<<<<<<<<<<<<<<34071279507122<<<<<<<<<<<'), 2); // Example 4
-    expect(MRZ.calculateCheckDigit('HA672242<658022549601086<<<<<<<0'), 8); // Example 5
+    expect(PassportMRZ.calculateCheckDigit('520727'), 3); // Example 1
+    expect(PassportMRZ.calculateCheckDigit('AB2134<<<'), 5); // Example 2
+    expect(PassportMRZ.calculateCheckDigit('HA672242<658022549601086<<<<<<<<<<<<<<0'), 8); // Example 3
+    expect(PassportMRZ.calculateCheckDigit('D231458907<<<<<<<<<<<<<<<34071279507122<<<<<<<<<<<'), 2); // Example 4
+    expect(PassportMRZ.calculateCheckDigit('HA672242<658022549601086<<<<<<<0'), 8); // Example 5
   });
 
   group('MRZ parsing', () {
     test('parsing TD1', () {
       // Test vector from: https://www.icao.int/publications/Documents/9303_p5_cons_en.pdf  Appendix A to Part 5
-      MRZ mrz = MRZ(
+      PassportMRZ mrz = PassportMRZ(
         Uint8List.fromList(
           "I<UTOD231458907<<<<<<<<<<<<<<<7408122F1204159UTO<<<<<<<<<<<6ERIKSSON<<ANNA<MARIA<<<<<<<<<<".codeUnits,
         ),
@@ -38,7 +38,7 @@ void main() {
 
       // Extended Document number test.
       // Test vector from: https://www.icao.int/publications/Documents/9303_p11_cons_en.pdf Appendix D to Part 11 Section D.2
-      mrz = MRZ(
+      mrz = PassportMRZ(
         Uint8List.fromList(
           "I<UTOD23145890<7349<<<<<<<<<<<3407127M9507122UTO<<<<<<<<<<<2STEVENSON<<PETER<JOHN<<<<<<<<<".codeUnits,
         ),
@@ -59,7 +59,7 @@ void main() {
 
     test('parsing TD2', () {
       // Test vector from: https://www.icao.int/publications/Documents/9303_p6_cons_en.pdf Appendix A to Part 6
-      MRZ mrz = MRZ(
+      PassportMRZ mrz = PassportMRZ(
         Uint8List.fromList("I<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<D231458907UTO7408122F1204159<<<<<<<6".codeUnits),
       );
       expect(mrz.version, MRZVersion.td2);
@@ -77,7 +77,7 @@ void main() {
 
       // Extended Document number test.
       // Test vector from: https://www.icao.int/publications/Documents/9303_p11_cons_en.pdf Appendix D to Part 11 Section D.2
-      mrz = MRZ(
+      mrz = PassportMRZ(
         Uint8List.fromList("I<UTOSTEVENSON<<PETER<JOHN<<<<<<<<<<D23145890<UTO3407127M95071227349<<<8".codeUnits),
       );
       expect(mrz.version, MRZVersion.td2);
@@ -96,7 +96,7 @@ void main() {
 
     test('parsing TD3', () {
       // Test vector from: https://www.icao.int/publications/Documents/9303_p4_cons_en.pdf Appendix A To Part 4
-      MRZ mrz = MRZ(
+      PassportMRZ mrz = PassportMRZ(
         Uint8List.fromList(
           "P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<L898902C36UTO7408122F1204159ZE184226B<<<<<10".codeUnits,
         ),
@@ -114,7 +114,7 @@ void main() {
       expect(mrz.optionalData, 'ZE184226B');
       expect(mrz.optionalData2, null);
 
-      mrz = MRZ(
+      mrz = PassportMRZ(
         Uint8List.fromList(
           "P<D<<SCHMIDT<<FINN<<<<<<<<<<<<<<<<<<<<<<<<<<AA89BXHZ56D<<7503201M2511188<<<<<<<<<<<<<<<8".codeUnits,
         ),
@@ -134,11 +134,11 @@ void main() {
     });
 
     test('fuzz tests', () {
-      expect(() => MRZ(Uint8List(0)), throwsMRZParseError(message: "Invalid MRZ data"));
+      expect(() => PassportMRZ(Uint8List(0)), throwsMRZParseError(message: "Invalid MRZ data"));
 
       // TD1
       expect(
-        () => MRZ(
+        () => PassportMRZ(
           Uint8List.fromList(
             "I<UTOD231458902<<<<<<<<<<<<<<<7408122F1204159UTO<<<<<<<<<<<6ERIKSSON<<ANNA<MARIA<<<<<<<<<<".codeUnits,
           ),
@@ -146,7 +146,7 @@ void main() {
         throwsMRZParseError(message: "Document Number check digit mismatch"),
       );
       expect(
-        () => MRZ(
+        () => PassportMRZ(
           Uint8List.fromList(
             "I<UTOD231458907<<<<<<<<<<<<<<<7408123F1204159UTO<<<<<<<<<<<6ERIKSSON<<ANNA<MARIA<<<<<<<<<<".codeUnits,
           ),
@@ -154,7 +154,7 @@ void main() {
         throwsMRZParseError(message: "Data of Birth check digit mismatch"),
       );
       expect(
-        () => MRZ(
+        () => PassportMRZ(
           Uint8List.fromList(
             "I<UTOD231458907<<<<<<<<<<<<<<<7408122F1204158UTO<<<<<<<<<<<6ERIKSSON<<ANNA<MARIA<<<<<<<<<<".codeUnits,
           ),
@@ -162,7 +162,7 @@ void main() {
         throwsMRZParseError(message: "Data of Expiry check digit mismatch"),
       );
       expect(
-        () => MRZ(
+        () => PassportMRZ(
           Uint8List.fromList(
             "I<UTOD231458907<<<<<<<<<<<<<<<7408122F1204159UTO<<<<<<<<<<<5ERIKSSON<<ANNA<MARIA<<<<<<<<<>".codeUnits,
           ),
@@ -171,32 +171,32 @@ void main() {
       );
       // TD2
       expect(
-        () => MRZ(
+        () => PassportMRZ(
           Uint8List.fromList("I<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<D231458908UTO7408122F1204159<<<<<<<6".codeUnits),
         ),
         throwsMRZParseError(message: "Document Number check digit mismatch"),
       );
       expect(
-        () => MRZ(
+        () => PassportMRZ(
           Uint8List.fromList("I<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<D231458907UTO7408123F1204159<<<<<<<6".codeUnits),
         ),
         throwsMRZParseError(message: "Data of Birth check digit mismatch"),
       );
       expect(
-        () => MRZ(
+        () => PassportMRZ(
           Uint8List.fromList("I<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<D231458907UTO7408122F1204158<<<<<<<6".codeUnits),
         ),
         throwsMRZParseError(message: "Data of Expiry check digit mismatch"),
       );
       expect(
-        () => MRZ(
+        () => PassportMRZ(
           Uint8List.fromList("I<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<D231458907UTO7408122F1204159<<<<<<<7".codeUnits),
         ),
         throwsMRZParseError(message: "Composite check digit mismatch"),
       );
       // TD3
       expect(
-        () => MRZ(
+        () => PassportMRZ(
           Uint8List.fromList(
             "P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<L898902C35UTO7408122F1204159ZE184226B<<<<<10".codeUnits,
           ),
@@ -204,7 +204,7 @@ void main() {
         throwsMRZParseError(message: "Document Number check digit mismatch"),
       );
       expect(
-        () => MRZ(
+        () => PassportMRZ(
           Uint8List.fromList(
             "P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<L898902C36UTO7408123F1204159ZE184226B<<<<<10".codeUnits,
           ),
@@ -212,7 +212,7 @@ void main() {
         throwsMRZParseError(message: "Data of Birth check digit mismatch"),
       );
       expect(
-        () => MRZ(
+        () => PassportMRZ(
           Uint8List.fromList(
             "P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<L898902C36UTO7408122F1204158ZE184226B<<<<<10".codeUnits,
           ),
@@ -220,7 +220,7 @@ void main() {
         throwsMRZParseError(message: "Data of Expiry check digit mismatch"),
       );
       expect(
-        () => MRZ(
+        () => PassportMRZ(
           Uint8List.fromList(
             "P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<L898902C36UTO7408122F1204159ZE184226B<<<<<20".codeUnits,
           ),
@@ -228,7 +228,7 @@ void main() {
         throwsMRZParseError(message: "Optional data check digit mismatch"),
       );
       expect(
-        () => MRZ(
+        () => PassportMRZ(
           Uint8List.fromList(
             "P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<L898902C36UTO7408122F1204159ZE184226B<<<<<12".codeUnits,
           ),

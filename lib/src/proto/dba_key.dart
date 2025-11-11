@@ -37,7 +37,7 @@ class DBAKey extends AccessKey {
   }
 
   /// Constructs [DBAKey] from [mrz].
-  factory DBAKey.fromMRZ(MRZ mrz) {
+  factory DBAKey.fromMRZ(PassportMRZ mrz) {
     return DBAKey(mrz.documentNumber, mrz.dateOfBirth, mrz.dateOfExpiry);
   }
 
@@ -79,9 +79,9 @@ class DBAKey extends AccessKey {
   Uint8List get keySeed {
     if (_cachedSeed == null) {
       final paddedMrtdNum = _mrtdNum.padRight(9, '<');
-      final cdn = MRZ.calculateCheckDigit(paddedMrtdNum);
-      final cdb = MRZ.calculateCheckDigit(_dob);
-      final cde = MRZ.calculateCheckDigit(_doe);
+      final cdn = PassportMRZ.calculateCheckDigit(paddedMrtdNum);
+      final cdb = PassportMRZ.calculateCheckDigit(_dob);
+      final cde = PassportMRZ.calculateCheckDigit(_doe);
 
       final kmrz = "$paddedMrtdNum$cdn$_dob$cdb$_doe$cde";
       final hash = sha1.convert(kmrz.codeUnits);

@@ -3,14 +3,28 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
-import 'package:mrz_parser/mrz_parser.dart';
-import 'package:vcmrtdapp/helpers/mrz_scanner.dart';
+import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
 
 import 'scan_screen.dart';
+import 'package:vcmrtd/vcmrtd.dart';
+
+class MrzReaderRouteParams {
+  final DocumentType documentType;
+
+  MrzReaderRouteParams({required this.documentType});
+
+  static MrzReaderRouteParams fromQueryParams(Map<String, String> params) {
+    return MrzReaderRouteParams(documentType: stringToDocumentType(params['document_type']!));
+  }
+
+  Map<String, String> toQueryParams() {
+    return {'document_type': documentTypeToString(documentType)};
+  }
+}
 
 /// Wrapper around ScannerPage to handle navigation callbacks
 class ScannerWrapper extends StatefulWidget {
-  final Function(MRZResult) onMrzScanned;
+  final Function(ScannedMRZ) onMrzScanned;
   final VoidCallback onManualEntry;
   final VoidCallback onCancel;
   final VoidCallback onBack;
@@ -31,14 +45,6 @@ class ScannerWrapper extends StatefulWidget {
 
 class _ScannerWrapperState extends State<ScannerWrapper> {
   bool _hasNavigated = false;
-  String _getDocumentTypeName() {
-    switch (widget.documentType) {
-      case DocumentType.passport:
-        return 'Passport';
-      case DocumentType.driverLicense:
-        return 'Driver\'s Licence';
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,14 +57,10 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
         children: [
           ScannerPage(
             documentType: widget.documentType,
-            onSuccess: (dynamic result) {
+            onSuccess: (scannedMrz) {
               if (!_hasNavigated) {
                 _hasNavigated = true;
-                if (result != null) {
-                  widget.onMrzScanned(result);
-                } else {
-                  widget.onCancel();
-                }
+                widget.onMrzScanned(scannedMrz);
               }
             },
           ),
@@ -80,7 +82,7 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Position the ${_getDocumentTypeName()}',
+              'Position the ${widget.documentType.displayName}',
               style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
             ),
             Text(
@@ -117,5 +119,9 @@ class _ScannerWrapperState extends State<ScannerWrapper> {
         ),
       ),
     );
+  }
+
+  String _getDocumentTypeName() {
+    return widget.documentType.displayName;
   }
 }

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
 
 import '../../custom/custom_logger_extension.dart';
 import '../../controllers/mrz_controller.dart';
 import '../../helpers/mrz_scanner.dart';
+import 'package:vcmrtd/vcmrtd.dart';
 
 class ScannerPage extends StatefulWidget {
   final DocumentType documentType;
-  final Function(dynamic) onSuccess;
+  final Function(ScannedMRZ) onSuccess;
 
   const ScannerPage({super.key, this.documentType = DocumentType.passport, required this.onSuccess});
 
@@ -23,7 +25,11 @@ class _ScannerPageState extends State<ScannerPage> {
       documentType: widget.documentType,
       onSuccess: (dynamic mrzResult, lines) async {
         'MRZ Scanned'.logInfo();
-        widget.onSuccess(mrzResult);
+        final ScannedMRZ scannedMRZ = switch (widget.documentType) {
+          DocumentType.passport => ScannedPassportMRZ.fromMRZResult(mrzResult),
+          DocumentType.driverLicense => ScannedDriverLicenseMRZ.fromMRZResult(mrzResult),
+        };
+        widget.onSuccess(scannedMRZ);
       },
     );
   }

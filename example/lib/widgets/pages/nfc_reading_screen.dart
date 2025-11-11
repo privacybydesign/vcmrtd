@@ -1,42 +1,60 @@
+import 'package:vcmrtd/vcmrtd.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:vcmrtd/vcmrtd.dart';
 import 'package:flutter/material.dart';
 import 'package:vcmrtdapp/providers/active_authenticiation_provider.dart';
 import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
-import 'package:vcmrtdapp/providers/passport_reader_provider.dart';
 import 'package:vcmrtdapp/widgets/common/animated_nfc_status_widget.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_guidance_screen.dart';
 
-class NfcReadingRouteParams {
-  final String docNumber;
-  final DateTime dateOfBirth;
-  final DateTime dateOfExpiry;
-  final String? countryCode;
+import '../../providers/reader_providers.dart';
+import '../common/scanned_mrz.dart';
 
-  NfcReadingRouteParams({
-    required this.docNumber,
-    required this.dateOfBirth,
-    required this.dateOfExpiry,
-    this.countryCode,
-  });
+class NfcReadingRouteParams {
+  final ScannedMRZ scannedMRZ;
+  final DocumentType documentType;
+
+  NfcReadingRouteParams({required this.scannedMRZ, required this.documentType});
 
   Map<String, String> toQueryParams() {
-    return {
-      'doc_number': docNumber,
-      'date_of_birth': dateOfBirth.toIso8601String(),
-      'date_of_expiry': dateOfExpiry.toIso8601String(),
-      if (countryCode != null) 'country_code': countryCode!,
+    final baseParams = {
+      'doc_number': scannedMRZ.documentNumber,
+      'country_code': scannedMRZ.countryCode,
+      'document_type': switch (documentType) {
+        DocumentType.passport => 'passport',
+        DocumentType.driverLicense => 'drivers_license',
+      },
     };
+    if (scannedMRZ is ScannedPassportMRZ) {
+      final passport = scannedMRZ as ScannedPassportMRZ;
+      baseParams['date_of_birth'] = passport.dateOfBirth.toIso8601String();
+      baseParams['date_of_expiry'] = passport.dateOfExpiry.toIso8601String();
+    }
+    return baseParams;
   }
 
   static NfcReadingRouteParams fromQueryParams(Map<String, String> params) {
-    return NfcReadingRouteParams(
-      docNumber: params['doc_number']!,
-      dateOfBirth: DateTime.parse(params['date_of_birth']!),
-      dateOfExpiry: DateTime.parse(params['date_of_expiry']!),
-      countryCode: params['country_code'],
-    );
+    final docType = params['document_type']!;
+    final documentType = switch (docType) {
+      'passport' => DocumentType.passport,
+      'drivers_license' => DocumentType.driverLicense,
+      _ => throw Exception('unexpected document type: $docType'),
+    };
+
+    final scannedMRZ = switch (documentType) {
+      DocumentType.passport => ScannedPassportMRZ(
+        documentNumber: params['doc_number']!,
+        countryCode: params['country_code']!,
+        dateOfBirth: DateTime.parse(params['date_of_birth']!),
+        dateOfExpiry: DateTime.parse(params['date_of_expiry']!),
+      ),
+      DocumentType.driverLicense => ScannedDriverLicenseMRZ(
+        documentNumber: params['doc_number']!,
+        countryCode: params['country_code']!,
+      ),
+    };
+
+    return NfcReadingRouteParams(scannedMRZ: scannedMRZ, documentType: documentType);
   }
 }
 
@@ -46,28 +64,41 @@ class NfcReadingScreen extends ConsumerStatefulWidget {
   final NfcReadingRouteParams params;
 
   final Function() onCancel;
-  final Function(PassportDataResult, MrtdData) onSuccess;
+  final Function(DocumentData, RawDocumentData) onSuccess;
 
   @override
   ConsumerState<NfcReadingScreen> createState() => _NfcReadingScreenState();
 }
 
 class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
+  late ScannedMRZ scannedMRZ;
   @override
   Widget build(BuildContext context) {
-    final passportState = ref.watch(passportReaderProvider);
+    scannedMRZ = widget.params.scannedMRZ;
 
-    if (passportState is PassportReaderPending) {
-      return NfcGuidanceScreen(onStartReading: startReading, onBack: context.pop);
+    final readerProvider = widget.params.documentType == DocumentType.passport
+        ? passportReaderProvider
+        : drivingLicenceReaderProvider;
+
+    final state = ref.watch(readerProvider(scannedMRZ));
+
+    if (state is DocumentReaderPending) {
+      return NfcGuidanceScreen(
+        onStartReading: startReading,
+        onBack: context.pop,
+        documentType: widget.params.documentType,
+      );
     }
 
+    final title = widget.params.documentType == DocumentType.passport ? 'Scan passport' : 'Scan driving license';
+
     return Scaffold(
-      appBar: AppBar(title: Text('Scan passport')),
+      appBar: AppBar(title: Text(title)),
       body: Center(
         child: AnimatedNFCStatusWidget(
-          state: _mapState(passportState),
+          state: _mapState(state),
           message: '',
-          progress: progressForState(passportState),
+          progress: progressForState(state),
           onRetry: retry,
           onCancel: cancel,
         ),
@@ -75,57 +106,61 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
     );
   }
 
-  NFCReadingState _mapState(PassportReaderState state) {
+  NFCReadingState _mapState(DocumentReaderState state) {
     return switch (state) {
-      PassportReaderPending() => NFCReadingState.idle,
-      PassportReaderCancelled() => NFCReadingState.error,
-      PassportReaderCancelling() => NFCReadingState.cancelling,
-      PassportReaderFailed() => NFCReadingState.error,
-      PassportReaderConnecting() => NFCReadingState.connecting,
-      PassportReaderReadingCardAccess() => NFCReadingState.authenticating,
-      PassportReaderAuthenticating() => NFCReadingState.authenticating,
-      PassportReaderReadingDataGroup() ||
-      PassportReaderReadingSOD() ||
-      PassportReaderReadingCOM() => NFCReadingState.reading,
-      PassportReaderActiveAuthentication() => NFCReadingState.authenticating,
-      PassportReaderSuccess() => NFCReadingState.success,
+      DocumentReaderPending() => NFCReadingState.idle,
+      DocumentReaderCancelled() => NFCReadingState.error,
+      DocumentReaderCancelling() => NFCReadingState.cancelling,
+      DocumentReaderFailed() => NFCReadingState.error,
+      DocumentReaderConnecting() => NFCReadingState.connecting,
+      DocumentReaderReadingCardAccess() => NFCReadingState.authenticating,
+      DocumentReaderAuthenticating() => NFCReadingState.authenticating,
+      DocumentReaderReadingDataGroup() ||
+      DocumentReaderReadingSOD() ||
+      DocumentReaderReadingCOM() => NFCReadingState.reading,
+      DocumentReaderActiveAuthentication() => NFCReadingState.authenticating,
+      DocumentReaderSuccess() => NFCReadingState.success,
       _ => throw Exception('unexpected state: $state'),
     };
   }
 
   Future<void> cancel() async {
-    await ref.read(passportReaderProvider.notifier).cancel();
+    final readerProvider = widget.params.documentType == DocumentType.passport
+        ? passportReaderProvider
+        : drivingLicenceReaderProvider;
+
+    await ref.read(readerProvider(scannedMRZ).notifier).cancel();
   }
 
   Future<void> retry() async {
-    ref.read(passportReaderProvider.notifier).reset();
+    final readerProvider = widget.params.documentType == DocumentType.passport
+        ? passportReaderProvider
+        : drivingLicenceReaderProvider;
+
+    ref.read(readerProvider(scannedMRZ).notifier).reset();
     startReading();
   }
 
   Future<void> startReading() async {
     try {
+      final readerProvider = widget.params.documentType == DocumentType.passport
+          ? passportReaderProvider
+          : drivingLicenceReaderProvider;
+
       NonceAndSessionId? nonceAndSessionId;
 
       if (ref.read(activeAuthenticationProvider)) {
         nonceAndSessionId = await ref.read(passportIssuerProvider).startSessionAtPassportIssuer();
       }
-
       final result = await ref
-          .read(passportReaderProvider.notifier)
-          .readWithMRZ(
-            iosNfcMessages: _createIosNfcMessageMapper(),
-            documentNumber: widget.params.docNumber,
-            birthDate: widget.params.dateOfBirth,
-            expiryDate: widget.params.dateOfExpiry,
-            countryCode: widget.params.countryCode,
-            activeAuthenticationParams: nonceAndSessionId,
-          );
+          .read(readerProvider(scannedMRZ).notifier)
+          .readDocument(iosNfcMessages: _createIosNfcMessageMapper(), activeAuthenticationParams: nonceAndSessionId);
       if (result != null) {
-        final (pdr, mrtd) = result;
-        widget.onSuccess(pdr, mrtd);
+        final (document, passportDataResult) = result;
+        widget.onSuccess(document, passportDataResult);
       }
     } catch (e) {
-      debugPrint('failed to read passport: $e');
+      debugPrint('failed to read document: $e');
     }
   }
 
@@ -136,22 +171,24 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
       return '🟢' * prog + '⚪️' * (numStages - prog);
     }
 
+    final docName = widget.params.documentType == DocumentType.passport ? 'passport' : 'driving license';
+
     return (state) {
       final progress = progressFormatter(progressForState(state));
 
       final message = switch (state) {
-        PassportReaderPending() => 'Hold your phone close to photo',
-        PassportReaderCancelled() => 'Session cancelled by user',
-        PassportReaderCancelling() => 'Cancelling...',
-        PassportReaderFailed() => 'Tag lost, try again.',
-        PassportReaderConnecting() => 'Connecting...',
-        PassportReaderReadingCOM() => 'Reading Ef.COM',
-        PassportReaderReadingCardAccess() => 'Reading Ef.CardAccess',
-        PassportReaderAuthenticating() => 'Authenticating',
-        PassportReaderReadingDataGroup() => 'Reading passport data',
-        PassportReaderReadingSOD() => 'Reading Ef.SOD',
-        PassportReaderActiveAuthentication() => 'Performing security verification...',
-        PassportReaderSuccess() => 'Success!',
+        DocumentReaderPending() => 'Hold your phone close to $docName',
+        DocumentReaderCancelled() => 'Session cancelled by user',
+        DocumentReaderCancelling() => 'Cancelling...',
+        DocumentReaderFailed() => 'Tag lost, try again.',
+        DocumentReaderConnecting() => 'Connecting...',
+        DocumentReaderReadingCOM() => 'Reading Ef.COM',
+        DocumentReaderReadingCardAccess() => 'Reading Ef.CardAccess',
+        DocumentReaderAuthenticating() => 'Authenticating',
+        DocumentReaderReadingDataGroup() => 'Reading $docName data',
+        DocumentReaderReadingSOD() => 'Reading Ef.SOD',
+        DocumentReaderActiveAuthentication() => 'Performing security verification...',
+        DocumentReaderSuccess() => 'Success!',
         _ => '',
       };
 

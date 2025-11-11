@@ -4,8 +4,7 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import 'package:mrz_parser/mrz_parser.dart';
 import 'camera_viewfinder.dart';
 import 'mrz_helper.dart';
-
-enum DocumentType { passport, driverLicense }
+import 'package:vcmrtd/vcmrtd.dart';
 
 class MRZScanner extends StatefulWidget {
   const MRZScanner({
