@@ -106,6 +106,10 @@ class DrivingLicenceData implements DocumentData {
   final int? biometricType;
   final int? numberOfInstances;
 
+  // DG12
+  final String bapInputString;
+  final String saiType;
+
   // Raw bytes for unparsed DGs
   final Uint8List? dg2RawBytes;
   final Uint8List? dg3RawBytes;
@@ -131,6 +135,8 @@ class DrivingLicenceData implements DocumentData {
     required this.issuingAuthority,
     required this.documentNumber,
     required this.photoImageData,
+    required this.bapInputString,
+    required this.saiType,
     this.photoImageType,
     this.patronHeaderVersion,
     this.biometricType,
