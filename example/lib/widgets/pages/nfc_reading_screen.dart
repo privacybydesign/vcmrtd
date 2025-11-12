@@ -34,6 +34,7 @@ class NfcReadingRouteParams {
       final driverLicense = scannedMRZ as ScannedDriverLicenseMRZ;
       baseParams['version'] = driverLicense.version;
       baseParams['random_data'] = driverLicense.randomData;
+      baseParams['configuration'] = driverLicense.configuration;
     }
 
     return baseParams;
