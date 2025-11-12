@@ -527,7 +527,7 @@ class PACE {
   static Uint8List decryptNonce({
     required OIEPaceProtocol paceProtocol,
     required Uint8List nonce,
-    required AccessKey accessKey,
+    required PaceKey paceKey,
   }) {
     try {
       _log.debug("PACE.decryptNonce; Decrypting nonce ...");
@@ -535,12 +535,12 @@ class PACE {
         "PACE.decryptNonce; Nonce: ${nonce.hex()}, "
         "Pace protocol: ${paceProtocol.toString()}",
       );
-      _log.sdVerbose("PACE.decryptNonce; Access key: ${accessKey.toString()}");
+      _log.sdVerbose("PACE.decryptNonce; Access key: ${paceKey.toString()}");
 
       CipherAlgorithm cipherAlgo = paceProtocol.cipherAlgoritm;
       KEY_LENGTH keyLength = paceProtocol.keyLength;
 
-      Uint8List kPi = accessKey.Kpi(cipherAlgo, keyLength);
+      Uint8List kPi = paceKey.Kpi(cipherAlgo, keyLength);
       //Uint8List k_pi = cacluate_K_PI_Key(paceProtocol: paceProtocol, seed: key);
       _log.sdVerbose("PACE.decryptNonce; K-pi: ${kPi.hex()}");
 
@@ -905,7 +905,7 @@ class PACE {
   }
 
   static Future<void> initSession({
-    required AccessKey accessKey,
+    required PaceKey paceKey,
     required ICC icc,
     required EfCardAccess efCardAccess,
   }) async {
@@ -926,7 +926,7 @@ class PACE {
         throw PACEError("PACE domain parameter is not supported");
       }
 
-      _log.sdVerbose("Access key: ${accessKey.toString()}");
+      _log.sdVerbose("Access key: ${paceKey.toString()}");
 
       OIEPaceProtocol paceProtocol = efCardAccess.paceInfo!.protocol;
       _log.debug("Protocol: $paceProtocol");
@@ -941,7 +941,7 @@ class PACE {
       //step 0
       Uint8List step0data = generateAuthenticationTemplateForMutualAuthenticationData(
         cryptographicMechanism: Uint8List.fromList(paceProtocol.identifier),
-        paceRefType: accessKey.PACE_REF_KEY_TAG,
+        paceRefType: paceKey.PACE_REF_KEY_TAG,
       );
       try {
         final step0Response = await icc.setAT(data: step0data);
@@ -966,11 +966,7 @@ class PACE {
         ResponseAPDUStep1Pace apduStep1Pace = ResponseAPDUStep1Pace(step1Response);
         apduStep1Pace.parse(); //if completed without exception data are valid
 
-        decryptedNonce = PACE.decryptNonce(
-          paceProtocol: paceProtocol,
-          nonce: apduStep1Pace.nonce,
-          accessKey: accessKey,
-        );
+        decryptedNonce = PACE.decryptNonce(paceProtocol: paceProtocol, nonce: apduStep1Pace.nonce, paceKey: paceKey);
         _log.debug("PACE step 1 response from ICC is valid");
       } on Exception catch (e) {
         _log.error("PACE(1); Failed: $e");

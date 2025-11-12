@@ -25,11 +25,18 @@ class NfcReadingRouteParams {
         DocumentType.driverLicense => 'drivers_license',
       },
     };
+
     if (scannedMRZ is ScannedPassportMRZ) {
       final passport = scannedMRZ as ScannedPassportMRZ;
       baseParams['date_of_birth'] = passport.dateOfBirth.toIso8601String();
       baseParams['date_of_expiry'] = passport.dateOfExpiry.toIso8601String();
+    } else if (scannedMRZ is ScannedDriverLicenseMRZ) {
+      final driverLicense = scannedMRZ as ScannedDriverLicenseMRZ;
+      baseParams['version'] = driverLicense.version;
+      baseParams['random_data'] = driverLicense.randomData;
+      baseParams['configuration'] = driverLicense.configuration;
     }
+
     return baseParams;
   }
 
@@ -51,6 +58,9 @@ class NfcReadingRouteParams {
       DocumentType.driverLicense => ScannedDriverLicenseMRZ(
         documentNumber: params['doc_number']!,
         countryCode: params['country_code']!,
+        version: params['version']!,
+        randomData: params['random_data']!,
+        configuration: params['configuration']!,
       ),
     };
 

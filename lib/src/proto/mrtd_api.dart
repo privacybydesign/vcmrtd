@@ -3,7 +3,6 @@ import 'dart:typed_data';
 
 import 'access_key.dart';
 import 'bac.dart';
-import 'dba_key.dart';
 import 'iso7816/iso7816.dart';
 import 'iso7816/icc.dart';
 import 'iso7816/response_apdu.dart';
@@ -58,26 +57,26 @@ class MrtdApi {
   /// Initializes Secure Messaging session via BAC protocol using [keys].
   /// Can throw [ICCError] if provided wrong keys.
   /// Can throw [ComProviderError] in case connection with MRTD is lost.
-  Future<void> initSessionViaBAC(final DBAKey keys) async {
+  Future<void> initSessionViaBAC(final BacKey key) async {
     _log.debug("Initiating SM session using BAC protocol");
-    await BAC.initSession(dbaKeys: keys, icc: icc);
+    await BAC.initSession(bacKey: key, icc: icc);
     _reinitSession = () async {
       _log.debug("Re-initiating SM session using BAC protocol");
       icc.sm = null;
-      await BAC.initSession(dbaKeys: keys, icc: icc);
+      await BAC.initSession(bacKey: key, icc: icc);
     };
   }
 
   /// Initializes Secure Messaging session via PACE protocol using [keys].
   /// Can throw [ICCError] if provided wrong keys.
   /// Can throw [ComProviderError] in case connection with MRTD is lost.
-  Future<void> initSessionViaPACE(final AccessKey accessKey, EfCardAccess efCardAccess) async {
+  Future<void> initSessionViaPACE(final PaceKey paceKey, EfCardAccess efCardAccess) async {
     _log.debug("Initiating SM session using PACE protocol (only DBA for now)");
-    await PACE.initSession(accessKey: accessKey, icc: icc, efCardAccess: efCardAccess);
+    await PACE.initSession(paceKey: paceKey, icc: icc, efCardAccess: efCardAccess);
     _reinitSession = () async {
       _log.debug("Re-initiating SM session using PACE protocol");
       icc.sm = null;
-      await PACE.initSession(accessKey: accessKey, icc: icc, efCardAccess: efCardAccess);
+      await PACE.initSession(paceKey: paceKey, icc: icc, efCardAccess: efCardAccess);
     };
   }
 

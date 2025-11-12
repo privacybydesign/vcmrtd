@@ -1,10 +1,11 @@
 //  Created by Crt Vavros, copyright © 2022 ZeroPass. All rights reserved.
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:vcmrtd/extensions.dart';
 import 'package:logging/logging.dart';
+import 'package:vcmrtd/internal.dart';
 
-import '../crypto/kdf.dart';
 import '../lds/asn1ObjectIdentifiers.dart';
 import '../lds/mrz.dart';
 import 'access_key.dart';
@@ -12,9 +13,29 @@ import 'access_key.dart';
 const SEED_LEN_BAC = 16;
 const SEED_LEN_PACE = 20; //uncut
 
+// BapKey works similar to DBA as a BacKey, with a different document key input and seed
+class BapKey extends AccessKey implements BacKey {
+  late final Uint8List _seed;
+
+  BapKey(String seedInput) {
+    final hash = sha1.convert(latin1.encode(seedInput));
+    _seed = Uint8List.fromList(hash.bytes.sublist(0, 16));
+  }
+
+  @override
+  Uint8List get encKey => DeriveKey.desEDE(_seed);
+
+  @override
+  Uint8List get macKey => DeriveKey.iso9797MacAlg3(_seed);
+
+  @override
+  String toString() => "BapKey(seed=${_seed.hex()})";
+}
+
 /// Class defines Document Basic Access Keys as specified in section 9.7.2 of doc ICAO 9303 p11
 /// which are used to establish secure messaging session via BAC protocol.
-class DBAKey extends AccessKey {
+/// DBAKey through the PaceKey class and the Kpi function creates keys for PACE protocol as well
+class DBAKey extends PaceKey implements BacKey {
   static final _log = Logger("AccessKey.DBAKeys");
 
   // described in ICAO 9303 p11 - 4.4.4.1 MSE:Set AT - Reference of a public key / secret key

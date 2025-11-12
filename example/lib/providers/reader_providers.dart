@@ -49,8 +49,19 @@ final drivingLicenceReaderProvider = StateNotifierProvider.autoDispose
       scannedDriverLicenceMRZ,
     ) {
       final nfc = NfcProvider();
-      final accessKey = CanKey(scannedDriverLicenceMRZ.documentNumber, DocumentType.driverLicense);
-      final dgReader = DataGroupReader(nfc, DF1.DriverAID, accessKey, enableBac: false);
+      final AccessKey accessKey;
+      final bool enableBac;
+      if (scannedDriverLicenceMRZ.version == '1') {
+        accessKey = BapKey(
+          '${scannedDriverLicenceMRZ.configuration}${scannedDriverLicenceMRZ.countryCode}${scannedDriverLicenceMRZ.version}${scannedDriverLicenceMRZ.documentNumber}${scannedDriverLicenceMRZ.randomData}',
+        );
+        enableBac = true;
+      } else {
+        accessKey = CanKey(scannedDriverLicenceMRZ.documentNumber, scannedDriverLicenceMRZ.documentType);
+        enableBac = false;
+      }
+
+      final dgReader = DataGroupReader(nfc, DF1.DriverAID, accessKey, enableBac: enableBac);
       final parser = DrivingLicenceParser();
       final docReader = DocumentReader(
         documentParser: parser,

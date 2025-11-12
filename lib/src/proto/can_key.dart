@@ -18,8 +18,8 @@ class CanKeysError implements Exception {
 
 /// Class defines Document Basic Access Keys as specified in section 9.7.2 of doc ICAO 9303 p11
 /// which are used to establish secure messaging session via BAC protocol.
-class CanKey extends AccessKey {
-  static final _log = Logger("AccessKey.CanKeys");
+class CanKey extends PaceKey {
+  static final _log = Logger("PaceKey.CanKeys");
   // described in ICAO 9303 p11 - 4.4.4.1 MSE:Set AT - Reference of a public key / secret key
   @override
   int PACE_REF_KEY_TAG = 0x02; //CAN
@@ -37,7 +37,7 @@ class CanKey extends AccessKey {
 
     if (docType == DocumentType.passport) {
       if (!passportRegex.hasMatch(canNumber)) {
-        throw CanKeysError("AccessKey.CanKeys; Code must be exactly 6 digits and only contain numbers for passports.");
+        throw CanKeysError("PaceKey.CanKeys; Code must be exactly 6 digits and only contain numbers for passports.");
       }
       canLength = 6;
     }
@@ -45,7 +45,7 @@ class CanKey extends AccessKey {
     if (docType == DocumentType.driverLicense) {
       if (!drivingRegex.hasMatch(canNumber)) {
         throw CanKeysError(
-          "AccessKey.CanKeys; Code must be exactly 10 character capital alphanumerics for driving licences.",
+          "PaceKey.CanKeys; Code must be exactly 10 character capital alphanumerics for driving licences.",
         );
       }
       canLength = 10;
