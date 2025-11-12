@@ -25,8 +25,14 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
   static const int _BIOMETRIC_INFO_TEMPLATE_TAG = 0x7F60;
   static const int _BIOMETRIC_DATA_BLOCK_TAG = 0x5F2E;
 
+  // TLV tag constants for DG5 (signature)
+  static const int _SIGNATURE_IMAGE_FORMAT_TAG = 0x89;
+  static const int _SIGNATURE_IMAGE_DATA_TAG = 0X5F43;
+
+
   // Groups with parsing logic
   late DrivingLicenceEfDG1 _dg1;
+  late DrivingLicenceEfDG5 _dg5;
   late DrivingLicenceEfDG6 _dg6;
 
   // Raw bytes for other data groups
@@ -82,6 +88,10 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
       dateOfExpiry: _dg1.dateOfExpiry,
       issuingAuthority: _dg1.issuingAuthority,
       documentNumber: _dg1.documentNumber,
+
+      // DG5 - signature image
+      signatureImageType: _dg5.imageType,
+      signatureImageData: _dg5.imageData,
 
       // DG6 - photo
       photoImageData: _dg6.imageData,
@@ -218,6 +228,33 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
   @override
   void parseDG5(Uint8List bytes) {
     _dg5RawBytes = bytes;
+    ImageType? signatureImageType;
+    Uint8List? signatureImageData;
+    // Unwrap outer tag 0x67
+    final outerTlv = TLV.fromBytes(bytes);
+
+    int offset = 0;
+    while (offset < outerTlv.value.length) {
+      final innerTlv = TLV.decode(outerTlv.value.sublist(offset));
+
+      switch (innerTlv.tag.value) {
+        case _SIGNATURE_IMAGE_FORMAT_TAG:
+          final formatByte = innerTlv.value[0];
+          signatureImageType = formatByte == 0x03 ? ImageType.jpeg : ImageType.jpeg2000;
+
+        case _SIGNATURE_IMAGE_DATA_TAG:
+          signatureImageData = innerTlv.value;
+      }
+
+      offset += innerTlv.encodedLen;
+    }
+
+    if (signatureImageData != null && signatureImageType != null) {
+      _dg5 = DrivingLicenceEfDG5(imageData: signatureImageData, imageType: signatureImageType);
+    } else {
+      throw Exception("Something went wrong with EDL DG5 parsing");
+    }
+
   }
 
   @override
