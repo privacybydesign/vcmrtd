@@ -102,12 +102,16 @@ class DrivingLicenceData implements DocumentData {
   // From DG5 (signature image)
   final ImageType signatureImageType;
   final Uint8List signatureImageData;
+
   // From DG6 (photo)
   final Uint8List photoImageData;
   final ImageType? photoImageType;
   final int? patronHeaderVersion;
   final int? biometricType;
   final int? numberOfInstances;
+
+  // From DG13
+  final AAPublicKey? aaPublicKey;
 
   // Raw bytes for unparsed DGs
   final Uint8List? dg2RawBytes;
@@ -136,6 +140,7 @@ class DrivingLicenceData implements DocumentData {
     required this.photoImageData,
     required this.signatureImageType,
     required this.signatureImageData,
+    required this.aaPublicKey,
     this.photoImageType,
     this.patronHeaderVersion,
     this.biometricType,

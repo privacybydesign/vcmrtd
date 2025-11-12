@@ -33,6 +33,7 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
   late DrivingLicenceEfDG1 _dg1;
   late DrivingLicenceEfDG5 _dg5;
   late DrivingLicenceEfDG6 _dg6;
+  late DrivingLicenceEfDG13 _dg13;
 
   // Raw bytes for other data groups
   Uint8List? _dg2RawBytes;
@@ -95,6 +96,9 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
       // DG6 - photo
       photoImageData: _dg6.imageData,
       photoImageType: _dg6.imageType,
+
+      // DG13 - Active auth public key
+      aaPublicKey: _dg13.aaPublicKey,
 
       // Raw bytes for other data groups
       dg2RawBytes: _dg2RawBytes,
@@ -390,6 +394,13 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
   @override
   void parseDG13(Uint8List bytes) {
     _dg13RawBytes = bytes;
+
+    // Unwrap outer 0x6F tag
+    final outerTlv = TLV.fromBytes(bytes);
+
+    // The value contains the DER-encoded ActiveAuthenticationPublicKeyInfo
+    // which AAPublicKey.fromBytes() expects
+    _dg13 = DrivingLicenceEfDG13(aaPublicKey: AAPublicKey.fromBytes(outerTlv.value));
   }
 
   @override
