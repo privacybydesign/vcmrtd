@@ -429,7 +429,6 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
     // Unwrap outer 0x6F tag
     final outerTlv = TLV.fromBytes(bytes);
 
-
     _dg13 = DrivingLicenceEfDG13(aaPublicKey: AAPublicKey.fromBytes(outerTlv.value));
   }
 
