@@ -110,6 +110,10 @@ class DrivingLicenceData implements DocumentData {
   final int? biometricType;
   final int? numberOfInstances;
 
+  // DG12
+  final String bapInputString;
+  final String saiType;
+
   // From DG13
   final AAPublicKey? aaPublicKey;
 
@@ -140,6 +144,8 @@ class DrivingLicenceData implements DocumentData {
     required this.photoImageData,
     required this.signatureImageType,
     required this.signatureImageData,
+    required this.bapInputString,
+    required this.saiType,
     required this.aaPublicKey,
     this.photoImageType,
     this.patronHeaderVersion,
