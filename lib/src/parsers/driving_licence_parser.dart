@@ -33,6 +33,7 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
   late DrivingLicenceEfDG1 _dg1;
   late DrivingLicenceEfDG5 _dg5;
   late DrivingLicenceEfDG6 _dg6;
+  late DrivingLicenceEfDG12 _dg12;
 
   // Raw bytes for other data groups
   Uint8List? _dg2RawBytes;
@@ -95,6 +96,10 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
       // DG6 - photo
       photoImageData: _dg6.imageData,
       photoImageType: _dg6.imageType,
+
+      // DG12 - BAP input and SAI content for Non-Match Alert
+      bapInputString: _dg12.bapInputString,
+      saiType: _dg12.saiType,
 
       // Raw bytes for other data groups
       dg2RawBytes: _dg2RawBytes,
@@ -385,6 +390,32 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
   @override
   void parseDG12(Uint8List bytes) {
     _dg12RawBytes = bytes;
+
+    // Unwrap outer 0x71 tag
+    final outerTlv = TLV.fromBytes(bytes);
+
+    String? bapInputString;
+    String? saiType;
+
+    int offset = 0;
+    while (offset < outerTlv.value.length) {
+      final tlv = TLV.decode(outerTlv.value.sublist(offset));
+
+      switch (tlv.tag.value) {
+        case 0x82: // 2-29 of MRZ (BAP input string)
+          // First byte is '00', then 28 chars of BAP input
+          if (tlv.value.length > 1) {
+            bapInputString = utf8.decode(tlv.value.sublist(1));
+          }
+
+        case 0x81: // Shows type of SAI (MRZ or other kinds) according to ISO18013-3 part 8.3.2.5.5
+          saiType = tlv.value[0] == 0x41 ? 'MRZ' : 'UNKNOWN';
+      }
+
+      offset += tlv.encodedLen;
+    }
+
+    _dg12 = DrivingLicenceEfDG12(bapInputString: bapInputString ?? '', saiType: saiType ?? '');
   }
 
   @override

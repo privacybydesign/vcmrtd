@@ -113,9 +113,7 @@ class DrivingLicenceEfDG6 {
   });
 }
 
-// Mandatory
 class DrivingLicenceEfDG7 {
-  // Fingerprint image
   static const FID = 0x0107;
   static const SFI = 0x07;
   static const TAG = DgTag(0x67);
@@ -138,7 +136,8 @@ class DrivingLicenceEfDG10 {
 
 // Mandatory
 class DrivingLicenceEfDG11 {
-  // Contains BSN
+  // Caution: contains BSN, in real world apps
+  // only read if you are allowed to process this data
   static const FID = 0x010B;
   static const SFI = 0x0B;
   static const TAG = DgTag(0x6D);
@@ -146,10 +145,15 @@ class DrivingLicenceEfDG11 {
 
 // Mandatory
 class DrivingLicenceEfDG12 {
-  // MRZ used for PACE and Non-Match Alert
+  // Contains BAP input string (position 2-29 of the 30 char MRZ) and the MRZ
   static const FID = 0x010C;
   static const SFI = 0x0C;
   static const TAG = DgTag(0x71);
+
+  final String bapInputString; // 28 chars from MRZ positions 2-29
+  final String saiType;
+
+  DrivingLicenceEfDG12({required this.bapInputString, required this.saiType});
 }
 
 // Mandatory
