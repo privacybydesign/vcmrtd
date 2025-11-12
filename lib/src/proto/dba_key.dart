@@ -15,7 +15,6 @@ const SEED_LEN_PACE = 20; //uncut
 
 // BapKey works similar to DBA as a BacKey, with a different document key input and seed
 class BapKey extends AccessKey implements BacKey {
-
   late final Uint8List _seed;
 
   BapKey(String seedInput) {
