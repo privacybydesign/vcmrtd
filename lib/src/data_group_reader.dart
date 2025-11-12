@@ -53,23 +53,20 @@ class DataGroupReader {
     if (!enableBac) {
       throw Exception('trying BAC while BAC was not enabled');
     }
+    await _selectDF1();
     if (accessKey is DBAKey) {
-      await _selectDF1();
       await _exec(() => _api.initSessionViaBAC(accessKey as DBAKey));
-    }
-    else if (accessKey is BapKey) {
-      await _selectDF1();
+    } else if (accessKey is BapKey) {
       await _exec(() => _api.initSessionViaBAC(accessKey as BapKey));
-
     }
   }
 
   Future<void> startSessionPACE(EfCardAccess efCardAccess) async {
-    if (!enablePace) {
+    if (!enablePace && accessKey is PaceKey) {
       throw Exception('trying PACE while PACE was not enabled');
     }
     await _selectMF();
-    await _exec(() => _api.initSessionViaPACE(accessKey, efCardAccess));
+    await _exec(() => _api.initSessionViaPACE(accessKey as PaceKey, efCardAccess));
   }
 
   Future<Uint8List> readDG1() async {

@@ -20,12 +20,10 @@ import 'dba_key.dart';
 import 'mrtd_sm.dart';
 import 'ssc.dart';
 
-
 abstract class BacKey {
   Uint8List get encKey; // 3DES Kenc
   Uint8List get macKey; // Retail-MAC Kmac
 }
-
 
 class BACError implements Exception {
   final String message;

@@ -71,13 +71,13 @@ class MrtdApi {
   /// Initializes Secure Messaging session via PACE protocol using [keys].
   /// Can throw [ICCError] if provided wrong keys.
   /// Can throw [ComProviderError] in case connection with MRTD is lost.
-  Future<void> initSessionViaPACE(final AccessKey accessKey, EfCardAccess efCardAccess) async {
+  Future<void> initSessionViaPACE(final PaceKey paceKey, EfCardAccess efCardAccess) async {
     _log.debug("Initiating SM session using PACE protocol (only DBA for now)");
-    await PACE.initSession(accessKey: accessKey, icc: icc, efCardAccess: efCardAccess);
+    await PACE.initSession(paceKey: paceKey, icc: icc, efCardAccess: efCardAccess);
     _reinitSession = () async {
       _log.debug("Re-initiating SM session using PACE protocol");
       icc.sm = null;
-      await PACE.initSession(accessKey: accessKey, icc: icc, efCardAccess: efCardAccess);
+      await PACE.initSession(paceKey: paceKey, icc: icc, efCardAccess: efCardAccess);
     };
   }
 

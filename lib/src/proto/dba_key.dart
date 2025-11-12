@@ -13,7 +13,7 @@ import 'access_key.dart';
 const SEED_LEN_BAC = 16;
 const SEED_LEN_PACE = 20; //uncut
 
-
+// BapKey works similar to DBA as a BacKey, with a different document key input and seed
 class BapKey extends AccessKey implements BacKey {
   @override
   int PACE_REF_KEY_TAG = 0x01; // same tag as MRZ key
@@ -32,14 +32,8 @@ class BapKey extends AccessKey implements BacKey {
   Uint8List get macKey => DeriveKey.iso9797MacAlg3(_seed);
 
   @override
-  Uint8List Kpi(CipherAlgorithm cipherAlgorithm, KEY_LENGTH keyLength) {
-    throw UnimplementedError('Kpi not used for BAC keys');
-  }
-
-  @override
   String toString() => "BapKey(seed=${_seed.hex()})";
 }
-
 
 /// Class defines Document Basic Access Keys as specified in section 9.7.2 of doc ICAO 9303 p11
 /// which are used to establish secure messaging session via BAC protocol.

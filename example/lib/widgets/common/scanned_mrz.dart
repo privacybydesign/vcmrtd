@@ -54,7 +54,7 @@ class ScannedDriverLicenseMRZ extends ScannedMRZ {
     required super.countryCode,
     required this.version,
     required this.randomData,
-    required this.configuration
+    required this.configuration,
   }) : super(documentType: DocumentType.driverLicense);
 
   factory ScannedDriverLicenseMRZ.fromMRZResult(MRZDriverLicenseResult mrz) {
@@ -63,7 +63,7 @@ class ScannedDriverLicenseMRZ extends ScannedMRZ {
       countryCode: mrz.countryCode,
       version: mrz.version,
       randomData: mrz.randomData,
-      configuration: mrz.configuration
+      configuration: mrz.configuration,
     );
   }
 
