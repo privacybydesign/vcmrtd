@@ -15,8 +15,6 @@ const SEED_LEN_PACE = 20; //uncut
 
 // BapKey works similar to DBA as a BacKey, with a different document key input and seed
 class BapKey extends AccessKey implements BacKey {
-  @override
-  int PACE_REF_KEY_TAG = 0x01; // same tag as MRZ key
 
   late final Uint8List _seed;
 
@@ -37,7 +35,8 @@ class BapKey extends AccessKey implements BacKey {
 
 /// Class defines Document Basic Access Keys as specified in section 9.7.2 of doc ICAO 9303 p11
 /// which are used to establish secure messaging session via BAC protocol.
-class DBAKey extends AccessKey implements BacKey {
+/// DBAKey through the PaceKey class and the Kpi function creates keys for PACE protocol as well
+class DBAKey extends PaceKey implements BacKey {
   static final _log = Logger("AccessKey.DBAKeys");
 
   // described in ICAO 9303 p11 - 4.4.4.1 MSE:Set AT - Reference of a public key / secret key
