@@ -33,6 +33,7 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
   late DrivingLicenceEfDG1 _dg1;
   late DrivingLicenceEfDG5 _dg5;
   late DrivingLicenceEfDG6 _dg6;
+  late DrivingLicenceEfDG13 _dg13;
   late DrivingLicenceEfDG12 _dg12;
 
   // Raw bytes for other data groups
@@ -100,6 +101,9 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
       // DG12 - BAP input and SAI content for Non-Match Alert
       bapInputString: _dg12.bapInputString,
       saiType: _dg12.saiType,
+
+      // DG13 - Active auth public key
+      aaPublicKey: _dg13.aaPublicKey,
 
       // Raw bytes for other data groups
       dg2RawBytes: _dg2RawBytes,
@@ -421,6 +425,11 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
   @override
   void parseDG13(Uint8List bytes) {
     _dg13RawBytes = bytes;
+
+    // Unwrap outer 0x6F tag
+    final outerTlv = TLV.fromBytes(bytes);
+
+    _dg13 = DrivingLicenceEfDG13(aaPublicKey: AAPublicKey.fromBytes(outerTlv.value));
   }
 
   @override

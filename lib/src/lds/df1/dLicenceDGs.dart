@@ -162,6 +162,10 @@ class DrivingLicenceEfDG13 {
   static const FID = 0x010D;
   static const SFI = 0x0D;
   static const TAG = DgTag(0x6f);
+
+  final AAPublicKey aaPublicKey;
+
+  DrivingLicenceEfDG13({required this.aaPublicKey});
 }
 
 class DrivingLicenceEfDG14 {
