@@ -99,7 +99,6 @@ class DrivingLicenceData implements DocumentData {
   final String issuingAuthority;
   final String documentNumber;
 
-
   // From DG5 (signature image)
   final ImageType signatureImageType;
   final Uint8List signatureImageData;

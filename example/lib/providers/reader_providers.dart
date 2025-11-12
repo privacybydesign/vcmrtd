@@ -69,13 +69,7 @@ final drivingLicenceReaderProvider = StateNotifierProvider.autoDispose
         nfc: nfc,
         config: DocumentReaderConfig(
           // Skipping DG5 due to bad signature image quality
-          readIfAvailable: {
-            DataGroups.dg1,
-            DataGroups.dg6,
-            DataGroups.dg11,
-            DataGroups.dg12,
-            DataGroups.dg13,
-          },
+          readIfAvailable: {DataGroups.dg1, DataGroups.dg6, DataGroups.dg11, DataGroups.dg12, DataGroups.dg13},
         ),
       );
 

@@ -29,7 +29,6 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
   static const int _SIGNATURE_IMAGE_FORMAT_TAG = 0x89;
   static const int _SIGNATURE_IMAGE_DATA_TAG = 0X5F43;
 
-
   // Groups with parsing logic
   late DrivingLicenceEfDG1 _dg1;
   late DrivingLicenceEfDG5 _dg5;
@@ -254,7 +253,6 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
     } else {
       throw Exception("Something went wrong with EDL DG5 parsing");
     }
-
   }
 
   @override
