@@ -31,7 +31,7 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
 
   // Groups with parsing logic
   late DrivingLicenceEfDG1 _dg1;
-  late DrivingLicenceEfDG5 _dg5;
+  DrivingLicenceEfDG5? _dg5;
   late DrivingLicenceEfDG6 _dg6;
   late DrivingLicenceEfDG13 _dg13;
   late DrivingLicenceEfDG12 _dg12;
@@ -40,7 +40,7 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
   Uint8List? _dg2RawBytes;
   Uint8List? _dg3RawBytes;
   Uint8List? _dg4RawBytes;
-  late Uint8List _dg5RawBytes;
+  Uint8List? _dg5RawBytes;
   Uint8List? _dg7RawBytes;
   Uint8List? _dg8RawBytes;
   Uint8List? _dg9RawBytes;
@@ -91,8 +91,8 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
       documentNumber: _dg1.documentNumber,
 
       // DG5 - signature image
-      signatureImageType: _dg5.imageType,
-      signatureImageData: _dg5.imageData,
+      signatureImageType: _dg5?.imageType,
+      signatureImageData: _dg5?.imageData,
 
       // DG6 - photo
       photoImageData: _dg6.imageData,

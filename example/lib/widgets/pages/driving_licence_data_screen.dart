@@ -4,18 +4,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
+import '../../widgets/pages/data_screen_widgets/web_banner.dart';
+import '../../widgets/pages/data_screen_widgets/return_to_web.dart';
+import '../../widgets/pages/data_screen_widgets/verify_result.dart';
 
 class DrivingLicenceDataScreen extends ConsumerStatefulWidget {
   final DrivingLicenceData drivingLicence;
+  final RawDocumentData drivingLicenceDataResult;
   final VoidCallback onBackPressed;
 
-  const DrivingLicenceDataScreen({super.key, required this.drivingLicence, required this.onBackPressed});
+  const DrivingLicenceDataScreen({
+    super.key,
+    required this.drivingLicence,
+    required this.drivingLicenceDataResult,
+    required this.onBackPressed,
+  });
 
   @override
   ConsumerState<DrivingLicenceDataScreen> createState() => _DrivingLicenceDataScreenState();
 }
 
 class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScreen> {
+  VerificationResponse? _verificationResponse;
+
   @override
   Widget build(BuildContext context) {
     final imageData = widget.drivingLicence.photoImageData;
@@ -26,106 +38,183 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
         leading: IconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBackPressed),
       ),
       body: SafeArea(
-        child: ListView(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
-          children: [
-            // Photo section
-            ...[_buildPhotoSection(imageData), const SizedBox(height: 24)],
-
-            _buildSection('Personal Information', [
-              _buildDataRow('Surname', widget.drivingLicence.holderSurname),
-              _buildDataRow('Other Names', widget.drivingLicence.holderOtherName),
-              _buildDataRow('Date of Birth', _formatDate(widget.drivingLicence.dateOfBirth)),
-              _buildDataRow('Place of Birth', widget.drivingLicence.placeOfBirth),
-            ]),
-            const SizedBox(height: 24),
-            _buildSection('Document Information', [
-              _buildDataRow('Document Number', widget.drivingLicence.documentNumber),
-              _buildDataRow('Issuing Member State', widget.drivingLicence.issuingMemberState),
-              _buildDataRow('Issuing Authority', widget.drivingLicence.issuingAuthority),
-              _buildDataRow('Date of Issue', _formatDate(widget.drivingLicence.dateOfIssue)),
-              _buildDataRow('Date of Expiry', _formatDate(widget.drivingLicence.dateOfExpiry)),
-            ]),
-          ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (widget.drivingLicenceDataResult.sessionId != null)
+                WebBanner(sessionId: widget.drivingLicenceDataResult.sessionId!),
+              _buildPhotoSection(imageData),
+              const SizedBox(height: 24),
+              _buildSection('Personal Information', [
+                _buildDataRow('Surname', widget.drivingLicence.holderSurname),
+                _buildDataRow('Other Names', widget.drivingLicence.holderOtherName),
+                _buildDataRow('Date of Birth', _formatDate(widget.drivingLicence.dateOfBirth)),
+                _buildDataRow('Place of Birth', widget.drivingLicence.placeOfBirth),
+              ]),
+              const SizedBox(height: 24),
+              _buildSection('Document Information', [
+                _buildDataRow('Document Number', widget.drivingLicence.documentNumber),
+                _buildDataRow('Issuing Member State', widget.drivingLicence.issuingMemberState),
+                _buildDataRow('Issuing Authority', widget.drivingLicence.issuingAuthority),
+                _buildDataRow('Date of Issue', _formatDate(widget.drivingLicence.dateOfIssue)),
+                _buildDataRow('Date of Expiry', _formatDate(widget.drivingLicence.dateOfExpiry)),
+              ]),
+              if (widget.drivingLicenceDataResult.sessionId != null) ...[
+                const SizedBox(height: 20),
+                if (_verificationResponse == null)
+                  ReturnToWebSection(
+                    isReturningToIssue: false,
+                    isReturningToVerify: false,
+                    onIssuePressed: () {}, // No issuance for DL yet
+                    onVerifyPressed: _verifyDrivingLicence,
+                  )
+                else ...[
+                  const SizedBox(height: 20),
+                  VerifyResultSection(
+                    isExpired: _verificationResponse!.isExpired,
+                    authenticChip: _verificationResponse!.authenticChip,
+                    authenticContent: _verificationResponse!.authenticContent,
+                  ),
+                ],
+              ],
+            ],
+          ),
         ),
       ),
     );
   }
-}
 
-Widget _buildPhotoSection(Uint8List imageData) {
-  return Center(
-    child: Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: CupertinoColors.systemGrey4, width: 2),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(10),
-        child: Image.memory(
-          imageData,
-          width: 200,
-          height: 250,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              width: 200,
-              height: 250,
-              color: CupertinoColors.systemGrey6,
-              child: const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(CupertinoIcons.photo, size: 48, color: CupertinoColors.systemGrey),
-                    SizedBox(height: 8),
-                    Text('Unable to load photo', style: TextStyle(color: CupertinoColors.systemGrey)),
-                  ],
-                ),
+  Future<void> _verifyDrivingLicence() async {
+    final issuer = ref.read(passportIssuerProvider);
+
+    try {
+      final result = await issuer.verifyDrivingLicence(widget.drivingLicenceDataResult);
+      setState(() {
+        _verificationResponse = result;
+      });
+    } catch (e) {
+      _showErrorDialog(e.toString());
+    }
+  }
+
+  void _showErrorDialog(String error) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: Icon(Icons.error, color: Colors.red[600], size: 48),
+        title: const Text('Verification Failed'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Failed to verify driving licence:'),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(4),
               ),
-            );
-          },
+              child: Text(
+                error,
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+              ),
+            ),
+          ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _verifyDrivingLicence();
+            },
+            child: const Text('Retry'),
+          ),
+        ],
       ),
-    ),
-  );
-}
+    );
+  }
 
-Widget _buildSection(String title, List<Widget> children) {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-      const SizedBox(height: 12),
-      ...children,
-    ],
-  );
-}
-
-Widget _buildDataRow(String label, String? value) {
-  return Padding(
-    padding: const EdgeInsets.only(bottom: 12.0),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 140,
-          child: Text(
-            label,
-            style: const TextStyle(fontWeight: FontWeight.w600, color: CupertinoColors.systemGrey),
+  Widget _buildPhotoSection(Uint8List imageData) {
+    return Center(
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: CupertinoColors.systemGrey4, width: 2),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Image.memory(
+            imageData,
+            width: 200,
+            height: 250,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                width: 200,
+                height: 250,
+                color: CupertinoColors.systemGrey6,
+                child: const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(CupertinoIcons.photo, size: 48, color: CupertinoColors.systemGrey),
+                      SizedBox(height: 8),
+                      Text('Unable to load photo', style: TextStyle(color: CupertinoColors.systemGrey)),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
         ),
-        Expanded(child: Text(value ?? 'N/A', style: const TextStyle(fontSize: 16))),
+      ),
+    );
+  }
+
+  Widget _buildSection(String title, List<Widget> children) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        ...children,
       ],
-    ),
-  );
-}
+    );
+  }
 
-String? _formatDate(String? date) {
-  if (date == null || date.length != 8) return date;
+  Widget _buildDataRow(String label, String? value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 140,
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w600, color: CupertinoColors.systemGrey),
+            ),
+          ),
+          Expanded(child: Text(value ?? 'N/A', style: const TextStyle(fontSize: 16))),
+        ],
+      ),
+    );
+  }
 
-  final day = date.substring(0, 2);
-  final month = date.substring(2, 4);
-  final year = date.substring(4, 8);
+  String? _formatDate(String? date) {
+    if (date == null || date.length != 8) return date;
 
-  return '$day/$month/$year';
+    final day = date.substring(0, 2);
+    final month = date.substring(2, 4);
+    final year = date.substring(4, 8);
+
+    return '$day/$month/$year';
+  }
 }

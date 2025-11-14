@@ -15,6 +15,10 @@ abstract class PassportIssuer {
 
   /// Only verifies the passport scanning result without starting an irma issuance session
   Future<VerificationResponse> verifyPassport(RawDocumentData passportDataResult);
+
+  /// Only verifies the driving licence scanning result without starting an irma issuance session
+  Future<VerificationResponse> verifyDrivingLicence(RawDocumentData drivingLicenceDataResult);
+
 }
 
 /// Default passport issuer implementation that is used in production and talks to actual
@@ -58,11 +62,9 @@ class DefaultPassportIssuer implements PassportIssuer {
 
   @override
   Future<VerificationResponse> verifyPassport(RawDocumentData passportDataResult) async {
-    final NonceAndSessionId session = await startSessionAtPassportIssuer();
 
     final payload = passportDataResult.toJson();
-    payload['session_id'] = session.sessionId;
-    payload['nonce'] = session.nonce;
+
 
     final String jsonPayload = json.encode(payload);
 
@@ -80,6 +82,26 @@ class DefaultPassportIssuer implements PassportIssuer {
     return VerificationResponse.fromJson(responseBody);
   }
 
+  @override
+  Future<VerificationResponse> verifyDrivingLicence(RawDocumentData passportDataResult) async {
+
+    final payload = passportDataResult.toJson();
+
+    final String jsonPayload = json.encode(payload);
+
+    final response = await http.post(
+      Uri.parse('$hostName/api/verify-driving-licence'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonPayload,
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Verification request failed: ${response.statusCode} ${response.body}');
+    }
+
+    final responseBody = jsonDecode(response.body);
+    return VerificationResponse.fromJson(responseBody);
+  }
   Future<dynamic> _getIrmaSessionJwt(String hostName, Map<String, dynamic> payload) async {
     final String jsonPayload = json.encode(payload);
     final storeResp = await http.post(
