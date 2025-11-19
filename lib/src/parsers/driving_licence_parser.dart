@@ -9,7 +9,8 @@ import 'document_parser.dart';
 
 class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
   // TLV tag constants for DG1
-  static const int _DG1_CONTAINER_TAG = 0x5F02;
+  static const int _DG1_MAIN_TAG = 0x5F02;
+  static const int _DG1_SECONDARY_TAG = 0x7F63;
   static const int _ISSUING_MEMBER_STATE_TAG = 0x5F03;
   static const int _HOLDER_SURNAME_TAG = 0x5F04;
   static const int _HOLDER_OTHER_NAME_TAG = 0x5F05;
@@ -89,6 +90,7 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
       dateOfExpiry: _dg1.dateOfExpiry,
       issuingAuthority: _dg1.issuingAuthority,
       documentNumber: _dg1.documentNumber,
+      categories: _dg1.categories,
 
       // DG5 - signature image
       signatureImageType: _dg5?.imageType,
@@ -137,6 +139,7 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
     late String dateOfExpiry;
     late String issuingAuthority;
     late String documentNumber;
+    late List<DrivingLicenceCategory> categories;
 
     // Loop through siblings inside 0x61 (0x5F01, 0x5F02, etc.)
     int offset = 0;
@@ -145,7 +148,7 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
         final tlv = TLV.decode(childrenBytes.sublist(offset));
 
         // Found 0x5F02 container with personal data
-        if (tlv.tag.value == _DG1_CONTAINER_TAG) {
+        if (tlv.tag.value == _DG1_MAIN_TAG) {
           int fieldOffset = 0;
           final fieldBytes = tlv.value;
 
@@ -189,10 +192,63 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
               break;
             }
           }
-        }
+        } else if (tlv.tag.value == _DG1_SECONDARY_TAG) {
+          // Parse field for category / restrictions / conditions
+          // Note: category is usually the first record and is mandatory, restrictions and conditions
+          // May not apply to the driver
+          categories = [];
 
+          int categoryOffset = 0;
+          while (categoryOffset < tlv.value.length) {
+            try {
+              final categoryTlv = TLV.decode(tlv.value.sublist(categoryOffset));
+
+              if (categoryTlv.tag.value == 0x87) {
+                try {
+                  final bytes = categoryTlv.value;
+
+                  // The delimiter is a semicolon  category; issue date (bcd); expiry date (bcd)
+                  int firstSemicolon = bytes.indexOf(0x3b);
+                  if (firstSemicolon == -1) continue;
+
+                  final category = utf8.decode(bytes.sublist(0, firstSemicolon));
+
+                  // Issue date: 4 bytes after first semicolon (DD MM YY YY in BCD/hex)
+                  if (bytes.length >= firstSemicolon + 5) {
+                    final issueDay = bytes[firstSemicolon + 1].toRadixString(16).padLeft(2, '0');
+                    final issueMonth = bytes[firstSemicolon + 2].toRadixString(16).padLeft(2, '0');
+                    final issueYear =
+                        '${bytes[firstSemicolon + 3].toRadixString(16).padLeft(2, '0')}${bytes[firstSemicolon + 4].toRadixString(16).padLeft(2, '0')}';
+
+                    // Expiry date: 4 bytes after second semicolon
+                    if (bytes.length >= firstSemicolon + 10) {
+                      final expiryDay = bytes[firstSemicolon + 6].toRadixString(16).padLeft(2, '0');
+                      final expiryMonth = bytes[firstSemicolon + 7].toRadixString(16).padLeft(2, '0');
+                      final expiryYear =
+                          '${bytes[firstSemicolon + 8].toRadixString(16).padLeft(2, '0')}${bytes[firstSemicolon + 9].toRadixString(16).padLeft(2, '0')}';
+
+                      categories.add(
+                        DrivingLicenceCategory(
+                          category: category,
+                          dateOfIssue: '$issueDay/$issueMonth/$issueYear',
+                          dateOfExpiry: '$expiryDay/$expiryMonth/$expiryYear',
+                        ),
+                      );
+                    }
+                  }
+                } catch (e) {
+                  print('Error processing a single category: $e');
+                }
+              }
+              categoryOffset += categoryTlv.encodedLen;
+            } catch (e) {
+              print('Error decoding the category tlv: $e');
+            }
+          }
+        }
         offset += tlv.encodedLen;
       } catch (e) {
+        print('Error parsing DG1: $e');
         break;
       }
     }
@@ -207,6 +263,7 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
       dateOfExpiry: dateOfExpiry,
       issuingAuthority: issuingAuthority,
       documentNumber: documentNumber,
+      categories: categories,
     );
   }
 

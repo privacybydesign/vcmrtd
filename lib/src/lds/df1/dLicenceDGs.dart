@@ -1,6 +1,16 @@
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
+
 import '../../../vcmrtd.dart';
+
+class DrivingLicenceCategory {
+  final String category;
+  final String dateOfIssue; // DD/MM/YYY Format
+  final String dateOfExpiry;
+
+  DrivingLicenceCategory({required this.category, required this.dateOfIssue, required this.dateOfExpiry});
+}
 
 class DrivingLicenceEfDG1 {
   // Personal data
@@ -17,6 +27,7 @@ class DrivingLicenceEfDG1 {
   final String dateOfExpiry;
   final String issuingAuthority;
   final String documentNumber;
+  final List<DrivingLicenceCategory> categories;
 
   DrivingLicenceEfDG1({
     required this.issuingMemberState,
@@ -28,6 +39,7 @@ class DrivingLicenceEfDG1 {
     required this.dateOfExpiry,
     required this.issuingAuthority,
     required this.documentNumber,
+    required this.categories,
   });
 }
 

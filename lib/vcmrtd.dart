@@ -14,6 +14,8 @@ export 'src/types/data.dart';
 export 'src/lds/ef.dart';
 export 'src/lds/efcard_access.dart';
 export 'src/lds/efcard_security.dart';
+export 'src/lds/df1/dLicenceDGs.dart';
+
 export 'src/lds/mrz.dart';
 export 'src/lds/tlv.dart';
 export 'src/proto/can_key.dart';

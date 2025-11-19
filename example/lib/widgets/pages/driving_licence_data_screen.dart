@@ -61,6 +61,10 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
                 _buildDataRow('Date of Issue', _formatDate(widget.drivingLicence.dateOfIssue)),
                 _buildDataRow('Date of Expiry', _formatDate(widget.drivingLicence.dateOfExpiry)),
               ]),
+              if (widget.drivingLicence.categories.isNotEmpty) ...[
+                const SizedBox(height: 24),
+                _buildCategoriesSection(widget.drivingLicence.categories),
+              ],
               if (widget.drivingLicenceDataResult.sessionId != null) ...[
                 const SizedBox(height: 20),
                 if (_verificationResponse == null)
@@ -177,6 +181,50 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
         const SizedBox(height: 12),
         ...children,
       ],
+    );
+  }
+
+  Widget _buildCategoriesSection(List<DrivingLicenceCategory> categories) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Categories', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        ...categories.map((cat) => _buildCategoryCard(cat)),
+      ],
+    );
+  }
+
+  Widget _buildCategoryCard(DrivingLicenceCategory category) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: CupertinoColors.systemGrey6,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: CupertinoColors.systemGrey4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text(
+                'Category',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: CupertinoColors.systemGrey),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                category.category,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: CupertinoColors.systemGrey),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildDataRow('Date of issue', category.dateOfIssue),
+          _buildDataRow('Date of expiry', category.dateOfExpiry),
+        ],
+      ),
     );
   }
 

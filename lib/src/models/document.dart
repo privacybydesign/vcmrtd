@@ -98,6 +98,7 @@ class DrivingLicenceData implements DocumentData {
   final String dateOfExpiry;
   final String issuingAuthority;
   final String documentNumber;
+  final List<DrivingLicenceCategory> categories;
 
   // From DG5 (signature image)
   final ImageType? signatureImageType;
@@ -145,6 +146,7 @@ class DrivingLicenceData implements DocumentData {
     required this.bapInputString,
     required this.saiType,
     required this.aaPublicKey,
+    required this.categories,
     this.photoImageType,
     this.patronHeaderVersion,
     this.biometricType,
