@@ -192,9 +192,10 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
               break;
             }
           }
-        }
-        else if (tlv.tag.value == _DG1_SECONDARY_TAG) {
-          // Parse Category / Restrictions / Conditions
+        } else if (tlv.tag.value == _DG1_SECONDARY_TAG) {
+          // Parse field for category / restrictions / conditions
+          // Note: category is usually the first record and is mandatory, restrictions and conditions
+          // May not apply to the driver
           categories = [];
 
           int categoryOffset = 0;
@@ -206,7 +207,7 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
                 try {
                   final bytes = categoryTlv.value;
 
-                  // Find first semicolon to extract category
+                  // The delimiter is a semicolon  category; issue date (bcd); expiry date (bcd)
                   int firstSemicolon = bytes.indexOf(0x3b);
                   if (firstSemicolon == -1) continue;
 
@@ -216,34 +217,38 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
                   if (bytes.length >= firstSemicolon + 5) {
                     final issueDay = bytes[firstSemicolon + 1].toRadixString(16).padLeft(2, '0');
                     final issueMonth = bytes[firstSemicolon + 2].toRadixString(16).padLeft(2, '0');
-                    final issueYear = '${bytes[firstSemicolon + 3].toRadixString(16).padLeft(2, '0')}${bytes[firstSemicolon + 4].toRadixString(16).padLeft(2, '0')}';
+                    final issueYear =
+                        '${bytes[firstSemicolon + 3].toRadixString(16).padLeft(2, '0')}${bytes[firstSemicolon + 4].toRadixString(16).padLeft(2, '0')}';
 
                     // Expiry date: 4 bytes after second semicolon
                     if (bytes.length >= firstSemicolon + 10) {
                       final expiryDay = bytes[firstSemicolon + 6].toRadixString(16).padLeft(2, '0');
                       final expiryMonth = bytes[firstSemicolon + 7].toRadixString(16).padLeft(2, '0');
-                      final expiryYear = '${bytes[firstSemicolon + 8].toRadixString(16).padLeft(2, '0')}${bytes[firstSemicolon + 9].toRadixString(16).padLeft(2, '0')}';
+                      final expiryYear =
+                          '${bytes[firstSemicolon + 8].toRadixString(16).padLeft(2, '0')}${bytes[firstSemicolon + 9].toRadixString(16).padLeft(2, '0')}';
 
-                      categories.add(DrivingLicenceCategory(
-                        category: category,
-                        dateOfIssue: '$issueDay/$issueMonth/$issueYear',
-                        dateOfExpiry: '$expiryDay/$expiryMonth/$expiryYear',
-                      ));
+                      categories.add(
+                        DrivingLicenceCategory(
+                          category: category,
+                          dateOfIssue: '$issueDay/$issueMonth/$issueYear',
+                          dateOfExpiry: '$expiryDay/$expiryMonth/$expiryYear',
+                        ),
+                      );
                     }
                   }
                 } catch (e) {
-                  // Silent fail for malformed category records
+                  print('Error processing a single category: $e');
                 }
               }
-
               categoryOffset += categoryTlv.encodedLen;
             } catch (e) {
-              break;
+              print('Error decoding the category tlv: $e');
             }
           }
         }
         offset += tlv.encodedLen;
       } catch (e) {
+        print('Error parsing DG1: $e');
         break;
       }
     }
