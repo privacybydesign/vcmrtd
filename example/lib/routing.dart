@@ -107,6 +107,7 @@ GoRouter createRouter() {
             ),
             DocumentType.driverLicense => DrivingLicenceDataScreen(
               drivingLicence: s['document'] as DrivingLicenceData,
+              drivingLicenceDataResult: result,
               onBackPressed: () => context.go('/select_doc_type'),
             ),
           };

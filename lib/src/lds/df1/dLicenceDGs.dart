@@ -53,8 +53,8 @@ class DrivingLicenceEfDG5 {
   static const SFI = 0x05;
   static const TAG = DgTag(0x67);
 
-  final ImageType imageType;
-  final Uint8List imageData;
+  final ImageType? imageType;
+  final Uint8List? imageData;
 
   DrivingLicenceEfDG5({required this.imageType, required this.imageData});
 }
