@@ -18,7 +18,6 @@ abstract class PassportIssuer {
 
   /// Only verifies the driving licence scanning result without starting an irma issuance session
   Future<VerificationResponse> verifyDrivingLicence(RawDocumentData drivingLicenceDataResult);
-
 }
 
 /// Default passport issuer implementation that is used in production and talks to actual
@@ -62,9 +61,7 @@ class DefaultPassportIssuer implements PassportIssuer {
 
   @override
   Future<VerificationResponse> verifyPassport(RawDocumentData passportDataResult) async {
-
     final payload = passportDataResult.toJson();
-
 
     final String jsonPayload = json.encode(payload);
 
@@ -84,7 +81,6 @@ class DefaultPassportIssuer implements PassportIssuer {
 
   @override
   Future<VerificationResponse> verifyDrivingLicence(RawDocumentData passportDataResult) async {
-
     final payload = passportDataResult.toJson();
 
     final String jsonPayload = json.encode(payload);
@@ -102,6 +98,7 @@ class DefaultPassportIssuer implements PassportIssuer {
     final responseBody = jsonDecode(response.body);
     return VerificationResponse.fromJson(responseBody);
   }
+
   Future<dynamic> _getIrmaSessionJwt(String hostName, Map<String, dynamic> payload) async {
     final String jsonPayload = json.encode(payload);
     final storeResp = await http.post(

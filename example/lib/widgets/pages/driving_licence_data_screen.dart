@@ -113,22 +113,13 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                error,
-                style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-              ),
+              decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(4)),
+              child: Text(error, style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
             ),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK')),
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
