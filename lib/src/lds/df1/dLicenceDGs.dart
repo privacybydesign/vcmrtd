@@ -6,7 +6,7 @@ import '../../../vcmrtd.dart';
 
 class DrivingLicenceCategory {
   final String category;
-  final String dateOfIssue; // YYYY-MM-DD format
+  final String dateOfIssue; // DD/MM/YYY Format
   final String dateOfExpiry;
 
   DrivingLicenceCategory({required this.category, required this.dateOfIssue, required this.dateOfExpiry});
