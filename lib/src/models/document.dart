@@ -98,7 +98,7 @@ class DrivingLicenceData implements DocumentData {
   final String dateOfExpiry;
   final String issuingAuthority;
   final String documentNumber;
-  final List<DrivingLicenceCategory> categories ;
+  final List<DrivingLicenceCategory> categories;
 
   // From DG5 (signature image)
   final ImageType? signatureImageType;

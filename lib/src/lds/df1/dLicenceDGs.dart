@@ -4,17 +4,12 @@ import 'package:flutter/foundation.dart';
 
 import '../../../vcmrtd.dart';
 
-
 class DrivingLicenceCategory {
   final String category;
-  final String dateOfIssue;    // YYYY-MM-DD format
+  final String dateOfIssue; // YYYY-MM-DD format
   final String dateOfExpiry;
 
-  DrivingLicenceCategory({
-    required this.category,
-    required this.dateOfIssue,
-    required this.dateOfExpiry,
-  });
+  DrivingLicenceCategory({required this.category, required this.dateOfIssue, required this.dateOfExpiry});
 }
 
 class DrivingLicenceEfDG1 {

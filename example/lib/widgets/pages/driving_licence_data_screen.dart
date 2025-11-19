@@ -188,10 +188,7 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Categories',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
+        const Text('Categories', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
         ...categories.map((cat) => _buildCategoryCard(cat)),
       ],
@@ -214,20 +211,12 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
             children: [
               const Text(
                 'Category',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: CupertinoColors.systemGrey,
-                ),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: CupertinoColors.systemGrey),
               ),
               const SizedBox(width: 8),
               Text(
                 category.category,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: CupertinoColors.systemGrey,
-                ),
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: CupertinoColors.systemGrey),
               ),
             ],
           ),
