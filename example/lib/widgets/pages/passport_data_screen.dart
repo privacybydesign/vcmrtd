@@ -10,7 +10,7 @@ import '../../widgets/pages/data_screen_widgets/security_content.dart';
 import '../../widgets/pages/data_screen_widgets/return_to_web.dart';
 import '../../widgets/pages/data_screen_widgets/web_banner.dart';
 
-import '../common/issuance-result-dialogs.dart';
+import '../common/issuance_result_dialogs.dart';
 import 'data_screen_widgets/verify_result.dart';
 
 class PassportDataScreen extends ConsumerStatefulWidget {
@@ -93,7 +93,7 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
     final issuer = ref.read(passportIssuerProvider);
 
     try {
-      final response = await issuer.startIrmaIssuanceSession(widget.passportDataResult, "issue-passport");
+      final response = await issuer.startIrmaIssuanceSession(widget.passportDataResult, DocumentType.passport);
       await launchUrl(response.toUniversalLink(), mode: LaunchMode.externalApplication);
       _showReturnSuccessDialog();
     } catch (e) {

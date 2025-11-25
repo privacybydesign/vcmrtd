@@ -9,7 +9,7 @@ import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
 import '../../widgets/pages/data_screen_widgets/web_banner.dart';
 import '../../widgets/pages/data_screen_widgets/return_to_web.dart';
 import '../../widgets/pages/data_screen_widgets/verify_result.dart';
-import '../common/issuance-result-dialogs.dart';
+import '../common/issuance_result_dialogs.dart';
 
 class DrivingLicenceDataScreen extends ConsumerStatefulWidget {
   final DrivingLicenceData drivingLicence;
@@ -109,7 +109,7 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
     final issuer = ref.read(passportIssuerProvider);
 
     try {
-      final response = await issuer.startIrmaIssuanceSession(widget.drivingLicenceDataResult, "issue-driving-licence");
+      final response = await issuer.startIrmaIssuanceSession(widget.drivingLicenceDataResult, DocumentType.driverLicense);
       await launchUrl(response.toUniversalLink(), mode: LaunchMode.externalApplication);
       _showReturnSuccessDialog();
     } catch (e) {
