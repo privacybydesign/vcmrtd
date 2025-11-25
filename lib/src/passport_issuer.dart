@@ -11,7 +11,7 @@ abstract class PassportIssuer {
 
   /// Initiates the issuance session at the irma server and returns a session pointer,
   /// which the app will use to start the normal issuance session flow.
-  Future<IrmaSessionPointer> startIrmaIssuanceSession(RawDocumentData passportDataResult);
+  Future<IrmaSessionPointer> startIrmaIssuanceSession(RawDocumentData passportDataResult, String endpoint);
 
   /// Only verifies the passport scanning result without starting an irma issuance session
   Future<VerificationResponse> verifyPassport(RawDocumentData passportDataResult);
@@ -44,11 +44,11 @@ class DefaultPassportIssuer implements PassportIssuer {
 
   // Starts the issuance session with the irma server with passport scan result
   @override
-  Future<IrmaSessionPointer> startIrmaIssuanceSession(RawDocumentData passportDataResult) async {
+  Future<IrmaSessionPointer> startIrmaIssuanceSession(RawDocumentData passportDataResult, String endpoint) async {
     // Create secure data payload
     final payload = passportDataResult.toJson();
     // Get the signed IRMA JWT from the passport issuer
-    final responseBody = await _getIrmaSessionJwt(hostName, payload);
+    final responseBody = await _getIrmaSessionJwt(hostName, endpoint, payload);
     final irmaServerUrlParam = responseBody['irma_server_url'];
     final jwtUrlParam = responseBody['jwt'];
 
@@ -99,10 +99,10 @@ class DefaultPassportIssuer implements PassportIssuer {
     return VerificationResponse.fromJson(responseBody);
   }
 
-  Future<dynamic> _getIrmaSessionJwt(String hostName, Map<String, dynamic> payload) async {
+  Future<dynamic> _getIrmaSessionJwt(String hostName, String endpoint, Map<String, dynamic> payload) async {
     final String jsonPayload = json.encode(payload);
     final storeResp = await http.post(
-      Uri.parse('$hostName/api/verify-and-issue'),
+      Uri.parse('$hostName/api/$endpoint'),
       headers: {'Content-Type': 'application/json'},
       body: jsonPayload,
     );

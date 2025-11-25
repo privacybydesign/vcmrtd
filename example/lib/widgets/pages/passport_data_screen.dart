@@ -10,6 +10,7 @@ import '../../widgets/pages/data_screen_widgets/security_content.dart';
 import '../../widgets/pages/data_screen_widgets/return_to_web.dart';
 import '../../widgets/pages/data_screen_widgets/web_banner.dart';
 
+import '../common/issuance-result-dialogs.dart';
 import 'data_screen_widgets/verify_result.dart';
 
 class PassportDataScreen extends ConsumerStatefulWidget {
@@ -92,7 +93,7 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
     final issuer = ref.read(passportIssuerProvider);
 
     try {
-      final response = await issuer.startIrmaIssuanceSession(widget.passportDataResult);
+      final response = await issuer.startIrmaIssuanceSession(widget.passportDataResult, "issue-passport");
       await launchUrl(response.toUniversalLink(), mode: LaunchMode.externalApplication);
       _showReturnSuccessDialog();
     } catch (e) {
@@ -124,37 +125,12 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
   }
 
   void _showReturnErrorDialog(String error) {
-    showDialog(
+    DialogHelpers.showErrorDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        icon: Icon(Icons.error, color: Colors.red[600], size: 48),
-        title: const Text('Return Failed'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Failed to return to web application:'),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(4)),
-              child: Text(error, style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
-            ),
-            const SizedBox(height: 12),
-            const Text('Please try again or contact support if the problem persists.', style: TextStyle(fontSize: 14)),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK')),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _returnToIssue();
-            },
-            child: const Text('Retry'),
-          ),
-        ],
-      ),
+      title: 'Return Failed',
+      message: 'Failed to return to web application:',
+      error: error,
+      onRetry: _returnToIssue,
     );
   }
 }
