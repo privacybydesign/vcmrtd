@@ -109,7 +109,10 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
     final issuer = ref.read(passportIssuerProvider);
 
     try {
-      final response = await issuer.startIrmaIssuanceSession(widget.drivingLicenceDataResult, DocumentType.driverLicense);
+      final response = await issuer.startIrmaIssuanceSession(
+        widget.drivingLicenceDataResult,
+        DocumentType.driverLicense,
+      );
       await launchUrl(response.toUniversalLink(), mode: LaunchMode.externalApplication);
       _showReturnSuccessDialog();
     } catch (e) {
