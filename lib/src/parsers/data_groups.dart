@@ -21,4 +21,25 @@ extension GetNameExtension on DataGroups {
       DataGroups.dg16 => 'DG16',
     };
   }
+
+  bool inDriversLicense() {
+    return switch (this) {
+      DataGroups.dg1 => true,
+      DataGroups.dg2 => false,
+      DataGroups.dg3 => false,
+      DataGroups.dg4 => false,
+      DataGroups.dg5 => true,
+      DataGroups.dg6 => true,
+      DataGroups.dg7 => false,
+      DataGroups.dg8 => false,
+      DataGroups.dg9 => false,
+      DataGroups.dg10 => false,
+      DataGroups.dg11 => true,
+      DataGroups.dg12 => true,
+      DataGroups.dg13 => true,
+      DataGroups.dg14 => false,
+      DataGroups.dg15 => false,
+      DataGroups.dg16 => false,
+    };
+  }
 }

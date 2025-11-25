@@ -3,6 +3,7 @@ import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtdapp/providers/advanced_mode_providers.dart';
 import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
 
 import '../../widgets/pages/data_screen_widgets/personal_data_section.dart';
@@ -79,7 +80,9 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
     final issuer = ref.read(passportIssuerProvider);
 
     try {
-      final result = await issuer.verifyPassport(widget.passportDataResult);
+      // default: passiveAuthentication is true
+      final performPassiveAuth = ref.read(advancedModeProvider) ? ref.read(passiveAuthenticationProvider) : true;
+      final result = await issuer.verifyPassport(widget.passportDataResult, performPassiveAuth);
       setState(() {
         _verificationResponse = result;
       });

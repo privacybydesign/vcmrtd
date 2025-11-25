@@ -80,9 +80,11 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
   }
 
   // First to Auth method is BAC if fail set to PACE
+  // if useBAC is given it will only try BAC or PACE
   Future<(DocType, RawDocumentData)?> readDocument({
     required IosNfcMessageMapper iosNfcMessages,
     NonceAndSessionId? activeAuthenticationParams,
+    bool? useBAC,
   }) async {
     await _initRead(iosNfcMessages);
 
@@ -93,11 +95,22 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
     _setState(DocumentReaderConnecting());
     await nfc.connect(iosAlertMessage: iosNfcMessages(DocumentReaderConnecting()));
 
-    _AuthMethod method = _AuthMethod.bac;
-    _setState(DocumentReaderAuthenticating());
-    final bacSuccess = await tryAuthenticateWithBAC();
+    _AuthMethod method;
+    bool bacSuccess = false;
+    if (useBAC == false) {
+      method = _AuthMethod.pace;
+    } else {
+      method = _AuthMethod.bac;
+      _setState(DocumentReaderAuthenticating());
+      bacSuccess = await tryAuthenticateWithBAC();
+    }
 
-    if (!bacSuccess) {
+    // failure when bac is not successful?
+    if (!bacSuccess && useBAC == null) {
+      method = _AuthMethod.pace;
+    }
+
+    if (method == _AuthMethod.pace) {
       method = _AuthMethod.pace;
       _setState(DocumentReaderReadingCardAccess());
       try {

@@ -14,7 +14,7 @@ abstract class PassportIssuer {
   Future<IrmaSessionPointer> startIrmaIssuanceSession(RawDocumentData passportDataResult);
 
   /// Only verifies the passport scanning result without starting an irma issuance session
-  Future<VerificationResponse> verifyPassport(RawDocumentData passportDataResult);
+  Future<VerificationResponse> verifyPassport(RawDocumentData passportDataResult, bool performPassiveAuth);
 }
 
 /// Default passport issuer implementation that is used in production and talks to actual
@@ -57,7 +57,7 @@ class DefaultPassportIssuer implements PassportIssuer {
   }
 
   @override
-  Future<VerificationResponse> verifyPassport(RawDocumentData passportDataResult) async {
+  Future<VerificationResponse> verifyPassport(RawDocumentData passportDataResult, bool performPassiveAuth) async {
     final NonceAndSessionId session = await startSessionAtPassportIssuer();
 
     final payload = passportDataResult.toJson();

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/vcmrtd.dart';
-import 'package:vcmrtdapp/providers/active_authenticiation_provider.dart';
+import 'package:vcmrtdapp/providers/advanced_mode_providers.dart';
 import 'package:vcmrtdapp/theme/text_styles.dart';
+
+enum AuthMethod { bac, pace }
 
 class DocumentTypeSelectionScreen extends StatelessWidget {
   final Function(DocumentType) onDocumentTypeSelected;
@@ -13,43 +15,48 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('Select document type')),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF6b6868), Colors.white],
-            stops: [0.0, 0.3],
+      body: SingleChildScrollView(
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF6b6868), Colors.white],
+              stops: [0.0, 0.3],
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(14.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _Header(),
-                const SizedBox(height: 24),
-                _OptionCard(
-                  context: context,
-                  title: 'Passport',
-                  subtitle: 'Use a machine readable passport',
-                  icon: Icons.book,
-                  accentColor: const Color(0xFF6b6868),
-                  onTap: () => onDocumentTypeSelected(DocumentType.passport),
-                  showBadge: true,
-                  badgeText: 'Most common',
-                ),
-                const SizedBox(height: 16),
-                _OptionCard(
-                  context: context,
-                  title: 'Driving Licence',
-                  subtitle: 'Use a machine readable driving licence. Currently works primarily with Dutch licences.',
-                  icon: Icons.directions_car,
-                  accentColor: const Color(0xFF2196F3),
-                  onTap: () => onDocumentTypeSelected(DocumentType.driverLicense),
-                ),
-              ],
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(14.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _Header(),
+                  const SizedBox(height: 24),
+                  _OptionCard(
+                    context: context,
+                    title: 'Passport',
+                    subtitle: 'Use a machine readable passport',
+                    icon: Icons.book,
+                    accentColor: const Color(0xFF6b6868),
+                    onTap: () => onDocumentTypeSelected(DocumentType.passport),
+                    showBadge: true,
+                    badgeText: 'Most common',
+                  ),
+                  const SizedBox(height: 16),
+                  _OptionCard(
+                    context: context,
+                    title: 'Driving Licence',
+                    subtitle: 'Use a machine readable driving licence. Currently works primarily with Dutch licences.',
+                    icon: Icons.directions_car,
+                    accentColor: const Color(0xFF2196F3),
+                    onTap: () => onDocumentTypeSelected(DocumentType.driverLicense),
+                  ),
+                  const SizedBox(height: 16),
+                  _AdvancedMode(),
+                  const SizedBox(height: 16),
+                ],
+              ),
             ),
           ),
         ),
@@ -85,21 +92,114 @@ class _Header extends ConsumerWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Perform active authentication', style: Theme.of(context).defaultTextStyles.hint),
-                Switch(
-                  value: ref.watch(activeAuthenticationProvider),
-                  onChanged: (value) {
-                    ref.read(activeAuthenticationProvider.notifier).state = value;
-                  },
-                ),
-              ],
-            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _AdvancedMode extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ExpansionTile(
+      trailing: IgnorePointer(
+        child: Switch(value: ref.watch(advancedModeProvider), onChanged: (_) => {}),
+      ),
+      onExpansionChanged: (bool value) => ref.read(advancedModeProvider.notifier).state = value,
+      title: Text('Advanced mode', style: Theme.of(context).defaultTextStyles.hint),
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Perform active authentication', style: TextStyle(fontSize: 14, color: Color(0xFF666666))),
+            Switch(
+              value: ref.watch(activeAuthenticationProvider),
+              onChanged: (value) {
+                ref.read(activeAuthenticationProvider.notifier).state = value;
+              },
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Perform passive authentication', style: TextStyle(fontSize: 14, color: Color(0xFF666666))),
+            Switch(
+              value: ref.watch(passiveAuthenticationProvider),
+              onChanged: (value) {
+                ref.read(passiveAuthenticationProvider.notifier).state = value;
+              },
+            ),
+          ],
+        ),
+        const Divider(height: 0),
+        Text('Authentication method: ', style: Theme.of(context).defaultTextStyles.secondary),
+        RadioGroup<AuthMethod>(
+          groupValue: ref.watch(authMethodProvider),
+          onChanged: (AuthMethod? value) {
+            ref.read(authMethodProvider.notifier).state = value ?? AuthMethod.bac;
+          },
+          child: Column(
+            children: [
+              RadioListTile(title: const Text('BAC'), value: AuthMethod.bac, dense: true),
+              RadioListTile(title: const Text('PACE'), value: AuthMethod.pace, dense: true),
+            ],
+          ),
+        ),
+        const Divider(height: 0),
+        Text('Data Groups: ', style: Theme.of(context).defaultTextStyles.secondary),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                children: [
+                  Text('Passport:'),
+                  ...DataGroups.values.map((dataGroup) {
+                    return CheckboxListTile(
+                      title: Text(dataGroup.getName()),
+                      value: ref.watch(passportDataGroupsProvider).activeDataGroups.contains(dataGroup),
+                      onChanged: (bool? value) =>
+                          ref.read(passportDataGroupsProvider.notifier).toggleDataGroup(dataGroup, value ?? false),
+                    );
+                  }),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Column(
+                children: [
+                  Text('Driving License:'),
+                  ...DataGroups.values.where((dg) => dg.inDriversLicense()).map((dataGroup) {
+                    return CheckboxListTile(
+                      title: Text(dataGroup.getName()),
+                      value: ref.watch(drivingLicenseDataGroupsProvider).activeDataGroups.contains(dataGroup),
+                      onChanged: (bool? value) => ref
+                          .read(drivingLicenseDataGroupsProvider.notifier)
+                          .toggleDataGroup(dataGroup, value ?? false),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const Divider(height: 0),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Export selected datagroups to JSON', style: TextStyle(fontSize: 14, color: Color(0xFF666666))),
+            Switch(
+              value: ref.watch(exportToJsonProvider),
+              onChanged: (value) {
+                ref.read(exportToJsonProvider.notifier).state = value;
+              },
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -134,7 +234,7 @@ class _OptionCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          height: 122,
+          height: 130,
           decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: Colors.white),
           child: Stack(
             children: [

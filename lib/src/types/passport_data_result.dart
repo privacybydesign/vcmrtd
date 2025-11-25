@@ -25,9 +25,9 @@ class RawDocumentData {
 
   RawDocumentData({required this.dataGroups, required this.efSod, this.sessionId, this.nonce, this.aaSignature});
 
-  factory RawDocumentData.fromJson(Map<String, dynamic> json) => _$PassportDataResultFromJson(json);
+  factory RawDocumentData.fromJson(Map<String, dynamic> json) => _$RawDocumentDataFromJson(json);
 
-  Map<String, dynamic> toJson() => _$PassportDataResultToJson(this);
+  Map<String, dynamic> toJson() => _$RawDocumentDataToJson(this);
 }
 
 /// Converter to encode/decode Uint8List <-> hex string

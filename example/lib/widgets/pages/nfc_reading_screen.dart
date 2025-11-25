@@ -2,9 +2,10 @@ import 'package:vcmrtd/vcmrtd.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
-import 'package:vcmrtdapp/providers/active_authenticiation_provider.dart';
+import 'package:vcmrtdapp/providers/advanced_mode_providers.dart';
 import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
 import 'package:vcmrtdapp/widgets/common/animated_nfc_status_widget.dart';
+import 'package:vcmrtdapp/widgets/pages/document_selection_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_guidance_screen.dart';
 
 import '../../providers/reader_providers.dart';
@@ -158,13 +159,27 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
           : drivingLicenceReaderProvider;
 
       NonceAndSessionId? nonceAndSessionId;
-
-      if (ref.read(activeAuthenticationProvider)) {
+      if (ref.read(activeAuthenticationProvider) && ref.read(advancedModeProvider)) {
         nonceAndSessionId = await ref.read(passportIssuerProvider).startSessionAtPassportIssuer();
       }
+
+      bool? useBAC;
+      if (ref.read(advancedModeProvider)) {
+        useBAC = ref.read(authMethodProvider) == AuthMethod.bac ? true : false;
+      }
+
       final result = await ref
           .read(readerProvider(scannedMRZ).notifier)
-          .readDocument(iosNfcMessages: _createIosNfcMessageMapper(), activeAuthenticationParams: nonceAndSessionId);
+          .readDocument(
+            iosNfcMessages: _createIosNfcMessageMapper(),
+            activeAuthenticationParams: nonceAndSessionId,
+            useBAC: useBAC,
+          );
+
+      if (ref.read(exportToJsonProvider) && ref.read(advancedModeProvider)) {
+        // export to json
+      }
+
       if (result != null) {
         final (document, passportDataResult) = result;
         widget.onSuccess(document, passportDataResult);
