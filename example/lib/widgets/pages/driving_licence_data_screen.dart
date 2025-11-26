@@ -3,11 +3,13 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
 import '../../widgets/pages/data_screen_widgets/web_banner.dart';
 import '../../widgets/pages/data_screen_widgets/return_to_web.dart';
 import '../../widgets/pages/data_screen_widgets/verify_result.dart';
+import '../common/issuance_result_dialogs.dart';
 
 class DrivingLicenceDataScreen extends ConsumerStatefulWidget {
   final DrivingLicenceData drivingLicence;
@@ -71,7 +73,7 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
                   ReturnToWebSection(
                     isReturningToIssue: false,
                     isReturningToVerify: false,
-                    onIssuePressed: () {}, // No issuance for DL yet
+                    onIssuePressed: _issueDrivingLicence,
                     onVerifyPressed: _verifyDrivingLicence,
                   )
                 else ...[
@@ -99,40 +101,43 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
         _verificationResponse = result;
       });
     } catch (e) {
-      _showErrorDialog(e.toString());
+      _showReturnErrorDialog(e.toString());
     }
   }
 
-  void _showErrorDialog(String error) {
-    showDialog(
+  Future<void> _issueDrivingLicence() async {
+    final issuer = ref.read(passportIssuerProvider);
+
+    try {
+      final response = await issuer.startIrmaIssuanceSession(
+        widget.drivingLicenceDataResult,
+        DocumentType.driverLicense,
+      );
+      await launchUrl(response.toUniversalLink(), mode: LaunchMode.externalApplication);
+      _showReturnSuccessDialog();
+    } catch (e) {
+      _showReturnErrorDialog(e.toString());
+    }
+  }
+
+  void _showReturnSuccessDialog() {
+    DialogHelpers.showSuccessDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        icon: Icon(Icons.error, color: Colors.red[600], size: 48),
-        title: const Text('Verification Failed'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Failed to verify driving licence:'),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(4)),
-              child: Text(error, style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK')),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _verifyDrivingLicence();
-            },
-            child: const Text('Retry'),
-          ),
-        ],
-      ),
+      title: 'Success!',
+      message:
+          'Your driving licence data has been securely transmitted to the web application. '
+          'You can now close this app or scan another document.',
+      onContinue: widget.onBackPressed,
+    );
+  }
+
+  void _showReturnErrorDialog(String error) {
+    DialogHelpers.showErrorDialog(
+      context: context,
+      title: 'Verification Failed',
+      message: 'Failed to verify driving licence:',
+      error: error,
+      onRetry: _verifyDrivingLicence,
     );
   }
 
