@@ -55,7 +55,7 @@ class ScannedDriverLicenseMRZ extends ScannedMRZ {
     required this.version,
     required this.randomData,
     required this.configuration,
-  }) : super(documentType: DocumentType.driverLicense);
+  }) : super(documentType: DocumentType.drivingLicence);
 
   factory ScannedDriverLicenseMRZ.fromMRZResult(MRZDriverLicenseResult mrz) {
     return ScannedDriverLicenseMRZ(

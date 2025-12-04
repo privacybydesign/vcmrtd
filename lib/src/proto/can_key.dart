@@ -42,7 +42,7 @@ class CanKey extends PaceKey {
       canLength = 6;
     }
 
-    if (docType == DocumentType.driverLicense) {
+    if (docType == DocumentType.drivingLicence) {
       if (!drivingRegex.hasMatch(canNumber)) {
         throw CanKeysError(
           "PaceKey.CanKeys; Code must be exactly 10 character capital alphanumerics for driving licences.",

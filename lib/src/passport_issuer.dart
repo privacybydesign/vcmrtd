@@ -46,7 +46,7 @@ class DefaultPassportIssuer implements PassportIssuer {
   @override
   Future<IrmaSessionPointer> startIrmaIssuanceSession(RawDocumentData documentDataResult, DocumentType docType) async {
     final endpoint = switch (docType) {
-      DocumentType.driverLicense => "issue-driving-licence",
+      DocumentType.drivingLicence => "issue-driving-licence",
       DocumentType.passport => "issue-passport",
     };
     // Create secure data payload

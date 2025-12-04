@@ -361,7 +361,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
 
     final scannedMrz = switch (widget.documentType) {
       DocumentType.passport => _createScannedPassport(),
-      DocumentType.driverLicense => _createScannedDriverLicense(),
+      DocumentType.drivingLicence => _createScannedDriverLicense(),
     };
 
     if (scannedMrz != null) {
