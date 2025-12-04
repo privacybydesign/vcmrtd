@@ -48,6 +48,7 @@ class DefaultPassportIssuer implements PassportIssuer {
     final endpoint = switch (docType) {
       DocumentType.drivingLicence => "issue-driving-licence",
       DocumentType.passport => "issue-passport",
+      DocumentType.idCard => "issue-id-card",
     };
     // Create secure data payload
     final payload = documentDataResult.toJson();
