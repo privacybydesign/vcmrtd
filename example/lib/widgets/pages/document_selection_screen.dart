@@ -47,7 +47,7 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
                   subtitle: 'Use a machine readable driving licence. Currently works primarily with Dutch licences.',
                   icon: Icons.directions_car,
                   accentColor: const Color(0xFF2196F3),
-                  onTap: () => onDocumentTypeSelected(DocumentType.driverLicense),
+                  onTap: () => onDocumentTypeSelected(DocumentType.drivingLicence),
                 ),
               ],
             ),

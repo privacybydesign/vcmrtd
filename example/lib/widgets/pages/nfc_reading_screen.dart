@@ -21,8 +21,8 @@ class NfcReadingRouteParams {
       'doc_number': scannedMRZ.documentNumber,
       'country_code': scannedMRZ.countryCode,
       'document_type': switch (documentType) {
-        DocumentType.passport => 'passport',
-        DocumentType.driverLicense => 'drivers_license',
+        DocumentType.passport || DocumentType.identityCard => 'passport',
+        DocumentType.drivingLicence => 'drivers_license',
       },
     };
 
@@ -44,18 +44,18 @@ class NfcReadingRouteParams {
     final docType = params['document_type']!;
     final documentType = switch (docType) {
       'passport' => DocumentType.passport,
-      'drivers_license' => DocumentType.driverLicense,
+      'drivers_license' => DocumentType.drivingLicence,
       _ => throw Exception('unexpected document type: $docType'),
     };
 
     final scannedMRZ = switch (documentType) {
-      DocumentType.passport => ScannedPassportMRZ(
+      DocumentType.passport || DocumentType.identityCard => ScannedPassportMRZ(
         documentNumber: params['doc_number']!,
         countryCode: params['country_code']!,
         dateOfBirth: DateTime.parse(params['date_of_birth']!),
         dateOfExpiry: DateTime.parse(params['date_of_expiry']!),
       ),
-      DocumentType.driverLicense => ScannedDriverLicenseMRZ(
+      DocumentType.drivingLicence => ScannedDriverLicenseMRZ(
         documentNumber: params['doc_number']!,
         countryCode: params['country_code']!,
         version: params['version']!,

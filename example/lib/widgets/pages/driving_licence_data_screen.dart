@@ -111,7 +111,7 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
     try {
       final response = await issuer.startIrmaIssuanceSession(
         widget.drivingLicenceDataResult,
-        DocumentType.driverLicense,
+        DocumentType.drivingLicence,
       );
       await launchUrl(response.toUniversalLink(), mode: LaunchMode.externalApplication);
       _showReturnSuccessDialog();
