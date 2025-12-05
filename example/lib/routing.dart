@@ -100,7 +100,7 @@ GoRouter createRouter() {
           final result = s['result'] as RawDocumentData;
 
           return switch (ty) {
-            DocumentType.passport || DocumentType.idCard => PassportDataScreen(
+            DocumentType.passport || DocumentType.identityCard => PassportDataScreen(
               passport: s['document'] as PassportData,
               passportDataResult: result,
               onBackPressed: () => context.go('/select_doc_type'),

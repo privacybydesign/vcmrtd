@@ -21,7 +21,7 @@ class NfcReadingRouteParams {
       'doc_number': scannedMRZ.documentNumber,
       'country_code': scannedMRZ.countryCode,
       'document_type': switch (documentType) {
-        DocumentType.passport || DocumentType.idCard => 'passport',
+        DocumentType.passport || DocumentType.identityCard => 'passport',
         DocumentType.drivingLicence => 'drivers_license',
       },
     };
@@ -49,7 +49,7 @@ class NfcReadingRouteParams {
     };
 
     final scannedMRZ = switch (documentType) {
-      DocumentType.passport || DocumentType.idCard => ScannedPassportMRZ(
+      DocumentType.passport || DocumentType.identityCard => ScannedPassportMRZ(
         documentNumber: params['doc_number']!,
         countryCode: params['country_code']!,
         dateOfBirth: DateTime.parse(params['date_of_birth']!),

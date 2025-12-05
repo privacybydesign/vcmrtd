@@ -26,7 +26,7 @@ class _ScannerPageState extends State<ScannerPage> {
       onSuccess: (dynamic mrzResult, lines) async {
         'MRZ Scanned'.logInfo();
         final ScannedMRZ scannedMRZ = switch (widget.documentType) {
-          DocumentType.passport || DocumentType.idCard => ScannedPassportMRZ.fromMRZResult(mrzResult),
+          DocumentType.passport || DocumentType.identityCard => ScannedPassportMRZ.fromMRZResult(mrzResult),
           DocumentType.drivingLicence => ScannedDriverLicenseMRZ.fromMRZResult(mrzResult),
         };
         widget.onSuccess(scannedMRZ);
