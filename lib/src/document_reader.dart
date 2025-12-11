@@ -37,6 +37,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
 
   bool _isCancelled = false;
   List<String> _log = [];
+  List<String> _sensitiveLog = [];
   IosNfcMessageMapper? _iosNfcMessageMapper;
 
   DocumentReader({required this.documentParser, required this.dataGroupReader, required this.nfc, required this.config})
@@ -59,6 +60,10 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
 
   String getLogs() {
     return '- ${_log.join('\n-')}';
+  }
+
+  String getSensitiveLogs() {
+    return '- ${_sensitiveLog.join('\n-')}';
   }
 
   void reset() {
@@ -107,7 +112,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
         );
         if (state is DocumentReaderCancelled) return null;
       } catch (e) {
-        await _failure('Failure reading Ef.CardAccess: $e');
+        await _failure('Failure reading Ef.CardAccess', e);
         return null;
       }
 
@@ -119,7 +124,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
         );
         if (state is DocumentReaderCancelled) return null;
       } catch (e) {
-        await _failure('Failure authenticating with PACE: $e');
+        await _failure('Failure authenticating with PACE', e);
         return null;
       }
     }
@@ -132,7 +137,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
       );
       if (state is DocumentReaderCancelled) return null;
     } catch (e) {
-      await _failure('Failure reading Ef.COM: $e');
+      await _failure('Failure reading Ef.COM', e);
       return null;
     }
 
@@ -178,7 +183,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
           return null;
         }
       } catch (e) {
-        await _failure('Failure reading data group $dataGroup: $e');
+        await _failure('Failure reading data group $dataGroup', e);
         return null;
       }
     }
@@ -193,7 +198,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
         return null;
       }
     } catch (e) {
-      await _failure('Failure reading SOD: $e');
+      await _failure('Failure reading SOD', e);
       return null;
     }
 
@@ -211,7 +216,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
           return null;
         }
       } catch (e) {
-        await _failure('Failure active authentication: $e');
+        await _failure('Failure active authentication', e);
         return null;
       }
     }
@@ -319,12 +324,22 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
   }
 
   void _addLog(String log) {
+    _addNonSensitiveLog(log);
+    _addSensitiveLog(log);
+  }
+
+  void _addNonSensitiveLog(String log) {
     _log.add(log);
     debugPrint(log);
   }
 
+  void _addSensitiveLog(String log) {
+    _sensitiveLog.add(log);
+  }
+
   Future<void> _initRead(IosNfcMessageMapper mapper) async {
     _log = [];
+    _sensitiveLog = [];
     _iosNfcMessageMapper = mapper;
     _isCancelled = false;
     await checkNfcAvailability();
@@ -333,10 +348,19 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
     }
   }
 
-  Future<void> _failure(String message) async {
-    _addLog(message);
-    final logs = '$message:\n${getLogs()}';
-    state = DocumentReaderFailed(error: DocumentReadingError.unknown, logs: logs);
+  Future<void> _failure(String context, Object latestError) async {
+    _addNonSensitiveLog("$context: $latestError");
+
+    if (latestError is SensitiveException) {
+      _addSensitiveLog("$context: ${latestError.logWithSensitiveData()}");
+    } else {
+      _addSensitiveLog("$context: $latestError");
+    }
+
+    final logs = getLogs();
+    final sensitiveLogs = getSensitiveLogs();
+
+    state = DocumentReaderFailed(error: DocumentReadingError.unknown, logs: logs, sensitiveLogs: sensitiveLogs);
     await nfc.disconnect();
   }
 }
@@ -352,8 +376,10 @@ class DocumentReaderCancelled extends DocumentReaderState {}
 class DocumentReaderCancelling extends DocumentReaderState {}
 
 class DocumentReaderFailed extends DocumentReaderState {
-  DocumentReaderFailed({required this.error, required this.logs});
+  DocumentReaderFailed({required this.error, required this.logs, required this.sensitiveLogs});
+
   final String logs;
+  final String sensitiveLogs;
   final DocumentReadingError error;
 }
 

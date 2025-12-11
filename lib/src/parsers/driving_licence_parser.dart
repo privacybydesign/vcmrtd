@@ -1,6 +1,9 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
+import 'package:vcmrtd/src/extension/uint8list_apis.dart';
+import 'package:vcmrtd/src/types/exception.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import '../extension/byte_reader.dart';
 import '../lds/df1/dLicenceDGs.dart';
@@ -8,6 +11,8 @@ import '../lds/df1/dLicenceDGs.dart';
 import 'document_parser.dart';
 
 class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
+  DrivingLicenceParser({required this.failDg1CategoriesGracefully});
+
   // TLV tag constants for DG1
   static const int _DG1_MAIN_TAG = 0x5F02;
   static const int _DG1_SECONDARY_TAG = 0x7F63;
@@ -29,6 +34,8 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
   // TLV tag constants for DG5 (signature)
   static const int _SIGNATURE_IMAGE_FORMAT_TAG = 0x89;
   static const int _SIGNATURE_IMAGE_DATA_TAG = 0X5F43;
+
+  final bool failDg1CategoriesGracefully;
 
   // Groups with parsing logic
   late DrivingLicenceEfDG1 _dg1;
@@ -144,113 +151,64 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
     // Loop through siblings inside 0x61 (0x5F01, 0x5F02, etc.)
     int offset = 0;
     while (offset < childrenBytes.length) {
-      try {
-        final tlv = TLV.decode(childrenBytes.sublist(offset));
+      final tlv = TLV.decode(childrenBytes.sublist(offset));
 
-        // Found 0x5F02 container with personal data
-        if (tlv.tag.value == _DG1_MAIN_TAG) {
-          int fieldOffset = 0;
-          final fieldBytes = tlv.value;
+      // Found 0x5F02 container with personal data
+      if (tlv.tag.value == _DG1_MAIN_TAG) {
+        int fieldOffset = 0;
+        final fieldBytes = tlv.value;
 
-          // Parse fields inside 0x5F02
-          while (fieldOffset < fieldBytes.length) {
-            try {
-              final fieldTlv = TLV.decode(fieldBytes.sublist(fieldOffset));
+        // Parse fields inside 0x5F02
+        while (fieldOffset < fieldBytes.length) {
+          final fieldTlv = _withContext(
+            "Decoding TLV (fieldOffset: $fieldBytes)",
+            () => TLV.decode(fieldBytes.sublist(fieldOffset)),
+            sensitive: "Field bytes: ${fieldBytes.hex()}",
+          );
 
-              switch (fieldTlv.tag.value) {
-                case _ISSUING_MEMBER_STATE_TAG:
-                  issuingMemberState = utf8.decode(fieldTlv.value);
-                  break;
-                case _HOLDER_SURNAME_TAG:
-                  holderSurname = utf8.decode(fieldTlv.value);
-                  break;
-                case _HOLDER_OTHER_NAME_TAG:
-                  holderOtherName = utf8.decode(fieldTlv.value);
-                  break;
-                case _DATE_OF_BIRTH_TAG:
-                  dateOfBirth = _decodeBcd(fieldTlv.value);
-                  break;
-                case _PLACE_OF_BIRTH_TAG:
-                  placeOfBirth = utf8.decode(fieldTlv.value);
-                  break;
-                case _DATE_OF_ISSUE_TAG:
-                  dateOfIssue = _decodeBcd(fieldTlv.value);
-                  break;
-                case _DATE_OF_EXPIRY_TAG:
-                  dateOfExpiry = _decodeBcd(fieldTlv.value);
-                  break;
-                case _ISSUING_AUTHORITY_TAG:
-                  issuingAuthority = utf8.decode(fieldTlv.value);
-                  break;
-                case _DOCUMENT_NUMBER_TAG:
-                  documentNumber = utf8.decode(fieldTlv.value);
-                  break;
-              }
+          final value = fieldTlv.value;
+          final hex = value.hex();
 
-              fieldOffset += fieldTlv.encodedLen;
-            } catch (e) {
-              break;
-            }
+          switch (fieldTlv.tag.value) {
+            case _ISSUING_MEMBER_STATE_TAG:
+              issuingMemberState = _withContext(
+                "Parsing issuing member state",
+                () => utf8.decode(value),
+                sensitive: hex,
+              );
+            case _HOLDER_SURNAME_TAG:
+              holderSurname = _withContext("Parsing holder surname", () => utf8.decode(value), sensitive: hex);
+            case _HOLDER_OTHER_NAME_TAG:
+              holderOtherName = _withContext("Parsing holder other name", () => utf8.decode(value), sensitive: hex);
+            case _DATE_OF_BIRTH_TAG:
+              dateOfBirth = _withContext("Parsing date of birth", () => _decodeBcd(value), sensitive: hex);
+            case _PLACE_OF_BIRTH_TAG:
+              placeOfBirth = _withContext("Parsing place of birth", () => utf8.decode(value), sensitive: hex);
+            case _DATE_OF_ISSUE_TAG:
+              dateOfIssue = _withContext("Parsing date of issue", () => _decodeBcd(value), sensitive: hex);
+            case _DATE_OF_EXPIRY_TAG:
+              dateOfExpiry = _withContext("Parsing date of expiry", () => _decodeBcd(value), sensitive: hex);
+            case _ISSUING_AUTHORITY_TAG:
+              issuingAuthority = _withContext("Parsing issuing authority", () => utf8.decode(value), sensitive: hex);
+            case _DOCUMENT_NUMBER_TAG:
+              documentNumber = _withContext("Parsing document number", () => utf8.decode(value), sensitive: hex);
           }
-        } else if (tlv.tag.value == _DG1_SECONDARY_TAG) {
-          // Parse field for category / restrictions / conditions
-          // Note: category is usually the first record and is mandatory, restrictions and conditions
-          // May not apply to the driver
-          categories = [];
 
-          int categoryOffset = 0;
-          while (categoryOffset < tlv.value.length) {
-            try {
-              final categoryTlv = TLV.decode(tlv.value.sublist(categoryOffset));
-
-              if (categoryTlv.tag.value == 0x87) {
-                try {
-                  final bytes = categoryTlv.value;
-
-                  // The delimiter is a semicolon  category; issue date (bcd); expiry date (bcd)
-                  int firstSemicolon = bytes.indexOf(0x3b);
-                  if (firstSemicolon == -1) continue;
-
-                  final category = utf8.decode(bytes.sublist(0, firstSemicolon));
-
-                  // Issue date: 4 bytes after first semicolon (DD MM YY YY in BCD/hex)
-                  if (bytes.length >= firstSemicolon + 5) {
-                    final issueDay = bytes[firstSemicolon + 1].toRadixString(16).padLeft(2, '0');
-                    final issueMonth = bytes[firstSemicolon + 2].toRadixString(16).padLeft(2, '0');
-                    final issueYear =
-                        '${bytes[firstSemicolon + 3].toRadixString(16).padLeft(2, '0')}${bytes[firstSemicolon + 4].toRadixString(16).padLeft(2, '0')}';
-
-                    // Expiry date: 4 bytes after second semicolon
-                    if (bytes.length >= firstSemicolon + 10) {
-                      final expiryDay = bytes[firstSemicolon + 6].toRadixString(16).padLeft(2, '0');
-                      final expiryMonth = bytes[firstSemicolon + 7].toRadixString(16).padLeft(2, '0');
-                      final expiryYear =
-                          '${bytes[firstSemicolon + 8].toRadixString(16).padLeft(2, '0')}${bytes[firstSemicolon + 9].toRadixString(16).padLeft(2, '0')}';
-
-                      categories.add(
-                        DrivingLicenceCategory(
-                          category: category,
-                          dateOfIssue: '$issueDay/$issueMonth/$issueYear',
-                          dateOfExpiry: '$expiryDay/$expiryMonth/$expiryYear',
-                        ),
-                      );
-                    }
-                  }
-                } catch (e) {
-                  print('Error processing a single category: $e');
-                }
-              }
-              categoryOffset += categoryTlv.encodedLen;
-            } catch (e) {
-              print('Error decoding the category tlv: $e');
-            }
+          fieldOffset += fieldTlv.encodedLen;
+        }
+      } else if (tlv.tag.value == _DG1_SECONDARY_TAG) {
+        try {
+          categories = _parseCategories(tlv);
+        } catch (e) {
+          if (failDg1CategoriesGracefully) {
+            debugPrint("failed to parse categories: $e");
+            categories = [];
+          } else {
+            throw Exception("Failed to parse categories: $e");
           }
         }
-        offset += tlv.encodedLen;
-      } catch (e) {
-        print('Error parsing DG1: $e');
-        break;
       }
+      offset += tlv.encodedLen;
     }
 
     _dg1 = DrivingLicenceEfDG1(
@@ -265,6 +223,63 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
       documentNumber: documentNumber,
       categories: categories,
     );
+  }
+
+  /// Runs the provided function and wraps the exception thrown by it with some extra context
+  T _withContext<T>(String context, T Function() toExecute, {String? sensitive}) {
+    try {
+      return toExecute();
+    } catch (e) {
+      throw SensitiveException(nonSensitive: "Error in context: $context:\n$e", sensitive: sensitive);
+    }
+  }
+
+  List<DrivingLicenceCategory> _parseCategories(DecodedTV tlv) {
+    // Parse field for category / restrictions / conditions
+    // Note: category is usually the first record and is mandatory, restrictions and conditions
+    // May not apply to the driver
+    List<DrivingLicenceCategory> categories = [];
+
+    int categoryOffset = 0;
+    while (categoryOffset < tlv.value.length) {
+      final categoryTlv = TLV.decode(tlv.value.sublist(categoryOffset));
+
+      if (categoryTlv.tag.value == 0x87) {
+        final bytes = categoryTlv.value;
+
+        // The delimiter is a semicolon  category; issue date (bcd); expiry date (bcd)
+        int firstSemicolon = bytes.indexOf(0x3b);
+        if (firstSemicolon == -1) continue;
+
+        final category = utf8.decode(bytes.sublist(0, firstSemicolon));
+
+        // Issue date: 4 bytes after first semicolon (DD MM YY YY in BCD/hex)
+        if (bytes.length >= firstSemicolon + 5) {
+          final issueDay = bytes[firstSemicolon + 1].toRadixString(16).padLeft(2, '0');
+          final issueMonth = bytes[firstSemicolon + 2].toRadixString(16).padLeft(2, '0');
+          final issueYear =
+              '${bytes[firstSemicolon + 3].toRadixString(16).padLeft(2, '0')}${bytes[firstSemicolon + 4].toRadixString(16).padLeft(2, '0')}';
+
+          // Expiry date: 4 bytes after second semicolon
+          if (bytes.length >= firstSemicolon + 10) {
+            final expiryDay = bytes[firstSemicolon + 6].toRadixString(16).padLeft(2, '0');
+            final expiryMonth = bytes[firstSemicolon + 7].toRadixString(16).padLeft(2, '0');
+            final expiryYear =
+                '${bytes[firstSemicolon + 8].toRadixString(16).padLeft(2, '0')}${bytes[firstSemicolon + 9].toRadixString(16).padLeft(2, '0')}';
+
+            categories.add(
+              DrivingLicenceCategory(
+                category: category,
+                dateOfIssue: '$issueDay/$issueMonth/$issueYear',
+                dateOfExpiry: '$expiryDay/$expiryMonth/$expiryYear',
+              ),
+            );
+          }
+        }
+      }
+      categoryOffset += categoryTlv.encodedLen;
+    }
+    return categories;
   }
 
   String _decodeBcd(List<int> bcd) {
