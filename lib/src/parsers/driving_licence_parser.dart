@@ -3,30 +3,12 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:vcmrtd/src/extension/uint8list_apis.dart';
+import 'package:vcmrtd/src/types/exception.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import '../extension/byte_reader.dart';
 import '../lds/df1/dLicenceDGs.dart';
 
 import 'document_parser.dart';
-
-/// Exception that contains sensitive data. The sensitive data is split from the generic data
-/// so it's possible to know the sensitive part for debugging but it only logs the non-sensitive part
-/// by default so it's harder to let sensitive data slip into logs where it doesn't belong.
-class SensitiveException implements Exception {
-  final String nonSensitive;
-  final String? sensitive;
-
-  SensitiveException({required this.nonSensitive, this.sensitive});
-
-  @override
-  String toString() {
-    return "Exception with sensitive data:\n - Non-sensitive: $nonSensitive,\n - Sensitive: [OMITTED]";
-  }
-
-  String logWithSensitiveData() {
-    return "Exception with sensitive data:\n - Non-sensitive: $nonSensitive,\n - Sensitive: $sensitive";
-  }
-}
 
 class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
   DrivingLicenceParser({required this.failDg1CategoriesGracefully});
