@@ -62,7 +62,7 @@ final drivingLicenceReaderProvider = StateNotifierProvider.autoDispose
       }
 
       final dgReader = DataGroupReader(nfc, DF1.DriverAID, accessKey, enableBac: enableBac);
-      final parser = DrivingLicenceParser();
+      final parser = DrivingLicenceParser(failDg1CategoriesGracefully: false);
       final docReader = DocumentReader(
         documentParser: parser,
         dataGroupReader: dgReader,
