@@ -2,7 +2,6 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_face_api/flutter_face_api.dart';
 import 'package:vcmrtdapp/providers/face_verification_provider.dart';
 
 /// Screen for capturing face with liveness check

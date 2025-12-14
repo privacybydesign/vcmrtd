@@ -103,7 +103,11 @@ GoRouter createRouter() {
           final documentType = s['document_type'] as DocumentType;
 
           // Extract face photo from document if available
-          var documentImage = result.dg2;
+          final documentImage = switch (document) {
+            PassportData passport => passport.photoImageData,
+            DrivingLicenceData licence => licence.photoImageData,
+            _ => null,
+          };
 
           return FaceCaptureScreen(
             documentImage: documentImage,

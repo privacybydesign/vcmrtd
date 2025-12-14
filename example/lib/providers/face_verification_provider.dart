@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'package:flutter_face_api/flutter_face_api.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -169,18 +168,18 @@ class FaceVerificationNotifier extends StateNotifier<FaceVerificationState> {
 
       final response = await _faceSdk.matchFaces(request);
 
-      if (response.exception != null) {
-        _logger.e("Face matching exception: ${response.exception!.code}: ${response.exception!.message}");
+      if (response.error != null) {
+        _logger.e("Face matching error: ${response.error!.code}: ${response.error!.message}");
         state = state.copyWith(
           isLoading: false,
-          error: "Face matching failed: ${response.exception!.message}",
+          error: "Face matching failed: ${response.error!.message}",
         );
         return null;
       }
 
       if (response.results.isNotEmpty) {
         final matchResult = response.results.first;
-        final score = matchResult.similarity ?? 0.0;
+        final score = matchResult.similarity;
         _logger.i("Face match score: $score");
 
         state = state.copyWith(
