@@ -27,21 +27,15 @@ class DataGroupReader {
   final ComProvider _com;
   final Logger _log;
   final Uint8List _applicationAID;
-  final AccessKey accessKey;
+  final AccessKey? bacAccessKey;
+  final AccessKey? paceAccessKey;
   _DF _dfSelected = _DF.None;
   MrtdApi _api;
-  final bool enableBac;
-  final bool enablePace;
 
-  DataGroupReader(
-    ComProvider provider,
-    this._applicationAID,
-    this.accessKey, {
-    this.enableBac = true,
-    this.enablePace = true,
-  }) : _com = provider,
-       _api = MrtdApi(provider),
-       _log = Logger("Data Group bytes reader");
+  DataGroupReader(ComProvider provider, this._applicationAID, {this.bacAccessKey, this.paceAccessKey})
+    : _com = provider,
+      _api = MrtdApi(provider),
+      _log = Logger("Data Group bytes reader");
 
   /// Reset all the api settings and start fresh
   void reset() {
@@ -50,23 +44,23 @@ class DataGroupReader {
   }
 
   Future<void> startSession() async {
-    if (!enableBac) {
+    if (bacAccessKey == null) {
       throw Exception('trying BAC while BAC was not enabled');
     }
     await _selectDF1();
-    if (accessKey is DBAKey) {
-      await _exec(() => _api.initSessionViaBAC(accessKey as DBAKey));
-    } else if (accessKey is BapKey) {
-      await _exec(() => _api.initSessionViaBAC(accessKey as BapKey));
+    if (bacAccessKey is DBAKey) {
+      await _exec(() => _api.initSessionViaBAC(bacAccessKey as DBAKey));
+    } else if (bacAccessKey is BapKey) {
+      await _exec(() => _api.initSessionViaBAC(bacAccessKey as BapKey));
     }
   }
 
   Future<void> startSessionPACE(EfCardAccess efCardAccess) async {
-    if (!enablePace && accessKey is PaceKey) {
+    if (paceAccessKey == null) {
       throw Exception('trying PACE while PACE was not enabled');
     }
     await _selectMF();
-    await _exec(() => _api.initSessionViaPACE(accessKey as PaceKey, efCardAccess));
+    await _exec(() => _api.initSessionViaPACE(paceAccessKey as PaceKey, efCardAccess));
   }
 
   Future<Uint8List> readDG1() async {
