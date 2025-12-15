@@ -1,12 +1,9 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:vcmrtd/src/extension/uint8list_apis.dart';
-import 'package:vcmrtd/src/types/exception.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import '../extension/byte_reader.dart';
-import '../lds/df1/dLicenceDGs.dart';
 
 import 'document_parser.dart';
 
@@ -177,21 +174,21 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
                 sensitive: hex,
               );
             case _HOLDER_SURNAME_TAG:
-              holderSurname = _withContext("Parsing holder surname", () => utf8.decode(value), sensitive: hex);
+              holderSurname = _withContext("Parsing holder surname", () => latin1.decode(value), sensitive: hex);
             case _HOLDER_OTHER_NAME_TAG:
-              holderOtherName = _withContext("Parsing holder other name", () => utf8.decode(value), sensitive: hex);
+              holderOtherName = _withContext("Parsing holder other name", () => latin1.decode(value), sensitive: hex);
             case _DATE_OF_BIRTH_TAG:
               dateOfBirth = _withContext("Parsing date of birth", () => _decodeBcd(value), sensitive: hex);
             case _PLACE_OF_BIRTH_TAG:
-              placeOfBirth = _withContext("Parsing place of birth", () => utf8.decode(value), sensitive: hex);
+              placeOfBirth = _withContext("Parsing place of birth", () => latin1.decode(value), sensitive: hex);
             case _DATE_OF_ISSUE_TAG:
               dateOfIssue = _withContext("Parsing date of issue", () => _decodeBcd(value), sensitive: hex);
             case _DATE_OF_EXPIRY_TAG:
               dateOfExpiry = _withContext("Parsing date of expiry", () => _decodeBcd(value), sensitive: hex);
             case _ISSUING_AUTHORITY_TAG:
-              issuingAuthority = _withContext("Parsing issuing authority", () => utf8.decode(value), sensitive: hex);
+              issuingAuthority = _withContext("Parsing issuing authority", () => latin1.decode(value), sensitive: hex);
             case _DOCUMENT_NUMBER_TAG:
-              documentNumber = _withContext("Parsing document number", () => utf8.decode(value), sensitive: hex);
+              documentNumber = _withContext("Parsing document number", () => latin1.decode(value), sensitive: hex);
           }
 
           fieldOffset += fieldTlv.encodedLen;
