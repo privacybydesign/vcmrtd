@@ -29,7 +29,8 @@ class _FaceCaptureScreenState extends ConsumerState<FaceCaptureScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeFaceSDK();
+    // Delay initialization until after build phase to avoid modifying provider during build
+    Future.microtask(() => _initializeFaceSDK());
   }
 
   Future<void> _initializeFaceSDK() async {
@@ -200,12 +201,13 @@ class _FaceCaptureScreenState extends ConsumerState<FaceCaptureScreen> {
         ],
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
               const Icon(
                 Icons.face_retouching_natural,
                 size: 120,
@@ -244,7 +246,7 @@ class _FaceCaptureScreenState extends ConsumerState<FaceCaptureScreen> {
                 title: 'Stay still',
                 description: 'Keep your device steady and look directly at the camera',
               ),
-              const Spacer(),
+              const SizedBox(height: 32),
               if (state.error != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16.0),
@@ -302,7 +304,8 @@ class _FaceCaptureScreenState extends ConsumerState<FaceCaptureScreen> {
                         ),
                 ),
               const SizedBox(height: 16),
-            ],
+              ],
+            ),
           ),
         ),
       ),
