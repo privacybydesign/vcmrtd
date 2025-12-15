@@ -32,13 +32,13 @@ jobs:
     needs: lint
     defaults:
       run:
-        working-directory: ./example
+        working-directory: .
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
       - name: Setup build environment
         uses: ./.github/actions/setup-build-environment
-      - run: bundle exec fastlane unit_test
+      - run: flutter test
 
   build-prototypes-android:
     runs-on: ubuntu-latest
