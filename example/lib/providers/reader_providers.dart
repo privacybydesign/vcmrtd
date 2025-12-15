@@ -6,12 +6,21 @@ import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
 final passportReaderProvider = StateNotifierProvider.autoDispose
     .family<DocumentReader<PassportData>, DocumentReaderState, ScannedPassportMRZ>((ref, scannedPassportMRZ) {
       final nfc = NfcProvider();
-      final accessKey = DBAKey(
+
+      final bacAccessKey = DBAKey(
         scannedPassportMRZ.documentNumber,
         scannedPassportMRZ.dateOfBirth,
         scannedPassportMRZ.dateOfExpiry,
       );
-      final dgReader = DataGroupReader(nfc, DF1.PassportAID, accessKey);
+
+      final paceAccessKey = DBAKey(
+        scannedPassportMRZ.documentNumber,
+        scannedPassportMRZ.dateOfBirth,
+        scannedPassportMRZ.dateOfExpiry,
+        paceMode: true,
+      );
+
+      final dgReader = DataGroupReader(nfc, DF1.PassportAID, bacAccessKey: bacAccessKey, paceAccessKey: paceAccessKey);
       final parser = PassportParser();
       final docReader = DocumentReader(
         documentParser: parser,
@@ -61,7 +70,13 @@ final drivingLicenceReaderProvider = StateNotifierProvider.autoDispose
         enableBac = false;
       }
 
-      final dgReader = DataGroupReader(nfc, DF1.DriverAID, accessKey, enableBac: enableBac);
+      final dgReader = DataGroupReader(
+        nfc,
+        DF1.DriverAID,
+        paceAccessKey: accessKey,
+        bacAccessKey: enableBac ? accessKey : null,
+      );
+
       final parser = DrivingLicenceParser(failDg1CategoriesGracefully: false);
       final docReader = DocumentReader(
         documentParser: parser,
