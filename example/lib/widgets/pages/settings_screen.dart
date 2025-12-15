@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:vcmrtdapp/providers/active_authenticiation_provider.dart';
 import 'package:vcmrtdapp/providers/app_config_provider.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -84,6 +85,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 24),
+          _buildSection(
+            title: 'Active Authentication',
+            child: _buildActiveAuthenticationSwitch(),
+          ),
+          const SizedBox(height: 24),
           _buildInfoCard(),
         ],
       ),
@@ -149,6 +155,46 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   label: const Text('Save'),
                 ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActiveAuthenticationSwitch() {
+    final isEnabled = ref.watch(activeAuthenticationProvider);
+
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Perform active authentication',
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Enable additional security verification during document reading',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Switch(
+              value: isEnabled,
+              onChanged: (value) {
+                ref.read(activeAuthenticationProvider.notifier).state = value;
+              },
             ),
           ],
         ),
