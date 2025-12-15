@@ -8,6 +8,7 @@ import 'package:vcmrtdapp/widgets/pages/nfc_reading_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/passport_data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/scanner_wrapper.dart';
 import 'package:vcmrtdapp/widgets/pages/face_capture_screen.dart';
+import 'package:vcmrtdapp/widgets/pages/settings_screen.dart';
 
 extension CustomRouteExtensions on BuildContext {
   void pushNfcReadingScreen(NfcReadingRouteParams params) {
@@ -148,6 +149,12 @@ GoRouter createRouter() {
               onBackPressed: () => context.go('/select_doc_type'),
             ),
           };
+        },
+      ),
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) {
+          return const SettingsScreen();
         },
       ),
     ],
