@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_face_api/flutter_face_api.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -161,12 +163,22 @@ class FaceVerificationNotifier extends StateNotifier<FaceVerificationState> {
     state = state.copyWith(isLoading: true, error: null);
 
     try {
+      _logger.d("Creating MatchFacesRequest with liveness image (${state.livenessImage!.length} bytes) and document image (${state.documentImage!.length} bytes)");
+      
       final request = MatchFacesRequest([
         MatchFacesImage(state.livenessImage!, ImageType.LIVE),
         MatchFacesImage(state.documentImage!, ImageType.PRINTED),
       ]);
 
-      final response = await _faceSdk.matchFaces(request);
+      _logger.d("Calling matchFaces...");
+      final response = await _faceSdk.matchFaces(request).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          _logger.e("matchFaces timed out after 30 seconds");
+          throw TimeoutException("Face matching timed out after 30 seconds");
+        },
+      );
+      _logger.d("matchFaces completed");
 
       if (response.error != null) {
         _logger.e("Face matching error: ${response.error!.code}: ${response.error!.message}");
