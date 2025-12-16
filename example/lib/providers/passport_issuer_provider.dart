@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'app_config_provider.dart';
 
-final passportUrlProvider = StateProvider((ref) => 'https://passport-issuer.staging.yivi.app');
-
-final passportIssuerProvider = Provider((ref) => DefaultPassportIssuer(hostName: ref.watch(passportUrlProvider)));
+final passportIssuerProvider = Provider((ref) => DefaultPassportIssuer(hostName: ref.watch(issuerUrlProvider)));

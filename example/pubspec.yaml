@@ -48,6 +48,8 @@ dependencies:
   camera_platform_interface: ^2.2.2
   intl: ^0.20.2
   logger: ^2.6.1
+  flutter_face_api: ^7.2.540
+  flutter_face_core_basic: ^7.2.540
 
 dev_dependencies:
   flutter_lints: ^6.0.0
