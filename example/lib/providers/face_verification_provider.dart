@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_face_api/flutter_face_api.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logger/logger.dart';
+import 'package:vcmrtdapp/services/jpeg2000_converter.dart';
 
 /// Provider for the Face SDK instance
 final faceSdkProvider = Provider<FaceSDK>((ref) {
@@ -163,11 +164,23 @@ class FaceVerificationNotifier extends StateNotifier<FaceVerificationState> {
     state = state.copyWith(isLoading: true, error: null);
 
     try {
-      _logger.d("Creating MatchFacesRequest with liveness image (${state.livenessImage!.length} bytes) and document image (${state.documentImage!.length} bytes)");
-      
+      _logger.d("Converting document image from JPEG2000 to PNG...");
+      final convertedDocumentImage = await decodeImage(state.documentImage!, null);
+
+      if (convertedDocumentImage == null) {
+        _logger.e("Failed to convert document image from JPEG2000 to PNG");
+        state = state.copyWith(
+          isLoading: false,
+          error: "Failed to convert document image",
+        );
+        return null;
+      }
+
+      _logger.d("Creating MatchFacesRequest with liveness image (${state.livenessImage!.length} bytes) and document image (${convertedDocumentImage.length} bytes)");
+
       final request = MatchFacesRequest([
         MatchFacesImage(state.livenessImage!, ImageType.LIVE),
-        MatchFacesImage(state.documentImage!, ImageType.PRINTED),
+        MatchFacesImage(convertedDocumentImage, ImageType.PRINTED),
       ]);
 
       _logger.d("Calling matchFaces...");
