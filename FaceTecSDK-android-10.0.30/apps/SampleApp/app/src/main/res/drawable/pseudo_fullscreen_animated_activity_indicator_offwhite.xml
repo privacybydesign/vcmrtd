@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<animated-vector xmlns:tools="http://schemas.android.com/tools"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    tools:ignore="NewApi">
+    <aapt:attr name="android:drawable">
+        <vector
+            android:viewportWidth="48"
+            android:viewportHeight="48"
+            android:width="48dp"
+            android:height="48dp">
+
+            <group
+                android:name="strokeGroup"
+                android:pivotX="24"
+                android:pivotY="24"
+                android:rotation="90.0">
+
+                <path
+                    android:name="strokePath"
+                    android:pathData="M 24, 24
+                        m 0, -20
+                        a 10,-10 0 1,0 0, 40
+                        a 10,-10 0 1,0 0, -40"
+                    android:strokeColor="#EEF6F8"
+                    android:strokeWidth="4"
+                    android:strokeLineCap="round"
+                    android:strokeLineJoin="miter"
+                    android:trimPathEnd="0.6"
+                    android:trimPathOffset="0"/>
+            </group>
+        </vector>
+    </aapt:attr>
+
+    <target android:name="strokeGroup">
+        <aapt:attr name="android:animation">
+            <set>
+                <objectAnimator
+                    android:interpolator="@android:anim/linear_interpolator"
+                    android:duration="1500"
+                    android:propertyName="rotation"
+                    android:valueFrom="0"
+                    android:valueTo="360"
+                    android:valueType="floatType"
+                    android:repeatMode="restart"
+                    android:repeatCount="infinite"/>
+            </set>
+        </aapt:attr>
+    </target>
+
+</animated-vector>

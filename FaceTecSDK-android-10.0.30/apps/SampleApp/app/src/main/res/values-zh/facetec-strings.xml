@@ -1,0 +1,150 @@
+<!-- This is a generated file.  Do not manually edit this and commit changes. -->
+
+<resources xmlns:tools="http://schemas.android.com/tools">
+	<string name="FaceTec_accessibility_cancel_button">取消</string>
+	<string name="FaceTec_accessibility_torch_button">切换灯光</string>
+	<string name="FaceTec_accessibility_tap_guidance">双击屏幕任意位置，获取面部对齐指南。</string>
+
+	<string name="FaceTec_accessibility_feedback_move_phone_away">面部太近</string>
+	<string name="FaceTec_accessibility_feedback_move_phone_closer">面部太远</string>
+	<string name="FaceTec_accessibility_feedback_face_too_far_left">面部太偏左</string>
+	<string name="FaceTec_accessibility_feedback_face_too_far_right">面部太偏右</string>
+	<string name="FaceTec_accessibility_feedback_face_too_low">面部太低</string>
+	<string name="FaceTec_accessibility_feedback_face_too_high">面部太高</string>
+	<string name="FaceTec_accessibility_feedback_face_rotated_too_far_left">面部向左旋转太多</string>
+	<string name="FaceTec_accessibility_feedback_face_rotated_too_far_right">面部向右旋转太多</string>
+	<string name="FaceTec_accessibility_feedback_face_pointing_too_far_left">面部朝向太偏左</string>
+	<string name="FaceTec_accessibility_feedback_face_pointing_too_far_right">面部朝向太偏右</string>
+	<string name="FaceTec_accessibility_feedback_face_not_on_camera">面部未对着摄像头或距离太远</string>
+	<string name="FaceTec_accessibility_feedback_hold_device_to_eye_level">将设备置于与眼睛平齐的高度</string>
+
+	<string name="FaceTec_action_ok">好的</string>
+	<string name="FaceTec_action_im_ready">我准备好了</string>
+	<string name="FaceTec_action_try_again">重试</string>
+	<string name="FaceTec_action_continue">继续</string>
+	<string name="FaceTec_action_take_photo">拍摄照片</string>
+	<string name="FaceTec_action_retake_photo">重试</string>
+	<string name="FaceTec_action_accept_photo">接受</string>
+	<string name="FaceTec_action_confirm">确认信息</string>
+	<string name="FaceTec_action_scan_nfc">扫描电子护照</string>
+	<string name="FaceTec_action_scan_nfc_card">扫描身份证件</string>
+	<string name="FaceTec_action_skip_nfc">跳过此步骤</string>
+
+	<string name="FaceTec_camera_permission_header">启用摄像头</string>
+	<string name="FaceTec_camera_permission_message_enroll">请点击下方按钮，启用自拍摄像头。</string>
+	<string name="FaceTec_camera_permission_message_auth">您的摄像头已禁用。请点击下方编辑设置。</string>
+	<string name="FaceTec_camera_permission_enable_camera">启用摄像头</string>
+	<string name="FaceTec_camera_permission_launch_settings">启动设置</string>
+
+	<string name="FaceTec_feedback_center_face">将面部居中</string>
+	<string name="FaceTec_feedback_face_not_found">将面部框住</string>
+	<string name="FaceTec_feedback_face_not_looking_straight_ahead">直视前方</string>
+	<string name="FaceTec_feedback_face_not_upright">保持头部正直</string>
+	<string name="FaceTec_feedback_hold_steady">保持稳定</string>
+	<string name="FaceTec_feedback_move_phone_away">移开</string>
+	<string name="FaceTec_feedback_move_phone_closer">靠近</string>
+	<string name="FaceTec_feedback_move_phone_to_eye_level">将摄像头移到与眼睛平齐的高度</string>
+	<string name="FaceTec_feedback_use_even_lighting">让面部光线更均匀</string>
+
+	<string name="FaceTec_idscan_type_selection_header">准备扫描\n您的身份证件</string>
+	<string name="FaceTec_idscan_capture_tap_to_focus_message">点击屏幕对焦</string>
+	<string name="FaceTec_idscan_capture_hold_steady_message">请保持稳定</string>
+	<string name="FaceTec_idscan_capture_id_front_instruction_message">扫描身份证正面</string>
+	<string name="FaceTec_idscan_capture_id_back_instruction_message">扫描身份证背面</string>
+	<string name="FaceTec_idscan_review_id_front_instruction_message">确认照片清晰且易读</string>
+	<string name="FaceTec_idscan_review_id_back_instruction_message">确认照片易读</string>
+	<string name="FaceTec_idscan_ocr_confirmation_main_header">查看并确认</string>
+	<string name="FaceTec_idscan_ocr_confirmation_scroll_message">下滑</string>
+	<string name="FaceTec_idscan_nfc_status_disabled_message">开启\n设备的NFC\n以继续</string>
+	<string name="FaceTec_idscan_nfc_status_ready_message">准备扫描\n您的电子护照芯片</string>
+	<string name="FaceTec_idscan_nfc_card_status_ready_message">准备扫描\n您的身份证件芯片</string>
+	<string name="FaceTec_idscan_nfc_status_starting_message">将手机贴近\n电子护照背面\n以扫描NFC芯片</string>
+	<string name="FaceTec_idscan_nfc_card_status_starting_message">将手机靠近身份证件\n以扫描NFC芯片</string>
+	<string name="FaceTec_idscan_nfc_status_scanning_message">请保持稳定，\n正在扫描NFC芯片</string>
+	<string name="FaceTec_idscan_nfc_status_weak_connection_message">尝试\n再次扫描</string>
+	<string name="FaceTec_idscan_nfc_status_finished_with_success_message">NFC 芯片\n已扫描</string>
+	<string name="FaceTec_idscan_nfc_status_finished_with_error_message">无法读取\n电子护照芯片</string>
+	<string name="FaceTec_idscan_nfc_card_status_finished_with_error_message">无法读取\n身份证件芯片</string>
+	<string name="FaceTec_idscan_nfc_status_skipped_message">未执行NFC扫描</string>
+	<string name="FaceTec_idscan_additional_review_message">需要\n额外审核</string>
+	<string name="FaceTec_idscan_feedback_flip_id_to_back_message">将身份证件翻转\n至背面</string>
+	<string name="FaceTec_idscan_feedback_flip_id_to_front_message">出示身份证件正面</string>
+
+	<string name="FaceTec_initializing_camera">确保摄像头馈送信号</string>
+
+	<string name="FaceTec_instructions_header_ready_1">准备进行</string>
+	<string name="FaceTec_instructions_header_ready_2">视频自拍</string>
+	<string name="FaceTec_instructions_message_ready_1">用椭圆框住面部</string>
+	<string name="FaceTec_instructions_message_ready_2">按下“我准备好了”并靠近</string>
+
+	<string name="FaceTec_orientation_message">请旋转您的设备</string>
+
+	<string name="FaceTec_presession_frame_your_face">用椭圆框住面部</string>
+	<string name="FaceTec_presession_position_face_straight_in_oval">直视前方</string>
+	<string name="FaceTec_presession_remove_dark_glasses">摘掉深色眼镜</string>
+	<string name="FaceTec_presession_neutral_expression">表情自然，不要微笑</string>
+	<string name="FaceTec_presession_conditions_too_bright">环境太亮</string>
+	<string name="FaceTec_presession_brighten_your_environment">将环境调亮</string>
+
+	<string name="FaceTec_result_facescan_upload_message">正在上传\n加密\n3D面部扫描</string>
+	<string name="FaceTec_result_facescan_upload_message_still_uploading">仍在上传中……\n连接速度较慢</string>
+	<string name="FaceTec_result_facescan_success_3d_enrollment_message">面部已扫描\n已经过 3D 活体验证</string>
+	<string name="FaceTec_result_facescan_success_3d_3d_reverification_message">面部已扫描\n已经过 3D 活体验证</string>
+	<string name="FaceTec_result_facescan_success_3d_liveness_prior_to_idscan_message">面部已扫描\n已经过 3D 活体验证</string>
+	<string name="FaceTec_result_facescan_success_3d_liveness_and_official_id_photo_message">已经过 3D 活体验证</string>
+	<string name="FaceTec_result_idscan_upload_message_front_side_upload_started">正在上传\n加密\n身份证件扫描</string>
+	<string name="FaceTec_result_idscan_upload_message_front_side_still_uploading">仍在上传中……\n连接速度较慢</string>
+	<string name="FaceTec_result_idscan_upload_message_front_side_upload_complete_awaiting_response">ID 图片\n已上传</string>
+	<string name="FaceTec_result_idscan_upload_message_front_side_upload_complete_awaiting_processing">正在处理\n身份证扫描件</string>
+	<string name="FaceTec_result_idscan_upload_message_back_side_upload_started">正在上传\n加密的身份证背面</string>
+	<string name="FaceTec_result_idscan_upload_message_back_side_still_uploading">仍在上传中……\n连接速度较慢</string>
+	<string name="FaceTec_result_idscan_upload_message_back_side_upload_complete_awaiting_response">ID 图片\n已上传</string>
+	<string name="FaceTec_result_idscan_upload_message_back_side_upload_complete_awaiting_processing">正在处理\n身份证背面</string>
+	<string name="FaceTec_result_idscan_upload_message_user_confirmed_info_upload_started">正在保存\n您确认的信息</string>
+	<string name="FaceTec_result_idscan_upload_message_user_confirmed_info_still_uploading">仍在上传中……\n连接速度较慢</string>
+	<string name="FaceTec_result_idscan_upload_message_user_confirmed_info_upload_complete_awaiting_response">信息已保存</string>
+	<string name="FaceTec_result_idscan_upload_message_user_confirmed_info_upload_complete_awaiting_processing">处理中</string>
+	<string name="FaceTec_result_idscan_upload_message_nfc_upload_started">正在上传加密的\nNFC 详细信息</string>
+	<string name="FaceTec_result_idscan_upload_message_nfc_still_uploading">仍在上传中……\n连接速度较慢</string>
+	<string name="FaceTec_result_idscan_upload_message_nfc_upload_complete_awaiting_response">NFC 芯片信息\n已上传</string>
+	<string name="FaceTec_result_idscan_upload_message_nfc_upload_complete_awaiting_processing">正在处理\nNFC 详细信息</string>
+	<string name="FaceTec_result_idscan_upload_message_skipped_nfc_upload_started">正在上传\n加密\n ID数据</string>
+	<string name="FaceTec_result_idscan_upload_message_skipped_nfc_still_uploading">仍在上传中……\n连接速度较慢</string>
+	<string name="FaceTec_result_idscan_upload_message_skipped_nfc_upload_complete_awaiting_response">上传完成</string>
+	<string name="FaceTec_result_idscan_upload_message_skipped_nfc_upload_complete_awaiting_processing">正在处理\n身份证数据</string>
+	<string name="FaceTec_result_nfc_upload_message">正在上传\n加密\nNFC详细信息</string>
+	<string name="FaceTec_result_idscan_unsuccess_message">身份证件照片\n与用户面部\n不匹配</string>
+	<string name="FaceTec_result_idscan_success_front_side_message">带照片的 ID \n已扫描</string>
+	<string name="FaceTec_result_idscan_success_front_side_back_next_message">身份证件正面\n已扫描</string>
+	<string name="FaceTec_result_idscan_success_front_side_nfc_next_message">身份证件正面\n已扫描</string>
+	<string name="FaceTec_result_idscan_success_back_side_message">带照片的 ID \n已扫描</string>
+	<string name="FaceTec_result_idscan_success_back_side_nfc_next_message">身份证件背面\n已扫描</string>
+	<string name="FaceTec_result_idscan_success_passport_message">护照已扫描</string>
+	<string name="FaceTec_result_idscan_success_passport_nfc_next_message">护照已扫描</string>
+	<string name="FaceTec_result_idscan_success_user_confirmation_message">ID 扫描\n完成</string>
+	<string name="FaceTec_result_idscan_success_nfc_message">NFC 芯片信息\n已上传</string>
+	<string name="FaceTec_result_idscan_success_additional_review_message">ID 扫描\n完成</string>
+	<string name="FaceTec_result_idscan_skip_or_error_nfc_message">身份证数据\n已上传</string>
+	<string name="FaceTec_result_idscan_retry_face_did_not_match_message">面部匹配程度\n不够</string>
+	<string name="FaceTec_result_idscan_retry_id_not_fully_visible_message">身份证件\n并非完全可见</string>
+	<string name="FaceTec_result_idscan_retry_ocr_results_not_good_enough_message">身份证件文本不可读</string>
+	<string name="FaceTec_result_idscan_retry_id_type_not_supported_message">此身份证不支持\n，请使用其他身份证</string>
+	<string name="FaceTec_result_idscan_retry_barcode_not_read_message">扫描条形码失败\n请重试</string>
+	<string name="FaceTec_result_session_abort_message">严重错误\n会话已结束</string>
+	<string name="FaceTec_result_idscan_additional_review_tag_message">需要人工审核\n请参见 IDV 控制面板</string>
+
+	<string name="FaceTec_retry_header">再试一次</string>
+	<string name="FaceTec_retry_subheader_message">我们需要更清晰的视频自拍</string>
+	<string name="FaceTec_retry_instruction_message_1">表情自然，不要微笑</string>
+	<string name="FaceTec_retry_instruction_message_2">请使用理想的姿势和光线</string>
+	<string name="FaceTec_retry_instruction_message_3">过于模糊，请清理摄像头</string>
+	<string name="FaceTec_retry_your_image_label">您的自拍</string>
+	<string name="FaceTec_retry_ideal_image_label">理想的姿势</string>
+
+	<string name="FaceTec_retry_official_id_photo_header">再试一次</string>
+	<string name="FaceTec_retry_official_id_photo_subheader_message">我们需要更高质量的图像</string>
+	<string name="FaceTec_retry_official_id_photo_instruction_message">请在室内光线条件下拍摄，\n确保眼镜无反光、不面带微笑，且未佩戴任何头饰。</string>
+	<string name="FaceTec_retry_official_id_photo_your_image_label">您的照片</string>
+	<string name="FaceTec_retry_official_id_photo_ideal_image_label">符合要求的面部</string>
+
+</resources>

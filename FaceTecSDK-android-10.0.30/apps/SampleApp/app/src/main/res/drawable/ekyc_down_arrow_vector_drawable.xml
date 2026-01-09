@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportHeight="48.0"
+    android:viewportWidth="48.0">
+    <group
+        android:name="downArrow"
+        android:translateX="24"
+        android:translateY="12">
+        <path
+            android:name="downArrowPath"
+            android:pathData="m12 1a11 11 0 1 0 11 11 11.013 11.013 0 0 0 -11-11zm5.707 9.707-5 5a1 1 0 0 1 -1.414 0l-5-5a1 1 0 0 1 1.414-1.414l4.293 4.293 4.293-4.293a1 1 0 0 1 1.414 1.414z"
+            android:strokeColor="#000"
+            android:fillColor="#000"/>
+    </group>
+</vector>

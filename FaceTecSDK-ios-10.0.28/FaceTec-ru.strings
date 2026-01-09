@@ -1,0 +1,150 @@
+//
+// This is a generated file.  Do not manually edit this and commit changes.
+//
+
+"FaceTec_accessibility_cancel_button" = "Отмена";
+"FaceTec_accessibility_torch_button" = "Переключить свет";
+"FaceTec_accessibility_tap_guidance" = "Дважды коснитесь любого места на экране для получения рекомендаций по выравниванию лица.";
+
+"FaceTec_accessibility_feedback_move_phone_away" = "Лицо слишком близко";
+"FaceTec_accessibility_feedback_move_phone_closer" = "Лицо слишком далеко";
+"FaceTec_accessibility_feedback_face_too_far_left" = "Лицо намного левее";
+"FaceTec_accessibility_feedback_face_too_far_right" = "Лицо намного правее";
+"FaceTec_accessibility_feedback_face_too_low" = "Лицо слишком низко";
+"FaceTec_accessibility_feedback_face_too_high" = "Лицо слишком высоко";
+"FaceTec_accessibility_feedback_face_rotated_too_far_left" = "Лицо повернуто намного левее";
+"FaceTec_accessibility_feedback_face_rotated_too_far_right" = "Лицо повернуто намного правее";
+"FaceTec_accessibility_feedback_face_pointing_too_far_left" = "Лицо смотрит намного левее";
+"FaceTec_accessibility_feedback_face_pointing_too_far_right" = "Лицо смотрит намного правее";
+"FaceTec_accessibility_feedback_face_not_on_camera" = "Лицо не в камере или слишком далеко";
+"FaceTec_accessibility_feedback_hold_device_to_eye_level" = "Держите устройство на уровне глаз";
+
+"FaceTec_action_ok" = "ОК";
+"FaceTec_action_im_ready" = "Я ГОТОВ";
+"FaceTec_action_try_again" = "ПОВТОРИТЬ ПОПЫТКУ";
+"FaceTec_action_continue" = "ПРОДОЛЖИТЬ";
+"FaceTec_action_take_photo" = "СФОТОГРАФИРОВАТЬ";
+"FaceTec_action_retake_photo" = "ПОВТОР";
+"FaceTec_action_accept_photo" = "ПРИНЯТЬ";
+"FaceTec_action_confirm" = "ПОДТВЕРДИТЬ ИНФОРМАЦИЮ";
+"FaceTec_action_scan_nfc" = "СКАНИРОВАТЬ ЭЛ.ПАСПОРТ";
+"FaceTec_action_scan_nfc_card" = "СКАНИР. ИДЕНТИФ.КАРТУ";
+"FaceTec_action_skip_nfc" = "ПРОПУСТИТЬ ЭТОТ ШАГ";
+
+"FaceTec_camera_permission_header" = "Включить камеру";
+"FaceTec_camera_permission_message_enroll" = "Нажмите кнопку ниже, чтобы включить селфи-камеру.";
+"FaceTec_camera_permission_message_auth" = "Ваша камера отключена. Нажмите ниже, чтобы изменить свои настройки.";
+"FaceTec_camera_permission_enable_camera" = "ВКЛЮЧИТЬ КАМЕРУ";
+"FaceTec_camera_permission_launch_settings" = "ЗАПУСТИТЬ НАСТРОЙКИ";
+
+"FaceTec_feedback_center_face" = "Поместите свое лицо в центр";
+"FaceTec_feedback_face_not_found" = "Поместите свое лицо в рамку";
+"FaceTec_feedback_face_not_looking_straight_ahead" = "Смотрите прямо перед собой";
+"FaceTec_feedback_face_not_upright" = "Держите голову прямо";
+"FaceTec_feedback_hold_steady" = "Не двигайтесь";
+"FaceTec_feedback_move_phone_away" = "Отодвиньтесь дальше";
+"FaceTec_feedback_move_phone_closer" = "Придвиньтесь ближе";
+"FaceTec_feedback_move_phone_to_eye_level" = "Держите камеру на уровне глаз";
+"FaceTec_feedback_use_even_lighting" = "Осветите лицо более равномерно";
+
+"FaceTec_idscan_type_selection_header" = "Подготовьтесь к сканированию\nвашего идентификационного документа";
+"FaceTec_idscan_capture_tap_to_focus_message" = "Коснитесь экрана, чтобы сфокусир.";
+"FaceTec_idscan_capture_hold_steady_message" = "Пожалуйста, не двигайтесь";
+"FaceTec_idscan_capture_id_front_instruction_message" = "Сканир-ть удостоверение спереди";
+"FaceTec_idscan_capture_id_back_instruction_message" = "Сканировать удостоверение сзади";
+"FaceTec_idscan_review_id_front_instruction_message" = "Фото четкое, текст читается?";
+"FaceTec_idscan_review_id_back_instruction_message" = "Читается ли текст на фото?";
+"FaceTec_idscan_ocr_confirmation_main_header" = "Проверьте и подтвердите";
+"FaceTec_idscan_ocr_confirmation_scroll_message" = "Прокрутите вниз";
+"FaceTec_idscan_nfc_status_disabled_message" = "Поднесите телефон к\nзадней стороне паспорта\n, чтобы отсканировать чип NFC";
+"FaceTec_idscan_nfc_status_ready_message" = "Приготовьтесь к сканированию\nчипа вашего электронного паспорта";
+"FaceTec_idscan_nfc_card_status_ready_message" = "Приготовьтесь к сканированию\nчипа вашей идентификационной карты";
+"FaceTec_idscan_nfc_status_starting_message" = "Чтобы сканировать чип NFC, поднесите телефон к\nзадней стороне электронного паспорта\n";
+"FaceTec_idscan_nfc_card_status_starting_message" = "Поднесите телефон к идентификационной карте\nдля сканирования чипа NFC";
+"FaceTec_idscan_nfc_status_scanning_message" = "Держите неподвижно, сканирование чипа NFC";
+"FaceTec_idscan_nfc_status_weak_connection_message" = "Давайте попробуем\nотсканировать еще раз";
+"FaceTec_idscan_nfc_status_finished_with_success_message" = "Чип NFC\nотсканирован";
+"FaceTec_idscan_nfc_status_finished_with_error_message" = "Чип электронного паспорта\nнечитаемый";
+"FaceTec_idscan_nfc_card_status_finished_with_error_message" = "Чип идентификационной карты\nнечитаемый";
+"FaceTec_idscan_nfc_status_skipped_message" = "Сканирование NFC\nне выполнено";
+"FaceTec_idscan_additional_review_message" = "Требуется дополнительная\nпроверка";
+"FaceTec_idscan_feedback_flip_id_to_back_message" = "Покаж.обратн.стор.идент.докум.";
+"FaceTec_idscan_feedback_flip_id_to_front_message" = "Покаж.передн.стор.идент.докум.";
+
+"FaceTec_initializing_camera" = "Защита данных с камеры";
+
+"FaceTec_instructions_header_ready_1" = "Приготовьтесь к";
+"FaceTec_instructions_header_ready_2" = "вашему видеоселфи";
+"FaceTec_instructions_message_ready_1" = "Поместите свое лицо в овал";
+"FaceTec_instructions_message_ready_2" = "Нажмите Я готов и придвиньтесь ближе";
+
+"FaceTec_orientation_message" = "Поверните\nсвое устройство";
+
+"FaceTec_presession_frame_your_face" = "Поместите свое лицо в овал";
+"FaceTec_presession_position_face_straight_in_oval" = "Смотрите прямо перед собой";
+"FaceTec_presession_remove_dark_glasses" = "Снимите темные очки";
+"FaceTec_presession_neutral_expression" = "Нейтральное выражение лица, без улыбки";
+"FaceTec_presession_conditions_too_bright" = "Слишком яркая обстановка";
+"FaceTec_presession_brighten_your_environment" = "Сделайте свою обстановку ярче";
+
+"FaceTec_result_facescan_upload_message" = "Загрузка\nзашифрованного\n3D-скана лица";
+"FaceTec_result_facescan_upload_message_still_uploading" = "Еще идет отправка...\nМедленное соединение";
+"FaceTec_result_facescan_success_3d_enrollment_message" = "Лицо отсканировано\nПроверенная 3D-живость";
+"FaceTec_result_facescan_success_3d_3d_reverification_message" = "Проверенная 3D-живость\nЛицо верифицировано";
+"FaceTec_result_facescan_success_3d_liveness_prior_to_idscan_message" = "Лицо отсканировано\nПроверенная 3D-живость";
+"FaceTec_result_facescan_success_3d_liveness_and_official_id_photo_message" = "Проверенная 3D-живость";
+"FaceTec_result_idscan_upload_message_front_side_upload_started" = "Загрузка\nзашифрованного\nскана идентификационного документа";
+"FaceTec_result_idscan_upload_message_front_side_still_uploading" = "Еще идет отправка...\nМедленное соединение";
+"FaceTec_result_idscan_upload_message_front_side_upload_complete_awaiting_response" = "Изображение удостоверения личности\nзагружено";
+"FaceTec_result_idscan_upload_message_front_side_upload_complete_awaiting_processing" = "Идет обработка\nСканирование документа";
+"FaceTec_result_idscan_upload_message_back_side_upload_started" = "Идет отправка\nЗашифровано\nОбратная сторона документа";
+"FaceTec_result_idscan_upload_message_back_side_still_uploading" = "Еще идет отправка...\nМедленное соединение";
+"FaceTec_result_idscan_upload_message_back_side_upload_complete_awaiting_response" = "Изображение удостоверения личности\nзагружено";
+"FaceTec_result_idscan_upload_message_back_side_upload_complete_awaiting_processing" = "Идет обработка\nОбратная сторона документа";
+"FaceTec_result_idscan_upload_message_user_confirmed_info_upload_started" = "Сохранение\nПодтвержденная вами информация";
+"FaceTec_result_idscan_upload_message_user_confirmed_info_still_uploading" = "Еще идет отправка...\nМедленное соединение";
+"FaceTec_result_idscan_upload_message_user_confirmed_info_upload_complete_awaiting_response" = "Информация сохранена";
+"FaceTec_result_idscan_upload_message_user_confirmed_info_upload_complete_awaiting_processing" = "Идет обработка";
+"FaceTec_result_idscan_upload_message_nfc_upload_started" = "Отправка зашифрована\nNFC-данные";
+"FaceTec_result_idscan_upload_message_nfc_still_uploading" = "Еще идет отправка...\nМедленное соединение";
+"FaceTec_result_idscan_upload_message_nfc_upload_complete_awaiting_response" = "Информация о чипе NFC\nзагружена";
+"FaceTec_result_idscan_upload_message_nfc_upload_complete_awaiting_processing" = "Идет обработка\nNFC-данные";
+"FaceTec_result_idscan_upload_message_skipped_nfc_upload_started" = "Загрузка\nзашифрованных\nданных об удостоверении личности";
+"FaceTec_result_idscan_upload_message_skipped_nfc_still_uploading" = "Еще идет отправка...\nМедленное соединение";
+"FaceTec_result_idscan_upload_message_skipped_nfc_upload_complete_awaiting_response" = "Отправка завершена";
+"FaceTec_result_idscan_upload_message_skipped_nfc_upload_complete_awaiting_processing" = "Обработка\nданных удостоверения личности";
+"FaceTec_result_nfc_upload_message" = "Загрузка\nзашифрованных\nданных NFC";
+"FaceTec_result_idscan_unsuccess_message" = "Фото на идентификационном документе\nне соответствует\nлицу пользователя";
+"FaceTec_result_idscan_success_front_side_message" = "Удостоверение личности с фотографией\nотсканировано";
+"FaceTec_result_idscan_success_front_side_back_next_message" = "Передняя сторона идентификационного документа\nотсканирована";
+"FaceTec_result_idscan_success_front_side_nfc_next_message" = "Передняя сторона идентификационного документа\nотсканирована";
+"FaceTec_result_idscan_success_back_side_message" = "Удостоверение личности с фотографией\nотсканировано";
+"FaceTec_result_idscan_success_back_side_nfc_next_message" = "Обратная сторона идентификационного документа\nотсканирована";
+"FaceTec_result_idscan_success_passport_message" = "Паспорт отсканирован";
+"FaceTec_result_idscan_success_passport_nfc_next_message" = "Паспорт отсканирован";
+"FaceTec_result_idscan_success_user_confirmation_message" = "Сканирование удостоверения личности\nзавершено";
+"FaceTec_result_idscan_success_nfc_message" = "Информация о чипе NFC\nзагружена";
+"FaceTec_result_idscan_success_additional_review_message" = "Сканирование удостоверения личности\nзавершено";
+"FaceTec_result_idscan_skip_or_error_nfc_message" = "Данные удостоверения личности\nзагружены";
+"FaceTec_result_idscan_retry_face_did_not_match_message" = "Лицо не соответствует\nдостаточно сильно";
+"FaceTec_result_idscan_retry_id_not_fully_visible_message" = "Идентификационный документ\nвиден не полностью";
+"FaceTec_result_idscan_retry_ocr_results_not_good_enough_message" = "Текст на идентификационном документе не разборчив";
+"FaceTec_result_idscan_retry_id_type_not_supported_message" = "Идентификатор не поддерживается\nИспользуйте другой идентификатор";
+"FaceTec_result_idscan_retry_barcode_not_read_message" = "Не удалось отсканировать штрих-код,\nпожалуйста, попробуйте еще раз";
+"FaceTec_result_session_abort_message" = "Критическая ошибка\nСеанс завершен";
+"FaceTec_result_idscan_additional_review_tag_message" = "Требуется проверка вручную\nСм. панель управления IDV";
+
+"FaceTec_retry_header" = "Давайте попробуем еще раз";
+"FaceTec_retry_subheader_message" = "Нам нужно более четкое видеоселфи";
+"FaceTec_retry_instruction_message_1" = "Нейтральное выражение лица, без улыбки";
+"FaceTec_retry_instruction_message_2" = "Используйте идеальную позу и освещение";
+"FaceTec_retry_instruction_message_3" = "Слишком размыто, почистите камеру";
+"FaceTec_retry_your_image_label" = "Ваше селфи";
+"FaceTec_retry_ideal_image_label" = "Идеальная поза";
+
+"FaceTec_retry_official_id_photo_header" = "Давайте попробуем еще раз";
+"FaceTec_retry_official_id_photo_subheader_message" = "Нужно фото лучшего качества";
+"FaceTec_retry_official_id_photo_instruction_message" = "Попробуйте внутреннее освещение.\nБез бликов, улыбки и головного убора";
+"FaceTec_retry_official_id_photo_your_image_label" = "Ваше изображение";
+"FaceTec_retry_official_id_photo_ideal_image_label" = "Соответствующее лицо";
+

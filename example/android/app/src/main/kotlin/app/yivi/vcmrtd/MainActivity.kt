@@ -132,7 +132,6 @@ class MainActivity : FlutterActivity(), FaceTecSessionRequestProcessor {
 
         // Customize FaceTec UI
         val ftCustomization = FaceTecCustomization()
-        // ftCustomization.overlayCustomization.brandingImage = R.drawable.flutter_logo  // Optional: add your branding image
         FaceTecSDK.setCustomization(ftCustomization)
 
         // Initialize FaceTec SDK

@@ -1,0 +1,150 @@
+//
+// This is a generated file.  Do not manually edit this and commit changes.
+//
+
+"FaceTec_accessibility_cancel_button" = "Kanseller";
+"FaceTec_accessibility_torch_button" = "Vend lysinnstilling";
+"FaceTec_accessibility_tap_guidance" = "Dobbeltrykk hvor som helst på skjermen for veiledning om justering av ansiktsplasseringen.";
+
+"FaceTec_accessibility_feedback_move_phone_away" = "Ansikt for nærme";
+"FaceTec_accessibility_feedback_move_phone_closer" = "Ansikt for langt vekke";
+"FaceTec_accessibility_feedback_face_too_far_left" = "Ansikt for langt til venstre";
+"FaceTec_accessibility_feedback_face_too_far_right" = "Ansikt for langt til høyre";
+"FaceTec_accessibility_feedback_face_too_low" = "Ansikt for lavt";
+"FaceTec_accessibility_feedback_face_too_high" = "Ansikt for høyt";
+"FaceTec_accessibility_feedback_face_rotated_too_far_left" = "Ansikt rotert for langt til venstre";
+"FaceTec_accessibility_feedback_face_rotated_too_far_right" = "Ansikt rotert for langt til høyre";
+"FaceTec_accessibility_feedback_face_pointing_too_far_left" = "Ansikt peker for langt til venstre";
+"FaceTec_accessibility_feedback_face_pointing_too_far_right" = "Ansikt peker for langt til høyre";
+"FaceTec_accessibility_feedback_face_not_on_camera" = "Ansiktet vises ikke for kameraet eller er for langt unna";
+"FaceTec_accessibility_feedback_hold_device_to_eye_level" = "Hold enheten i øyehøyde";
+
+"FaceTec_action_ok" = "OK";
+"FaceTec_action_im_ready" = "JEG ER KLAR";
+"FaceTec_action_try_again" = "PRØV IGJEN";
+"FaceTec_action_continue" = "FORTSETT";
+"FaceTec_action_take_photo" = "TA BILDE";
+"FaceTec_action_retake_photo" = "GJENTA";
+"FaceTec_action_accept_photo" = "AKSEPTER";
+"FaceTec_action_confirm" = "BEKREFT INFO";
+"FaceTec_action_scan_nfc" = "SKANN ePASSPORT";
+"FaceTec_action_scan_nfc_card" = "SKANN ID-KORT";
+"FaceTec_action_skip_nfc" = "HOPP OVER DETTE STEGET";
+
+"FaceTec_camera_permission_header" = "Aktiver kameraet";
+"FaceTec_camera_permission_message_enroll" = "Trykk på knappen nedenfor for å aktivere selfie-kameraet ditt.";
+"FaceTec_camera_permission_message_auth" = "Kameraet ditt er deaktivert. Trykk nedenfor for å redigere innstillingene dine.";
+"FaceTec_camera_permission_enable_camera" = "AKTIVER KAMERA";
+"FaceTec_camera_permission_launch_settings" = "ÅPNE INNSTILLINGER";
+
+"FaceTec_feedback_center_face" = "Sentrer ansiktet ditt";
+"FaceTec_feedback_face_not_found" = "Ram inn ansiktet ditt";
+"FaceTec_feedback_face_not_looking_straight_ahead" = "Se rett fremover";
+"FaceTec_feedback_face_not_upright" = "Hold hodet rett";
+"FaceTec_feedback_hold_steady" = "Hold i ro";
+"FaceTec_feedback_move_phone_away" = "Flytt deg lengre fra";
+"FaceTec_feedback_move_phone_closer" = "Flytt deg nærmere";
+"FaceTec_feedback_move_phone_to_eye_level" = "Flytt kameraet til øyenivå";
+"FaceTec_feedback_use_even_lighting" = "Anvend jevnere lys på ansiktet";
+
+"FaceTec_idscan_type_selection_header" = "Gjør klar til å skanne\nID-dokumentet ditt";
+"FaceTec_idscan_capture_tap_to_focus_message" = "Trykk på skjermen for å fokusere";
+"FaceTec_idscan_capture_hold_steady_message" = "Hold rolig";
+"FaceTec_idscan_capture_id_front_instruction_message" = "Skann ID-forside";
+"FaceTec_idscan_capture_id_back_instruction_message" = "Skann ID-bakside";
+"FaceTec_idscan_review_id_front_instruction_message" = "Bekreft foto skarpt og leselig";
+"FaceTec_idscan_review_id_back_instruction_message" = "Bekreft at fotoet er lesbart";
+"FaceTec_idscan_ocr_confirmation_main_header" = "Gjennomgå og bekreft";
+"FaceTec_idscan_ocr_confirmation_scroll_message" = "Skroll ned";
+"FaceTec_idscan_nfc_status_disabled_message" = "Slå PÅ\nenhetens nærfeltkommunikasjon (NFC)\nfor å fortsette";
+"FaceTec_idscan_nfc_status_ready_message" = "Gjør deg klar til å skanne\n ePassport-chipen din";
+"FaceTec_idscan_nfc_card_status_ready_message" = "Gjør deg klar til å skanne\nID-kort-chipen din";
+"FaceTec_idscan_nfc_status_starting_message" = "Hold telefonen over\nbaksiden av e-passet\nfor å skanne NFC-chipen";
+"FaceTec_idscan_nfc_card_status_starting_message" = "Hold telefonen mot ID-kortet\nfor å skanne NFC-chipen";
+"FaceTec_idscan_nfc_status_scanning_message" = "Hold i ro,\nSkanner NFC-chipen";
+"FaceTec_idscan_nfc_status_weak_connection_message" = "La oss prøve\nen ny skanning";
+"FaceTec_idscan_nfc_status_finished_with_success_message" = "NFC-chip\nscannet";
+"FaceTec_idscan_nfc_status_finished_with_error_message" = "ePassport-chip\nuleselig";
+"FaceTec_idscan_nfc_card_status_finished_with_error_message" = "ID-kort-chip\nuleselig";
+"FaceTec_idscan_nfc_status_skipped_message" = "NFC-skanning\nikke utført";
+"FaceTec_idscan_additional_review_message" = "Ekstra gjennomgang\npåkrevd";
+"FaceTec_idscan_feedback_flip_id_to_back_message" = "Vis ID-ens bakside";
+"FaceTec_idscan_feedback_flip_id_to_front_message" = "Vis ID-ens forside";
+
+"FaceTec_initializing_camera" = "Sikrer kamera-feeden";
+
+"FaceTec_instructions_header_ready_1" = "Gjør deg klar til";
+"FaceTec_instructions_header_ready_2" = "Video-selfien din";
+"FaceTec_instructions_message_ready_1" = "Ram ansiktet ditt inn i ovalen";
+"FaceTec_instructions_message_ready_2" = "Trykk på «Jeg er klar» og kom nærmere";
+
+"FaceTec_orientation_message" = "Roter\nenheten din";
+
+"FaceTec_presession_frame_your_face" = "Ram ansiktet ditt inn i ovalen";
+"FaceTec_presession_position_face_straight_in_oval" = "Se rett fremover";
+"FaceTec_presession_remove_dark_glasses" = "Ta av mørke briller";
+"FaceTec_presession_neutral_expression" = "Naturlig uttrykk, ingen smiling";
+"FaceTec_presession_conditions_too_bright" = "For lyse forhold";
+"FaceTec_presession_brighten_your_environment" = "Gjør miljøet lysere";
+
+"FaceTec_result_facescan_upload_message" = "Laster opp\nkryptert\n3D-ansiktsskanning";
+"FaceTec_result_facescan_upload_message_still_uploading" = "Laster fortsatt opp...\nTreg tilkobling";
+"FaceTec_result_facescan_success_3d_enrollment_message" = "Ansiktsskannet\n3D liveness-bekreftet";
+"FaceTec_result_facescan_success_3d_3d_reverification_message" = "3D liveness-bekreftet\nAnsiktsverifisert";
+"FaceTec_result_facescan_success_3d_liveness_prior_to_idscan_message" = "Ansiktsskannet\n3D liveness-bekreftet";
+"FaceTec_result_facescan_success_3d_liveness_and_official_id_photo_message" = "3D liveness-bekreftet";
+"FaceTec_result_idscan_upload_message_front_side_upload_started" = "Laster opp\nkryptert\nID-skanning";
+"FaceTec_result_idscan_upload_message_front_side_still_uploading" = "Laster fortsatt opp...\nTreg tilkobling";
+"FaceTec_result_idscan_upload_message_front_side_upload_complete_awaiting_response" = "ID-bilde\nlastet opp";
+"FaceTec_result_idscan_upload_message_front_side_upload_complete_awaiting_processing" = "Behandler\nID-skanning";
+"FaceTec_result_idscan_upload_message_back_side_upload_started" = "Laster opp\nKryptert\nBaksiden av ID";
+"FaceTec_result_idscan_upload_message_back_side_still_uploading" = "Laster fortsatt opp...\nTreg tilkobling";
+"FaceTec_result_idscan_upload_message_back_side_upload_complete_awaiting_response" = "ID-bilde\nlastet opp";
+"FaceTec_result_idscan_upload_message_back_side_upload_complete_awaiting_processing" = "Behandler\nBaksiden av ID";
+"FaceTec_result_idscan_upload_message_user_confirmed_info_upload_started" = "Lagrer\nDin bekreftede info";
+"FaceTec_result_idscan_upload_message_user_confirmed_info_still_uploading" = "Laster fortsatt opp...\nTreg tilkobling";
+"FaceTec_result_idscan_upload_message_user_confirmed_info_upload_complete_awaiting_response" = "Informasjon lagret";
+"FaceTec_result_idscan_upload_message_user_confirmed_info_upload_complete_awaiting_processing" = "Behandler";
+"FaceTec_result_idscan_upload_message_nfc_upload_started" = "Laster opp kryptert\nNFC-detaljer";
+"FaceTec_result_idscan_upload_message_nfc_still_uploading" = "Laster fortsatt opp...\nTreg tilkobling";
+"FaceTec_result_idscan_upload_message_nfc_upload_complete_awaiting_response" = "NFC-Chip-info\nlastet opp";
+"FaceTec_result_idscan_upload_message_nfc_upload_complete_awaiting_processing" = "Behandler\nNFC-detaljer";
+"FaceTec_result_idscan_upload_message_skipped_nfc_upload_started" = "Laster opp\nkrypterte\nID-data";
+"FaceTec_result_idscan_upload_message_skipped_nfc_still_uploading" = "Laster fortsatt opp...\nTreg tilkobling";
+"FaceTec_result_idscan_upload_message_skipped_nfc_upload_complete_awaiting_response" = "Opplasting fullført";
+"FaceTec_result_idscan_upload_message_skipped_nfc_upload_complete_awaiting_processing" = "Behandler\nID-data";
+"FaceTec_result_nfc_upload_message" = "Laster opp\nkrypterte\nNFC-opplysninger";
+"FaceTec_result_idscan_unsuccess_message" = "ID-foto\nmatchet ikke\nbrukerens ansikt";
+"FaceTec_result_idscan_success_front_side_message" = "Foto-ID\nskannet";
+"FaceTec_result_idscan_success_front_side_back_next_message" = "ID-ens forside\nskannet";
+"FaceTec_result_idscan_success_front_side_nfc_next_message" = "ID-ens forside\nskannet";
+"FaceTec_result_idscan_success_back_side_message" = "Foto-ID\nskannet";
+"FaceTec_result_idscan_success_back_side_nfc_next_message" = "ID-ens bakside\nskannet";
+"FaceTec_result_idscan_success_passport_message" = "Pass skannet";
+"FaceTec_result_idscan_success_passport_nfc_next_message" = "Pass skannet";
+"FaceTec_result_idscan_success_user_confirmation_message" = "ID-skanning\nfullført";
+"FaceTec_result_idscan_success_nfc_message" = "NFC-Chip-info\nlastet opp";
+"FaceTec_result_idscan_success_additional_review_message" = "ID-skanning\nfullført";
+"FaceTec_result_idscan_skip_or_error_nfc_message" = "ID-data\nOpplastet";
+"FaceTec_result_idscan_retry_face_did_not_match_message" = "Ansiktet matchet ikke\ngodt nok";
+"FaceTec_result_idscan_retry_id_not_fully_visible_message" = "ID-dokument\nikke helt synlig";
+"FaceTec_result_idscan_retry_ocr_results_not_good_enough_message" = "ID-tekst ikke lesbar";
+"FaceTec_result_idscan_retry_id_type_not_supported_message" = "ID ikke støttet\nVennligst bruk en annen ID";
+"FaceTec_result_idscan_retry_barcode_not_read_message" = "Kunne ikke skanne strekkode\nprøv igjen";
+"FaceTec_result_session_abort_message" = "Kritisk feil\nØkt avsluttet";
+"FaceTec_result_idscan_additional_review_tag_message" = "Manuell gjennomgang påkrevd\nSe IDV-dashbord";
+
+"FaceTec_retry_header" = "La oss prøve det igjen";
+"FaceTec_retry_subheader_message" = "Vi trenger en klarere video-selfie";
+"FaceTec_retry_instruction_message_1" = "Naturlig uttrykk, ingen smiling";
+"FaceTec_retry_instruction_message_2" = "Bruk ideell posering og lyssetting";
+"FaceTec_retry_instruction_message_3" = "For uklart, rens kameraet";
+"FaceTec_retry_your_image_label" = "Selfien din";
+"FaceTec_retry_ideal_image_label" = "Ideell posering";
+
+"FaceTec_retry_official_id_photo_header" = "La oss prøve det igjen";
+"FaceTec_retry_official_id_photo_subheader_message" = "Trenger høyere bildekvalitet";
+"FaceTec_retry_official_id_photo_instruction_message" = "Prøv innendørsbelysning,\nIkke gjenskinn i briller, ikke smil/hodeplagg";
+"FaceTec_retry_official_id_photo_your_image_label" = "Ditt bilde";
+"FaceTec_retry_official_id_photo_ideal_image_label" = "Samsvarende ansikt";
+

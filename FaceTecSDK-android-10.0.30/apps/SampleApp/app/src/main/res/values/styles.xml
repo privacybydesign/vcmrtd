@@ -1,0 +1,8 @@
+<resources>
+<!-- Base application theme. -->
+<style name="AppTheme" parent="Theme.AppCompat.NoActionBar">
+    <item name="android:windowBackground">@drawable/splash_screen</item>
+    <item name="android:splitMotionEvents">false</item>
+    <item name="android:windowEnableSplitTouch">false</item>
+</style>
+</resources>
