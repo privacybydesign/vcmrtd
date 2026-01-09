@@ -29,6 +29,10 @@ android {
         versionName = flutter.versionName
     }
 
+    aaptOptions {
+        noCompress "Regula/faceSdkResource.dat"
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.

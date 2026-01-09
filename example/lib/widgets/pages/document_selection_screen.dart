@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:vcmrtd/vcmrtd.dart';
-import 'package:vcmrtdapp/providers/active_authenticiation_provider.dart';
 import 'package:vcmrtdapp/theme/text_styles.dart';
 
 class DocumentTypeSelectionScreen extends StatelessWidget {
@@ -12,7 +12,16 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Select document type')),
+      appBar: AppBar(
+        title: Text('Select document type'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Settings',
+            onPressed: () => context.push('/settings'),
+          ),
+        ],
+      ),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -83,19 +92,6 @@ class _Header extends ConsumerWidget {
               'Which document type do you want to read?',
               style: Theme.of(context).defaultTextStyles.primaryLarge,
               textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Perform active authentication', style: Theme.of(context).defaultTextStyles.hint),
-                Switch(
-                  value: ref.watch(activeAuthenticationProvider),
-                  onChanged: (value) {
-                    ref.read(activeAuthenticationProvider.notifier).state = value;
-                  },
-                ),
-              ],
             ),
           ],
         ),
