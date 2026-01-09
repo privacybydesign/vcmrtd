@@ -1,0 +1,150 @@
+<!-- This is a generated file.  Do not manually edit this and commit changes. -->
+
+<resources xmlns:tools="http://schemas.android.com/tools">
+	<string name="FaceTec_accessibility_cancel_button">Hủy</string>
+	<string name="FaceTec_accessibility_torch_button">Điều chỉnh Ánh sáng</string>
+	<string name="FaceTec_accessibility_tap_guidance">Nhấn hai lần ở bất cứ đâu trên màn hình để xem hướng dẫn chỉnh mặt.</string>
+
+	<string name="FaceTec_accessibility_feedback_move_phone_away">Mặt Quá Gần</string>
+	<string name="FaceTec_accessibility_feedback_move_phone_closer">Mặt Quá Xa</string>
+	<string name="FaceTec_accessibility_feedback_face_too_far_left">Mặt Quá Xa Sang Trái</string>
+	<string name="FaceTec_accessibility_feedback_face_too_far_right">Mặt Quá Xa Sang Phải</string>
+	<string name="FaceTec_accessibility_feedback_face_too_low">Mặt Quá Thấp</string>
+	<string name="FaceTec_accessibility_feedback_face_too_high">Mặt Quá Cao</string>
+	<string name="FaceTec_accessibility_feedback_face_rotated_too_far_left">Mặt Quá Nghiêng Sang Trái</string>
+	<string name="FaceTec_accessibility_feedback_face_rotated_too_far_right">Mặt Quá Nghiêng Sang Phải</string>
+	<string name="FaceTec_accessibility_feedback_face_pointing_too_far_left">Mặt Quá Hếch Sang Trái</string>
+	<string name="FaceTec_accessibility_feedback_face_pointing_too_far_right">Mặt Quá Hếch Sang Phải</string>
+	<string name="FaceTec_accessibility_feedback_face_not_on_camera">Mặt Không Trên Máy Ảnh hoặc Quá Xa</string>
+	<string name="FaceTec_accessibility_feedback_hold_device_to_eye_level">Dịch Máy Ảnh Tới Ngang Tầm Mắt</string>
+
+	<string name="FaceTec_action_ok">OK</string>
+	<string name="FaceTec_action_im_ready">TÔI ĐÃ SẴN SÀNG</string>
+	<string name="FaceTec_action_try_again">THỬ LẦN NỮA</string>
+	<string name="FaceTec_action_continue">TIẾP TỤC</string>
+	<string name="FaceTec_action_take_photo">CHỤP ẢNH</string>
+	<string name="FaceTec_action_retake_photo">THỬ LẠI</string>
+	<string name="FaceTec_action_accept_photo">CHẤP NHẬN</string>
+	<string name="FaceTec_action_confirm">XÁC NHẬN THÔNG TIN</string>
+	<string name="FaceTec_action_scan_nfc">QUÉT HỘ CHIẾU ĐIỆN TỬ</string>
+	<string name="FaceTec_action_scan_nfc_card">QUÉT THẺ NHẬN DIỆN</string>
+	<string name="FaceTec_action_skip_nfc">BỎ QUA BƯỚC NÀY</string>
+
+	<string name="FaceTec_camera_permission_header">Bật Máy ảnh</string>
+	<string name="FaceTec_camera_permission_message_enroll">Hãy nhấn nút dưới đây để bật máy ảnh selfie của bạn.</string>
+	<string name="FaceTec_camera_permission_message_auth">Máy ảnh của bạn đang tắt. Gõ dưới đây để thay đổi cài đặt của bạn.</string>
+	<string name="FaceTec_camera_permission_enable_camera">BẬT MÁY ẢNH</string>
+	<string name="FaceTec_camera_permission_launch_settings">KHỞI ĐỘNG CÀI ĐẶT</string>
+
+	<string name="FaceTec_feedback_center_face">Đặt Mặt bạn vào Giữa</string>
+	<string name="FaceTec_feedback_face_not_found">Chỉnh Khung Mặt Bạn</string>
+	<string name="FaceTec_feedback_face_not_looking_straight_ahead">Nhìn Thẳng Về Phía Trước</string>
+	<string name="FaceTec_feedback_face_not_upright">Giữ Đầu bạn Cho Thẳng</string>
+	<string name="FaceTec_feedback_hold_steady">Giữ Vững</string>
+	<string name="FaceTec_feedback_move_phone_away">Tránh Ra</string>
+	<string name="FaceTec_feedback_move_phone_closer">Dịch Lại Gần</string>
+	<string name="FaceTec_feedback_move_phone_to_eye_level">Dịch Máy Ảnh tới Ngang Tầm Mắt</string>
+	<string name="FaceTec_feedback_use_even_lighting">Chỉnh Ánh sáng Trên Mặt cho Đều hơn</string>
+
+	<string name="FaceTec_idscan_type_selection_header">Chuẩn bị Quét\n Tài liệu Nhận diện của Bạn</string>
+	<string name="FaceTec_idscan_capture_tap_to_focus_message">Gõ Màn hình để Tập trung</string>
+	<string name="FaceTec_idscan_capture_hold_steady_message">Hãy Giữ Vững</string>
+	<string name="FaceTec_idscan_capture_id_front_instruction_message">Quét mặt trước ID</string>
+	<string name="FaceTec_idscan_capture_id_back_instruction_message">Quét mặt sau ID</string>
+	<string name="FaceTec_idscan_review_id_front_instruction_message">Xác nhận ảnh sắc nét và rõ ràng</string>
+	<string name="FaceTec_idscan_review_id_back_instruction_message">Xác nhận ảnh rõ ràng</string>
+	<string name="FaceTec_idscan_ocr_confirmation_main_header">Kiểm tra &amp; Xác nhận</string>
+	<string name="FaceTec_idscan_ocr_confirmation_scroll_message">Kéo Xuống</string>
+	<string name="FaceTec_idscan_nfc_status_disabled_message">Bật\nNFC của thiết bị\nđể tiếp tục</string>
+	<string name="FaceTec_idscan_nfc_status_ready_message">Chuẩn bị Quét\nChip Hộ chiếu điện tử của Bạn</string>
+	<string name="FaceTec_idscan_nfc_card_status_ready_message">Chuẩn bị Quét\nChip Thẻ Nhận diện của Bạn</string>
+	<string name="FaceTec_idscan_nfc_status_starting_message">Giữ điện thoại ở\nmặt sau của hộ chiếu điện tử\nđể quét chip NFC</string>
+	<string name="FaceTec_idscan_nfc_card_status_starting_message">Giữ Điện thoại trên Thẻ Nhận diện\nđể Quét Chip NFC</string>
+	<string name="FaceTec_idscan_nfc_status_scanning_message">Giữ Vững,\nĐang Quét Chip NFC</string>
+	<string name="FaceTec_idscan_nfc_status_weak_connection_message">Hãy Thử\nQuét Lại Một Lần Nữa</string>
+	<string name="FaceTec_idscan_nfc_status_finished_with_success_message">Đã quét\nVi mạch NFC</string>
+	<string name="FaceTec_idscan_nfc_status_finished_with_error_message">Không đọc được\nChip Hộ chiếu điện tử</string>
+	<string name="FaceTec_idscan_nfc_card_status_finished_with_error_message">Không đọc được\nChip Thẻ Nhận diện</string>
+	<string name="FaceTec_idscan_nfc_status_skipped_message">Quét NFC\nkhông được thực hiện</string>
+	<string name="FaceTec_idscan_additional_review_message">Cần\nKiểm tra Thêm</string>
+	<string name="FaceTec_idscan_feedback_flip_id_to_back_message">Lật Thẻ Nhận diện\nSang Mặt Sau</string>
+	<string name="FaceTec_idscan_feedback_flip_id_to_front_message">Hiển thị mặt trước căn cước</string>
+
+	<string name="FaceTec_initializing_camera">Đang Bảo mật Hình ảnh Máy ảnh</string>
+
+	<string name="FaceTec_instructions_header_ready_1">Chuẩn bị Sẵn sàng Cho</string>
+	<string name="FaceTec_instructions_header_ready_2">Video Selfie của Bạn</string>
+	<string name="FaceTec_instructions_message_ready_1">Chỉnh Mặt Bạn vào Khung Bầu dục</string>
+	<string name="FaceTec_instructions_message_ready_2">Nhấn Tôi đã Sẵn sàng &amp; Dịch Lại Gần Hơn</string>
+
+	<string name="FaceTec_orientation_message">Vui lòng\nxoay thiết bị</string>
+
+	<string name="FaceTec_presession_frame_your_face">Chỉnh mặt Bạn vào Khung Bầu dục</string>
+	<string name="FaceTec_presession_position_face_straight_in_oval">Nhìn Thẳng Về Phía Trước</string>
+	<string name="FaceTec_presession_remove_dark_glasses">Tháo Kính Tối Màu</string>
+	<string name="FaceTec_presession_neutral_expression">Nét Mặt Trung Lập, Không Cười</string>
+	<string name="FaceTec_presession_conditions_too_bright">Điều kiện Quá Sáng</string>
+	<string name="FaceTec_presession_brighten_your_environment">Làm Sáng Môi trường Quanh Bạn</string>
+
+	<string name="FaceTec_result_facescan_upload_message">Đang Tải lên\nĐã Mã hóa\n QuétMặt 3D</string>
+	<string name="FaceTec_result_facescan_upload_message_still_uploading">Đang tải lên...\nKết nối chậm</string>
+	<string name="FaceTec_result_facescan_success_3d_enrollment_message">Đã quét mặt\nĐã chứng minh sống động 3D</string>
+	<string name="FaceTec_result_facescan_success_3d_3d_reverification_message">Đã chứng minh sống động 3D\nĐã xác minh mặt</string>
+	<string name="FaceTec_result_facescan_success_3d_liveness_prior_to_idscan_message">Đã quét mặt\nĐã chứng minh sống động 3D</string>
+	<string name="FaceTec_result_facescan_success_3d_liveness_and_official_id_photo_message">Đã chứng minh sống động 3D</string>
+	<string name="FaceTec_result_idscan_upload_message_front_side_upload_started">Đang Tải lên\nĐã Mã hóa\nQuét Thẻ Nhận diện</string>
+	<string name="FaceTec_result_idscan_upload_message_front_side_still_uploading">Đang tải lên...\nKết nối chậm</string>
+	<string name="FaceTec_result_idscan_upload_message_front_side_upload_complete_awaiting_response">Đã tải lên\nẢnh ID</string>
+	<string name="FaceTec_result_idscan_upload_message_front_side_upload_complete_awaiting_processing">Đang xử lý\nQuét ID</string>
+	<string name="FaceTec_result_idscan_upload_message_back_side_upload_started">Đang tải lên\nMặt sau của ID\nĐược mã hóa</string>
+	<string name="FaceTec_result_idscan_upload_message_back_side_still_uploading">Đang tải lên...\nKết nối chậm</string>
+	<string name="FaceTec_result_idscan_upload_message_back_side_upload_complete_awaiting_response">Đã tải lên\nẢnh ID</string>
+	<string name="FaceTec_result_idscan_upload_message_back_side_upload_complete_awaiting_processing">Đang xử lý\nMặt sau của ID</string>
+	<string name="FaceTec_result_idscan_upload_message_user_confirmed_info_upload_started">Đang lưu\nThông tin đã xác nhận của bạn</string>
+	<string name="FaceTec_result_idscan_upload_message_user_confirmed_info_still_uploading">Đang tải lên...\nKết nối chậm</string>
+	<string name="FaceTec_result_idscan_upload_message_user_confirmed_info_upload_complete_awaiting_response">Thông tin đã lưu</string>
+	<string name="FaceTec_result_idscan_upload_message_user_confirmed_info_upload_complete_awaiting_processing">Đang xử lý</string>
+	<string name="FaceTec_result_idscan_upload_message_nfc_upload_started">Đang tải lên\nChi tiết NFC\nĐược mã hóa</string>
+	<string name="FaceTec_result_idscan_upload_message_nfc_still_uploading">Đang tải lên...\nKết nối chậm</string>
+	<string name="FaceTec_result_idscan_upload_message_nfc_upload_complete_awaiting_response">Đã tải lên\nthông tin vi mạch NFC</string>
+	<string name="FaceTec_result_idscan_upload_message_nfc_upload_complete_awaiting_processing">Đang xử lý\nChi tiết NFC</string>
+	<string name="FaceTec_result_idscan_upload_message_skipped_nfc_upload_started">Đang tải lên\ndữ liệu ID\nđược mã hóa</string>
+	<string name="FaceTec_result_idscan_upload_message_skipped_nfc_still_uploading">Đang tải lên...\nKết nối chậm</string>
+	<string name="FaceTec_result_idscan_upload_message_skipped_nfc_upload_complete_awaiting_response">Hoàn tất tải lên</string>
+	<string name="FaceTec_result_idscan_upload_message_skipped_nfc_upload_complete_awaiting_processing">Đang xử lý\ndữ liệu ID</string>
+	<string name="FaceTec_result_nfc_upload_message">Đang Tải lên\nĐã Mã hóa\nChi tiết NFC</string>
+	<string name="FaceTec_result_idscan_unsuccess_message">Ảnh Nhận diện\nKhông Khớp\nMặt Người Dùng</string>
+	<string name="FaceTec_result_idscan_success_front_side_message">Đã quét\nẢnh ID</string>
+	<string name="FaceTec_result_idscan_success_front_side_back_next_message">Đã Quét\nMặt trước Thẻ Nhận diện</string>
+	<string name="FaceTec_result_idscan_success_front_side_nfc_next_message">Đã Quét\nMặt trước Thẻ Nhận diện</string>
+	<string name="FaceTec_result_idscan_success_back_side_message">Đã quét\nẢnh ID</string>
+	<string name="FaceTec_result_idscan_success_back_side_nfc_next_message">Đã Quét\nMặt sau Thẻ Nhận diện</string>
+	<string name="FaceTec_result_idscan_success_passport_message">Đã Quét Hộ chiếu</string>
+	<string name="FaceTec_result_idscan_success_passport_nfc_next_message">Đã Quét Hộ chiếu</string>
+	<string name="FaceTec_result_idscan_success_user_confirmation_message">Đã hoàn tất\nquá trình quét thẻ ID</string>
+	<string name="FaceTec_result_idscan_success_nfc_message">Đã tải lên\nthông tin vi mạch NFC</string>
+	<string name="FaceTec_result_idscan_success_additional_review_message">Đã hoàn tất\nquá trình quét thẻ ID</string>
+	<string name="FaceTec_result_idscan_skip_or_error_nfc_message">Dữ liệu ID\nđã được tải lên</string>
+	<string name="FaceTec_result_idscan_retry_face_did_not_match_message">Mặt Không Khớp\n Đủ Nhiều</string>
+	<string name="FaceTec_result_idscan_retry_id_not_fully_visible_message">Không Thấy Đầy đủ\n Tài liệu Nhận diện</string>
+	<string name="FaceTec_result_idscan_retry_ocr_results_not_good_enough_message">Không Đọc được Văn bản Nhận diện</string>
+	<string name="FaceTec_result_idscan_retry_id_type_not_supported_message">ID không được hỗ trợ\nVui lòng sử dụng ID khác</string>
+	<string name="FaceTec_result_idscan_retry_barcode_not_read_message">Không Quét được Mã vạch\nHãy Thử Lại</string>
+	<string name="FaceTec_result_session_abort_message">Lỗi nghiêm trọng\nPhiên đã kết thúc</string>
+	<string name="FaceTec_result_idscan_additional_review_tag_message">Cần xem xét thủ công\nVui lòng xem Bảng điều khiển IDV</string>
+
+	<string name="FaceTec_retry_header">Hãy Thử Lại Một Lần nữa</string>
+	<string name="FaceTec_retry_subheader_message">Chúng tôi Cần Một Video Selfie Rõ hơn</string>
+	<string name="FaceTec_retry_instruction_message_1">Nét mặt Trung lập, Không Cười</string>
+	<string name="FaceTec_retry_instruction_message_2">Sử dụng Tư thế &amp; Ánh sáng Lý tưởng</string>
+	<string name="FaceTec_retry_instruction_message_3">Quá Nhòe, Lau Máy ảnh</string>
+	<string name="FaceTec_retry_your_image_label">Selfie của Bạn</string>
+	<string name="FaceTec_retry_ideal_image_label">Tư thế Lý tưởng</string>
+
+	<string name="FaceTec_retry_official_id_photo_header">Hãy Thử Lại Một Lần nữa</string>
+	<string name="FaceTec_retry_official_id_photo_subheader_message">Cần ảnh chất lượng cao hơn</string>
+	<string name="FaceTec_retry_official_id_photo_instruction_message">Dùng ánh sáng trong nhà,\ntránh lóa kính, không cười, không đội mũ nón</string>
+	<string name="FaceTec_retry_official_id_photo_your_image_label">Ảnh của bạn</string>
+	<string name="FaceTec_retry_official_id_photo_ideal_image_label">Khuôn mặt đạt chuẩn</string>
+
+</resources>

@@ -1,0 +1,150 @@
+//
+// This is a generated file.  Do not manually edit this and commit changes.
+//
+
+"FaceTec_accessibility_cancel_button" = "Cancel";
+"FaceTec_accessibility_torch_button" = "Toggle Light";
+"FaceTec_accessibility_tap_guidance" = "Double tap anywhere on the screen for face alignment guidance.";
+
+"FaceTec_accessibility_feedback_move_phone_away" = "Face Too Close";
+"FaceTec_accessibility_feedback_move_phone_closer" = "Face Too Far Away";
+"FaceTec_accessibility_feedback_face_too_far_left" = "Face Too Far Left";
+"FaceTec_accessibility_feedback_face_too_far_right" = "Face Too Far Right";
+"FaceTec_accessibility_feedback_face_too_low" = "Face Too Low";
+"FaceTec_accessibility_feedback_face_too_high" = "Face Too High";
+"FaceTec_accessibility_feedback_face_rotated_too_far_left" = "Face Rotated Too Far Left";
+"FaceTec_accessibility_feedback_face_rotated_too_far_right" = "Face Rotated Too Far Right";
+"FaceTec_accessibility_feedback_face_pointing_too_far_left" = "Face Pointing Too Far Left";
+"FaceTec_accessibility_feedback_face_pointing_too_far_right" = "Face Pointing Too Far Right";
+"FaceTec_accessibility_feedback_face_not_on_camera" = "Face Not On Camera or Too Far Away";
+"FaceTec_accessibility_feedback_hold_device_to_eye_level" = "Hold Device At Eye Level";
+
+"FaceTec_action_ok" = "OK";
+"FaceTec_action_im_ready" = "I'M READY";
+"FaceTec_action_try_again" = "TRY AGAIN";
+"FaceTec_action_continue" = "CONTINUE";
+"FaceTec_action_take_photo" = "TAKE PHOTO";
+"FaceTec_action_retake_photo" = "RETRY";
+"FaceTec_action_accept_photo" = "ACCEPT";
+"FaceTec_action_confirm" = "CONFIRM INFO";
+"FaceTec_action_scan_nfc" = "SCAN ePASSPORT";
+"FaceTec_action_scan_nfc_card" = "SCAN ID CARD";
+"FaceTec_action_skip_nfc" = "SKIP THIS STEP";
+
+"FaceTec_camera_permission_header" = "Enable Camera";
+"FaceTec_camera_permission_message_enroll" = "Please tap the button below to enable your selfie camera.";
+"FaceTec_camera_permission_message_auth" = "Your camera is disabled. Tap below to edit your settings.";
+"FaceTec_camera_permission_enable_camera" = "ENABLE CAMERA";
+"FaceTec_camera_permission_launch_settings" = "LAUNCH SETTINGS";
+
+"FaceTec_feedback_center_face" = "Center Your Face";
+"FaceTec_feedback_face_not_found" = "Frame Your Face";
+"FaceTec_feedback_face_not_looking_straight_ahead" = "Look Straight Ahead";
+"FaceTec_feedback_face_not_upright" = "Hold Your Head Straight";
+"FaceTec_feedback_hold_steady" = "Hold Steady";
+"FaceTec_feedback_move_phone_away" = "Move Away";
+"FaceTec_feedback_move_phone_closer" = "Move Closer";
+"FaceTec_feedback_move_phone_to_eye_level" = "Move Camera To Eye Level";
+"FaceTec_feedback_use_even_lighting" = "Light Face More Evenly";
+
+"FaceTec_idscan_type_selection_header" = "Prepare to Scan\nYour ID Document";
+"FaceTec_idscan_capture_tap_to_focus_message" = "Tap Screen To Focus";
+"FaceTec_idscan_capture_hold_steady_message" = "Please Hold Steady";
+"FaceTec_idscan_capture_id_front_instruction_message" = "Scan Front of ID";
+"FaceTec_idscan_capture_id_back_instruction_message" = "Scan Back of ID";
+"FaceTec_idscan_review_id_front_instruction_message" = "Confirm Photo is Sharp & Legible";
+"FaceTec_idscan_review_id_back_instruction_message" = "Confirm Photo is Legible";
+"FaceTec_idscan_ocr_confirmation_main_header" = "Review & Confirm";
+"FaceTec_idscan_ocr_confirmation_scroll_message" = "Scroll Down";
+"FaceTec_idscan_nfc_status_disabled_message" = "Turn ON\nYour Device's NFC\nTo Continue";
+"FaceTec_idscan_nfc_status_ready_message" = "Get Ready to Scan\nYour ePassport Chip";
+"FaceTec_idscan_nfc_card_status_ready_message" = "Get Ready to Scan\nYour ID Card Chip";
+"FaceTec_idscan_nfc_status_starting_message" = "Hold Phone to\nBack of ePassport\nto Scan NFC Chip";
+"FaceTec_idscan_nfc_card_status_starting_message" = "Hold Phone to ID Card\nto Scan NFC Chip";
+"FaceTec_idscan_nfc_status_scanning_message" = "Hold Steady,\nScanning NFC Chip";
+"FaceTec_idscan_nfc_status_weak_connection_message" = "Let's Try\nAnother Scan";
+"FaceTec_idscan_nfc_status_finished_with_success_message" = "NFC Chip\nScanned";
+"FaceTec_idscan_nfc_status_finished_with_error_message" = "ePassport Chip\nUnreadable";
+"FaceTec_idscan_nfc_card_status_finished_with_error_message" = "ID Card Chip\nUnreadable";
+"FaceTec_idscan_nfc_status_skipped_message" = "NFC Scan\nNot Performed";
+"FaceTec_idscan_additional_review_message" = "Additional Review\nRequired";
+"FaceTec_idscan_feedback_flip_id_to_back_message" = "Show Back of ID";
+"FaceTec_idscan_feedback_flip_id_to_front_message" = "Show Front of ID";
+
+"FaceTec_initializing_camera" = "Securing Camera Feed";
+
+"FaceTec_instructions_header_ready_1" = "Get Ready For";
+"FaceTec_instructions_header_ready_2" = "Your Video Selfie";
+"FaceTec_instructions_message_ready_1" = "Frame Your Face in the Oval,";
+"FaceTec_instructions_message_ready_2" = "Press I'm Ready & Move Closer";
+
+"FaceTec_orientation_message" = "Please Rotate\nYour Device";
+
+"FaceTec_presession_frame_your_face" = "Frame Your Face In The Oval";
+"FaceTec_presession_position_face_straight_in_oval" = "Look Straight Ahead";
+"FaceTec_presession_remove_dark_glasses" = "Remove Dark Glasses";
+"FaceTec_presession_neutral_expression" = "Neutral Expression, No Smiling";
+"FaceTec_presession_conditions_too_bright" = "Conditions Too Bright";
+"FaceTec_presession_brighten_your_environment" = "Brighten Your Environment";
+
+"FaceTec_result_facescan_upload_message" = "Uploading\nEncrypted\n3D FaceScan";
+"FaceTec_result_facescan_upload_message_still_uploading" = "Still Uploading...\nSlow Connection";
+"FaceTec_result_facescan_success_3d_enrollment_message" = "Face Scanned\n3D Liveness Proven";
+"FaceTec_result_facescan_success_3d_3d_reverification_message" = "3D Liveness Proven\nFace Verified";
+"FaceTec_result_facescan_success_3d_liveness_prior_to_idscan_message" = "Face Scanned\n3D Liveness Proven";
+"FaceTec_result_facescan_success_3d_liveness_and_official_id_photo_message" = "3D Liveness Proven";
+"FaceTec_result_idscan_upload_message_front_side_upload_started" = "Uploading\nEncrypted\nID Scan";
+"FaceTec_result_idscan_upload_message_front_side_still_uploading" = "Still Uploading...\nSlow Connection";
+"FaceTec_result_idscan_upload_message_front_side_upload_complete_awaiting_response" = "ID Image\nUploaded";
+"FaceTec_result_idscan_upload_message_front_side_upload_complete_awaiting_processing" = "Processing\nID Scan";
+"FaceTec_result_idscan_upload_message_back_side_upload_started" = "Uploading\nEncrypted\nBack of ID";
+"FaceTec_result_idscan_upload_message_back_side_still_uploading" = "Still Uploading...\nSlow Connection";
+"FaceTec_result_idscan_upload_message_back_side_upload_complete_awaiting_response" = "ID Image\nUploaded";
+"FaceTec_result_idscan_upload_message_back_side_upload_complete_awaiting_processing" = "Processing\nBack of ID";
+"FaceTec_result_idscan_upload_message_user_confirmed_info_upload_started" = "Saving\nYour Confirmed Info";
+"FaceTec_result_idscan_upload_message_user_confirmed_info_still_uploading" = "Still Uploading...\nSlow Connection";
+"FaceTec_result_idscan_upload_message_user_confirmed_info_upload_complete_awaiting_response" = "Info Saved";
+"FaceTec_result_idscan_upload_message_user_confirmed_info_upload_complete_awaiting_processing" = "Processing";
+"FaceTec_result_idscan_upload_message_nfc_upload_started" = "Uploading\nEncrypted\nNFC Details";
+"FaceTec_result_idscan_upload_message_nfc_still_uploading" = "Still Uploading...\nSlow Connection";
+"FaceTec_result_idscan_upload_message_nfc_upload_complete_awaiting_response" = "NFC Chip Info\nUploaded";
+"FaceTec_result_idscan_upload_message_nfc_upload_complete_awaiting_processing" = "Processing\nNFC Details";
+"FaceTec_result_idscan_upload_message_skipped_nfc_upload_started" = "Uploading\nEncrypted\nID Data";
+"FaceTec_result_idscan_upload_message_skipped_nfc_still_uploading" = "Still Uploading...\nSlow Connection";
+"FaceTec_result_idscan_upload_message_skipped_nfc_upload_complete_awaiting_response" = "Upload Complete";
+"FaceTec_result_idscan_upload_message_skipped_nfc_upload_complete_awaiting_processing" = "Processing\nID Data";
+"FaceTec_result_nfc_upload_message" = "Uploading\nEncrypted\nNFC Details";
+"FaceTec_result_idscan_unsuccess_message" = "ID Photo\nDid Not Match\nUser's Face";
+"FaceTec_result_idscan_success_front_side_message" = "Photo ID\nScanned";
+"FaceTec_result_idscan_success_front_side_back_next_message" = "Front of ID\nScanned";
+"FaceTec_result_idscan_success_front_side_nfc_next_message" = "Front of ID\nScanned";
+"FaceTec_result_idscan_success_back_side_message" = "Photo ID\nScanned";
+"FaceTec_result_idscan_success_back_side_nfc_next_message" = "Back of ID\nScanned";
+"FaceTec_result_idscan_success_passport_message" = "Passport Scanned";
+"FaceTec_result_idscan_success_passport_nfc_next_message" = "Passport Scanned";
+"FaceTec_result_idscan_success_user_confirmation_message" = "ID Scan\nCompleted";
+"FaceTec_result_idscan_success_nfc_message" = "NFC Chip Info\nUploaded";
+"FaceTec_result_idscan_success_additional_review_message" = "ID Scan\nCompleted";
+"FaceTec_result_idscan_skip_or_error_nfc_message" = "ID Data\nUploaded";
+"FaceTec_result_idscan_retry_face_did_not_match_message" = "Face Didn't Match\nHighly Enough";
+"FaceTec_result_idscan_retry_id_not_fully_visible_message" = "ID Document\nNot Fully Visible";
+"FaceTec_result_idscan_retry_ocr_results_not_good_enough_message" = "ID Text Not Legible";
+"FaceTec_result_idscan_retry_id_type_not_supported_message" = "ID Not Supported\nPlease Use a Different ID";
+"FaceTec_result_idscan_retry_barcode_not_read_message" = "Barcode Failed To Scan\nPlease Try Again";
+"FaceTec_result_session_abort_message" = "Critical Error\nSession Ended";
+"FaceTec_result_idscan_additional_review_tag_message" = "Manual Review Required\nPlease See IDV Dashboard";
+
+"FaceTec_retry_header" = "Let's Try That Again";
+"FaceTec_retry_subheader_message" = "We Need a Clearer Video Selfie";
+"FaceTec_retry_instruction_message_1" = "Neutral Expression, No Smiling";
+"FaceTec_retry_instruction_message_2" = "Please Use Ideal Pose & Lighting";
+"FaceTec_retry_instruction_message_3" = "Too Blurry, Clean Camera";
+"FaceTec_retry_your_image_label" = "Your Selfie";
+"FaceTec_retry_ideal_image_label" = "Ideal Pose";
+
+"FaceTec_retry_official_id_photo_header" = "Let's Try That Again";
+"FaceTec_retry_official_id_photo_subheader_message" = "We Need a Higher Quality Image";
+"FaceTec_retry_official_id_photo_instruction_message" = "Please try Indoor Lighting,\nNo Glare in Glasses, No Smiling & No Headwear";
+"FaceTec_retry_official_id_photo_your_image_label" = "Your Image";
+"FaceTec_retry_official_id_photo_ideal_image_label" = "Compliant Face";
+

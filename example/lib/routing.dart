@@ -1,8 +1,10 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtdapp/widgets/pages/document_selection_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/driving_licence_data_screen.dart';
+import 'package:vcmrtdapp/widgets/pages/facetec_capture_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/manual_entry_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_reading_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/passport_data_screen.dart';
@@ -84,9 +86,61 @@ GoRouter createRouter() {
             params: params,
             onCancel: context.pop,
             onSuccess: (document, result) {
+              // Extract document photo for face verification
+              final documentImage = switch (document) {
+                PassportData passport => passport.photoImageData,
+                DrivingLicenceData licence => licence.photoImageData,
+                _ => null,
+              };
+
+              // Navigate to FaceTec verification
+              context.go(
+                '/facetec_verification',
+                extra: {
+                  'document': document,
+                  'result': result,
+                  'document_type': params.documentType,
+                  'documentImage': documentImage,
+                },
+              );
+            },
+          );
+        },
+      ),
+      GoRoute(
+        path: '/facetec_verification',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          final documentImage = extra['documentImage'];
+
+          return FaceTecCaptureScreen(
+            documentImage: documentImage != null
+                ? (documentImage is Uint8List
+                    ? documentImage
+                    : Uint8List.fromList(documentImage as List<int>))
+                : null,
+            onVerificationSuccess: (matchScore) {
+              // Face verification succeeded, navigate to result
               context.go(
                 '/result',
-                extra: {'document': document, 'result': result, 'document_type': params.documentType},
+                extra: {
+                  'document': extra['document'],
+                  'result': extra['result'],
+                  'document_type': extra['document_type'],
+                  'faceMatchScore': matchScore,
+                },
+              );
+            },
+            onBack: () => context.go('/select_doc_type'),
+            onSkip: () {
+              // Allow skipping face verification
+              context.go(
+                '/result',
+                extra: {
+                  'document': extra['document'],
+                  'result': extra['result'],
+                  'document_type': extra['document_type'],
+                },
               );
             },
           );

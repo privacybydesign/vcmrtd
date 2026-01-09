@@ -1,0 +1,150 @@
+<!-- This is a generated file.  Do not manually edit this and commit changes. -->
+
+<resources xmlns:tools="http://schemas.android.com/tools">
+	<string name="FaceTec_accessibility_cancel_button">Kanselleer</string>
+	<string name="FaceTec_accessibility_torch_button">Skakel lig</string>
+	<string name="FaceTec_accessibility_tap_guidance">Dubbeltik enige plek op die skerm vir gesigbelyningsleiding.</string>
+
+	<string name="FaceTec_accessibility_feedback_move_phone_away">Gesig te naby</string>
+	<string name="FaceTec_accessibility_feedback_move_phone_closer">Gesig te ver weg</string>
+	<string name="FaceTec_accessibility_feedback_face_too_far_left">Gesig te ver links</string>
+	<string name="FaceTec_accessibility_feedback_face_too_far_right">Gesig te ver regs</string>
+	<string name="FaceTec_accessibility_feedback_face_too_low">Gesig te laag</string>
+	<string name="FaceTec_accessibility_feedback_face_too_high">Gesig te hoog</string>
+	<string name="FaceTec_accessibility_feedback_face_rotated_too_far_left">Gesig te ver links gedraai</string>
+	<string name="FaceTec_accessibility_feedback_face_rotated_too_far_right">Gesig te ver regs gedraai</string>
+	<string name="FaceTec_accessibility_feedback_face_pointing_too_far_left">Gesig wat te ver links wys</string>
+	<string name="FaceTec_accessibility_feedback_face_pointing_too_far_right">Gesig wys te ver regs</string>
+	<string name="FaceTec_accessibility_feedback_face_not_on_camera">Gesig nie op kamera of te ver weg nie</string>
+	<string name="FaceTec_accessibility_feedback_hold_device_to_eye_level">Hou toestel op ooghoogte</string>
+
+	<string name="FaceTec_action_ok">OK</string>
+	<string name="FaceTec_action_im_ready">EK IS GEREED</string>
+	<string name="FaceTec_action_try_again">PROBEER WEER</string>
+	<string name="FaceTec_action_continue">AANHOU</string>
+	<string name="FaceTec_action_take_photo">NEEM \'N FOTO</string>
+	<string name="FaceTec_action_retake_photo">WEER</string>
+	<string name="FaceTec_action_accept_photo">AANVAAR</string>
+	<string name="FaceTec_action_confirm">BEVESTIG INLIGTING</string>
+	<string name="FaceTec_action_scan_nfc">SKANDEER ePASPORT</string>
+	<string name="FaceTec_action_scan_nfc_card">SKANDEER ID-KAART</string>
+	<string name="FaceTec_action_skip_nfc">SLAAN HIERDIE STAP OOR</string>
+
+	<string name="FaceTec_camera_permission_header">Aktiveer kamera</string>
+	<string name="FaceTec_camera_permission_message_enroll">Tik asseblief die knoppie hieronder om jou selfie kamera te aktiveer.</string>
+	<string name="FaceTec_camera_permission_message_auth">Jou kamera is gedeaktiveer. Tik hieronder om jou instellings te wysig.</string>
+	<string name="FaceTec_camera_permission_enable_camera">AKTIVEER KAMERA</string>
+	<string name="FaceTec_camera_permission_launch_settings">LAANSEER INSTELLINGS</string>
+
+	<string name="FaceTec_feedback_center_face">Sentreer jou gesig</string>
+	<string name="FaceTec_feedback_face_not_found">Raam jou gesig</string>
+	<string name="FaceTec_feedback_face_not_looking_straight_ahead">Kyk Reguit Vooruit</string>
+	<string name="FaceTec_feedback_face_not_upright">Hou jou kop reguit</string>
+	<string name="FaceTec_feedback_hold_steady">Hou vas</string>
+	<string name="FaceTec_feedback_move_phone_away">Beweeg Weg</string>
+	<string name="FaceTec_feedback_move_phone_closer">Beweeg nader</string>
+	<string name="FaceTec_feedback_move_phone_to_eye_level">Beweeg kamera na ooghoogte</string>
+	<string name="FaceTec_feedback_use_even_lighting">Lig gesig meer eweredig</string>
+
+	<string name="FaceTec_idscan_type_selection_header">Berei voor om\njou identifikasie te skandeer</string>
+	<string name="FaceTec_idscan_capture_tap_to_focus_message">Raak die skerm aan om te fokus</string>
+	<string name="FaceTec_idscan_capture_hold_steady_message">Hou asseblief in die posisie</string>
+	<string name="FaceTec_idscan_capture_id_front_instruction_message">Skandeer Voorkant van ID</string>
+	<string name="FaceTec_idscan_capture_id_back_instruction_message">Skandeer Agterkant van ID</string>
+	<string name="FaceTec_idscan_review_id_front_instruction_message">Bevestig Foto Skerp &amp; Leesbaar</string>
+	<string name="FaceTec_idscan_review_id_back_instruction_message">Bevestig Foto is Leesbaar</string>
+	<string name="FaceTec_idscan_ocr_confirmation_main_header">Hersien en bevestig</string>
+	<string name="FaceTec_idscan_ocr_confirmation_scroll_message">Beweeg na af</string>
+	<string name="FaceTec_idscan_nfc_status_disabled_message">Skakel \nJou Toestel se NFC\nAAN om Voort te Gaan</string>
+	<string name="FaceTec_idscan_nfc_status_ready_message">Maak gereed om\njou ePassport-skyfie te skandeer</string>
+	<string name="FaceTec_idscan_nfc_card_status_ready_message">Berei voor om\njou ID-skyfie te skandeer</string>
+	<string name="FaceTec_idscan_nfc_status_starting_message">Hou Selfoon aan \nAgterkant van e-Paspoort\nom NFC-skyfie te Skandeer</string>
+	<string name="FaceTec_idscan_nfc_card_status_starting_message">Bring die foon naby jou ID\nom die NFC-skyfie te skandeer</string>
+	<string name="FaceTec_idscan_nfc_status_scanning_message">Hou dit stil,\nskandeer die NFC-skyfie</string>
+	<string name="FaceTec_idscan_nfc_status_weak_connection_message">Kom ons probeer\nnog \'n skandering</string>
+	<string name="FaceTec_idscan_nfc_status_finished_with_success_message">NFC Skyfie\nGeskandeer</string>
+	<string name="FaceTec_idscan_nfc_status_finished_with_error_message">Kan nie\nePassport-skyfie lees nie</string>
+	<string name="FaceTec_idscan_nfc_card_status_finished_with_error_message">Kan nie\ndie ID-skyfie lees nie</string>
+	<string name="FaceTec_idscan_nfc_status_skipped_message">NFC-skandering\nNie Uitgevoer Nie</string>
+	<string name="FaceTec_idscan_additional_review_message">Bykomende verifikasie\nword vereis</string>
+	<string name="FaceTec_idscan_feedback_flip_id_to_back_message">Agterkant VAN JOU ID</string>
+	<string name="FaceTec_idscan_feedback_flip_id_to_front_message">Die voorkant VAN JOU ID</string>
+
+	<string name="FaceTec_initializing_camera">Beveilig kameratoevoer</string>
+
+	<string name="FaceTec_instructions_header_ready_1">Maak Gereed Vir</string>
+	<string name="FaceTec_instructions_header_ready_2">Jou Video Selfie</string>
+	<string name="FaceTec_instructions_message_ready_1">Raam Jou Gesig In Die Ovaal</string>
+	<string name="FaceTec_instructions_message_ready_2">Druk ek Is Gereed En Beweeg Nader</string>
+
+	<string name="FaceTec_orientation_message">Draai Asseblief\nJou Toestel</string>
+
+	<string name="FaceTec_presession_frame_your_face">Raam jou gesig in die ovaal</string>
+	<string name="FaceTec_presession_position_face_straight_in_oval">Kyk Reguit Vooruit</string>
+	<string name="FaceTec_presession_remove_dark_glasses">Verwyder donkerbrille</string>
+	<string name="FaceTec_presession_neutral_expression">Neutrale uitdrukking, geen glimlag nie</string>
+	<string name="FaceTec_presession_conditions_too_bright">Toestande te helder</string>
+	<string name="FaceTec_presession_brighten_your_environment">Verhelder jou omgewing</string>
+
+	<string name="FaceTec_result_facescan_upload_message">Oplaai\nDIE 3D gesig scan\ngeënkripteer</string>
+	<string name="FaceTec_result_facescan_upload_message_still_uploading">Laai Steeds...\nStadige Verbinding</string>
+	<string name="FaceTec_result_facescan_success_3d_enrollment_message">Gesig Geskandeer\n 3D Lewende Bewys</string>
+	<string name="FaceTec_result_facescan_success_3d_3d_reverification_message">3D Lewende Bewys\nGesig Geverifieer</string>
+	<string name="FaceTec_result_facescan_success_3d_liveness_prior_to_idscan_message">Gesig Geskandeer\n 3D Lewende Bewys</string>
+	<string name="FaceTec_result_facescan_success_3d_liveness_and_official_id_photo_message">3D Lewende Bewys</string>
+	<string name="FaceTec_result_idscan_upload_message_front_side_upload_started">Oplaai\nDIE ID scan\ngeënkripteer</string>
+	<string name="FaceTec_result_idscan_upload_message_front_side_still_uploading">Laai Steeds...\nStadige Verbinding</string>
+	<string name="FaceTec_result_idscan_upload_message_front_side_upload_complete_awaiting_response">ID Beeld\nOpgelaai</string>
+	<string name="FaceTec_result_idscan_upload_message_front_side_upload_complete_awaiting_processing">Verwerk\nID-skandering</string>
+	<string name="FaceTec_result_idscan_upload_message_back_side_upload_started">Laai Op\nVersleutelde\nAgterkant van ID</string>
+	<string name="FaceTec_result_idscan_upload_message_back_side_still_uploading">Laai Steeds...\nStadige Verbinding</string>
+	<string name="FaceTec_result_idscan_upload_message_back_side_upload_complete_awaiting_response">ID Beeld\nOpgelaai</string>
+	<string name="FaceTec_result_idscan_upload_message_back_side_upload_complete_awaiting_processing">Verwerk\nAgterkant van ID</string>
+	<string name="FaceTec_result_idscan_upload_message_user_confirmed_info_upload_started">Stoor\nJou Bevestigde Inligting</string>
+	<string name="FaceTec_result_idscan_upload_message_user_confirmed_info_still_uploading">Laai Steeds...\nStadige Verbinding</string>
+	<string name="FaceTec_result_idscan_upload_message_user_confirmed_info_upload_complete_awaiting_response">Inligting Gestoor</string>
+	<string name="FaceTec_result_idscan_upload_message_user_confirmed_info_upload_complete_awaiting_processing">Verwerk</string>
+	<string name="FaceTec_result_idscan_upload_message_nfc_upload_started">Laai Op Versleutelde\nNFC Besonderhede</string>
+	<string name="FaceTec_result_idscan_upload_message_nfc_still_uploading">Laai Steeds...\nStadige Verbinding</string>
+	<string name="FaceTec_result_idscan_upload_message_nfc_upload_complete_awaiting_response">NFC Skyfie-inligting\nOpgelaai</string>
+	<string name="FaceTec_result_idscan_upload_message_nfc_upload_complete_awaiting_processing">Verwerk\nNFC Besonderhede</string>
+	<string name="FaceTec_result_idscan_upload_message_skipped_nfc_upload_started">Oplaai\nGeïnkripteer\nID Data</string>
+	<string name="FaceTec_result_idscan_upload_message_skipped_nfc_still_uploading">Laai Steeds...\nStadige Verbinding</string>
+	<string name="FaceTec_result_idscan_upload_message_skipped_nfc_upload_complete_awaiting_response">Oplaai Voltooi</string>
+	<string name="FaceTec_result_idscan_upload_message_skipped_nfc_upload_complete_awaiting_processing">Verwerk\nID-data</string>
+	<string name="FaceTec_result_nfc_upload_message">Laai tans\nNFC\ngeënkripteerde inligting op</string>
+	<string name="FaceTec_result_idscan_unsuccess_message">Die ID-foto\nof pas by\ndie gebruiker se gesig</string>
+	<string name="FaceTec_result_idscan_success_front_side_message">Foto ID\nGeskandeer</string>
+	<string name="FaceTec_result_idscan_success_front_side_back_next_message">Voorkant van ID\ngeskandeer</string>
+	<string name="FaceTec_result_idscan_success_front_side_nfc_next_message">Voorkant van ID\ngeskandeer</string>
+	<string name="FaceTec_result_idscan_success_back_side_message">Foto ID\nGeskandeer</string>
+	<string name="FaceTec_result_idscan_success_back_side_nfc_next_message">Agterkant van ID\ngeskandeer</string>
+	<string name="FaceTec_result_idscan_success_passport_message">Geskandeerde paspoort</string>
+	<string name="FaceTec_result_idscan_success_passport_nfc_next_message">Geskandeerde paspoort</string>
+	<string name="FaceTec_result_idscan_success_user_confirmation_message">ID Skandering\nVoltooi</string>
+	<string name="FaceTec_result_idscan_success_nfc_message">NFC Skyfie-inligting\nOpgelaai</string>
+	<string name="FaceTec_result_idscan_success_additional_review_message">ID Skandering\nVoltooi</string>
+	<string name="FaceTec_result_idscan_skip_or_error_nfc_message">ID-data\nOpgelaai</string>
+	<string name="FaceTec_result_idscan_retry_face_did_not_match_message">Die gesig pas nie genoeg by\nnie</string>
+	<string name="FaceTec_result_idscan_retry_id_not_fully_visible_message">Die id\nis nie ten volle sigbaar nie</string>
+	<string name="FaceTec_result_idscan_retry_ocr_results_not_good_enough_message">Die teks van die identifikasie is nie leesbaar nie</string>
+	<string name="FaceTec_result_idscan_retry_id_type_not_supported_message">ID Nie Ondersteun Nie\nGebruik Asseblief ’n Ander ID</string>
+	<string name="FaceTec_result_idscan_retry_barcode_not_read_message">Kon nie strepieskode skandeer nie\nProbeer asseblief weer</string>
+	<string name="FaceTec_result_session_abort_message">Kritiese Fout\nSessie Beëindig</string>
+	<string name="FaceTec_result_idscan_additional_review_tag_message">Handleiding Hersiening Vereis\nSien Asseblief IDV Paneelbord</string>
+
+	<string name="FaceTec_retry_header">Kom Ons Probeer Dit Weer</string>
+	<string name="FaceTec_retry_subheader_message">Ons Benodig\'n Duideliker Video Selfie</string>
+	<string name="FaceTec_retry_instruction_message_1">Neutrale Uitdrukking, Geen Glimlag Nie</string>
+	<string name="FaceTec_retry_instruction_message_2">Gebruik ideale houding en beligting</string>
+	<string name="FaceTec_retry_instruction_message_3">Te Vaag, Skoon Kamera</string>
+	<string name="FaceTec_retry_your_image_label">Jou Selfie</string>
+	<string name="FaceTec_retry_ideal_image_label">Ideale Posisie</string>
+
+	<string name="FaceTec_retry_official_id_photo_header">Kom Ons Probeer Dit Weer</string>
+	<string name="FaceTec_retry_official_id_photo_subheader_message">n Hoër Kwaliteit Beeld asb</string>
+	<string name="FaceTec_retry_official_id_photo_instruction_message">Probeer Binnebeligting.\nGeen Glans op Bril, Glimlag of Kopbedekking</string>
+	<string name="FaceTec_retry_official_id_photo_your_image_label">Jou Beeld</string>
+	<string name="FaceTec_retry_official_id_photo_ideal_image_label">Genoegsame Gesig</string>
+
+</resources>

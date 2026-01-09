@@ -60,7 +60,7 @@
 		<string>8008</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>The camera will be used for scanning your passport</string>
+	<string>The camera will be used for scanning your passport and verifying your identity with face recognition</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

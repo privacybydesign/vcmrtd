@@ -29,6 +29,11 @@ android {
         versionName = flutter.versionName
     }
 
+    // FaceTec SDK configuration
+    aaptOptions {
+        noCompress "Regula/faceSdkResource.dat"
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
@@ -92,4 +97,7 @@ dependencies {
     // Gemalto JP2 Decoder
     // https://mvnrepository.com/artifact/com.gemalto.jp2/jp2-android
     implementation 'com.gemalto.jp2:jp2-android:1.0.3'
+
+    // FaceTec SDK - Include all .aar files from libs directory
+    implementation fileTree(dir: 'libs', include: ['*.aar'])
 }

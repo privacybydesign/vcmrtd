@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<animated-vector xmlns:tools="http://schemas.android.com/tools"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    tools:ignore="NewApi">
+    <aapt:attr name="android:drawable">
+        <vector
+            android:width="24dp"
+            android:height="24dp"
+            android:viewportHeight="24.0"
+            android:viewportWidth="24.0">
+            <group
+                android:name="circleGroup"
+                android:pivotX="12"
+                android:pivotY="12"
+                android:rotation="90.0">
+
+                <path
+                    android:name="circlePath"
+                    android:pathData="M 12, 12
+                        m 0, -10.5
+                        a 5,-5 0 1,0 0, 21
+                        a 5,-5 0 1,0 0, -21"
+                    android:strokeColor="#E6E6E6"
+                    android:strokeWidth="2.5"
+                    android:strokeLineCap="round"
+                    android:strokeLineJoin="miter" />
+            </group>
+
+            <group android:name="checkmarkGroup">
+                <path
+                    android:name="checkmarkPath"
+                    android:pathData="M7.35,12.74 l0,0 l0,0"
+                    android:strokeColor="#09B5A3"
+                    android:strokeWidth="2.5"
+                    android:strokeLineCap="round"
+                    android:strokeLineJoin="round"
+                    android:strokeMiterLimit="10"
+                    android:strokeAlpha="0"/>
+            </group>
+        </vector>
+    </aapt:attr>
+    <target android:name="checkmarkPath">
+        <aapt:attr name="android:animation">
+            <set
+                android:interpolator="@android:anim/linear_interpolator"
+                android:ordering="sequentially"
+                android:shareInterpolator="false">
+                <objectAnimator
+                    android:duration="300"
+                    android:propertyName="pathData"
+                    android:valueFrom="M7.35,12.74 l0,0 l0,0"
+                    android:valueTo="M7.35,12.74 l0,0 l0,0"
+                    android:valueType="pathType" />
+                <objectAnimator
+                    android:duration="300"
+                    android:propertyName="pathData"
+                    android:valueFrom="M7.35,12.74 l0,0 l0,0"
+                    android:valueTo="M7.35,12.74 l2.79,2.88 l0,0"
+                    android:valueType="pathType" />
+                <objectAnimator
+                    android:duration="300"
+                    android:propertyName="pathData"
+                    android:valueFrom="M7.35,12.74 l2.79,2.88 l0,0"
+                    android:valueTo="M7.35,12.74 l2.79,2.88 l6.51,-6.54"
+                    android:valueType="pathType" />
+            </set>
+        </aapt:attr>
+    </target>
+    <target android:name="checkmarkPath">
+        <aapt:attr name="android:animation">
+            <set>
+                <objectAnimator
+                    android:propertyName="strokeAlpha"
+                    android:valueType="floatType"
+                    android:valueFrom="0f"
+                    android:valueTo="1f"
+                    android:duration="100"
+                    android:startOffset="300"
+                    android:repeatCount="0"
+                    android:interpolator="@android:anim/decelerate_interpolator"/>
+            </set>
+        </aapt:attr>
+    </target>
+</animated-vector>
