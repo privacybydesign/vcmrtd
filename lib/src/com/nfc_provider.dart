@@ -68,6 +68,7 @@ class NfcProvider extends ComProvider {
         readIso14443B: true,
         readIso18092: false,
         readIso15693: false,
+        extraReaderPresenceCheckDelay: Duration(seconds: 2),
       );
       if (_tag!.type != NFCTagType.iso7816) {
         _log.info("Ignoring non ISO-7816 tag: ${_tag!.type}");
