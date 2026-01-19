@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:vcmrtd/src/models/document.dart';
+import 'package:vcmrtd/vcmrtd.dart';
 
 class SecurityContent extends StatelessWidget {
   final PassportData passport;

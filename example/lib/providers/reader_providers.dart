@@ -3,8 +3,8 @@ import 'package:vcmrtd/internal.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
 
-final passportReaderProvider = StateNotifierProvider.autoDispose
-    .family<DocumentReader<PassportData>, DocumentReaderState, ScannedPassportMRZ>((ref, scannedPassportMRZ) {
+final passportReaderProvider = NotifierProvider.autoDispose
+    .family<DocumentReader<PassportData>, DocumentReaderState, ScannedPassportMRZ>((scannedPassportMRZ) {
       final nfc = NfcProvider();
 
       final bacAccessKey = DBAKey(
@@ -46,15 +46,11 @@ final passportReaderProvider = StateNotifierProvider.autoDispose
         ),
       );
 
-      ref.onDispose(docReader.cancel);
       return docReader;
     });
 
-final passportUrlProvider = StateProvider((ref) => '');
-
-final drivingLicenceReaderProvider = StateNotifierProvider.autoDispose
+final drivingLicenceReaderProvider = NotifierProvider.autoDispose
     .family<DocumentReader<DrivingLicenceData>, DocumentReaderState, ScannedDriverLicenseMRZ>((
-      ref,
       scannedDriverLicenceMRZ,
     ) {
       final nfc = NfcProvider();
@@ -88,6 +84,5 @@ final drivingLicenceReaderProvider = StateNotifierProvider.autoDispose
         ),
       );
 
-      ref.onDispose(docReader.cancel);
       return docReader;
     });

@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'package:vcmrtd/extensions.dart';
 import 'package:vcmrtd/src/parsers/document_parser.dart';
 import 'package:vcmrtd/vcmrtd.dart';
@@ -29,7 +29,7 @@ class DocumentReaderConfig {
   bool shouldRead(DataGroups g) => readIfAvailable.contains(g);
 }
 
-class DocumentReader<DocType extends DocumentData> extends StateNotifier<DocumentReaderState> {
+class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentReaderState> {
   final DocumentReaderConfig config;
   final DocumentParser<DocType> documentParser;
   final DataGroupReader dataGroupReader;
@@ -40,10 +40,12 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
   List<String> _sensitiveLog = [];
   IosNfcMessageMapper? _iosNfcMessageMapper;
 
-  DocumentReader({required this.documentParser, required this.dataGroupReader, required this.nfc, required this.config})
-    : super(DocumentReaderPending()) {
-    checkNfcAvailability();
-  }
+  DocumentReader({
+    required this.documentParser,
+    required this.dataGroupReader,
+    required this.nfc,
+    required this.config,
+  });
 
   Future<void> checkNfcAvailability() async {
     _addLog('Checking NFC availability');
@@ -240,7 +242,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
   Future<void> _setToCancelState() async {
     await _setState(DocumentReaderCancelling());
     await nfc.disconnect();
-    if (!mounted) {
+    if (!ref.mounted) {
       return;
     }
     await _setState(DocumentReaderCancelled());
@@ -270,7 +272,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
     int numAttempts = 5,
   }) async {
     for (int i = 1; i <= numAttempts; ++i) {
-      if (!mounted) {
+      if (!ref.mounted) {
         return;
       }
       if (_isCancelled) {
@@ -312,7 +314,7 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
   }
 
   Future<void> _setState(DocumentReaderState s) async {
-    if (!mounted) {
+    if (!ref.mounted) {
       return;
     }
     _addLog('Setting state to $s');
@@ -362,6 +364,13 @@ class DocumentReader<DocType extends DocumentData> extends StateNotifier<Documen
 
     state = DocumentReaderFailed(error: DocumentReadingError.unknown, logs: logs, sensitiveLogs: sensitiveLogs);
     await nfc.disconnect();
+  }
+
+  @override
+  DocumentReaderState build() {
+    checkNfcAvailability();
+    ref.onDispose(cancel);
+    return DocumentReaderPending();
   }
 }
 

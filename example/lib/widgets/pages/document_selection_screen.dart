@@ -92,7 +92,7 @@ class _Header extends ConsumerWidget {
                 Switch(
                   value: ref.watch(activeAuthenticationProvider),
                   onChanged: (value) {
-                    ref.read(activeAuthenticationProvider.notifier).state = value;
+                    ref.read(activeAuthenticationProvider.notifier).set(value);
                   },
                 ),
               ],
