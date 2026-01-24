@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?>
+<animated-vector xmlns:tools="http://schemas.android.com/tools"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    tools:ignore="NewApi">
+    <aapt:attr name="android:drawable">
+        <vector
+            android:width="24dp"
+            android:height="24dp"
+            android:viewportHeight="24.0"
+            android:viewportWidth="24.0">
+
+            <group android:name="backCheckmarkGroup"
+                android:pivotX="12"
+                android:pivotY="12"
+                android:scaleX="0"
+                android:scaleY="0">
+                <path
+                    android:name="backCheckmarkPath"
+                    android:pathData="M7.35,12.74 l2.79,2.88 l6.51,-6.54"
+                    android:strokeColor="#000"
+                    android:strokeWidth="4"
+                    android:strokeMiterLimit="10" />
+            </group>
+
+            <group android:name="frontCheckmarkGroup"
+                android:pivotX="12"
+                android:pivotY="12"
+                android:scaleX="0"
+                android:scaleY="0">
+                <path
+                    android:name="frontCheckmarkPath"
+                    android:pathData="M7.35,12.74 l2.79,2.88 l6.51,-6.54"
+                    android:strokeColor="#000"
+                    android:strokeWidth="4"
+                    android:strokeMiterLimit="10" />
+            </group>
+        </vector>
+    </aapt:attr>
+
+    <target android:name="backCheckmarkGroup">
+        <aapt:attr name="android:animation">
+            <set
+                android:interpolator="@android:anim/decelerate_interpolator"
+                android:ordering="sequentially"
+                android:shareInterpolator="false">
+                <objectAnimator
+                    android:propertyName="scaleX"
+                    android:valueType="floatType"
+                    android:valueFrom="0f"
+                    android:valueTo="1.2f"
+                    android:duration="500"
+                    android:repeatCount="0" />
+
+                <objectAnimator
+                    android:propertyName="scaleX"
+                    android:valueType="floatType"
+                    android:valueFrom="1.2f"
+                    android:valueTo="1.2f"
+                    android:duration="200"
+                    android:repeatCount="0"/>
+
+                <objectAnimator
+                    android:propertyName="scaleX"
+                    android:valueType="floatType"
+                    android:valueFrom="1.2f"
+                    android:valueTo="1.8f"
+                    android:duration="500"
+                    android:repeatCount="0" />
+            </set>
+        </aapt:attr>
+    </target>
+    <target android:name="backCheckmarkGroup">
+        <aapt:attr name="android:animation">
+            <set
+                android:interpolator="@android:anim/decelerate_interpolator"
+                android:ordering="sequentially"
+                android:shareInterpolator="false">
+                <objectAnimator
+                    android:propertyName="scaleY"
+                    android:valueType="floatType"
+                    android:valueFrom="0f"
+                    android:valueTo="1.2f"
+                    android:duration="500"
+                    android:repeatCount="0" />
+
+                <objectAnimator
+                    android:propertyName="scaleY"
+                    android:valueType="floatType"
+                    android:valueFrom="1.2f"
+                    android:valueTo="1.2f"
+                    android:duration="200"
+                    android:repeatCount="0"/>
+
+                <objectAnimator
+                    android:propertyName="scaleY"
+                    android:valueType="floatType"
+                    android:valueFrom="1.2f"
+                    android:valueTo="1.8f"
+                    android:duration="500"
+                    android:repeatCount="0" />
+            </set>
+        </aapt:attr>
+    </target>
+
+    <target android:name="frontCheckmarkGroup">
+        <aapt:attr name="android:animation">
+            <set
+                android:interpolator="@android:anim/decelerate_interpolator"
+                android:ordering="sequentially"
+                android:shareInterpolator="false">
+                <objectAnimator
+                    android:propertyName="scaleX"
+                    android:valueType="floatType"
+                    android:valueFrom="0f"
+                    android:valueTo="1.2f"
+                    android:duration="500"
+                    android:repeatCount="0" />
+
+                <objectAnimator
+                    android:propertyName="scaleX"
+                    android:valueType="floatType"
+                    android:valueFrom="1.2f"
+                    android:valueTo="1.2f"
+                    android:duration="700"
+                    android:repeatCount="0"/>
+            </set>
+        </aapt:attr>
+    </target>
+    <target android:name="frontCheckmarkGroup">
+        <aapt:attr name="android:animation">
+            <set
+                android:interpolator="@android:anim/decelerate_interpolator"
+                android:ordering="sequentially"
+                android:shareInterpolator="false">
+                <objectAnimator
+                    android:propertyName="scaleY"
+                    android:valueType="floatType"
+                    android:valueFrom="0f"
+                    android:valueTo="1.2f"
+                    android:duration="500"
+                    android:repeatCount="0" />
+
+                <objectAnimator
+                    android:propertyName="scaleY"
+                    android:valueType="floatType"
+                    android:valueFrom="1.2f"
+                    android:valueTo="1.2f"
+                    android:duration="700"
+                    android:repeatCount="0"/>
+            </set>
+        </aapt:attr>
+    </target>
+
+    <target android:name="backCheckmarkPath">
+        <aapt:attr name="android:animation">
+            <set>
+                <objectAnimator
+                    android:propertyName="strokeAlpha"
+                    android:valueType="floatType"
+                    android:valueFrom="1.0f"
+                    android:valueTo="0f"
+                    android:duration="500"
+                    android:startOffset="700"
+                    android:repeatCount="0"
+                    android:interpolator="@android:anim/decelerate_interpolator"/>
+
+                <objectAnimator
+                    android:propertyName="strokeColor"
+                    android:valueType="intType"
+                    android:valueFrom="#000"
+                    android:valueTo="#1ced7d"
+                    android:duration="500"
+                    android:startOffset="700"
+                    android:repeatCount="0"
+                    android:interpolator="@android:anim/decelerate_interpolator"/>
+            </set>
+        </aapt:attr>
+    </target>
+
+</animated-vector>

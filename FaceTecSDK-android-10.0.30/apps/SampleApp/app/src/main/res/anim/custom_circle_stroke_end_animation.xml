@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:fillAfter="true">
+        <objectAnimator
+            android:propertyName="trimPathStart"
+            android:duration="300"
+            android:valueFrom="1.0f"
+            android:valueTo="0.0f"
+            android:valueType="floatType"
+            android:interpolator="@android:interpolator/fast_out_slow_in" />
+</set>

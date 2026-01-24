@@ -1,0 +1,31 @@
+<resources>
+    <string name="app_name" translatable="false">FaceTec SDK</string>
+    <string name="enroll_simple" translatable="false">Enroll 3D User</string>
+    <string name="auth_simple" translatable="false"> Re-Verify 3D User</string>
+    <string name="liveness_check" translatable="false">3D Liveness Check</string>
+    <string name="identity_check" translatable="false">Match Face to ID</string>
+    <string name="identity_scan_only" translatable="false">Scan &amp; OCR ID</string>
+    <string name="design_showcase" translatable="false">Customize Colors &amp; Themes</string>
+    <string name="transition_loading_text" translatable="false">Network Connection Slow…</string>
+    <string name="official_photo_id" translatable="false">Take Passport Photo</string>
+    <string name="action_settings" translatable="false">Settings</string>
+    <string name="email_address" translatable="false"><i>email address</i></string>
+    <string name="cancel_button" translatable="false">Cancel</string>
+
+    <string name="official_id_photo_header" translatable="false">Let\'s Take Your\nOfficial ID Photo!</string>
+    <string name="official_id_photo_sub_header" translatable="false">Official ID Photos have specific\nguidelines set by the ICAO.</string>
+    <string name="official_id_photo_instruction_header" translatable="false">Please follow the instructions below:</string>
+    <string name="official_id_photo_instruction_1" translatable="false">Even, Indoor Lighting</string>
+    <string name="official_id_photo_instruction_2" translatable="false">No Casual Headwear</string>
+    <string name="official_id_photo_instruction_3" translatable="false">No Sunglasses</string>
+    <string name="official_id_photo_instruction_4" translatable="false">No Glare in Eyeglasses</string>
+    <string name="official_id_photo_instruction_5" translatable="false">Neutral Facial Expression</string>
+    <string name="official_id_photo_continue" translatable="false">Continue</string>
+    <string name="official_id_photo_congratulations" translatable="false">Congratulations!</string>
+    <string name="official_id_photo_result_header" translatable="false">Here\'s your Official ID Photo</string>
+    <string name="official_id_photo_email_confirmation" translatable="false">Please Confirm Your Email</string>
+    <string name="official_id_photo_email_error" translatable="false">A valid email is required to receive your ID Photo.</string>
+    <string name="official_id_photo_email_image" translatable="false">Email ID Photo</string>
+    <string name="official_id_photo_save_image" translatable="false">Download ID Photo</string>
+
+</resources>

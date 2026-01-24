@@ -1,0 +1,150 @@
+<!-- This is a generated file.  Do not manually edit this and commit changes. -->
+
+<resources xmlns:tools="http://schemas.android.com/tools">
+	<string name="FaceTec_accessibility_cancel_button">Abbrechen</string>
+	<string name="FaceTec_accessibility_torch_button">Licht ein- oder ausschalten</string>
+	<string name="FaceTec_accessibility_tap_guidance">Tippen Sie für Hilfe zur Positionierung Ihres Gesichts doppelt auf eine beliebige Stelle des Bildschirms.</string>
+
+	<string name="FaceTec_accessibility_feedback_move_phone_away">Ihr Gesicht ist zu nah</string>
+	<string name="FaceTec_accessibility_feedback_move_phone_closer">Ihr Gesicht ist zu weit entfernt</string>
+	<string name="FaceTec_accessibility_feedback_face_too_far_left">Ihr Gesicht ist zu weit links</string>
+	<string name="FaceTec_accessibility_feedback_face_too_far_right">Ihr Gesicht ist zu weit rechts</string>
+	<string name="FaceTec_accessibility_feedback_face_too_low">Ihr Gesicht ist zu niedrig</string>
+	<string name="FaceTec_accessibility_feedback_face_too_high">Ihr Gesicht ist zu hoch</string>
+	<string name="FaceTec_accessibility_feedback_face_rotated_too_far_left">Ihr Gesicht ist zu weit nach links gedreht</string>
+	<string name="FaceTec_accessibility_feedback_face_rotated_too_far_right">Ihr Gesicht ist zu weit nach rechts gedreht</string>
+	<string name="FaceTec_accessibility_feedback_face_pointing_too_far_left">Ihr Gesicht zeigt zu weit nach links</string>
+	<string name="FaceTec_accessibility_feedback_face_pointing_too_far_right">Ihr Gesicht zeigt zu weit nach rechts</string>
+	<string name="FaceTec_accessibility_feedback_face_not_on_camera">Gesicht nicht in der Kamera oder zu weit weg</string>
+	<string name="FaceTec_accessibility_feedback_hold_device_to_eye_level">Halten Sie Ihr Gerät auf Augenhöhe</string>
+
+	<string name="FaceTec_action_ok">OK</string>
+	<string name="FaceTec_action_im_ready">ICH BIN BEREIT</string>
+	<string name="FaceTec_action_try_again">ERNEUT VERSUCHEN</string>
+	<string name="FaceTec_action_continue">FORTFAHREN</string>
+	<string name="FaceTec_action_take_photo">FOTO AUFNEHMEN</string>
+	<string name="FaceTec_action_retake_photo">WIEDER</string>
+	<string name="FaceTec_action_accept_photo">ANNEHMEN</string>
+	<string name="FaceTec_action_confirm">INFORMATION BESTÄTIGEN</string>
+	<string name="FaceTec_action_scan_nfc">ePASSPORT SCANNEN</string>
+	<string name="FaceTec_action_scan_nfc_card">AUSWEIS SCANNEN</string>
+	<string name="FaceTec_action_skip_nfc">SCHRITT ÜBERSPRINGEN</string>
+
+	<string name="FaceTec_camera_permission_header">Aktivieren Sie Ihre Kamera</string>
+	<string name="FaceTec_camera_permission_message_enroll">Bitte tippen Sie auf die Schaltfläche unten, um Ihre Selfie-Kamera zu aktivieren.</string>
+	<string name="FaceTec_camera_permission_message_auth">Ihre Kamera ist deaktiviert. Tippen Sie unten, um Ihre Einstellungen zu ändern.</string>
+	<string name="FaceTec_camera_permission_enable_camera">KAMERA AKTIVIEREN</string>
+	<string name="FaceTec_camera_permission_launch_settings">EINSTELLUNGEN ÖFFEN</string>
+
+	<string name="FaceTec_feedback_center_face">Positionieren Sie Ihr Gesicht mittig</string>
+	<string name="FaceTec_feedback_face_not_found">Halten Sie Ihr Gesicht innerhalb des Rahmens</string>
+	<string name="FaceTec_feedback_face_not_looking_straight_ahead">Schauen Sie geradeaus</string>
+	<string name="FaceTec_feedback_face_not_upright">Halten Sie Ihren Kopf gerade</string>
+	<string name="FaceTec_feedback_hold_steady">Bewegen Sie sich nicht</string>
+	<string name="FaceTec_feedback_move_phone_away">Rücken Sie weiter weg</string>
+	<string name="FaceTec_feedback_move_phone_closer">Rücken Sie näher heran</string>
+	<string name="FaceTec_feedback_move_phone_to_eye_level">Halten Sie die Kamera auf Augenhöhe</string>
+	<string name="FaceTec_feedback_use_even_lighting">Leuchten Sie Ihr Gesicht gleichmäßiger aus</string>
+
+	<string name="FaceTec_idscan_type_selection_header">Bereiten Sie sich auf den Scan\nIhres Ausweisdokuments vor</string>
+	<string name="FaceTec_idscan_capture_tap_to_focus_message">Display zum Fokussieren antippen</string>
+	<string name="FaceTec_idscan_capture_hold_steady_message">Bitte ruhig halten</string>
+	<string name="FaceTec_idscan_capture_id_front_instruction_message">Ausweis-Vorderseite scannen</string>
+	<string name="FaceTec_idscan_capture_id_back_instruction_message">Ausweis-Rückseite scannen</string>
+	<string name="FaceTec_idscan_review_id_front_instruction_message">Foto als klar/lesbar bestätigen</string>
+	<string name="FaceTec_idscan_review_id_back_instruction_message">Foto als lesbar bestätigen</string>
+	<string name="FaceTec_idscan_ocr_confirmation_main_header">Prüfen und bestätigen</string>
+	<string name="FaceTec_idscan_ocr_confirmation_scroll_message">Scrollen Sie nach unten</string>
+	<string name="FaceTec_idscan_nfc_status_disabled_message">Schalten Sie das\nNFC Ihres Geräts ein,\num fortzufahren</string>
+	<string name="FaceTec_idscan_nfc_status_ready_message">Bereiten Sie sich auf das Einlesen\nIhres ePassport-Chips vor</string>
+	<string name="FaceTec_idscan_nfc_card_status_ready_message">Bereiten Sie sich auf das Einlesen\nIhres Ausweis-Chips vor</string>
+	<string name="FaceTec_idscan_nfc_status_starting_message">Halten Sie das Telefon an\ndie Rückseite des ePassports\num den NFC-Chip zu scannen</string>
+	<string name="FaceTec_idscan_nfc_card_status_starting_message">Halten Sie das Smartphone an den Ausweis,\num den NFC-Chip einzulesen</string>
+	<string name="FaceTec_idscan_nfc_status_scanning_message">Halten Sie das Smartphone ruhig,\nder NFC-Chip wird eingelesen</string>
+	<string name="FaceTec_idscan_nfc_status_weak_connection_message">Lassen Sie uns einen\nweiteren Scan probieren</string>
+	<string name="FaceTec_idscan_nfc_status_finished_with_success_message">NFC-Chip\ngescannt</string>
+	<string name="FaceTec_idscan_nfc_status_finished_with_error_message">Der ePassport-Chip\nist nicht lesbar</string>
+	<string name="FaceTec_idscan_nfc_card_status_finished_with_error_message">Der Ausweis-Chip\nist nicht lesbar</string>
+	<string name="FaceTec_idscan_nfc_status_skipped_message">NFC-Scan\nnicht durchgeführt</string>
+	<string name="FaceTec_idscan_additional_review_message">Zusätzliche Prüfung\nerforderlich</string>
+	<string name="FaceTec_idscan_feedback_flip_id_to_back_message">Ausweis-Rückseite vorzeigen</string>
+	<string name="FaceTec_idscan_feedback_flip_id_to_front_message">Ausweis-Vorderseite vorzeigen</string>
+
+	<string name="FaceTec_initializing_camera">Sichern der Kamerainformationen</string>
+
+	<string name="FaceTec_instructions_header_ready_1">Bereiten Sie sich auf</string>
+	<string name="FaceTec_instructions_header_ready_2">Ihr Video-Selfie vor</string>
+	<string name="FaceTec_instructions_message_ready_1">Positionieren Sie Ihr Gesicht im Oval</string>
+	<string name="FaceTec_instructions_message_ready_2">Drücke „Ich bin bereit“ und rücke näher ran</string>
+
+	<string name="FaceTec_orientation_message">Bitte das\nGerät drehen</string>
+
+	<string name="FaceTec_presession_frame_your_face">Positionieren Sie Ihr Gesicht im Oval</string>
+	<string name="FaceTec_presession_position_face_straight_in_oval">Schauen Sie geradeaus</string>
+	<string name="FaceTec_presession_remove_dark_glasses">Legen Sie Ihre Sonnenbrille ab</string>
+	<string name="FaceTec_presession_neutral_expression">Gesichtsausdruck neutral, nicht lächeln</string>
+	<string name="FaceTec_presession_conditions_too_bright">Die Umgebung ist zu hell</string>
+	<string name="FaceTec_presession_brighten_your_environment">Beleuchten Sie Ihre Umgebung stärker</string>
+
+	<string name="FaceTec_result_facescan_upload_message">Lade\nverschlüsselten\n3D-FaceScan hoch</string>
+	<string name="FaceTec_result_facescan_upload_message_still_uploading">Der Hochladevorgang läuft immer noch.\nLangsame Verbindung</string>
+	<string name="FaceTec_result_facescan_success_3d_enrollment_message">Gesicht gescannt\n3D-Liveness bestätigt</string>
+	<string name="FaceTec_result_facescan_success_3d_3d_reverification_message">3D-Liveness bestätigtn\nGesicht verifiziert</string>
+	<string name="FaceTec_result_facescan_success_3d_liveness_prior_to_idscan_message">Gesicht gescannt\n3D-Liveness bestätigt</string>
+	<string name="FaceTec_result_facescan_success_3d_liveness_and_official_id_photo_message">3D-Liveness bestätigtn</string>
+	<string name="FaceTec_result_idscan_upload_message_front_side_upload_started">Lade\nverschlüsselten\nAusweis-Scan hoch</string>
+	<string name="FaceTec_result_idscan_upload_message_front_side_still_uploading">Der Hochladevorgang läuft immer noch.\nLangsame Verbindung</string>
+	<string name="FaceTec_result_idscan_upload_message_front_side_upload_complete_awaiting_response">ID-Bild\nhochgeladen</string>
+	<string name="FaceTec_result_idscan_upload_message_front_side_upload_complete_awaiting_processing">ID-Scan\nwird verarbeitet</string>
+	<string name="FaceTec_result_idscan_upload_message_back_side_upload_started">Die verschlüsselte\nID-Rückseite\nwird hochgeladen</string>
+	<string name="FaceTec_result_idscan_upload_message_back_side_still_uploading">Der Hochladevorgang läuft immer noch.\nLangsame Verbindung</string>
+	<string name="FaceTec_result_idscan_upload_message_back_side_upload_complete_awaiting_response">ID-Bild\nhochgeladen</string>
+	<string name="FaceTec_result_idscan_upload_message_back_side_upload_complete_awaiting_processing">Bearbeitung\nder Rückseite des ID-Dokuments</string>
+	<string name="FaceTec_result_idscan_upload_message_user_confirmed_info_upload_started">Ihre bestätigten Informationen\nspeichern</string>
+	<string name="FaceTec_result_idscan_upload_message_user_confirmed_info_still_uploading">Der Hochladevorgang läuft immer noch.\nLangsame Verbindung</string>
+	<string name="FaceTec_result_idscan_upload_message_user_confirmed_info_upload_complete_awaiting_response">Informationen gespeichert</string>
+	<string name="FaceTec_result_idscan_upload_message_user_confirmed_info_upload_complete_awaiting_processing">Wird bearbeitet</string>
+	<string name="FaceTec_result_idscan_upload_message_nfc_upload_started">Verschlüsselte NFC-Daten\nwerden hochgeladen</string>
+	<string name="FaceTec_result_idscan_upload_message_nfc_still_uploading">Der Hochladevorgang läuft immer noch.\nLangsame Verbindung</string>
+	<string name="FaceTec_result_idscan_upload_message_nfc_upload_complete_awaiting_response">NFC-Chip-Informationen\nhochgeladen</string>
+	<string name="FaceTec_result_idscan_upload_message_nfc_upload_complete_awaiting_processing">NFC-Daten\nwerden verarbeitet</string>
+	<string name="FaceTec_result_idscan_upload_message_skipped_nfc_upload_started">Verschlüsselte\nID-Informationen\nwerden hochgeladen</string>
+	<string name="FaceTec_result_idscan_upload_message_skipped_nfc_still_uploading">Der Hochladevorgang läuft immer noch.\nLangsame Verbindung</string>
+	<string name="FaceTec_result_idscan_upload_message_skipped_nfc_upload_complete_awaiting_response">Der Hochladevorgang ist abgeschlossen</string>
+	<string name="FaceTec_result_idscan_upload_message_skipped_nfc_upload_complete_awaiting_processing">ID-Daten\nwerden bearbeitet</string>
+	<string name="FaceTec_result_nfc_upload_message">Lade\nverschlüsselte\nNFC-Informationen hoch</string>
+	<string name="FaceTec_result_idscan_unsuccess_message">Das Foto auf dem Ausweis\nstimmt nicht mit dem\nGesicht des Benutzers überein</string>
+	<string name="FaceTec_result_idscan_success_front_side_message">Foto-ID\ngescannt</string>
+	<string name="FaceTec_result_idscan_success_front_side_back_next_message">Vorderseite des Ausweises\ngescannt</string>
+	<string name="FaceTec_result_idscan_success_front_side_nfc_next_message">Vorderseite des Ausweises\ngescannt</string>
+	<string name="FaceTec_result_idscan_success_back_side_message">Foto-ID\ngescannt</string>
+	<string name="FaceTec_result_idscan_success_back_side_nfc_next_message">Rückseite des Ausweises\ngescannt</string>
+	<string name="FaceTec_result_idscan_success_passport_message">Reisepass gescannt</string>
+	<string name="FaceTec_result_idscan_success_passport_nfc_next_message">Reisepass gescannt</string>
+	<string name="FaceTec_result_idscan_success_user_confirmation_message">ID-Scan\nabgeschlossen</string>
+	<string name="FaceTec_result_idscan_success_nfc_message">NFC-Chip-Informationen\nhochgeladen</string>
+	<string name="FaceTec_result_idscan_success_additional_review_message">ID-Scan\nabgeschlossen</string>
+	<string name="FaceTec_result_idscan_skip_or_error_nfc_message">ID-Daten\nhochgeladen</string>
+	<string name="FaceTec_result_idscan_retry_face_did_not_match_message">Das Gesicht weicht\nzu stark ab</string>
+	<string name="FaceTec_result_idscan_retry_id_not_fully_visible_message">Der Ausweis ist nicht\nvollständig sichtbar</string>
+	<string name="FaceTec_result_idscan_retry_ocr_results_not_good_enough_message">Der Text auf dem Ausweis ist nicht lesbar</string>
+	<string name="FaceTec_result_idscan_retry_id_type_not_supported_message">Ausweis wird nicht unterstützt\nbitte verwenden Sie einen anderen Ausweis</string>
+	<string name="FaceTec_result_idscan_retry_barcode_not_read_message">Der Barcode konnte nicht gescannt werden,\nbitte versuchen Sie es noch einmal</string>
+	<string name="FaceTec_result_session_abort_message">Kritischer Fehler\nSitzung beendet</string>
+	<string name="FaceTec_result_idscan_additional_review_tag_message">Manuelle Überprüfung erforderlich\nBitte IDV-Dashboard prüfen</string>
+
+	<string name="FaceTec_retry_header">Versuchen wir es noch einmal</string>
+	<string name="FaceTec_retry_subheader_message">Wir brauchen ein schärferes Video-Selfie</string>
+	<string name="FaceTec_retry_instruction_message_1">Gesichtsausdruck neutral, nicht lächeln</string>
+	<string name="FaceTec_retry_instruction_message_2">Pose und Licht müssen perfekt sein</string>
+	<string name="FaceTec_retry_instruction_message_3">Zu unscharf, bitte Kamera reinigen</string>
+	<string name="FaceTec_retry_your_image_label">Ihr Selfie</string>
+	<string name="FaceTec_retry_ideal_image_label">Optimale Haltung</string>
+
+	<string name="FaceTec_retry_official_id_photo_header">Versuchen wir es noch einmal</string>
+	<string name="FaceTec_retry_official_id_photo_subheader_message">Bild in höherer Qualität nötig</string>
+	<string name="FaceTec_retry_official_id_photo_instruction_message">Versuchen mit Raumlicht,\nohne Brillenblendung, Lächeln oder Kopfbedeckung</string>
+	<string name="FaceTec_retry_official_id_photo_your_image_label">Ihr Bild</string>
+	<string name="FaceTec_retry_official_id_photo_ideal_image_label">Konforme Gesichtsaufnahme</string>
+
+</resources>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<animated-vector
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:ignore="NewApi"
+    android:drawable="@drawable/pseudo_fullscreen_unsuccess_offwhite_vector_drawable">
+    <target
+        android:name="strokePath"
+        android:animation="@anim/custom_circle_stroke_end_animation">
+    </target>
+    <target
+        android:name="strokePath"
+        android:animation="@anim/custom_circle_stroke_width_animation">
+    </target>
+    <target
+        android:name="strokePath"
+        android:animation="@anim/custom_circle_stroke_path_animation">
+    </target>
+
+    <target
+        android:name="cross1Path"
+        android:animation="@anim/custom_cross_1_animation">
+    </target>
+    <target
+        android:name="cross2Path"
+        android:animation="@anim/custom_cross_2_animation">
+    </target>
+</animated-vector>

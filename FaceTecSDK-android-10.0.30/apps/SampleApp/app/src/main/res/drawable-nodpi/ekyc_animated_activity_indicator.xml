@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="utf-8"?>
+<animated-vector xmlns:tools="http://schemas.android.com/tools"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    tools:ignore="NewApi">
+    <aapt:attr name="android:drawable">
+        <vector
+            android:viewportWidth="48"
+            android:viewportHeight="48"
+            android:width="48dp"
+            android:height="48dp">
+
+            <group
+                android:name="circleGroup1"
+                android:pivotX="24"
+                android:pivotY="24"
+                android:rotation="90.0">
+                <path
+                    android:name="circlePath1"
+                    android:pathData="M 24, 24
+                        m -18, -0
+                        a 1 -1 0 1,0 0, 2
+                        a 1,-1 0 1,0 0,-2"
+                    android:strokeColor="#C77174"
+                    android:strokeWidth="2"
+                    android:strokeLineCap="round"
+                    android:strokeLineJoin="miter"/>
+            </group>
+
+            <group
+                android:name="circleGroup2"
+                android:pivotX="24"
+                android:pivotY="24"
+                android:rotation="90.0">
+                <path
+                    android:name="circlePath2"
+                    android:pathData="M 24, 24
+                        m -18, -0
+                        a 1 -1 0 1,0 0, 2
+                        a 1,-1 0 1,0 0,-2"
+                    android:strokeColor="#D4595D"
+                    android:strokeWidth="2"
+                    android:strokeLineCap="round"
+                    android:strokeLineJoin="miter"/>
+            </group>
+
+            <group
+                android:name="circleGroup3"
+                android:pivotX="24"
+                android:pivotY="24"
+                android:rotation="90.0">
+                <path
+                    android:name="circlePath3"
+                    android:pathData="M 24, 24
+                        m -18, -0
+                        a 1 -1 0 1,0 0, 2
+                        a 1,-1 0 1,0 0,-2"
+                    android:strokeColor="#E03C41"
+                    android:strokeWidth="2"
+                    android:strokeLineCap="round"
+                    android:strokeLineJoin="miter"/>
+            </group>
+
+            <group
+                android:name="circleGroup4"
+                android:pivotX="24"
+                android:pivotY="24"
+                android:rotation="90.0">
+                <path
+                    android:name="circlePath4"
+                    android:pathData="M 24, 24
+                        m -18, -0
+                        a 1 -1 0 1,0 0, 2
+                        a 1,-1 0 1,0 0,-2"
+                    android:strokeColor="#ED1C24"
+                    android:strokeWidth="2"
+                    android:strokeLineCap="round"
+                    android:strokeLineJoin="miter"/>
+            </group>
+        </vector>
+    </aapt:attr>
+
+    <target android:name="circleGroup1">
+        <aapt:attr name="android:animation">
+            <set>
+                <objectAnimator
+                    android:propertyName="rotation"
+                    android:valueType="floatType"
+                    android:valueFrom="0"
+                    android:valueTo="360"
+                    android:duration="1000"
+                    android:repeatMode="restart"
+                    android:repeatCount="infinite"
+                    android:interpolator="@android:anim/linear_interpolator" />
+            </set>
+        </aapt:attr>
+    </target>
+    <target android:name="circlePath1">
+        <aapt:attr name="android:animation">
+            <set>
+                <objectAnimator
+                    android:propertyName="strokeWidth"
+                    android:valueType="floatType"
+                    android:valueFrom="2.0f"
+                    android:valueTo="8.0f"
+                    android:duration="500"
+                    android:repeatMode="reverse"
+                    android:repeatCount="infinite"
+                    android:interpolator="@android:anim/linear_interpolator"/>
+            </set>
+        </aapt:attr>
+    </target>
+
+    <target android:name="circleGroup2">
+        <aapt:attr name="android:animation">
+            <set>
+                <objectAnimator
+                    android:propertyName="rotation"
+                    android:valueType="floatType"
+                    android:valueFrom="0"
+                    android:valueTo="360"
+                    android:duration="1200"
+                    android:repeatMode="restart"
+                    android:repeatCount="infinite"
+                    android:interpolator="@android:anim/linear_interpolator" />
+            </set>
+        </aapt:attr>
+    </target>
+    <target android:name="circlePath2">
+        <aapt:attr name="android:animation">
+            <set>
+                <objectAnimator
+                    android:propertyName="strokeWidth"
+                    android:valueType="floatType"
+                    android:valueFrom="2.0f"
+                    android:valueTo="8.0f"
+                    android:duration="600"
+                    android:repeatMode="reverse"
+                    android:repeatCount="infinite"
+                    android:interpolator="@android:anim/linear_interpolator"/>
+            </set>
+        </aapt:attr>
+    </target>
+
+    <target android:name="circleGroup3">
+        <aapt:attr name="android:animation">
+            <set>
+                <objectAnimator
+                    android:propertyName="rotation"
+                    android:valueType="floatType"
+                    android:valueFrom="0"
+                    android:valueTo="360"
+                    android:duration="1500"
+                    android:repeatMode="restart"
+                    android:repeatCount="infinite"
+                    android:interpolator="@android:anim/linear_interpolator" />
+            </set>
+        </aapt:attr>
+    </target>
+    <target android:name="circlePath3">
+        <aapt:attr name="android:animation">
+            <set>
+                <objectAnimator
+                    android:propertyName="strokeWidth"
+                    android:valueType="floatType"
+                    android:valueFrom="2.0f"
+                    android:valueTo="8.0f"
+                    android:duration="750"
+                    android:repeatMode="reverse"
+                    android:repeatCount="infinite"
+                    android:interpolator="@android:anim/linear_interpolator"/>
+            </set>
+        </aapt:attr>
+    </target>
+
+    <target android:name="circleGroup4">
+        <aapt:attr name="android:animation">
+            <set>
+                <objectAnimator
+                    android:propertyName="rotation"
+                    android:valueType="floatType"
+                    android:valueFrom="0"
+                    android:valueTo="360"
+                    android:duration="2000"
+                    android:repeatMode="restart"
+                    android:repeatCount="infinite"
+                    android:interpolator="@android:anim/linear_interpolator" />
+            </set>
+        </aapt:attr>
+    </target>
+    <target android:name="circlePath4">
+        <aapt:attr name="android:animation">
+            <set>
+                <objectAnimator
+                    android:propertyName="strokeWidth"
+                    android:valueType="floatType"
+                    android:valueFrom="2.0f"
+                    android:valueTo="8.0f"
+                    android:duration="1000"
+                    android:repeatMode="reverse"
+                    android:repeatCount="infinite"
+                    android:interpolator="@android:anim/linear_interpolator"/>
+            </set>
+        </aapt:attr>
+    </target>
+</animated-vector>

@@ -1,0 +1,150 @@
+//
+// This is a generated file.  Do not manually edit this and commit changes.
+//
+
+"FaceTec_accessibility_cancel_button" = "キャンセル";
+"FaceTec_accessibility_torch_button" = "ライトの切り替え";
+"FaceTec_accessibility_tap_guidance" = "画面のどこかをダブルタップすると、顔の位置合わせガイダンスが表示されます。";
+
+"FaceTec_accessibility_feedback_move_phone_away" = "顔が近すぎます";
+"FaceTec_accessibility_feedback_move_phone_closer" = "顔が遠すぎます";
+"FaceTec_accessibility_feedback_face_too_far_left" = "顔が左に寄りすぎです";
+"FaceTec_accessibility_feedback_face_too_far_right" = "顔が右に寄りすぎです";
+"FaceTec_accessibility_feedback_face_too_low" = "顔が低すぎます";
+"FaceTec_accessibility_feedback_face_too_high" = "顔が高すぎます";
+"FaceTec_accessibility_feedback_face_rotated_too_far_left" = "顔が左に回転しすぎです";
+"FaceTec_accessibility_feedback_face_rotated_too_far_right" = "顔が右に回転しすぎです";
+"FaceTec_accessibility_feedback_face_pointing_too_far_left" = "顔が左に向きすぎです";
+"FaceTec_accessibility_feedback_face_pointing_too_far_right" = "顔が右に向きすぎです";
+"FaceTec_accessibility_feedback_face_not_on_camera" = "顔がカメラに向いていないか、遠すぎます";
+"FaceTec_accessibility_feedback_hold_device_to_eye_level" = "デバイスを目の高さで保ってください";
+
+"FaceTec_action_ok" = "OK";
+"FaceTec_action_im_ready" = "準備完了";
+"FaceTec_action_try_again" = "もう一度やり直す";
+"FaceTec_action_continue" = "続行";
+"FaceTec_action_take_photo" = "写真を撮る";
+"FaceTec_action_retake_photo" = "再試行";
+"FaceTec_action_accept_photo" = "承諾する";
+"FaceTec_action_confirm" = "情報を確認する";
+"FaceTec_action_scan_nfc" = "eパスポートをスキャン";
+"FaceTec_action_scan_nfc_card" = "IDカードをスキャン";
+"FaceTec_action_skip_nfc" = "このステップをスキップ";
+
+"FaceTec_camera_permission_header" = "カメラを有効にしてください";
+"FaceTec_camera_permission_message_enroll" = "下のボタンをクリックして自撮りカメラを有効にしてください。";
+"FaceTec_camera_permission_message_auth" = "カメラが無効になっています。下のボタンをタップして設定を変更してください。";
+"FaceTec_camera_permission_enable_camera" = "カメラを有効にする";
+"FaceTec_camera_permission_launch_settings" = "設定を起動";
+
+"FaceTec_feedback_center_face" = "顔を中央に合わせてください";
+"FaceTec_feedback_face_not_found" = "顔を枠内に収めてください";
+"FaceTec_feedback_face_not_looking_straight_ahead" = "まっすぐ前を向いてください";
+"FaceTec_feedback_face_not_upright" = "頭をまっすぐに保ってください";
+"FaceTec_feedback_hold_steady" = "動かないでください";
+"FaceTec_feedback_move_phone_away" = "離れてください";
+"FaceTec_feedback_move_phone_closer" = "近づいてください";
+"FaceTec_feedback_move_phone_to_eye_level" = "カメラを目の高さに合わせてください";
+"FaceTec_feedback_use_even_lighting" = "顔を均等に照らしてください";
+
+"FaceTec_idscan_type_selection_header" = "身分証明書の\nスキャンの準備をしてください";
+"FaceTec_idscan_capture_tap_to_focus_message" = "画面をタップしてフォーカスを合わせてください";
+"FaceTec_idscan_capture_hold_steady_message" = "動かないでください";
+"FaceTec_idscan_capture_id_front_instruction_message" = "IDの表面をスキャンします";
+"FaceTec_idscan_capture_id_back_instruction_message" = "IDの裏面をスキャンします";
+"FaceTec_idscan_review_id_front_instruction_message" = "写真が鮮明で判読可能であることを確認します";
+"FaceTec_idscan_review_id_back_instruction_message" = "写真が判読可能であることを確認します";
+"FaceTec_idscan_ocr_confirmation_main_header" = "確認してください";
+"FaceTec_idscan_ocr_confirmation_scroll_message" = "スクロールダウンしてください";
+"FaceTec_idscan_nfc_status_disabled_message" = "続行するには\nデバイスのNFC\nをオンにします";
+"FaceTec_idscan_nfc_status_ready_message" = "eパスポートチップを\nスキャンする準備をしてください";
+"FaceTec_idscan_nfc_card_status_ready_message" = "IDカードチップを\nスキャンする準備をしてください";
+"FaceTec_idscan_nfc_status_starting_message" = "携帯電話を\neパスポートの裏面\nにかざして、NFCチップをスキャンします";
+"FaceTec_idscan_nfc_card_status_starting_message" = "携帯電話をIDカードにかざして\nNFCチップをスキャンしてください";
+"FaceTec_idscan_nfc_status_scanning_message" = "動かないでください\nNFCチップをスキャン中です";
+"FaceTec_idscan_nfc_status_weak_connection_message" = "もう一度スキャンを\nやってみましょう";
+"FaceTec_idscan_nfc_status_finished_with_success_message" = "NFCチップ\nスキャン済み";
+"FaceTec_idscan_nfc_status_finished_with_error_message" = "eパスポートチップが\n読み取れません";
+"FaceTec_idscan_nfc_card_status_finished_with_error_message" = "IDカードチップが\n読み取れません";
+"FaceTec_idscan_nfc_status_skipped_message" = "NFCスキャン\nが実行されませんでした";
+"FaceTec_idscan_additional_review_message" = "追加の確認が\n必要です";
+"FaceTec_idscan_feedback_flip_id_to_back_message" = "裏面のために\n身分証明書を裏返してください";
+"FaceTec_idscan_feedback_flip_id_to_front_message" = "身分証明書の表面を撮影してください";
+
+"FaceTec_initializing_camera" = "カメラフィードの保護";
+
+"FaceTec_instructions_header_ready_1" = "自撮り動画の";
+"FaceTec_instructions_header_ready_2" = "準備をしてください";
+"FaceTec_instructions_message_ready_1" = "顔を楕円形の枠内に収めてください";
+"FaceTec_instructions_message_ready_2" = "「準備完了」を押して、もっと近づいてください";
+
+"FaceTec_orientation_message" = "デバイスを\n回転してください";
+
+"FaceTec_presession_frame_your_face" = "顔を楕円形の枠内に収めてください";
+"FaceTec_presession_position_face_straight_in_oval" = "まっすぐ前を向いてください";
+"FaceTec_presession_remove_dark_glasses" = "濃い色のメガネは外してください";
+"FaceTec_presession_neutral_expression" = "笑顔のない自然な表情をしてください";
+"FaceTec_presession_conditions_too_bright" = "環境が明るすぎます";
+"FaceTec_presession_brighten_your_environment" = "環境を明るくしてください";
+
+"FaceTec_result_facescan_upload_message" = "暗号化された\n3Dフェイススキャンを\nアップロード中です";
+"FaceTec_result_facescan_upload_message_still_uploading" = "まだアップロード中...\n接続が遅い";
+"FaceTec_result_facescan_success_3d_enrollment_message" = "顔スキャン完了\n3D生体判定異常なし";
+"FaceTec_result_facescan_success_3d_3d_reverification_message" = "3D生体判定異常なし\n顔認証完了";
+"FaceTec_result_facescan_success_3d_liveness_prior_to_idscan_message" = "顔スキャン完了\n3D生体判定異常なし";
+"FaceTec_result_facescan_success_3d_liveness_and_official_id_photo_message" = "3D生体判定異常なし";
+"FaceTec_result_idscan_upload_message_front_side_upload_started" = "暗号化された\n身分証明書のスキャンを\nアップロード中です";
+"FaceTec_result_idscan_upload_message_front_side_still_uploading" = "まだアップロード中...\n接続が遅い";
+"FaceTec_result_idscan_upload_message_front_side_upload_complete_awaiting_response" = "ID画像\nアップロード済み";
+"FaceTec_result_idscan_upload_message_front_side_upload_complete_awaiting_processing" = "処理中\nIDスキャン";
+"FaceTec_result_idscan_upload_message_back_side_upload_started" = "アップロード中\n暗号化されました\nIDの裏面";
+"FaceTec_result_idscan_upload_message_back_side_still_uploading" = "まだアップロード中...\n接続が遅い";
+"FaceTec_result_idscan_upload_message_back_side_upload_complete_awaiting_response" = "ID画像\nアップロード済み";
+"FaceTec_result_idscan_upload_message_back_side_upload_complete_awaiting_processing" = "処理中\nIDの裏面";
+"FaceTec_result_idscan_upload_message_user_confirmed_info_upload_started" = "保存中\n確認済みの情報";
+"FaceTec_result_idscan_upload_message_user_confirmed_info_still_uploading" = "まだアップロード中...\n接続が遅い";
+"FaceTec_result_idscan_upload_message_user_confirmed_info_upload_complete_awaiting_response" = "情報が保存されました";
+"FaceTec_result_idscan_upload_message_user_confirmed_info_upload_complete_awaiting_processing" = "処理中";
+"FaceTec_result_idscan_upload_message_nfc_upload_started" = "暗号化されたものをアップロード中\nNFCの詳細";
+"FaceTec_result_idscan_upload_message_nfc_still_uploading" = "まだアップロード中...\n接続が遅い";
+"FaceTec_result_idscan_upload_message_nfc_upload_complete_awaiting_response" = "NFCチップ情報\nアップロード済み";
+"FaceTec_result_idscan_upload_message_nfc_upload_complete_awaiting_processing" = "処理中\nNFCの詳細";
+"FaceTec_result_idscan_upload_message_skipped_nfc_upload_started" = "暗号化された\nIDデータをアップロード中";
+"FaceTec_result_idscan_upload_message_skipped_nfc_still_uploading" = "まだアップロード中...\n接続が遅い";
+"FaceTec_result_idscan_upload_message_skipped_nfc_upload_complete_awaiting_response" = "アップロード完了";
+"FaceTec_result_idscan_upload_message_skipped_nfc_upload_complete_awaiting_processing" = "IDデータを\n処理中";
+"FaceTec_result_nfc_upload_message" = "暗号化された\nNFCの詳細を\nアップロード中です";
+"FaceTec_result_idscan_unsuccess_message" = "証明写真が\nユーザーの顔と\n一致しませんでした";
+"FaceTec_result_idscan_success_front_side_message" = "写真付きID\nスキャン済み";
+"FaceTec_result_idscan_success_front_side_back_next_message" = "身分証明書の表面を\nスキャンしました";
+"FaceTec_result_idscan_success_front_side_nfc_next_message" = "身分証明書の表面を\nスキャンしました";
+"FaceTec_result_idscan_success_back_side_message" = "写真付きID\nスキャン済み";
+"FaceTec_result_idscan_success_back_side_nfc_next_message" = "身分証明書の裏面を\nスキャンしました";
+"FaceTec_result_idscan_success_passport_message" = "パスポートがスキャンされました";
+"FaceTec_result_idscan_success_passport_nfc_next_message" = "パスポートがスキャンされました";
+"FaceTec_result_idscan_success_user_confirmation_message" = "IDスキャン\n完了";
+"FaceTec_result_idscan_success_nfc_message" = "NFCチップ情報\nアップロード済み";
+"FaceTec_result_idscan_success_additional_review_message" = "IDスキャン\n完了";
+"FaceTec_result_idscan_skip_or_error_nfc_message" = "IDデータが\nアップロードされました";
+"FaceTec_result_idscan_retry_face_did_not_match_message" = "顔が十分に\n一致しませんでした";
+"FaceTec_result_idscan_retry_id_not_fully_visible_message" = "身分証明書が完全に見えません";
+"FaceTec_result_idscan_retry_ocr_results_not_good_enough_message" = "身分証明書の文字がが判読できません";
+"FaceTec_result_idscan_retry_id_type_not_supported_message" = "IDはサポートされていません\n別のIDを使用してください";
+"FaceTec_result_idscan_retry_barcode_not_read_message" = "バーコードのスキャンに失敗しました\nもう一度やり直してください";
+"FaceTec_result_session_abort_message" = "重大なエラー\nセッション終了";
+"FaceTec_result_idscan_additional_review_tag_message" = "マニュアルレビューが必要です\nIDVダッシュボードを確認してください";
+
+"FaceTec_retry_header" = "もう一度やり直しましょう";
+"FaceTec_retry_subheader_message" = "より鮮明な自撮り動画が必要です";
+"FaceTec_retry_instruction_message_1" = "笑顔のない自然な表情をしてください";
+"FaceTec_retry_instruction_message_2" = "適切なポーズと照明を使用してください";
+"FaceTec_retry_instruction_message_3" = "ぼやけすぎる時は綺麗なカメラを使用してください";
+"FaceTec_retry_your_image_label" = "あなたの自撮り";
+"FaceTec_retry_ideal_image_label" = "理想のポーズ";
+
+"FaceTec_retry_official_id_photo_header" = "もう一度やり直しましょう";
+"FaceTec_retry_official_id_photo_subheader_message" = "もっと高品質の画像が必要です";
+"FaceTec_retry_official_id_photo_instruction_message" = "室内照明の元でお試しください。\nメガネの反射、笑顔、帽子着用は禁止です";
+"FaceTec_retry_official_id_photo_your_image_label" = "あなたの画像";
+"FaceTec_retry_official_id_photo_ideal_image_label" = "フェイスコンフォーム";
+

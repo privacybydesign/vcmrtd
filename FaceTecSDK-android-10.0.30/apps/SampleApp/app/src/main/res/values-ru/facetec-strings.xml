@@ -1,0 +1,150 @@
+<!-- This is a generated file.  Do not manually edit this and commit changes. -->
+
+<resources xmlns:tools="http://schemas.android.com/tools">
+	<string name="FaceTec_accessibility_cancel_button">Отмена</string>
+	<string name="FaceTec_accessibility_torch_button">Переключить свет</string>
+	<string name="FaceTec_accessibility_tap_guidance">Дважды коснитесь любого места на экране для получения рекомендаций по выравниванию лица.</string>
+
+	<string name="FaceTec_accessibility_feedback_move_phone_away">Лицо слишком близко</string>
+	<string name="FaceTec_accessibility_feedback_move_phone_closer">Лицо слишком далеко</string>
+	<string name="FaceTec_accessibility_feedback_face_too_far_left">Лицо намного левее</string>
+	<string name="FaceTec_accessibility_feedback_face_too_far_right">Лицо намного правее</string>
+	<string name="FaceTec_accessibility_feedback_face_too_low">Лицо слишком низко</string>
+	<string name="FaceTec_accessibility_feedback_face_too_high">Лицо слишком высоко</string>
+	<string name="FaceTec_accessibility_feedback_face_rotated_too_far_left">Лицо повернуто намного левее</string>
+	<string name="FaceTec_accessibility_feedback_face_rotated_too_far_right">Лицо повернуто намного правее</string>
+	<string name="FaceTec_accessibility_feedback_face_pointing_too_far_left">Лицо смотрит намного левее</string>
+	<string name="FaceTec_accessibility_feedback_face_pointing_too_far_right">Лицо смотрит намного правее</string>
+	<string name="FaceTec_accessibility_feedback_face_not_on_camera">Лицо не в камере или слишком далеко</string>
+	<string name="FaceTec_accessibility_feedback_hold_device_to_eye_level">Держите устройство на уровне глаз</string>
+
+	<string name="FaceTec_action_ok">ОК</string>
+	<string name="FaceTec_action_im_ready">Я ГОТОВ</string>
+	<string name="FaceTec_action_try_again">ПОВТОРИТЬ ПОПЫТКУ</string>
+	<string name="FaceTec_action_continue">ПРОДОЛЖИТЬ</string>
+	<string name="FaceTec_action_take_photo">СФОТОГРАФИРОВАТЬ</string>
+	<string name="FaceTec_action_retake_photo">ПОВТОР</string>
+	<string name="FaceTec_action_accept_photo">ПРИНЯТЬ</string>
+	<string name="FaceTec_action_confirm">ПОДТВЕРДИТЬ ИНФОРМАЦИЮ</string>
+	<string name="FaceTec_action_scan_nfc">СКАНИРОВАТЬ ЭЛ.ПАСПОРТ</string>
+	<string name="FaceTec_action_scan_nfc_card">СКАНИР. ИДЕНТИФ.КАРТУ</string>
+	<string name="FaceTec_action_skip_nfc">ПРОПУСТИТЬ ЭТОТ ШАГ</string>
+
+	<string name="FaceTec_camera_permission_header">Включить камеру</string>
+	<string name="FaceTec_camera_permission_message_enroll">Нажмите кнопку ниже, чтобы включить селфи-камеру.</string>
+	<string name="FaceTec_camera_permission_message_auth">Ваша камера отключена. Нажмите ниже, чтобы изменить свои настройки.</string>
+	<string name="FaceTec_camera_permission_enable_camera">ВКЛЮЧИТЬ КАМЕРУ</string>
+	<string name="FaceTec_camera_permission_launch_settings">ЗАПУСТИТЬ НАСТРОЙКИ</string>
+
+	<string name="FaceTec_feedback_center_face">Поместите свое лицо в центр</string>
+	<string name="FaceTec_feedback_face_not_found">Поместите свое лицо в рамку</string>
+	<string name="FaceTec_feedback_face_not_looking_straight_ahead">Смотрите прямо перед собой</string>
+	<string name="FaceTec_feedback_face_not_upright">Держите голову прямо</string>
+	<string name="FaceTec_feedback_hold_steady">Не двигайтесь</string>
+	<string name="FaceTec_feedback_move_phone_away">Отодвиньтесь дальше</string>
+	<string name="FaceTec_feedback_move_phone_closer">Придвиньтесь ближе</string>
+	<string name="FaceTec_feedback_move_phone_to_eye_level">Держите камеру на уровне глаз</string>
+	<string name="FaceTec_feedback_use_even_lighting">Осветите лицо более равномерно</string>
+
+	<string name="FaceTec_idscan_type_selection_header">Подготовьтесь к сканированию\nвашего идентификационного документа</string>
+	<string name="FaceTec_idscan_capture_tap_to_focus_message">Коснитесь экрана, чтобы сфокусир.</string>
+	<string name="FaceTec_idscan_capture_hold_steady_message">Пожалуйста, не двигайтесь</string>
+	<string name="FaceTec_idscan_capture_id_front_instruction_message">Сканир-ть удостоверение спереди</string>
+	<string name="FaceTec_idscan_capture_id_back_instruction_message">Сканировать удостоверение сзади</string>
+	<string name="FaceTec_idscan_review_id_front_instruction_message">Фото четкое, текст читается?</string>
+	<string name="FaceTec_idscan_review_id_back_instruction_message">Читается ли текст на фото?</string>
+	<string name="FaceTec_idscan_ocr_confirmation_main_header">Проверьте и подтвердите</string>
+	<string name="FaceTec_idscan_ocr_confirmation_scroll_message">Прокрутите вниз</string>
+	<string name="FaceTec_idscan_nfc_status_disabled_message">Поднесите телефон к\nзадней стороне паспорта\n, чтобы отсканировать чип NFC</string>
+	<string name="FaceTec_idscan_nfc_status_ready_message">Приготовьтесь к сканированию\nчипа вашего электронного паспорта</string>
+	<string name="FaceTec_idscan_nfc_card_status_ready_message">Приготовьтесь к сканированию\nчипа вашей идентификационной карты</string>
+	<string name="FaceTec_idscan_nfc_status_starting_message">Чтобы сканировать чип NFC, поднесите телефон к\nзадней стороне электронного паспорта\n</string>
+	<string name="FaceTec_idscan_nfc_card_status_starting_message">Поднесите телефон к идентификационной карте\nдля сканирования чипа NFC</string>
+	<string name="FaceTec_idscan_nfc_status_scanning_message">Держите неподвижно, сканирование чипа NFC</string>
+	<string name="FaceTec_idscan_nfc_status_weak_connection_message">Давайте попробуем\nотсканировать еще раз</string>
+	<string name="FaceTec_idscan_nfc_status_finished_with_success_message">Чип NFC\nотсканирован</string>
+	<string name="FaceTec_idscan_nfc_status_finished_with_error_message">Чип электронного паспорта\nнечитаемый</string>
+	<string name="FaceTec_idscan_nfc_card_status_finished_with_error_message">Чип идентификационной карты\nнечитаемый</string>
+	<string name="FaceTec_idscan_nfc_status_skipped_message">Сканирование NFC\nне выполнено</string>
+	<string name="FaceTec_idscan_additional_review_message">Требуется дополнительная\nпроверка</string>
+	<string name="FaceTec_idscan_feedback_flip_id_to_back_message">Покаж.обратн.стор.идент.докум.</string>
+	<string name="FaceTec_idscan_feedback_flip_id_to_front_message">Покаж.передн.стор.идент.докум.</string>
+
+	<string name="FaceTec_initializing_camera">Защита данных с камеры</string>
+
+	<string name="FaceTec_instructions_header_ready_1">Приготовьтесь к</string>
+	<string name="FaceTec_instructions_header_ready_2">вашему видеоселфи</string>
+	<string name="FaceTec_instructions_message_ready_1">Поместите свое лицо в овал</string>
+	<string name="FaceTec_instructions_message_ready_2">Нажмите Я готов и придвиньтесь ближе</string>
+
+	<string name="FaceTec_orientation_message">Поверните\nсвое устройство</string>
+
+	<string name="FaceTec_presession_frame_your_face">Поместите свое лицо в овал</string>
+	<string name="FaceTec_presession_position_face_straight_in_oval">Смотрите прямо перед собой</string>
+	<string name="FaceTec_presession_remove_dark_glasses">Снимите темные очки</string>
+	<string name="FaceTec_presession_neutral_expression">Нейтральное выражение лица, без улыбки</string>
+	<string name="FaceTec_presession_conditions_too_bright">Слишком яркая обстановка</string>
+	<string name="FaceTec_presession_brighten_your_environment">Сделайте свою обстановку ярче</string>
+
+	<string name="FaceTec_result_facescan_upload_message">Загрузка\nзашифрованного\n3D-скана лица</string>
+	<string name="FaceTec_result_facescan_upload_message_still_uploading">Еще идет отправка...\nМедленное соединение</string>
+	<string name="FaceTec_result_facescan_success_3d_enrollment_message">Лицо отсканировано\nПроверенная 3D-живость</string>
+	<string name="FaceTec_result_facescan_success_3d_3d_reverification_message">Проверенная 3D-живость\nЛицо верифицировано</string>
+	<string name="FaceTec_result_facescan_success_3d_liveness_prior_to_idscan_message">Лицо отсканировано\nПроверенная 3D-живость</string>
+	<string name="FaceTec_result_facescan_success_3d_liveness_and_official_id_photo_message">Проверенная 3D-живость</string>
+	<string name="FaceTec_result_idscan_upload_message_front_side_upload_started">Загрузка\nзашифрованного\nскана идентификационного документа</string>
+	<string name="FaceTec_result_idscan_upload_message_front_side_still_uploading">Еще идет отправка...\nМедленное соединение</string>
+	<string name="FaceTec_result_idscan_upload_message_front_side_upload_complete_awaiting_response">Изображение удостоверения личности\nзагружено</string>
+	<string name="FaceTec_result_idscan_upload_message_front_side_upload_complete_awaiting_processing">Идет обработка\nСканирование документа</string>
+	<string name="FaceTec_result_idscan_upload_message_back_side_upload_started">Идет отправка\nЗашифровано\nОбратная сторона документа</string>
+	<string name="FaceTec_result_idscan_upload_message_back_side_still_uploading">Еще идет отправка...\nМедленное соединение</string>
+	<string name="FaceTec_result_idscan_upload_message_back_side_upload_complete_awaiting_response">Изображение удостоверения личности\nзагружено</string>
+	<string name="FaceTec_result_idscan_upload_message_back_side_upload_complete_awaiting_processing">Идет обработка\nОбратная сторона документа</string>
+	<string name="FaceTec_result_idscan_upload_message_user_confirmed_info_upload_started">Сохранение\nПодтвержденная вами информация</string>
+	<string name="FaceTec_result_idscan_upload_message_user_confirmed_info_still_uploading">Еще идет отправка...\nМедленное соединение</string>
+	<string name="FaceTec_result_idscan_upload_message_user_confirmed_info_upload_complete_awaiting_response">Информация сохранена</string>
+	<string name="FaceTec_result_idscan_upload_message_user_confirmed_info_upload_complete_awaiting_processing">Идет обработка</string>
+	<string name="FaceTec_result_idscan_upload_message_nfc_upload_started">Отправка зашифрована\nNFC-данные</string>
+	<string name="FaceTec_result_idscan_upload_message_nfc_still_uploading">Еще идет отправка...\nМедленное соединение</string>
+	<string name="FaceTec_result_idscan_upload_message_nfc_upload_complete_awaiting_response">Информация о чипе NFC\nзагружена</string>
+	<string name="FaceTec_result_idscan_upload_message_nfc_upload_complete_awaiting_processing">Идет обработка\nNFC-данные</string>
+	<string name="FaceTec_result_idscan_upload_message_skipped_nfc_upload_started">Загрузка\nзашифрованных\nданных об удостоверении личности</string>
+	<string name="FaceTec_result_idscan_upload_message_skipped_nfc_still_uploading">Еще идет отправка...\nМедленное соединение</string>
+	<string name="FaceTec_result_idscan_upload_message_skipped_nfc_upload_complete_awaiting_response">Отправка завершена</string>
+	<string name="FaceTec_result_idscan_upload_message_skipped_nfc_upload_complete_awaiting_processing">Обработка\nданных удостоверения личности</string>
+	<string name="FaceTec_result_nfc_upload_message">Загрузка\nзашифрованных\nданных NFC</string>
+	<string name="FaceTec_result_idscan_unsuccess_message">Фото на идентификационном документе\nне соответствует\nлицу пользователя</string>
+	<string name="FaceTec_result_idscan_success_front_side_message">Удостоверение личности с фотографией\nотсканировано</string>
+	<string name="FaceTec_result_idscan_success_front_side_back_next_message">Передняя сторона идентификационного документа\nотсканирована</string>
+	<string name="FaceTec_result_idscan_success_front_side_nfc_next_message">Передняя сторона идентификационного документа\nотсканирована</string>
+	<string name="FaceTec_result_idscan_success_back_side_message">Удостоверение личности с фотографией\nотсканировано</string>
+	<string name="FaceTec_result_idscan_success_back_side_nfc_next_message">Обратная сторона идентификационного документа\nотсканирована</string>
+	<string name="FaceTec_result_idscan_success_passport_message">Паспорт отсканирован</string>
+	<string name="FaceTec_result_idscan_success_passport_nfc_next_message">Паспорт отсканирован</string>
+	<string name="FaceTec_result_idscan_success_user_confirmation_message">Сканирование удостоверения личности\nзавершено</string>
+	<string name="FaceTec_result_idscan_success_nfc_message">Информация о чипе NFC\nзагружена</string>
+	<string name="FaceTec_result_idscan_success_additional_review_message">Сканирование удостоверения личности\nзавершено</string>
+	<string name="FaceTec_result_idscan_skip_or_error_nfc_message">Данные удостоверения личности\nзагружены</string>
+	<string name="FaceTec_result_idscan_retry_face_did_not_match_message">Лицо не соответствует\nдостаточно сильно</string>
+	<string name="FaceTec_result_idscan_retry_id_not_fully_visible_message">Идентификационный документ\nвиден не полностью</string>
+	<string name="FaceTec_result_idscan_retry_ocr_results_not_good_enough_message">Текст на идентификационном документе не разборчив</string>
+	<string name="FaceTec_result_idscan_retry_id_type_not_supported_message">Идентификатор не поддерживается\nИспользуйте другой идентификатор</string>
+	<string name="FaceTec_result_idscan_retry_barcode_not_read_message">Не удалось отсканировать штрих-код,\nпожалуйста, попробуйте еще раз</string>
+	<string name="FaceTec_result_session_abort_message">Критическая ошибка\nСеанс завершен</string>
+	<string name="FaceTec_result_idscan_additional_review_tag_message">Требуется проверка вручную\nСм. панель управления IDV</string>
+
+	<string name="FaceTec_retry_header">Давайте попробуем еще раз</string>
+	<string name="FaceTec_retry_subheader_message">Нам нужно более четкое видеоселфи</string>
+	<string name="FaceTec_retry_instruction_message_1">Нейтральное выражение лица, без улыбки</string>
+	<string name="FaceTec_retry_instruction_message_2">Используйте идеальную позу и освещение</string>
+	<string name="FaceTec_retry_instruction_message_3">Слишком размыто, почистите камеру</string>
+	<string name="FaceTec_retry_your_image_label">Ваше селфи</string>
+	<string name="FaceTec_retry_ideal_image_label">Идеальная поза</string>
+
+	<string name="FaceTec_retry_official_id_photo_header">Давайте попробуем еще раз</string>
+	<string name="FaceTec_retry_official_id_photo_subheader_message">Нужно фото лучшего качества</string>
+	<string name="FaceTec_retry_official_id_photo_instruction_message">Попробуйте внутреннее освещение.\nБез бликов, улыбки и головного убора</string>
+	<string name="FaceTec_retry_official_id_photo_your_image_label">Ваше изображение</string>
+	<string name="FaceTec_retry_official_id_photo_ideal_image_label">Соответствующее лицо</string>
+
+</resources>

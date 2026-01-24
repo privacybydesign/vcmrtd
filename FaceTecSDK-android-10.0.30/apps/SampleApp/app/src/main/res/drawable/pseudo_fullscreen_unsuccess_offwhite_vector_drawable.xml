@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportHeight="24.0"
+    android:viewportWidth="24.0">
+    <group
+        android:name="strokeGroup"
+        android:pivotX="12"
+        android:pivotY="12"
+        android:rotation="90.0">
+
+        <path
+            android:name="strokePath"
+            android:pathData="M 12, 12
+                        m 0, -10
+                        a 10,-10 0 1,0 0,20
+                        a 10,-10 0 1,0 0,-20"
+            android:strokeColor="#EEF6F8"
+            android:strokeWidth="0"
+            android:trimPathStart="1"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="miter"/>
+    </group>
+
+    <group android:name="cross1">
+        <path
+            android:name="cross1Path"
+            android:pathData="M8.1,8.1 l0,0"
+            android:strokeColor="#c3483b"
+            android:strokeWidth="1"
+            android:strokeMiterLimit="10" />
+    </group>
+    <group android:name="cross2">
+        <path
+            android:name="cross2Path"
+            android:pathData="M15.9,8.1 l0,0"
+            android:strokeColor="#c3483b"
+            android:strokeWidth="1"
+            android:strokeMiterLimit="10" />
+    </group>
+</vector>
