@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vcmrtd/vcmrtd.dart';
@@ -7,6 +9,7 @@ import 'package:vcmrtdapp/widgets/pages/manual_entry_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_reading_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/passport_data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/scanner_wrapper.dart';
+import 'package:vcmrtdapp/widgets/pages/selfie_check_screen.dart';
 
 extension CustomRouteExtensions on BuildContext {
   void pushNfcReadingScreen(NfcReadingRouteParams params) {
@@ -111,6 +114,16 @@ GoRouter createRouter() {
               onBackPressed: () => context.go('/select_doc_type'),
             ),
           };
+        },
+      ),
+      GoRoute(
+        path: '/selfie_check',
+        builder: (context, state) {
+          final photoBytes = state.extra as Uint8List;
+          return SelfieCheckScreen(
+            documentPhotoBytes: photoBytes,
+            onBack: () => context.pop(),
+          );
         },
       ),
     ],

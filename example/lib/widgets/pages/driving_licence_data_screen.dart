@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
@@ -48,6 +49,8 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
               if (widget.drivingLicenceDataResult.sessionId != null)
                 WebBanner(sessionId: widget.drivingLicenceDataResult.sessionId!),
               _buildPhotoSection(imageData),
+              const SizedBox(height: 16),
+              _buildSelfieCheckButton(),
               const SizedBox(height: 24),
               _buildSection('Personal Information', [
                 _buildDataRow('Surname', widget.drivingLicence.holderSurname),
@@ -85,6 +88,63 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
                   ),
                 ],
               ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelfieCheckButton() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          context.push(
+            '/selfie_check',
+            extra: widget.drivingLicence.photoImageData,
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.face,
+                  color: Theme.of(context).primaryColor,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Selfie Check',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Compare your face with the document photo',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.grey[600],
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: Colors.grey[400]),
             ],
           ),
         ),
