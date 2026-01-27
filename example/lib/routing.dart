@@ -119,9 +119,10 @@ GoRouter createRouter() {
       GoRoute(
         path: '/selfie_check',
         builder: (context, state) {
-          final photoBytes = state.extra as Uint8List;
+          final extra = state.extra as Map<String, dynamic>;
           return SelfieCheckScreen(
-            documentPhotoBytes: photoBytes,
+            documentPhotoBytes: extra['photoBytes'] as Uint8List,
+            documentPhotoType: extra['photoType'] as ImageType,
             onBack: () => context.pop(),
           );
         },

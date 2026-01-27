@@ -4,7 +4,10 @@ import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
+import 'package:vcmrtd/vcmrtd.dart' show ImageType;
 import 'package:vcmrtdapp/services/face_match_service.dart';
+import 'package:vcmrtdapp/services/jpeg2000_converter.dart';
+import 'package:vcmrtdapp/widgets/pages/data_screen_widgets/profile_picture.dart';
 
 /// Screen that captures a selfie and compares it to the document photo.
 ///
@@ -15,11 +18,13 @@ import 'package:vcmrtdapp/services/face_match_service.dart';
 /// 4. Calculate and display cosine similarity percentage
 class SelfieCheckScreen extends StatefulWidget {
   final Uint8List documentPhotoBytes;
+  final ImageType documentPhotoType;
   final VoidCallback onBack;
 
   const SelfieCheckScreen({
     super.key,
     required this.documentPhotoBytes,
+    required this.documentPhotoType,
     required this.onBack,
   });
 
@@ -87,10 +92,15 @@ class _SelfieCheckScreenState extends State<SelfieCheckScreen> {
     await _cameraController!.initialize();
   }
 
+  bool _isCapturing = false;
+
   Future<void> _captureSelfie() async {
-    if (_cameraController == null || !_cameraController!.value.isInitialized) {
+    if (_isCapturing ||
+        _cameraController == null ||
+        !_cameraController!.value.isInitialized) {
       return;
     }
+    _isCapturing = true;
 
     setState(() => _state = _SelfieCheckState.capturing);
 
@@ -98,10 +108,10 @@ class _SelfieCheckScreenState extends State<SelfieCheckScreen> {
       final photo = await _cameraController!.takePicture();
       _selfieFilePath = photo.path;
 
-      // Stop camera to free resources during processing
-      await _cameraController?.dispose();
-      _cameraController = null;
+      // Let camera plugin finish its internal callbacks before disposing.
+      await _disposeCamera();
 
+      if (!mounted) return;
       setState(() => _state = _SelfieCheckState.processing);
       await _performFaceMatch(photo.path);
     } catch (e) {
@@ -111,15 +121,52 @@ class _SelfieCheckScreenState extends State<SelfieCheckScreen> {
           _errorMessage = 'Failed to capture selfie: $e';
         });
       }
+    } finally {
+      _isCapturing = false;
+    }
+  }
+
+  Future<void> _disposeCamera() async {
+    final controller = _cameraController;
+    _cameraController = null;
+    if (controller == null) return;
+
+    // Short delay so the camera plugin can finish posting its state callbacks
+    // before we tear down the controller (avoids "Reply already submitted").
+    await Future.delayed(const Duration(milliseconds: 200));
+
+    try {
+      await controller.dispose();
+    } catch (_) {
+      // Ignore dispose errors – the controller is being discarded anyway.
     }
   }
 
   Future<void> _performFaceMatch(String selfiePath) async {
     try {
+      // If the document photo is JPEG2000, convert to JPEG first.
+      // The Dart `image` package and ML Kit cannot decode JP2 natively.
+      Uint8List documentJpegBytes = widget.documentPhotoBytes;
+      if (widget.documentPhotoType == ImageType.jpeg2000) {
+        final converted = await decodeImage(widget.documentPhotoBytes, null);
+        if (converted == null) {
+          if (mounted) {
+            setState(() {
+              _state = _SelfieCheckState.error;
+              _errorMessage =
+                  'Could not convert the JPEG2000 document photo. '
+                  'Selfie check is not supported for this document.';
+            });
+          }
+          return;
+        }
+        documentJpegBytes = converted;
+      }
+
       // Extract embeddings from both images in parallel
       final results = await Future.wait([
         _faceMatchService.getEmbeddingFromFile(selfiePath),
-        _faceMatchService.getEmbeddingFromBytes(widget.documentPhotoBytes),
+        _faceMatchService.getEmbeddingFromBytes(documentJpegBytes),
       ]);
 
       final selfieEmbedding = results[0];
@@ -159,6 +206,9 @@ class _SelfieCheckScreenState extends State<SelfieCheckScreen> {
   }
 
   Future<void> _retry() async {
+    // Dispose current camera if still around
+    await _disposeCamera();
+
     // Clean up previous selfie
     if (_selfieFilePath != null) {
       try {
@@ -167,6 +217,7 @@ class _SelfieCheckScreenState extends State<SelfieCheckScreen> {
       _selfieFilePath = null;
     }
 
+    if (!mounted) return;
     setState(() {
       _state = _SelfieCheckState.initializing;
       _similarity = null;
@@ -190,7 +241,16 @@ class _SelfieCheckScreenState extends State<SelfieCheckScreen> {
 
   @override
   void dispose() {
-    _cameraController?.dispose();
+    // Fire-and-forget; the controller is going away with the widget.
+    final controller = _cameraController;
+    _cameraController = null;
+    if (controller != null) {
+      Future.delayed(const Duration(milliseconds: 200), () {
+        try {
+          controller.dispose();
+        } catch (_) {}
+      });
+    }
     _faceMatchService.dispose();
     super.dispose();
   }
@@ -347,17 +407,9 @@ class _SelfieCheckScreenState extends State<SelfieCheckScreen> {
             children: [
               _buildPhotoCard(
                 'Document',
-                Image.memory(
-                  widget.documentPhotoBytes,
-                  width: 120,
-                  height: 150,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    width: 120,
-                    height: 150,
-                    color: Colors.grey[200],
-                    child: const Icon(Icons.person, size: 48),
-                  ),
+                ProfilePictureWidget(
+                  imageData: widget.documentPhotoBytes,
+                  imageType: widget.documentPhotoType,
                 ),
               ),
               const SizedBox(width: 16),

@@ -102,10 +102,10 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-          context.push(
-            '/selfie_check',
-            extra: widget.drivingLicence.photoImageData,
-          );
+          context.push('/selfie_check', extra: {
+            'photoBytes': widget.drivingLicence.photoImageData,
+            'photoType': widget.drivingLicence.photoImageType ?? ImageType.jpeg,
+          });
         },
         child: Padding(
           padding: const EdgeInsets.all(16.0),

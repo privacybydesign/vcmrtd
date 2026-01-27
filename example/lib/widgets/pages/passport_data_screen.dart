@@ -86,7 +86,10 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-          context.push('/selfie_check', extra: widget.passport.photoImageData);
+          context.push('/selfie_check', extra: {
+            'photoBytes': widget.passport.photoImageData,
+            'photoType': widget.passport.photoImageType,
+          });
         },
         child: Padding(
           padding: const EdgeInsets.all(16.0),
