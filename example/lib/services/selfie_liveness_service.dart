@@ -69,8 +69,8 @@ class SelfieLivenessService {
   static const int _stepTimeoutSec = 10;
   static const double _gazePitchTolerance = 25.0;
   static const double _gazeYawMax = 35.0;
-  static const int _gazeMinConsecutiveHits = 2;
-  static const int gazeCircleSectors = 8;
+  static const int _gazeMinConsecutiveHits = 3;
+  static const int gazeCircleSectors = 4;
   static const int _enoughTimePassedSec = 1;
 
   // ── State ────────────────────────────────────────────────────
@@ -83,6 +83,7 @@ class SelfieLivenessService {
   int _eyesClosedCounter = 0;
   final Set<int> _gazeSectorsHit = {};
   int _lastGazeSector = -1;
+  int _candidateGazeSector = -1;
   int _consecutiveGazeHits = 0;
   bool _allSectorsCovered = false;
   bool _isEnoughTimePassed = false;
@@ -227,10 +228,10 @@ class SelfieLivenessService {
     final pitch = face.headEulerAngleX;
     if (yaw == null || pitch == null) return;
 
+    // Skip frame if head is tilted too much, but don't reset progress.
     if (pitch.abs() > _gazePitchTolerance) {
       _emitFeedback(
           FeedbackId.keepHeadLevel, 'Keep your head level while looking');
-      _resetGaze();
       return;
     }
 
@@ -240,19 +241,22 @@ class SelfieLivenessService {
     final sector =
         (mapped / sectorSize).floor().clamp(0, gazeCircleSectors - 1);
 
-    if (sector != _lastGazeSector) {
+    // Track how many consecutive frames the user stays in the SAME sector.
+    if (sector == _candidateGazeSector) {
       _consecutiveGazeHits++;
-      if (_consecutiveGazeHits >= _gazeMinConsecutiveHits) {
-        if (_gazeSectorsHit.add(sector)) {
-          _emitFeedback(FeedbackId.sectorHit,
-              'Keep looking around... ${gazeCircleSectors - _gazeSectorsHit.length} areas remaining',
-              param: sector.toString());
-        }
-        _lastGazeSector = sector;
-        _consecutiveGazeHits = 0;
-      }
     } else {
-      _consecutiveGazeHits = 0;
+      _candidateGazeSector = sector;
+      _consecutiveGazeHits = 1;
+    }
+
+    // Only register a sector after the user has looked at it steadily.
+    if (_consecutiveGazeHits >= _gazeMinConsecutiveHits) {
+      if (_gazeSectorsHit.add(sector)) {
+        _emitFeedback(FeedbackId.sectorHit,
+            'Keep looking around... ${gazeCircleSectors - _gazeSectorsHit.length} areas remaining',
+            param: sector.toString());
+      }
+      _lastGazeSector = sector;
     }
 
     if (_gazeSectorsHit.length >= gazeCircleSectors) {
@@ -381,6 +385,7 @@ class SelfieLivenessService {
   void _resetGaze() {
     _gazeSectorsHit.clear();
     _lastGazeSector = -1;
+    _candidateGazeSector = -1;
     _consecutiveGazeHits = 0;
     _allSectorsCovered = false;
   }

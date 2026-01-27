@@ -41,8 +41,11 @@ class FaceMatchService {
   /// Get face embedding from an image file (e.g., captured selfie).
   Future<List<double>?> getEmbeddingFromFile(String filePath) async {
     final imageBytes = await File(filePath).readAsBytes();
-    final image = img.decodeImage(imageBytes);
+    var image = img.decodeImage(imageBytes);
     if (image == null) return null;
+
+    // Apply EXIF orientation so pixel data matches ML Kit's coordinate space.
+    image = img.bakeOrientation(image);
 
     final inputImage = InputImage.fromFilePath(filePath);
     final faces = await _faceDetector.processImage(inputImage);
@@ -172,12 +175,20 @@ class FaceMatchService {
     int cropHeight,
     int targetSize,
   ) {
-    final halfW = cropWidth ~/ 2;
-    final halfH = cropHeight ~/ 2;
+    final needsRotation = angleDegrees.abs() > 1.0;
+
+    // Crop a larger region when rotating so that black corners from
+    // rotation land in the padding, not on the face.
+    final padding = needsRotation ? (cropWidth * 0.4).round() : 0;
+    final paddedW = cropWidth + padding * 2;
+    final paddedH = cropHeight + padding * 2;
+
+    final halfW = paddedW ~/ 2;
+    final halfH = paddedH ~/ 2;
     var x = (cx - halfW).round().clamp(0, source.width - 1);
     var y = (cy - halfH).round().clamp(0, source.height - 1);
-    var w = min(cropWidth, source.width - x);
-    var h = min(cropHeight, source.height - y);
+    var w = min(paddedW, source.width - x);
+    var h = min(paddedH, source.height - y);
 
     if (w <= 0 || h <= 0) {
       return img.copyResize(source, width: targetSize, height: targetSize);
@@ -185,9 +196,21 @@ class FaceMatchService {
 
     var result = img.copyCrop(source, x: x, y: y, width: w, height: h);
 
-    // Rotate to align eyes horizontally (skip if negligible)
-    if (angleDegrees.abs() > 1.0) {
+    if (needsRotation) {
       result = img.copyRotate(result, angle: angleDegrees);
+
+      // Re-crop the center to the desired face size, removing padding.
+      final cxR = result.width ~/ 2;
+      final cyR = result.height ~/ 2;
+      final finalW = min(cropWidth, result.width);
+      final finalH = min(cropHeight, result.height);
+      result = img.copyCrop(
+        result,
+        x: (cxR - finalW ~/ 2).clamp(0, result.width - 1),
+        y: (cyR - finalH ~/ 2).clamp(0, result.height - 1),
+        width: finalW.clamp(1, result.width),
+        height: finalH.clamp(1, result.height),
+      );
     }
 
     return img.copyResize(result, width: targetSize, height: targetSize);
