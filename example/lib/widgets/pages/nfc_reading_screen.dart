@@ -2,6 +2,7 @@ import 'package:vcmrtd/vcmrtd.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
+import 'package:vcmrtdapp/custom/custom_logger_extension.dart';
 import 'package:vcmrtdapp/providers/active_authenticiation_provider.dart';
 import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
 import 'package:vcmrtdapp/widgets/common/animated_nfc_status_widget.dart';
@@ -21,7 +22,8 @@ class NfcReadingRouteParams {
       'doc_number': scannedMRZ.documentNumber,
       'country_code': scannedMRZ.countryCode,
       'document_type': switch (documentType) {
-        DocumentType.passport || DocumentType.identityCard => 'passport',
+        DocumentType.passport => 'passport',
+        DocumentType.identityCard => 'identity_card',
         DocumentType.drivingLicence => 'drivers_license',
       },
     };
@@ -44,6 +46,7 @@ class NfcReadingRouteParams {
     final docType = params['document_type']!;
     final documentType = switch (docType) {
       'passport' => DocumentType.passport,
+      'identity_card' => DocumentType.identityCard,
       'drivers_license' => DocumentType.drivingLicence,
       _ => throw Exception('unexpected document type: $docType'),
     };
@@ -54,6 +57,7 @@ class NfcReadingRouteParams {
         countryCode: params['country_code']!,
         dateOfBirth: DateTime.parse(params['date_of_birth']!),
         dateOfExpiry: DateTime.parse(params['date_of_expiry']!),
+        documentType: documentType,
       ),
       DocumentType.drivingLicence => ScannedDriverLicenseMRZ(
         documentNumber: params['doc_number']!,
@@ -85,10 +89,12 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
   @override
   Widget build(BuildContext context) {
     scannedMRZ = widget.params.scannedMRZ;
-
-    final readerProvider = widget.params.documentType == DocumentType.passport
-        ? passportReaderProvider
-        : drivingLicenceReaderProvider;
+    widget.params.documentType.toString().logInfo();
+    final readerProvider = switch (widget.params.documentType) {
+      DocumentType.passport => passportReaderProvider,
+      DocumentType.identityCard => identityCardReaderProvider,
+      DocumentType.drivingLicence => drivingLicenceReaderProvider,
+    };
 
     final state = ref.watch(readerProvider(scannedMRZ));
 
@@ -100,7 +106,11 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
       );
     }
 
-    final title = widget.params.documentType == DocumentType.passport ? 'Scan passport' : 'Scan driving license';
+    final title = switch (widget.params.documentType) {
+      DocumentType.passport => 'Scan passport',
+      DocumentType.identityCard => 'Scan identity card',
+      DocumentType.drivingLicence => 'Scan driving license',
+    };
 
     return Scaffold(
       appBar: AppBar(title: Text(title)),
@@ -135,17 +145,21 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
   }
 
   Future<void> cancel() async {
-    final readerProvider = widget.params.documentType == DocumentType.passport
-        ? passportReaderProvider
-        : drivingLicenceReaderProvider;
+    final readerProvider = switch (widget.params.documentType) {
+      DocumentType.passport => passportReaderProvider,
+      DocumentType.identityCard => identityCardReaderProvider,
+      DocumentType.drivingLicence => drivingLicenceReaderProvider,
+    };
 
     await ref.read(readerProvider(scannedMRZ).notifier).cancel();
   }
 
   Future<void> retry() async {
-    final readerProvider = widget.params.documentType == DocumentType.passport
-        ? passportReaderProvider
-        : drivingLicenceReaderProvider;
+    final readerProvider = switch (widget.params.documentType) {
+      DocumentType.passport => passportReaderProvider,
+      DocumentType.identityCard => identityCardReaderProvider,
+      DocumentType.drivingLicence => drivingLicenceReaderProvider,
+    };
 
     ref.read(readerProvider(scannedMRZ).notifier).reset();
     startReading();
@@ -153,9 +167,11 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
 
   Future<void> startReading() async {
     try {
-      final readerProvider = widget.params.documentType == DocumentType.passport
-          ? passportReaderProvider
-          : drivingLicenceReaderProvider;
+      final readerProvider = switch (widget.params.documentType) {
+        DocumentType.passport => passportReaderProvider,
+        DocumentType.identityCard => identityCardReaderProvider,
+        DocumentType.drivingLicence => drivingLicenceReaderProvider,
+      };
 
       NonceAndSessionId? nonceAndSessionId;
 
@@ -181,7 +197,11 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
       return '🟢' * prog + '⚪️' * (numStages - prog);
     }
 
-    final docName = widget.params.documentType == DocumentType.passport ? 'passport' : 'driving license';
+    final docName = switch (widget.params.documentType) {
+      DocumentType.passport => 'passport',
+      DocumentType.identityCard => 'identity card',
+      DocumentType.drivingLicence => 'driving license',
+    };
 
     return (state) {
       final progress = progressFormatter(progressForState(state));
