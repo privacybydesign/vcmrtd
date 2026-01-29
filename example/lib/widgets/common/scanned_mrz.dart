@@ -18,14 +18,16 @@ class ScannedPassportMRZ extends ScannedMRZ {
     required super.countryCode,
     required this.dateOfBirth,
     required this.dateOfExpiry,
-  }) : super(documentType: DocumentType.passport);
+    super.documentType = DocumentType.passport,
+  });
 
-  factory ScannedPassportMRZ.fromMRZResult(MRZResult mrz) {
+  factory ScannedPassportMRZ.fromMRZResult(MRZResult mrz, {DocumentType documentType = DocumentType.passport}) {
     return ScannedPassportMRZ(
       documentNumber: mrz.documentNumber,
       countryCode: mrz.countryCode,
       dateOfBirth: mrz.birthDate,
       dateOfExpiry: mrz.expiryDate,
+      documentType: documentType,
     );
   }
 
@@ -34,12 +36,14 @@ class ScannedPassportMRZ extends ScannedMRZ {
     required DateTime dateOfBirth,
     required DateTime dateOfExpiry,
     String countryCode = '', // TODO: Get country code from manual entry screen as well
+    DocumentType documentType = DocumentType.passport,
   }) {
     return ScannedPassportMRZ(
       documentNumber: documentNumber,
       countryCode: countryCode,
       dateOfBirth: dateOfBirth,
       dateOfExpiry: dateOfExpiry,
+      documentType: documentType,
     );
   }
 }
