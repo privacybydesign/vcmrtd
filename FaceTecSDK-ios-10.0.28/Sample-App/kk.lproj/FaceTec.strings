@@ -1,0 +1,150 @@
+//
+// This is a generated file.  Do not manually edit this and commit changes.
+//
+
+"FaceTec_accessibility_cancel_button" = "Болдырмау";
+"FaceTec_accessibility_torch_button" = "Жарық қосу/өшіру";
+"FaceTec_accessibility_tap_guidance" = "Бетіңізді туралау туралы нұсқаулар алу үшін экранның кез келген жерін екі рет түртіңіз.";
+
+"FaceTec_accessibility_feedback_move_phone_away" = "Бет тым жақын";
+"FaceTec_accessibility_feedback_move_phone_closer" = "Тым алыс бет";
+"FaceTec_accessibility_feedback_face_too_far_left" = "Бет тым алыс солға";
+"FaceTec_accessibility_feedback_face_too_far_right" = "Бет тым алыс оңға";
+"FaceTec_accessibility_feedback_face_too_low" = "Бет тым төмен";
+"FaceTec_accessibility_feedback_face_too_high" = "Бет тым жоғары";
+"FaceTec_accessibility_feedback_face_rotated_too_far_left" = "Бет тым алыс солға бұрылды";
+"FaceTec_accessibility_feedback_face_rotated_too_far_right" = "Бет тым алыс оңға бұрылды";
+"FaceTec_accessibility_feedback_face_pointing_too_far_left" = "Тым алыс солға бағытталған бет";
+"FaceTec_accessibility_feedback_face_pointing_too_far_right" = "Тым алыс оңға бағытталған бет";
+"FaceTec_accessibility_feedback_face_not_on_camera" = "Бет жақтауда немесе тым алыс емес";
+"FaceTec_accessibility_feedback_hold_device_to_eye_level" = "Құрылғыны көз деңгейінде ұстаңыз";
+
+"FaceTec_action_ok" = "ЖАРАЙДЫ МА";
+"FaceTec_action_im_ready" = "МЕН ДАЙЫНМЫН";
+"FaceTec_action_try_again" = "ҚАЙТАДАН БАЙҚАП КӨРІҢІЗ";
+"FaceTec_action_continue" = "ЖАЛҒАСТЫРУ";
+"FaceTec_action_take_photo" = "СУРЕТКЕ ТҮСІРУ";
+"FaceTec_action_retake_photo" = "ҚАЙТАЛАУ";
+"FaceTec_action_accept_photo" = "ҚАБЫЛДАУ";
+"FaceTec_action_confirm" = "АҚПАРАТТЫ РАСТАУ";
+"FaceTec_action_scan_nfc" = "ePASSPORT SCAN";
+"FaceTec_action_scan_nfc_card" = "ID CARD SCAN";
+"FaceTec_action_skip_nfc" = "БҰЛ ҚАДАМДЫ ӨТКІЗУ";
+
+"FaceTec_camera_permission_header" = "Камераны қосыңыз";
+"FaceTec_camera_permission_message_enroll" = "Селфи камерасын қосу үшін төмендегі түймені басыңыз.";
+"FaceTec_camera_permission_message_auth" = "Камераңыз өшірілген. Параметрлерді өңдеу үшін төменде түртіңіз.";
+"FaceTec_camera_permission_enable_camera" = "КАМЕРАНЫ ҚОСУ";
+"FaceTec_camera_permission_launch_settings" = "ПАРАМЕТРЛЕРДІ ҚОСУ";
+
+"FaceTec_feedback_center_face" = "Бетіңізді ортаға қойыңыз";
+"FaceTec_feedback_face_not_found" = "Бетіңізді жақтау";
+"FaceTec_feedback_face_not_looking_straight_ahead" = "Алға қара";
+"FaceTec_feedback_face_not_upright" = "Басыңызды тік ұстаңыз";
+"FaceTec_feedback_hold_steady" = "Тұрақты ұстаңыз";
+"FaceTec_feedback_move_phone_away" = "Алысқа көшіңіз";
+"FaceTec_feedback_move_phone_closer" = "Жақынырақ жылжытыңыз";
+"FaceTec_feedback_move_phone_to_eye_level" = "Камераны көз деңгейіне жылжытыңыз";
+"FaceTec_feedback_use_even_lighting" = "Бет біркелкі жарық";
+
+"FaceTec_idscan_type_selection_header" = "Сканерлеуге дайындалыңыз\nсіздің сәйкестендіруіңіз";
+"FaceTec_idscan_capture_tap_to_focus_message" = "Фокуста экранды түртіңіз";
+"FaceTec_idscan_capture_hold_steady_message" = "Өтінемін, позицияда болыңыз";
+"FaceTec_idscan_capture_id_front_instruction_message" = "алдыңғы бөлігін сканерлеу";
+"FaceTec_idscan_capture_id_back_instruction_message" = "артқы бөлігін сканерлеу";
+"FaceTec_idscan_review_id_front_instruction_message" = "Таза Фотосуретті Растаңыз";
+"FaceTec_idscan_review_id_back_instruction_message" = "Түсінікті Фотосуретті Растаңыз";
+"FaceTec_idscan_ocr_confirmation_main_header" = "Шолу және растау";
+"FaceTec_idscan_ocr_confirmation_scroll_message" = "Төмен қарай жылжытыңыз";
+"FaceTec_idscan_nfc_status_disabled_message" = "Қосу\nҚұрылғыңыздың NFC\nЖалғастыру Үшін";
+"FaceTec_idscan_nfc_status_ready_message" = "ePassport чипін \n сканерлеуге дайын болыңыз";
+"FaceTec_idscan_nfc_card_status_ready_message" = "ID чипіңізді \n сканерлеуге дайындалыңыз";
+"FaceTec_idscan_nfc_status_starting_message" = "NFC чипін сканерлеу үшін телефонды\nэлектрондық төлқұжаттың\nартқы жағында ұстаңыз";
+"FaceTec_idscan_nfc_card_status_starting_message" = "NFC чипін сканерлеу үшін телефонды идентификаторыңызға\nжақындатыңыз";
+"FaceTec_idscan_nfc_status_scanning_message" = "Оны қозғалыссыз ұстаңыз, \n NFC чипін сканерлейді";
+"FaceTec_idscan_nfc_status_weak_connection_message" = "Тағы \n сканерлеп көрейік";
+"FaceTec_idscan_nfc_status_finished_with_success_message" = "NFC Чипі\nСканерленген";
+"FaceTec_idscan_nfc_status_finished_with_error_message" = "Оқу мүмкін емес\nэлектрондық төлқұжат чипі";
+"FaceTec_idscan_nfc_card_status_finished_with_error_message" = "Идентификатордағы\nчипті оқу мүмкін емес";
+"FaceTec_idscan_nfc_status_skipped_message" = "NFC Сканерлеу\nОрындалмады";
+"FaceTec_idscan_additional_review_message" = "Қосымша растау\nқажет";
+"FaceTec_idscan_feedback_flip_id_to_back_message" = "Жеке куәліктің сыртқы жағы";
+"FaceTec_idscan_feedback_flip_id_to_front_message" = "Жеке куәліктің алдыңғы жағы";
+
+"FaceTec_initializing_camera" = "Камераны қамтамасыз ету";
+
+"FaceTec_instructions_header_ready_1" = "Дайындалыңыз";
+"FaceTec_instructions_header_ready_2" = "Сіздің бейнеңіз";
+"FaceTec_instructions_message_ready_1" = "Сіздің бетіңізді сопақша жақтаңыз";
+"FaceTec_instructions_message_ready_2" = "Менің дайынмын және жақындастырыңыз";
+
+"FaceTec_orientation_message" = "Құрылғыны\nбұраңыз";
+
+"FaceTec_presession_frame_your_face" = "Бетіңізді сопақша жақтаңыз";
+"FaceTec_presession_position_face_straight_in_oval" = "Алға қара";
+"FaceTec_presession_remove_dark_glasses" = "Қара көзілдірікті алып тастаңыз";
+"FaceTec_presession_neutral_expression" = "Бейтарап өрнек, күлімсіреу";
+"FaceTec_presession_conditions_too_bright" = "Шарттар тым ашық";
+"FaceTec_presession_brighten_your_environment" = "Қоршаған ортаңызды нұрландырыңыз";
+
+"FaceTec_result_facescan_upload_message" = "Жүктеу\n3D бетті сканерлеу\nшифрланған";
+"FaceTec_result_facescan_upload_message_still_uploading" = "Әлі Жүктеп Жатыр...\nБаяу Байланыс";
+"FaceTec_result_facescan_success_3d_enrollment_message" = "Бетті сканерлеу\nрасталған 3D-өміршеңдік";
+"FaceTec_result_facescan_success_3d_3d_reverification_message" = "3D өміршеңдігі расталды\nбет тексерілді";
+"FaceTec_result_facescan_success_3d_liveness_prior_to_idscan_message" = "Бетті сканерлеу\nрасталған 3D-өміршеңдік";
+"FaceTec_result_facescan_success_3d_liveness_and_official_id_photo_message" = "3D өміршеңдігі расталды";
+"FaceTec_result_idscan_upload_message_front_side_upload_started" = "Жүктеу\nсәйкестендіруді сканерлеу\nшифрланбаған";
+"FaceTec_result_idscan_upload_message_front_side_still_uploading" = "Әлі Жүктеп Жатыр...\nБаяу Байланыс";
+"FaceTec_result_idscan_upload_message_front_side_upload_complete_awaiting_response" = "ID Кескіні\nЖүктелді";
+"FaceTec_result_idscan_upload_message_front_side_upload_complete_awaiting_processing" = "Өңдеу\nИДЕНТИФИКАТОРДЫ Сканерлеу";
+"FaceTec_result_idscan_upload_message_back_side_upload_started" = "ЖҮКТЕУ\nШИФРЛАНҒАН\nИДЕНТИФИКАТОРДЫҢ Артқы Жағы";
+"FaceTec_result_idscan_upload_message_back_side_still_uploading" = "Әлі Жүктеп Жатыр...\nБаяу Байланыс";
+"FaceTec_result_idscan_upload_message_back_side_upload_complete_awaiting_response" = "ID Кескіні\nЖүктелді";
+"FaceTec_result_idscan_upload_message_back_side_upload_complete_awaiting_processing" = "ӨҢДЕУ\nИДЕНТИФИКАТОРДЫҢ Артқы Жағы";
+"FaceTec_result_idscan_upload_message_user_confirmed_info_upload_started" = "Сіздің Расталған Ақпаратыңызды Сақтау";
+"FaceTec_result_idscan_upload_message_user_confirmed_info_still_uploading" = "Әлі Жүктеп Жатыр...\nБаяу Байланыс";
+"FaceTec_result_idscan_upload_message_user_confirmed_info_upload_complete_awaiting_response" = "Ақпарат Сақталды";
+"FaceTec_result_idscan_upload_message_user_confirmed_info_upload_complete_awaiting_processing" = "Өңдеу";
+"FaceTec_result_idscan_upload_message_nfc_upload_started" = "Шифрланған\nNFC Мәліметтерін жүктеу";
+"FaceTec_result_idscan_upload_message_nfc_still_uploading" = "Әлі Жүктеп Жатыр...\nБаяу Байланыс";
+"FaceTec_result_idscan_upload_message_nfc_upload_complete_awaiting_response" = "Nfc Чипі Туралы Ақпарат\nЖүктелді";
+"FaceTec_result_idscan_upload_message_nfc_upload_complete_awaiting_processing" = "Өңдеу\nNFC Мәліметтері";
+"FaceTec_result_idscan_upload_message_skipped_nfc_upload_started" = "Деректерді жүктеу\nШифрланған\nИДЕНТИФИКАТОР";
+"FaceTec_result_idscan_upload_message_skipped_nfc_still_uploading" = "Әлі Жүктеп Жатыр...\nБаяу Байланыс";
+"FaceTec_result_idscan_upload_message_skipped_nfc_upload_complete_awaiting_response" = "Жүктеу Аяқталды";
+"FaceTec_result_idscan_upload_message_skipped_nfc_upload_complete_awaiting_processing" = "ӨҢДЕУ\nЖЕКЕ КУӘЛІК деректері";
+"FaceTec_result_nfc_upload_message" = "Жүктеу\nNFC туралы ақпарат\nшифрланбаған";
+"FaceTec_result_idscan_unsuccess_message" = "Жеке куәлік суреті \n немесе \n пайдаланушының бетіне сәйкес келеді";
+"FaceTec_result_idscan_success_front_side_message" = "Фотосурет ИДЕНТИФИКАТОРЫ\nСканерленген";
+"FaceTec_result_idscan_success_front_side_back_next_message" = "ID алдыңғы\nсканерленді";
+"FaceTec_result_idscan_success_front_side_nfc_next_message" = "ID алдыңғы\nсканерленді";
+"FaceTec_result_idscan_success_back_side_message" = "Фотосурет ИДЕНТИФИКАТОРЫ\nСканерленген";
+"FaceTec_result_idscan_success_back_side_nfc_next_message" = "ID артқы\nсканерленді";
+"FaceTec_result_idscan_success_passport_message" = "Сканерленген төлқұжат";
+"FaceTec_result_idscan_success_passport_nfc_next_message" = "Сканерленген төлқұжат";
+"FaceTec_result_idscan_success_user_confirmation_message" = "ЖЕКЕ КУӘЛІКТІ Сканерлеу\nАяқталды";
+"FaceTec_result_idscan_success_nfc_message" = "Nfc Чипі Туралы Ақпарат\nЖүктелді";
+"FaceTec_result_idscan_success_additional_review_message" = "ЖЕКЕ КУӘЛІКТІ Сканерлеу\nАяқталды";
+"FaceTec_result_idscan_skip_or_error_nfc_message" = "ЖЕКЕ КУӘЛІК деректері\nЖүктелді";
+"FaceTec_result_idscan_retry_face_did_not_match_message" = "Бет\nсәйкес келмейді";
+"FaceTec_result_idscan_retry_id_not_fully_visible_message" = "Идентификатор\nтолық көрінбейді";
+"FaceTec_result_idscan_retry_ocr_results_not_good_enough_message" = "Сәйкестендіру мәтіні оқылмайды";
+"FaceTec_result_idscan_retry_id_type_not_supported_message" = "ИДЕНТИФИКАТОРҒА Қолдау көрсетілмейді\nБасқа ИДЕНТИФИКАТОРДЫ Пайдаланыңыз";
+"FaceTec_result_idscan_retry_barcode_not_read_message" = "Штрих-кодты сканерлеу мүмкін болмады\nҚайталап көріңіз";
+"FaceTec_result_session_abort_message" = "Сыни Қате\nСессия Аяқталды";
+"FaceTec_result_idscan_additional_review_tag_message" = "Қолмен Тексеру Қажет\nIDV Бақылау Тақтасын Қараңыз";
+
+"FaceTec_retry_header" = "Мұны тағы да байқап көрейік";
+"FaceTec_retry_subheader_message" = "Бізге нақты бейне-селфи керек";
+"FaceTec_retry_instruction_message_1" = "Бейтарап өрнек, күлімсіреу жоқ";
+"FaceTec_retry_instruction_message_2" = "Поза мен жарықтандыруды жақсарту";
+"FaceTec_retry_instruction_message_3" = "Тым бұлыңғыр, таза камера";
+"FaceTec_retry_your_image_label" = "Сенің сенсің";
+"FaceTec_retry_ideal_image_label" = "Идеалды поза";
+
+"FaceTec_retry_official_id_photo_header" = "Мұны тағы да байқап көрейік";
+"FaceTec_retry_official_id_photo_subheader_message" = "Сапасы жоғары сурет керек";
+"FaceTec_retry_official_id_photo_instruction_message" = "Ішкі жарықты қолданыңыз,\nКөзілдірікте жарқылсыз, күлмеңіз, бас киімсіз";
+"FaceTec_retry_official_id_photo_your_image_label" = "Сіздің Суретіңіз";
+"FaceTec_retry_official_id_photo_ideal_image_label" = "Үйлесімді Тұлға";
+

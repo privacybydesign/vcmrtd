@@ -1,0 +1,150 @@
+//
+// This is a generated file.  Do not manually edit this and commit changes.
+//
+
+"FaceTec_accessibility_cancel_button" = "Kanselleer";
+"FaceTec_accessibility_torch_button" = "Skakel lig";
+"FaceTec_accessibility_tap_guidance" = "Dubbeltik enige plek op die skerm vir gesigbelyningsleiding.";
+
+"FaceTec_accessibility_feedback_move_phone_away" = "Gesig te naby";
+"FaceTec_accessibility_feedback_move_phone_closer" = "Gesig te ver weg";
+"FaceTec_accessibility_feedback_face_too_far_left" = "Gesig te ver links";
+"FaceTec_accessibility_feedback_face_too_far_right" = "Gesig te ver regs";
+"FaceTec_accessibility_feedback_face_too_low" = "Gesig te laag";
+"FaceTec_accessibility_feedback_face_too_high" = "Gesig te hoog";
+"FaceTec_accessibility_feedback_face_rotated_too_far_left" = "Gesig te ver links gedraai";
+"FaceTec_accessibility_feedback_face_rotated_too_far_right" = "Gesig te ver regs gedraai";
+"FaceTec_accessibility_feedback_face_pointing_too_far_left" = "Gesig wat te ver links wys";
+"FaceTec_accessibility_feedback_face_pointing_too_far_right" = "Gesig wys te ver regs";
+"FaceTec_accessibility_feedback_face_not_on_camera" = "Gesig nie op kamera of te ver weg nie";
+"FaceTec_accessibility_feedback_hold_device_to_eye_level" = "Hou toestel op ooghoogte";
+
+"FaceTec_action_ok" = "OK";
+"FaceTec_action_im_ready" = "EK IS GEREED";
+"FaceTec_action_try_again" = "PROBEER WEER";
+"FaceTec_action_continue" = "AANHOU";
+"FaceTec_action_take_photo" = "NEEM 'N FOTO";
+"FaceTec_action_retake_photo" = "WEER";
+"FaceTec_action_accept_photo" = "AANVAAR";
+"FaceTec_action_confirm" = "BEVESTIG INLIGTING";
+"FaceTec_action_scan_nfc" = "SKANDEER ePASPORT";
+"FaceTec_action_scan_nfc_card" = "SKANDEER ID-KAART";
+"FaceTec_action_skip_nfc" = "SLAAN HIERDIE STAP OOR";
+
+"FaceTec_camera_permission_header" = "Aktiveer kamera";
+"FaceTec_camera_permission_message_enroll" = "Tik asseblief die knoppie hieronder om jou selfie kamera te aktiveer.";
+"FaceTec_camera_permission_message_auth" = "Jou kamera is gedeaktiveer. Tik hieronder om jou instellings te wysig.";
+"FaceTec_camera_permission_enable_camera" = "AKTIVEER KAMERA";
+"FaceTec_camera_permission_launch_settings" = "LAANSEER INSTELLINGS";
+
+"FaceTec_feedback_center_face" = "Sentreer jou gesig";
+"FaceTec_feedback_face_not_found" = "Raam jou gesig";
+"FaceTec_feedback_face_not_looking_straight_ahead" = "Kyk Reguit Vooruit";
+"FaceTec_feedback_face_not_upright" = "Hou jou kop reguit";
+"FaceTec_feedback_hold_steady" = "Hou vas";
+"FaceTec_feedback_move_phone_away" = "Beweeg Weg";
+"FaceTec_feedback_move_phone_closer" = "Beweeg nader";
+"FaceTec_feedback_move_phone_to_eye_level" = "Beweeg kamera na ooghoogte";
+"FaceTec_feedback_use_even_lighting" = "Lig gesig meer eweredig";
+
+"FaceTec_idscan_type_selection_header" = "Berei voor om\njou identifikasie te skandeer";
+"FaceTec_idscan_capture_tap_to_focus_message" = "Raak die skerm aan om te fokus";
+"FaceTec_idscan_capture_hold_steady_message" = "Hou asseblief in die posisie";
+"FaceTec_idscan_capture_id_front_instruction_message" = "Skandeer Voorkant van ID";
+"FaceTec_idscan_capture_id_back_instruction_message" = "Skandeer Agterkant van ID";
+"FaceTec_idscan_review_id_front_instruction_message" = "Bevestig Foto Skerp & Leesbaar";
+"FaceTec_idscan_review_id_back_instruction_message" = "Bevestig Foto is Leesbaar";
+"FaceTec_idscan_ocr_confirmation_main_header" = "Hersien en bevestig";
+"FaceTec_idscan_ocr_confirmation_scroll_message" = "Beweeg na af";
+"FaceTec_idscan_nfc_status_disabled_message" = "Skakel \nJou Toestel se NFC\nAAN om Voort te Gaan";
+"FaceTec_idscan_nfc_status_ready_message" = "Maak gereed om\njou ePassport-skyfie te skandeer";
+"FaceTec_idscan_nfc_card_status_ready_message" = "Berei voor om\njou ID-skyfie te skandeer";
+"FaceTec_idscan_nfc_status_starting_message" = "Hou Selfoon aan \nAgterkant van e-Paspoort\nom NFC-skyfie te Skandeer";
+"FaceTec_idscan_nfc_card_status_starting_message" = "Bring die foon naby jou ID\nom die NFC-skyfie te skandeer";
+"FaceTec_idscan_nfc_status_scanning_message" = "Hou dit stil,\nskandeer die NFC-skyfie";
+"FaceTec_idscan_nfc_status_weak_connection_message" = "Kom ons probeer\nnog 'n skandering";
+"FaceTec_idscan_nfc_status_finished_with_success_message" = "NFC Skyfie\nGeskandeer";
+"FaceTec_idscan_nfc_status_finished_with_error_message" = "Kan nie\nePassport-skyfie lees nie";
+"FaceTec_idscan_nfc_card_status_finished_with_error_message" = "Kan nie\ndie ID-skyfie lees nie";
+"FaceTec_idscan_nfc_status_skipped_message" = "NFC-skandering\nNie Uitgevoer Nie";
+"FaceTec_idscan_additional_review_message" = "Bykomende verifikasie\nword vereis";
+"FaceTec_idscan_feedback_flip_id_to_back_message" = "Agterkant VAN JOU ID";
+"FaceTec_idscan_feedback_flip_id_to_front_message" = "Die voorkant VAN JOU ID";
+
+"FaceTec_initializing_camera" = "Beveilig kameratoevoer";
+
+"FaceTec_instructions_header_ready_1" = "Maak Gereed Vir";
+"FaceTec_instructions_header_ready_2" = "Jou Video Selfie";
+"FaceTec_instructions_message_ready_1" = "Raam Jou Gesig In Die Ovaal";
+"FaceTec_instructions_message_ready_2" = "Druk ek Is Gereed En Beweeg Nader";
+
+"FaceTec_orientation_message" = "Draai Asseblief\nJou Toestel";
+
+"FaceTec_presession_frame_your_face" = "Raam jou gesig in die ovaal";
+"FaceTec_presession_position_face_straight_in_oval" = "Kyk Reguit Vooruit";
+"FaceTec_presession_remove_dark_glasses" = "Verwyder donkerbrille";
+"FaceTec_presession_neutral_expression" = "Neutrale uitdrukking, geen glimlag nie";
+"FaceTec_presession_conditions_too_bright" = "Toestande te helder";
+"FaceTec_presession_brighten_your_environment" = "Verhelder jou omgewing";
+
+"FaceTec_result_facescan_upload_message" = "Oplaai\nDIE 3D gesig scan\ngeënkripteer";
+"FaceTec_result_facescan_upload_message_still_uploading" = "Laai Steeds...\nStadige Verbinding";
+"FaceTec_result_facescan_success_3d_enrollment_message" = "Gesig Geskandeer\n 3D Lewende Bewys";
+"FaceTec_result_facescan_success_3d_3d_reverification_message" = "3D Lewende Bewys\nGesig Geverifieer";
+"FaceTec_result_facescan_success_3d_liveness_prior_to_idscan_message" = "Gesig Geskandeer\n 3D Lewende Bewys";
+"FaceTec_result_facescan_success_3d_liveness_and_official_id_photo_message" = "3D Lewende Bewys";
+"FaceTec_result_idscan_upload_message_front_side_upload_started" = "Oplaai\nDIE ID scan\ngeënkripteer";
+"FaceTec_result_idscan_upload_message_front_side_still_uploading" = "Laai Steeds...\nStadige Verbinding";
+"FaceTec_result_idscan_upload_message_front_side_upload_complete_awaiting_response" = "ID Beeld\nOpgelaai";
+"FaceTec_result_idscan_upload_message_front_side_upload_complete_awaiting_processing" = "Verwerk\nID-skandering";
+"FaceTec_result_idscan_upload_message_back_side_upload_started" = "Laai Op\nVersleutelde\nAgterkant van ID";
+"FaceTec_result_idscan_upload_message_back_side_still_uploading" = "Laai Steeds...\nStadige Verbinding";
+"FaceTec_result_idscan_upload_message_back_side_upload_complete_awaiting_response" = "ID Beeld\nOpgelaai";
+"FaceTec_result_idscan_upload_message_back_side_upload_complete_awaiting_processing" = "Verwerk\nAgterkant van ID";
+"FaceTec_result_idscan_upload_message_user_confirmed_info_upload_started" = "Stoor\nJou Bevestigde Inligting";
+"FaceTec_result_idscan_upload_message_user_confirmed_info_still_uploading" = "Laai Steeds...\nStadige Verbinding";
+"FaceTec_result_idscan_upload_message_user_confirmed_info_upload_complete_awaiting_response" = "Inligting Gestoor";
+"FaceTec_result_idscan_upload_message_user_confirmed_info_upload_complete_awaiting_processing" = "Verwerk";
+"FaceTec_result_idscan_upload_message_nfc_upload_started" = "Laai Op Versleutelde\nNFC Besonderhede";
+"FaceTec_result_idscan_upload_message_nfc_still_uploading" = "Laai Steeds...\nStadige Verbinding";
+"FaceTec_result_idscan_upload_message_nfc_upload_complete_awaiting_response" = "NFC Skyfie-inligting\nOpgelaai";
+"FaceTec_result_idscan_upload_message_nfc_upload_complete_awaiting_processing" = "Verwerk\nNFC Besonderhede";
+"FaceTec_result_idscan_upload_message_skipped_nfc_upload_started" = "Oplaai\nGeïnkripteer\nID Data";
+"FaceTec_result_idscan_upload_message_skipped_nfc_still_uploading" = "Laai Steeds...\nStadige Verbinding";
+"FaceTec_result_idscan_upload_message_skipped_nfc_upload_complete_awaiting_response" = "Oplaai Voltooi";
+"FaceTec_result_idscan_upload_message_skipped_nfc_upload_complete_awaiting_processing" = "Verwerk\nID-data";
+"FaceTec_result_nfc_upload_message" = "Laai tans\nNFC\ngeënkripteerde inligting op";
+"FaceTec_result_idscan_unsuccess_message" = "Die ID-foto\nof pas by\ndie gebruiker se gesig";
+"FaceTec_result_idscan_success_front_side_message" = "Foto ID\nGeskandeer";
+"FaceTec_result_idscan_success_front_side_back_next_message" = "Voorkant van ID\ngeskandeer";
+"FaceTec_result_idscan_success_front_side_nfc_next_message" = "Voorkant van ID\ngeskandeer";
+"FaceTec_result_idscan_success_back_side_message" = "Foto ID\nGeskandeer";
+"FaceTec_result_idscan_success_back_side_nfc_next_message" = "Agterkant van ID\ngeskandeer";
+"FaceTec_result_idscan_success_passport_message" = "Geskandeerde paspoort";
+"FaceTec_result_idscan_success_passport_nfc_next_message" = "Geskandeerde paspoort";
+"FaceTec_result_idscan_success_user_confirmation_message" = "ID Skandering\nVoltooi";
+"FaceTec_result_idscan_success_nfc_message" = "NFC Skyfie-inligting\nOpgelaai";
+"FaceTec_result_idscan_success_additional_review_message" = "ID Skandering\nVoltooi";
+"FaceTec_result_idscan_skip_or_error_nfc_message" = "ID-data\nOpgelaai";
+"FaceTec_result_idscan_retry_face_did_not_match_message" = "Die gesig pas nie genoeg by\nnie";
+"FaceTec_result_idscan_retry_id_not_fully_visible_message" = "Die id\nis nie ten volle sigbaar nie";
+"FaceTec_result_idscan_retry_ocr_results_not_good_enough_message" = "Die teks van die identifikasie is nie leesbaar nie";
+"FaceTec_result_idscan_retry_id_type_not_supported_message" = "ID Nie Ondersteun Nie\nGebruik Asseblief ’n Ander ID";
+"FaceTec_result_idscan_retry_barcode_not_read_message" = "Kon nie strepieskode skandeer nie\nProbeer asseblief weer";
+"FaceTec_result_session_abort_message" = "Kritiese Fout\nSessie Beëindig";
+"FaceTec_result_idscan_additional_review_tag_message" = "Handleiding Hersiening Vereis\nSien Asseblief IDV Paneelbord";
+
+"FaceTec_retry_header" = "Kom Ons Probeer Dit Weer";
+"FaceTec_retry_subheader_message" = "Ons Benodig'n Duideliker Video Selfie";
+"FaceTec_retry_instruction_message_1" = "Neutrale Uitdrukking, Geen Glimlag Nie";
+"FaceTec_retry_instruction_message_2" = "Gebruik ideale houding en beligting";
+"FaceTec_retry_instruction_message_3" = "Te Vaag, Skoon Kamera";
+"FaceTec_retry_your_image_label" = "Jou Selfie";
+"FaceTec_retry_ideal_image_label" = "Ideale Posisie";
+
+"FaceTec_retry_official_id_photo_header" = "Kom Ons Probeer Dit Weer";
+"FaceTec_retry_official_id_photo_subheader_message" = "n Hoër Kwaliteit Beeld asb";
+"FaceTec_retry_official_id_photo_instruction_message" = "Probeer Binnebeligting.\nGeen Glans op Bril, Glimlag of Kopbedekking";
+"FaceTec_retry_official_id_photo_your_image_label" = "Jou Beeld";
+"FaceTec_retry_official_id_photo_ideal_image_label" = "Genoegsame Gesig";
+

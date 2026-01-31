@@ -1,0 +1,278 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clickable="true"
+    android:focusable="true">
+
+    <LinearLayout
+        android:id="@+id/contentLayout"
+        android:visibility="visible"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/official_id_photo_header"
+            android:gravity="center_horizontal"
+            android:textColor="#417FB2"
+            android:textStyle="bold"
+            android:textSize="28sp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="30dp"
+            android:gravity="center_horizontal"
+            android:text="@string/official_id_photo_sub_header"
+            android:textColor="#417FB2"
+            android:textSize="20sp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="30dp"
+            android:textColor="#417FB2"
+            android:text="@string/official_id_photo_instruction_header"
+            android:textSize="20sp"/>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="50dp"
+            android:layout_marginBottom="50dp"
+            android:gravity="center_vertical">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                <ImageView
+                    android:layout_width="35dp"
+                    android:layout_height="35dp"
+                    android:src="@drawable/light_bulb"
+                    android:contentDescription="@string/action_settings"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/official_id_photo_instruction_1"
+                    android:textColor="#417FB2"
+                    android:layout_marginStart="20dp"
+                    android:textSize="18sp"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="30dp"
+                android:gravity="center_vertical">
+                <ImageView
+                    android:layout_width="35dp"
+                    android:layout_height="35dp"
+                    android:src="@drawable/billed_cap"
+                    android:contentDescription="@string/action_settings"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/official_id_photo_instruction_2"
+                    android:textColor="#417FB2"
+                    android:layout_marginStart="20dp"
+                    android:textSize="18sp"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="30dp"
+                android:gravity="center_vertical">
+                <ImageView
+                    android:layout_width="35dp"
+                    android:layout_height="35dp"
+                    android:src="@drawable/sunglasses"
+                    android:contentDescription="@string/action_settings"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/official_id_photo_instruction_3"
+                    android:textColor="#417FB2"
+                    android:layout_marginStart="20dp"
+                    android:textSize="18sp"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="30dp"
+                android:gravity="center_vertical">
+                <ImageView
+                    android:layout_width="35dp"
+                    android:layout_height="35dp"
+                    android:src="@drawable/glasses"
+                    android:contentDescription="@string/action_settings"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/official_id_photo_instruction_4"
+                    android:textColor="#417FB2"
+                    android:layout_marginStart="20dp"
+                    android:textSize="18sp"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="30dp"
+                android:gravity="center_vertical">
+                <ImageView
+                    android:layout_width="35dp"
+                    android:layout_height="35dp"
+                    android:src="@drawable/person"
+                    android:contentDescription="@string/action_settings"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/official_id_photo_instruction_5"
+                    android:textColor="#417FB2"
+                    android:layout_marginStart="20dp"
+                    android:textSize="18sp"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <Utilities.SampleAppActionButton
+            android:text="@string/official_id_photo_continue"
+            android:id="@+id/continueButton"
+            android:layout_height="50dp"
+            android:layout_width="300dp"
+            android:textSize="20sp"
+            android:fontFamily="sans-serif-medium"
+            android:textAllCaps="true"
+            android:textColor="#fff"
+            android:background="@drawable/sample_button_bg"
+            style="?android:attr/borderlessButtonStyle"/>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/shareImageLayout"
+        android:visibility="gone"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:layout_centerHorizontal="true"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/official_id_photo_congratulations"
+            android:gravity="center_horizontal"
+            android:textColor="#417FB2"
+            android:textStyle="bold"
+            android:textSize="28sp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center_horizontal"
+            android:text="@string/official_id_photo_result_header"
+            android:textColor="#417FB2"
+            android:textSize="20sp"/>
+
+        <ImageView
+            android:id="@+id/officialIDPhotoImageView"
+            android:layout_width="250dp"
+            android:layout_height="250dp"
+            android:layout_marginTop="40dp"
+            android:layout_marginBottom="40dp"
+            android:contentDescription="@string/action_settings"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:text="@string/official_id_photo_email_confirmation"
+            android:textColor="#417FB2"
+            android:textSize="20sp"/>
+
+        <EditText
+            android:id="@+id/emailField"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:background="@android:color/transparent"
+            android:ems="10"
+            android:autofillHints="@string/email_address"
+            android:hint="@string/email_address"
+            android:inputType="textEmailAddress"
+            android:fontFamily="sans-serif-medium"
+            android:textColor="#417FB2"
+            android:textColorHint="#80417FB2" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="5dp"
+            android:background="#417FB2" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:layout_marginTop="10dp"
+            android:text="@string/official_id_photo_email_error"
+            android:textColor="#417FB2"
+            android:textSize="11sp"/>
+
+        <Utilities.SampleAppActionButton
+            android:text="@string/official_id_photo_email_image"
+            android:id="@+id/emailPhotoButton"
+            android:layout_height="50dp"
+            android:layout_width="300dp"
+            android:textSize="20sp"
+            android:fontFamily="sans-serif-medium"
+            android:textAllCaps="true"
+            android:textColor="#fff"
+            android:background="@drawable/sample_button_bg"
+            android:layout_marginBottom="15dp"
+            android:layout_marginTop="40dp"
+            style="?android:attr/borderlessButtonStyle"/>
+
+        <Utilities.SampleAppActionButton
+            android:text="@string/official_id_photo_save_image"
+            android:id="@+id/downloadPhotoButton"
+            android:layout_height="50dp"
+            android:layout_width="300dp"
+            android:textSize="20sp"
+            android:fontFamily="sans-serif-medium"
+            android:textAllCaps="true"
+            android:textColor="#fff"
+            android:background="@drawable/sample_button_bg"
+            style="?android:attr/borderlessButtonStyle"/>
+
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/cancelButton"
+        android:layout_width="25dp"
+        android:layout_height="25dp"
+        android:src="@drawable/facetec_cancel"
+        android:focusable="true"
+        android:clickable="true"
+        android:layout_margin="25dp"
+        android:contentDescription="@string/cancel_button"/>
+</RelativeLayout>
+

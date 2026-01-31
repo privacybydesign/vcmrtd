@@ -1,0 +1,63 @@
+plugins {
+    id 'com.android.application'
+}
+
+
+android {
+    namespace 'com.facetec.sampleapp'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.facetec.sampleapp"
+        minSdkVersion 21
+        targetSdkVersion 35
+        versionCode 1
+        versionName "1.0"
+        resourceConfigurations += ['en', 'af', 'ar', 'de', 'el', 'es', 'fr', 'kk', 'nb', 'pt-rBR', 'ru', 'zh', 'ja', 'vi']
+
+        ndk {
+            //noinspection ChromeOsAbiSupport
+            abiFilters 'armeabi-v7a', 'arm64-v8a'
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (signingConfigs.hasProperty('release')) {
+                signingConfig signingConfigs.release
+            }
+        }
+        debug {
+            initWith debug
+            debuggable true
+            jniDebuggable true
+        }
+    }
+
+    dataBinding.enabled = true
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    lint {
+        checkReleaseBuilds false
+    }
+
+    buildFeatures {
+        buildConfig = true
+    }
+
+}
+
+dependencies {
+    implementation 'com.squareup.okhttp3:okhttp:3.12.13'
+    implementation 'com.squareup.okio:okio:1.15.0'
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation 'com.facetec:facetec-sdk:10.0.30@aar'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.code.gson:gson:2.10'
+    implementation(platform("org.jetbrains.kotlin:kotlin-bom:1.8.0"))
+}
