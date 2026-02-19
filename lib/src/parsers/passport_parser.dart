@@ -414,7 +414,7 @@ class PassportParser extends DocumentParser<PassportData> {
           issuingAuthority = utf8.decode(uvtv.value);
           break;
         case DATE_OF_ISSUE_TAG:
-          if (uvtv.value.length == 4) {
+          if (uvtv.value.length == 4 || uvtv.value.length == 3) {
             final bcd = [for (var byte in uvtv.value) byte.toRadixString(16).padLeft(2, '0')].join();
             dateOfIssue = bcd.parseDate();
           } else {
