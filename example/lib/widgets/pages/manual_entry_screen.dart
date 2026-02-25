@@ -63,7 +63,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Enter Passport Details'),
+        title: Text('Enter ${widget.documentType.displayName} Details'),
         leading: IconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBack),
       ),
       body: SafeArea(
@@ -76,7 +76,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
               children: [
                 _buildHeaderCard(),
                 const SizedBox(height: 32),
-                if (widget.documentType == DocumentType.passport)
+                if (widget.documentType == DocumentType.passport || widget.documentType == DocumentType.identityCard)
                   ..._buildPassportFields()
                 else
                   ..._buildDriverLicenseFields(),
@@ -130,14 +130,18 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            widget.documentType == DocumentType.passport
-                ? '• Passport Number: Usually at the top right of the photo page\n'
-                      '• Date of Birth: Listed as "Date of birth" or "DOB"\n'
-                      '• Expiry Date: Listed as "Date of expiry" or "Valid until"'
-                : '• The MRZ is at the bottom of the front side of your driver\'s licence\n'
-                      '• You can also get this by scanning the QR Code on the back of your driver\'s licence\n'
-                      '• It\'s a single line of exactly 30 characters\n'
-                      '• Starts with "D1", "D2", or "D3"',
+            switch (widget.documentType) {
+              DocumentType.passport => '• Passport Number: Usually at the top right of the photo page\n'
+                  '• Date of Birth: Listed as "Date of birth" or "DOB"\n'
+                  '• Expiry Date: Listed as "Date of expiry" or "Valid until"',
+              DocumentType.identityCard => '• Card Number: Usually on the front of the card\n'
+                  '• Date of Birth: Listed as "Date of birth" or "DOB"\n'
+                  '• Expiry Date: Listed as "Date of expiry" or "Valid until"',
+              DocumentType.drivingLicence => '• The MRZ is at the bottom of the front side of your driver\'s licence\n'
+                  '• You can also get this by scanning the QR Code on the back of your driver\'s licence\n'
+                  '• It\'s a single line of exactly 30 characters\n'
+                  '• Starts with "D1", "D2", or "DL"',
+            },
             style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280), height: 1.4),
           ),
         ],
@@ -412,24 +416,24 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                 borderRadius: BorderRadius.circular(30),
               ),
               child: Icon(
-                widget.documentType == DocumentType.passport ? Icons.edit_document : Icons.text_fields,
+                widget.documentType == DocumentType.drivingLicence ? Icons.text_fields : Icons.edit_document,
                 size: 30,
                 color: const Color(0xFF6b6868),
               ),
             ),
             const SizedBox(height: 16),
             Text(
-              widget.documentType == DocumentType.passport
-                  ? 'Enter Your ${widget.documentType.displayName} Information'
-                  : 'Enter MRZ String',
+              widget.documentType == DocumentType.drivingLicence
+                  ? 'Enter MRZ String'
+                  : 'Enter Your ${widget.documentType.displayName} Information',
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF212121)),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
-              widget.documentType == DocumentType.passport
-                  ? 'Please enter the information exactly as it appears on your ${widget.documentType.displayName.toLowerCase()}'
-                  : 'Type the Machine Readable Zone text exactly as it appears',
+              widget.documentType == DocumentType.drivingLicence
+                  ? 'Type the Machine Readable Zone text exactly as it appears'
+                  : 'Please enter the information exactly as it appears on your ${widget.documentType.displayName.toLowerCase()}',
               style: const TextStyle(fontSize: 14, color: Color(0xFF666666)),
               textAlign: TextAlign.center,
             ),

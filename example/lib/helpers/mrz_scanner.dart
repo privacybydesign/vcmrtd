@@ -49,12 +49,11 @@ class MRZScannerState extends State<MRZScanner> {
 
   void _parseScannedText(List<String> lines) {
     try {
-      final dynamic data;
-      if (widget.documentType == DocumentType.drivingLicence) {
-        data = DriverLicenseParser.parse(lines);
-      } else {
-        data = MRZParser.parse(lines);
-      }
+      final data = switch (widget.documentType) {
+        DocumentType.drivingLicence => DrivingLicenceMrzParser().parse(lines),
+        DocumentType.identityCard => IdCardMrzParser().parse(lines),
+        DocumentType.passport => PassportMrzParser().parse(lines),
+      };
       _isBusy = true;
 
       widget.onSuccess(data, lines);

@@ -45,6 +45,37 @@ class MRZHelper {
 
   static String testTextLine(String text) {
     String res = text.replaceAll(' ', '');
+
+    // Common OCR character confusions - replace BEFORE length check
+    // These characters are often misread instead of '<'
+    const ocrReplacements = {
+      '«': '<',  // LEFT-POINTING DOUBLE ANGLE QUOTATION MARK
+      '»': '<',  // RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK
+      '‹': '<',  // SINGLE LEFT-POINTING ANGLE QUOTATION MARK
+      '›': '<',  // SINGLE RIGHT-POINTING ANGLE QUOTATION MARK
+      '〈': '<', // LEFT ANGLE BRACKET
+      '〉': '<', // RIGHT ANGLE BRACKET
+      '≤': '<',  // LESS-THAN OR EQUAL TO
+      '≥': '<',  // GREATER-THAN OR EQUAL TO
+      'く': '<', // Japanese hiragana ku (sometimes confused)
+      '＜': '<', // FULLWIDTH LESS-THAN SIGN
+      'К': 'K',  // Cyrillic К to Latin K
+      'к': 'K',  // Cyrillic к to Latin K
+      'О': '0',  // Cyrillic О to digit 0
+      'о': '0',  // Cyrillic о to digit 0
+    };
+
+    for (final entry in ocrReplacements.entries) {
+      res = res.replaceAll(entry.key, entry.value);
+    }
+
+    // Handle K< pattern which is often OCR misreading << as K<
+    // Only replace when K appears between valid MRZ positions (after letters, before <)
+    res = res.replaceAllMapped(
+      RegExp(r'([A-Z])K<'),
+      (match) => '${match.group(1)}<<',
+    );
+
     List<String> list = res.split('');
 
     // to check if the text belongs to any MRZ format or not

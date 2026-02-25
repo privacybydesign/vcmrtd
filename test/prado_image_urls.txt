@@ -1,0 +1,72 @@
+# PRADO Document Image URLs
+# Pattern: https://www.consilium.europa.eu/prado/images/{DOC_ID}/{IMAGE_ID}.jpg
+#
+# To download all countries, you need to:
+# 1. Download each country's listing page manually in your browser
+# 2. Extract the image URLs from the HTML (look for links containing "/image-")
+# 3. Convert detail page URLs to direct image URLs using the pattern above
+#
+# Example conversion:
+#   Detail page: https://www.consilium.europa.eu/prado/en/AUT-AO-03001/image-367103.html
+#   Direct image: https://www.consilium.europa.eu/prado/images/AUT-AO-03001/367103.jpg
+
+# ============================================================================
+# AUSTRIA (AUT) - Passports (A)
+# ============================================================================
+https://www.consilium.europa.eu/prado/images/AUT-AO-03001/367103.jpg
+https://www.consilium.europa.eu/prado/images/AUT-AO-03001/367107.jpg
+https://www.consilium.europa.eu/prado/images/AUT-AO-02002/240606.jpg
+https://www.consilium.europa.eu/prado/images/AUT-AO-02002/240610.jpg
+https://www.consilium.europa.eu/prado/images/AUT-AO-02001/132806.jpg
+https://www.consilium.europa.eu/prado/images/AUT-AO-02001/132811.jpg
+https://www.consilium.europa.eu/prado/images/AUT-AO-01001/40333.jpg
+https://www.consilium.europa.eu/prado/images/AUT-AO-01001/40337.jpg
+
+# ============================================================================
+# AUSTRIA (AUT) - ID Cards (B)
+# ============================================================================
+https://www.consilium.europa.eu/prado/images/AUT-BO-03001/341654.jpg
+https://www.consilium.europa.eu/prado/images/AUT-BO-03001/341655.jpg
+https://www.consilium.europa.eu/prado/images/AUT-BO-02003/242185.jpg
+https://www.consilium.europa.eu/prado/images/AUT-BO-02003/242186.jpg
+https://www.consilium.europa.eu/prado/images/AUT-BO-02002/40149.jpg
+https://www.consilium.europa.eu/prado/images/AUT-BO-02002/40150.jpg
+https://www.consilium.europa.eu/prado/images/AUT-BO-02001/40132.jpg
+https://www.consilium.europa.eu/prado/images/AUT-BO-02001/40133.jpg
+https://www.consilium.europa.eu/prado/images/AUT-BO-01001/127793.jpg
+https://www.consilium.europa.eu/prado/images/AUT-BO-01001/127792.jpg
+
+# ============================================================================
+# COUNTRY LISTING PAGE URLs (download these manually to get more countries)
+# ============================================================================
+# Format: https://www.consilium.europa.eu/prado/en/prado-documents/{CODE}/A/O/docs-per-type.html (passports)
+# Format: https://www.consilium.europa.eu/prado/en/prado-documents/{CODE}/B/O/docs-per-type.html (ID cards)
+#
+# EU Member States:
+# https://www.consilium.europa.eu/prado/en/prado-documents/AUT/A/O/docs-per-type.html
+# https://www.consilium.europa.eu/prado/en/prado-documents/BEL/A/O/docs-per-type.html
+# https://www.consilium.europa.eu/prado/en/prado-documents/BGR/A/O/docs-per-type.html
+# https://www.consilium.europa.eu/prado/en/prado-documents/CYP/A/O/docs-per-type.html
+# https://www.consilium.europa.eu/prado/en/prado-documents/CZE/A/O/docs-per-type.html
+# https://www.consilium.europa.eu/prado/en/prado-documents/DEU/A/O/docs-per-type.html
+# https://www.consilium.europa.eu/prado/en/prado-documents/DNK/A/O/docs-per-type.html
+# https://www.consilium.europa.eu/prado/en/prado-documents/ESP/A/O/docs-per-type.html
+# https://www.consilium.europa.eu/prado/en/prado-documents/EST/A/O/docs-per-type.html
+# https://www.consilium.europa.eu/prado/en/prado-documents/FIN/A/O/docs-per-type.html
+# https://www.consilium.europa.eu/prado/en/prado-documents/FRA/A/O/docs-per-type.html
+# https://www.consilium.europa.eu/prado/en/prado-documents/GRC/A/O/docs-per-type.html
+# https://www.consilium.europa.eu/prado/en/prado-documents/HRV/A/O/docs-per-type.html
+# https://www.consilium.europa.eu/prado/en/prado-documents/HUN/A/O/docs-per-type.html
+# https://www.consilium.europa.eu/prado/en/prado-documents/IRL/A/O/docs-per-type.html
+# https://www.consilium.europa.eu/prado/en/prado-documents/ITA/A/O/docs-per-type.html
+# https://www.consilium.europa.eu/prado/en/prado-documents/LTU/A/O/docs-per-type.html
+# https://www.consilium.europa.eu/prado/en/prado-documents/LUX/A/O/docs-per-type.html
+# https://www.consilium.europa.eu/prado/en/prado-documents/LVA/A/O/docs-per-type.html
+# https://www.consilium.europa.eu/prado/en/prado-documents/MLT/A/O/docs-per-type.html
+# https://www.consilium.europa.eu/prado/en/prado-documents/NLD/A/O/docs-per-type.html
+# https://www.consilium.europa.eu/prado/en/prado-documents/POL/A/O/docs-per-type.html
+# https://www.consilium.europa.eu/prado/en/prado-documents/PRT/A/O/docs-per-type.html
+# https://www.consilium.europa.eu/prado/en/prado-documents/ROU/A/O/docs-per-type.html
+# https://www.consilium.europa.eu/prado/en/prado-documents/SVK/A/O/docs-per-type.html
+# https://www.consilium.europa.eu/prado/en/prado-documents/SVN/A/O/docs-per-type.html
+# https://www.consilium.europa.eu/prado/en/prado-documents/SWE/A/O/docs-per-type.html

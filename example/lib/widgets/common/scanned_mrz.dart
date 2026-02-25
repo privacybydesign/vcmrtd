@@ -21,7 +21,7 @@ class ScannedPassportMRZ extends ScannedMRZ {
     super.documentType = DocumentType.passport,
   });
 
-  factory ScannedPassportMRZ.fromMRZResult(MRZResult mrz, {DocumentType documentType = DocumentType.passport}) {
+  factory ScannedPassportMRZ.fromMRZResult(PassportMrzResult mrz, {DocumentType documentType = DocumentType.passport}) {
     return ScannedPassportMRZ(
       documentNumber: mrz.documentNumber,
       countryCode: mrz.countryCode,
@@ -61,7 +61,7 @@ class ScannedDriverLicenseMRZ extends ScannedMRZ {
     required this.configuration,
   }) : super(documentType: DocumentType.drivingLicence);
 
-  factory ScannedDriverLicenseMRZ.fromMRZResult(MRZDriverLicenseResult mrz) {
+  factory ScannedDriverLicenseMRZ.fromMRZResult(DrivingLicenceMrzResult mrz) {
     return ScannedDriverLicenseMRZ(
       documentNumber: mrz.documentNumber,
       countryCode: mrz.countryCode,
@@ -72,7 +72,7 @@ class ScannedDriverLicenseMRZ extends ScannedMRZ {
   }
 
   factory ScannedDriverLicenseMRZ.fromManualEntry({required String mrzString}) {
-    final parsed = DriverLicenseParser.parse([mrzString]);
+    final parsed = DrivingLicenceMrzParser().parse([mrzString]);
     return ScannedDriverLicenseMRZ.fromMRZResult(parsed);
   }
 }

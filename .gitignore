@@ -153,3 +153,6 @@ docs/build/
 AGENTS.md
 .dart-tool/dart-flutter-telemetry.config
 example/android/build/reports/problems/problems-report.html
+
+# Node dependencies
+node_modules/
