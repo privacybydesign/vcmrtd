@@ -31,7 +31,6 @@ class TesseractOcrEngine(private val context: Context) {
                 throw IllegalStateException("Tesseract init failed for lang=$lang")
             }
         }
-        Log.i("OCR_NATIVE", "Tesseract4Android geïnitialiseerd: lang=$lang")
     }
 
     private fun ensureOsdInitialized() {
@@ -42,13 +41,10 @@ class TesseractOcrEngine(private val context: Context) {
             val t = TessBaseAPI()
             if (t.init(dataPath, "osd", TessBaseAPI.OEM_TESSERACT_ONLY)) {
                 tessOsd = t
-                Log.i("OCR_OSD", "OSD engine geïnitialiseerd")
             } else {
-                Log.w("OCR_OSD", "OSD init mislukt — orientatiecorrectie uitgeschakeld")
                 t.recycle()
             }
         } catch (e: Exception) {
-            Log.w("OCR_OSD", "osd.traineddata niet gevonden — OSD overgeslagen: ${e.message}")
             tessOsd = null
         }
     }
@@ -66,9 +62,7 @@ class TesseractOcrEngine(private val context: Context) {
                     input.copyTo(output)
                 }
             }
-            Log.i("OCR_NATIVE", "Gekopieerd: $lang.traineddata")
         } catch (e: Exception) {
-            Log.e("OCR_NATIVE", "Kon asset niet openen: $lang.traineddata", e)
             throw e
         }
     }
@@ -86,10 +80,8 @@ class TesseractOcrEngine(private val context: Context) {
             val match = Regex("""rotate\s+(\d+)""").find(hocr)
             val angle = match?.groupValues?.get(1)?.toIntOrNull() ?: 0
 
-            Log.i("OCR_OSD", "OSD HOCR rotate=$angle")
             angle
         } catch (e: Exception) {
-            Log.w("OCR_OSD", "OSD detectie mislukt: ${e.message}")
             try { t.clear() } catch (_: Exception) {}
             0
         }
@@ -179,9 +171,7 @@ class TesseractOcrEngine(private val context: Context) {
                 bmp = ImagePreprocess.cropToNormalizedRoi(
                     bmp, zone.left, zone.top, zone.width, zone.height
                 )
-                Log.i("OCR_NATIVE", "Dynamische MRZ zone gebruikt")
             } else {
-                Log.d("OCR_NATIVE", "MRZ detectie mislukt, vaste ROI als fallback")
             }
         }
 
@@ -218,7 +208,6 @@ class TesseractOcrEngine(private val context: Context) {
         val ocrText = (t.getUTF8Text() ?: "").trim()
         t.clear()
 
-        Log.i("OCR_NATIVE", "OCR RAW [$tag]:\n$ocrText\n---")
         ocrText
     }
 
