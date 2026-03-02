@@ -90,18 +90,4 @@ object ImagePreprocess {
         val h0 = (roiHeight * src.height).toInt().coerceIn(1, src.height - y)
         return Bitmap.createBitmap(src, x, y, w0, h0)
     }
-
-    fun saveOcrInputImage(context: Context, bmp: Bitmap, tag: String) {
-        try {
-            val ts = System.currentTimeMillis()
-            val fileName = "${tag}_ocr_input_$ts.png"
-            val f = File(context.filesDir, fileName)
-            FileOutputStream(f).use { out ->
-                bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
-            }
-            Log.i("OCR_DEBUG", "Saved OCR input [$tag]: ${bmp.width}x${bmp.height} -> ${f.absolutePath}")
-        } catch (e: Exception) {
-            Log.e("OCR_DEBUG", "Failed to save OCR input", e)
-        }
-    }
 }
