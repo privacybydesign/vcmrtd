@@ -1,3 +1,4 @@
+import '../custom/custom_logger_extension.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -116,10 +117,6 @@ class MRZScannerState extends State<MRZScanner> with RouteAware {
   Future<void> _processFrame(OcrFrame frame) async {
     if (!_canProcess || _isBusy) return;
 
-    final now = DateTime.now();
-    if (now.difference(_lastOcrAttempt).inMilliseconds < 10) return;
-    _lastOcrAttempt = now;
-
     _isBusy = true;
     try {
       final docLeft = frame.roiLeft;
@@ -188,41 +185,22 @@ class MRZScannerState extends State<MRZScanner> with RouteAware {
       });
       final text = res ?? '';
 
-      debugPrint(
-        "OCR($label): ${sw.elapsedMilliseconds}ms len=${text.length} "
-            "roi=(${roiLeft.toStringAsFixed(3)},${roiTop.toStringAsFixed(3)},"
-            "${roiWidth.toStringAsFixed(3)},${roiHeight.toStringAsFixed(3)}) "
-            "zone=$useZoneDetector docType=${widget.documentType}",
-      );
-
       final candidates = _extractCandidates(text, label);
       final finalLines = _selectFinalLines(candidates);
 
       if (finalLines != null) {
-        _logLines("MRZ FINAL LINES [$label]", finalLines);
-
         final parsedRaw = _parseScannedText(finalLines);
         if (parsedRaw != null) {
-          _logParsedResult(label, parsedRaw);
           _canProcess = false;
           widget.onSuccess(parsedRaw, finalLines);
           return true;
         }
 
-        debugPrint("PARSE failed for $label -> dumping OCR lines/candidates");
-        const maxChars = 400;
-        final shown = text.length > maxChars ? "${text.substring(0, maxChars)}…<truncated>" : text;
-        debugPrint("OCR($label) TEXT:\n$shown\n---");
-        _logLines("OCR RAW LINES [$label]", text.split(RegExp(r'[\r\n]+')).map((s) => s.trim()).where((s) => s.isNotEmpty).toList());
-        _logLines("OCR NORMALIZED CANDIDATES [$label]", candidates);
 
         final correctedStrict = MRZHelper.fixForDocType(widget.documentType, finalLines);
         if (correctedStrict != null) {
           final parsedStrict = _parseScannedText(correctedStrict);
           if (parsedStrict != null) {
-            debugPrint("PARSE recovered via typed-field fixer ($label)");
-            _logLines("MRZ CORRECTED LINES [$label]", correctedStrict);
-            debugPrint("PARSE SUCCESS via fixer [$label]: $parsedStrict");
             _canProcess = false;
             widget.onSuccess(parsedStrict, correctedStrict);
             return true;
@@ -232,47 +210,12 @@ class MRZScannerState extends State<MRZScanner> with RouteAware {
       return false;
 
     } catch (e) {
-      debugPrint("OCR($label): error $e");
       return false;
     }
   }
 
-  void _logParsedResult(String label, dynamic result) {
-    if (result is PassportMrzResult) {
-      debugPrint('''
-PARSE SUCCESS [$label] PassportMrzResult:
-  documentType: ${result.documentType}
-  countryCode: ${result.countryCode}
-  surnames: ${result.surnames}
-  givenNames: ${result.givenNames}
-  documentNumber: ${result.documentNumber}
-  nationalityCountryCode: ${result.nationalityCountryCode}
-  birthDate: ${result.birthDate}
-  sex: ${result.sex}
-  expiryDate: ${result.expiryDate}
-  personalNumber: ${result.personalNumber}
----''');
-    } else if (result is DrivingLicenceMrzResult) {
-      debugPrint('''
-PARSE SUCCESS [$label] DrivingLicenceMrzResult:
-  documentType: ${result.documentType}
-  configuration: ${result.configuration}
-  countryCode: ${result.countryCode}
-  version: ${result.version}
-  documentNumber: ${result.documentNumber}
-  randomData: ${result.randomData}
----''');
-    } else {
-      debugPrint("PARSE SUCCESS [$label]: $result");
-    }
-  }
 
-  void _logLines(String label, List<String> lines) {
-    debugPrint(
-      "$label (${lines.length} lines):\n"
-          "${lines.asMap().entries.map((e) => "[${e.key}] (${e.value.length}) ${e.value}").join('\n')}\n---",
-    );
-  }
+
 
   List<String> _extractCandidates(String ocrText, String label) {
     final rawLines = ocrText
@@ -345,9 +288,6 @@ PARSE SUCCESS [$label] DrivingLicenceMrzResult:
         if (best != null) return best;
         break;
     }
-    if (best != null) {
-      debugPrint("MRZ selected: ${best!.length} lines of len=${best!.first.length} for ${widget.documentType}");
-    }
     return best;
   }
 
@@ -360,7 +300,6 @@ PARSE SUCCESS [$label] DrivingLicenceMrzResult:
     };
 
     try {
-      debugPrint("PARSE start: docType=${widget.documentType} parser=$parserName shape=$shape");
       switch (widget.documentType) {
         case DocumentType.passport:
           return PassportMrzParser().parse(lines);
@@ -370,25 +309,25 @@ PARSE SUCCESS [$label] DrivingLicenceMrzResult:
           return DrivingLicenceMrzParser().parse(lines);
       }
     } on InvalidDocumentNumberException catch (e, st) {
-      debugPrint("PARSE FAIL ($parserName shape=$shape): doc number check digit mismatch\n$e\n$st");
+      "PARSE FAIL ($parserName shape=$shape): doc number check digit mismatch\n$e\n$st".logInfo();
       return null;
     } on InvalidBirthDateException catch (e, st) {
-      debugPrint("PARSE FAIL ($parserName shape=$shape): birth date check digit mismatch\n$e\n$st");
+      "PARSE FAIL ($parserName shape=$shape): birth date check digit mismatch\n$e\n$st".logInfo();
       return null;
     } on InvalidExpiryDateException catch (e, st) {
-      debugPrint("PARSE FAIL ($parserName shape=$shape): expiry date check digit mismatch\n$e\n$st");
+      "PARSE FAIL ($parserName shape=$shape): expiry date check digit mismatch\n$e\n$st".logInfo();
       return null;
     } on InvalidOptionalDataException catch (e, st) {
-      debugPrint("PARSE FAIL ($parserName shape=$shape): optional data check digit mismatch\n$e\n$st");
+      "PARSE FAIL ($parserName shape=$shape): optional data check digit mismatch\n$e\n$st".logInfo();
       return null;
     } on InvalidMrzValueException catch (e, st) {
-      debugPrint("PARSE FAIL ($parserName shape=$shape): final composite check digit mismatch\n$e\n$st");
+      "PARSE FAIL ($parserName shape=$shape): final composite check digit mismatch\n$e\n$st".logInfo();
       return null;
     } on InvalidMrzInputException catch (e, st) {
-      debugPrint("PARSE FAIL ($parserName shape=$shape): invalid input shape/length\n$e\n$st");
+      "PARSE FAIL ($parserName shape=$shape): invalid input shape/length\n$e\n$st".logInfo();
       return null;
     } catch (e, st) {
-      debugPrint("PARSE FAIL ($parserName shape=$shape): other\n$e\n$st");
+      "PARSE FAIL ($parserName shape=$shape): other\n$e\n$st".logInfo();
       return null;
     }
   }

@@ -155,8 +155,8 @@ class MRZHelper {
 
   static String _fixSexChar(String c) {
     if (c == 'M' || c == 'F' || c == 'X' || c == '<') return c;
-    if (c == 'P') return 'F'; // zoals mrz_parser
-    return c; // laat staan => parser faalt
+    if (c == 'P') return 'F'; 
+    return c;
   }
 
   /// Main entry: fix per DocumentType.
@@ -256,7 +256,7 @@ class MRZHelper {
 
     if (!_isLettersOrFiller(names)) return null;
 
-    final fixedL1 = docType + issuer + l1.substring(5); // rest laten (doc#, cd, optional)
+    final fixedL1 = docType + issuer + l1.substring(5);
 
     final fixedL2 =
         birth +
