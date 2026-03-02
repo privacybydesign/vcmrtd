@@ -100,7 +100,6 @@ object MrzZoneDetector {
             val right  = (rect.x + rect.width + pX).coerceAtMost(w).toDouble() / w
             val bottom = (rect.y + rect.height + pY).coerceAtMost(h).toDouble() / h
 
-            Log.i(TAG, "MRZ zone: ar=${"%.1f".format(ar)} coverage=${"%.2f".format(crWidth)}")
             result = RoiResult(left, top, right - left, bottom - top)
             break
         }
