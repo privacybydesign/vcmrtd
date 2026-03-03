@@ -2,13 +2,16 @@ import '../custom/custom_logger_extension.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:mrz_parser/mrz_parser.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import '../routing.dart';
+import '../providers/ocr_engine_provider.dart';
 import 'camera_viewfinder.dart';
 import 'mrz_helper.dart';
 
-class MRZScanner extends StatefulWidget {
+class MRZScanner extends ConsumerStatefulWidget {
   const MRZScanner({
     Key? controller,
     required this.onSuccess,
@@ -26,13 +29,13 @@ class MRZScanner extends StatefulWidget {
   MRZScannerState createState() => MRZScannerState();
 }
 
-class MRZScannerState extends State<MRZScanner> with RouteAware {
-
+class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
+  // --- Common OCR State ---
   static const MethodChannel _ocrChannel = MethodChannel('tesseract_ocr');
+  final TextRecognizer _textRecognizer = TextRecognizer();
 
   bool _canProcess = true;
   bool _isBusy = false;
-  DateTime _lastOcrAttempt = DateTime.fromMillisecondsSinceEpoch(0);
 
   @override
   void didChangeDependencies() {
@@ -47,6 +50,7 @@ class MRZScannerState extends State<MRZScanner> with RouteAware {
   void dispose() {
     routeObserver.unsubscribe(this);
     _canProcess = false;
+    _textRecognizer.close();
     super.dispose();
   }
 
@@ -54,17 +58,188 @@ class MRZScannerState extends State<MRZScanner> with RouteAware {
   void didPopNext() {
     _canProcess = true;
     _isBusy = false;
-    _lastOcrAttempt = DateTime.fromMillisecondsSinceEpoch(0);
   }
 
   @override
   Widget build(BuildContext context) {
+    final selectedEngine = ref.watch(ocrEngineProvider);
+
     return MRZCameraView(
       showOverlay: widget.showOverlay,
       initialDirection: widget.initialDirection,
-      onImage: _processFrame,
+      onImage: (frame) => _processFrame(frame, selectedEngine),
     );
   }
+
+  /// Main dispatcher that chooses the engine based on UI selection
+  Future<void> _processFrame(OcrFrame frame, OcrEngine engine) async {
+    if (!_canProcess || _isBusy) return;
+
+    _isBusy = true;
+    try {
+      if (engine == OcrEngine.tesseract4android) {
+        await _processTesseractFrame(frame);
+      } else {
+        await _runGoogleMlKitOcr(frame);
+      }
+    } finally {
+      _isBusy = false;
+    }
+  }
+
+  // ===========================================================================
+  // --- GOOGLE ML KIT OCR ENGINE ---
+  // ===========================================================================
+
+  Future<void> _runGoogleMlKitOcr(OcrFrame frame) async {
+    try {
+      final inputImage = InputImage.fromBytes(
+        bytes: frame.bytes,
+        metadata: InputImageMetadata(
+          size: Size(frame.width.toDouble(), frame.height.toDouble()),
+          rotation: InputImageRotationValue.fromRawValue(frame.rotation) ?? InputImageRotation.rotation0deg,
+          format: InputImageFormat.nv21,
+          bytesPerRow: frame.width,
+        ),
+      );
+
+      final recognizedText = await _textRecognizer.processImage(inputImage);
+      String fullText = recognizedText.text;
+
+      // Original normalization logic for ML Kit
+      String trimmedText = fullText.replaceAll(' ', '');
+      List allText = trimmedText.split('\n');
+
+      List<String> ableToScanText = [];
+      for (var e in allText) {
+        final normalized = MRZHelper.testTextLine(e.toString());
+        if (normalized.isNotEmpty) {
+          ableToScanText.add(normalized);
+        }
+      }
+
+      final finalLines = MRZHelper.getFinalListToParse(ableToScanText);
+
+      if (finalLines != null) {
+        final parsedRaw = _parseScannedText(finalLines);
+        if (parsedRaw != null) {
+          _canProcess = false;
+          widget.onSuccess(parsedRaw, finalLines);
+          return;
+        }
+
+        final correctedStrict = MRZHelper.fixForDocType(widget.documentType, finalLines);
+        if (correctedStrict != null) {
+          final parsedStrict = _parseScannedText(correctedStrict);
+          if (parsedStrict != null) {
+            _canProcess = false;
+            widget.onSuccess(parsedStrict, correctedStrict);
+            return;
+          }
+        }
+      }
+    } catch (e) {
+      "ML Kit OCR error: $e".logInfo();
+    }
+  }
+
+  // ===========================================================================
+  // --- TESSERACT 4 ANDROID OCR ENGINE ---
+  // ===========================================================================
+
+  Future<void> _processTesseractFrame(OcrFrame frame) async {
+    final docLeft = frame.roiLeft;
+    final docTop = frame.roiTop;
+    final docW = frame.roiWidth;
+    final docH = frame.roiHeight;
+
+    final strips = _mrzRoiAttempts(
+      docLeft: docLeft,
+      docTop: docTop,
+      docWidth: docW,
+      docHeight: docH,
+    );
+
+    final attempts = [
+      (label: 'full', l: docLeft, t: docTop, w: docW, h: docH, zone: false),
+      (label: strips[0].label, l: strips[0].l, t: strips[0].t, w: strips[0].w, h: strips[0].h, zone: false),
+      (label: strips[1].label, l: strips[1].l, t: strips[1].t, w: strips[1].w, h: strips[1].h, zone: false),
+      (label: strips[2].label, l: strips[2].l, t: strips[2].t, w: strips[2].w, h: strips[2].h, zone: false),
+      (label: 'full-zone', l: docLeft, t: docTop, w: docW, h: docH, zone: true),
+      (label: '${strips[0].label}-zone', l: strips[0].l, t: strips[0].t, w: strips[0].w, h: strips[0].h, zone: true),
+      (label: '${strips[1].label}-zone', l: strips[1].l, t: strips[1].t, w: strips[1].w, h: strips[1].h, zone: true),
+      (label: '${strips[2].label}-zone', l: strips[2].l, t: strips[2].t, w: strips[2].w, h: strips[2].h, zone: true),
+    ];
+
+    for (final a in attempts) {
+      if (!_canProcess) break;
+      final ok = await _runTesseractOcr(
+        frame: frame,
+        roiLeft: a.l,
+        roiTop: a.t,
+        roiWidth: a.w,
+        roiHeight: a.h,
+        label: a.label,
+        useZoneDetector: a.zone,
+      );
+      if (ok) break;
+    }
+  }
+
+  Future<bool> _runTesseractOcr({
+    required OcrFrame frame,
+    required double roiLeft,
+    required double roiTop,
+    required double roiWidth,
+    required double roiHeight,
+    required String label,
+    required bool useZoneDetector,
+  }) async {
+    if (!_canProcess) return false;
+
+    try {
+      final String? res = await _ocrChannel.invokeMethod<String>('ocrNv21', {
+        'bytes': frame.bytes,
+        'width': frame.width,
+        'height': frame.height,
+        'rotation': frame.rotation,
+        'lang': 'ocrb',
+        'roiLeft': roiLeft,
+        'roiTop': roiTop,
+        'roiWidth': roiWidth,
+        'roiHeight': roiHeight,
+        'useZoneDetector': useZoneDetector,
+      });
+      final text = res ?? '';
+
+      final candidates = _extractTesseractCandidates(text, label);
+      final finalLines = _selectFinalLines(candidates);
+
+      if (finalLines != null) {
+        final parsedRaw = _parseScannedText(finalLines);
+        if (parsedRaw != null) {
+          _canProcess = false;
+          widget.onSuccess(parsedRaw, finalLines);
+          return true;
+        }
+
+        final correctedStrict = MRZHelper.fixForDocType(widget.documentType, finalLines);
+        if (correctedStrict != null) {
+          final parsedStrict = _parseScannedText(correctedStrict);
+          if (parsedStrict != null) {
+            _canProcess = false;
+            widget.onSuccess(parsedStrict, correctedStrict);
+            return true;
+          }
+        }
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // --- Tesseract Helper Methods ---
 
   Map<String, double> _mrzStripFromDocRoi({
     required double docLeft,
@@ -75,15 +250,15 @@ class MRZScannerState extends State<MRZScanner> with RouteAware {
     required double heightFrac,
     double insetXFrac = 0.04,
   }) {
-    final roiTop    = (docTop + docHeight * startFrac).clamp(0.0, 1.0);
+    final roiTop = (docTop + docHeight * startFrac).clamp(0.0, 1.0);
     final roiHeight = (docHeight * heightFrac).clamp(0.0, 1.0);
-    final roiLeft   = (docLeft + docWidth * insetXFrac).clamp(0.0, 1.0);
-    final roiWidth  = (docWidth * (1.0 - 2 * insetXFrac)).clamp(0.0, 1.0);
+    final roiLeft = (docLeft + docWidth * insetXFrac).clamp(0.0, 1.0);
+    final roiWidth = (docWidth * (1.0 - 2 * insetXFrac)).clamp(0.0, 1.0);
 
     return {
-      'roiLeft':   roiLeft,
-      'roiTop':    roiTop,
-      'roiWidth':  roiWidth,
+      'roiLeft': roiLeft,
+      'roiTop': roiTop,
+      'roiWidth': roiWidth,
       'roiHeight': roiHeight,
     };
   }
@@ -114,110 +289,7 @@ class MRZScannerState extends State<MRZScanner> with RouteAware {
     ];
   }
 
-  Future<void> _processFrame(OcrFrame frame) async {
-    if (!_canProcess || _isBusy) return;
-
-    _isBusy = true;
-    try {
-      final docLeft = frame.roiLeft;
-      final docTop  = frame.roiTop;
-      final docW    = frame.roiWidth;
-      final docH    = frame.roiHeight;
-
-      final strips = _mrzRoiAttempts(
-        docLeft: docLeft, docTop: docTop, docWidth: docW, docHeight: docH,
-      );
-
-      final attempts = [
-        (label: 'full',                    l: docLeft,     t: docTop,     w: docW,        h: docH,        zone: false),
-        (label: strips[0].label,           l: strips[0].l, t: strips[0].t, w: strips[0].w, h: strips[0].h, zone: false),
-        (label: strips[1].label,           l: strips[1].l, t: strips[1].t, w: strips[1].w, h: strips[1].h, zone: false),
-        (label: strips[2].label,           l: strips[2].l, t: strips[2].t, w: strips[2].w, h: strips[2].h, zone: false),
-        (label: 'full-zone',               l: docLeft,     t: docTop,     w: docW,        h: docH,        zone: true),
-        (label: '${strips[0].label}-zone', l: strips[0].l, t: strips[0].t, w: strips[0].w, h: strips[0].h, zone: true),
-        (label: '${strips[1].label}-zone', l: strips[1].l, t: strips[1].t, w: strips[1].w, h: strips[1].h, zone: true),
-        (label: '${strips[2].label}-zone', l: strips[2].l, t: strips[2].t, w: strips[2].w, h: strips[2].h, zone: true),
-      ];
-
-      for (final a in attempts) {
-        if (!_canProcess) break;
-        final ok = await _runOcr(
-          frame:           frame,
-          roiLeft:         a.l,
-          roiTop:          a.t,
-          roiWidth:        a.w,
-          roiHeight:       a.h,
-          label:           a.label,
-          useZoneDetector: a.zone,
-        );
-        if (ok) break;
-      }
-    } finally {
-      _isBusy = false;
-    }
-  }
-
-  Future<bool> _runOcr({
-    required OcrFrame frame,
-    required double roiLeft,
-    required double roiTop,
-    required double roiWidth,
-    required double roiHeight,
-    required String label,
-    required bool useZoneDetector,
-  }) async {
-    if (!_canProcess) return false;
-
-    final sw = Stopwatch()..start();
-
-    try {
-      final String? res = await _ocrChannel.invokeMethod<String>('ocrNv21', {
-        'bytes':           frame.bytes,
-        'width':           frame.width,
-        'height':          frame.height,
-        'rotation':        frame.rotation,
-        'lang':            'ocrb',
-        'roiLeft':         roiLeft,
-        'roiTop':          roiTop,
-        'roiWidth':        roiWidth,
-        'roiHeight':       roiHeight,
-        'useZoneDetector': useZoneDetector,
-      });
-      final text = res ?? '';
-
-      final candidates = _extractCandidates(text, label);
-      final finalLines = _selectFinalLines(candidates);
-
-      if (finalLines != null) {
-        final parsedRaw = _parseScannedText(finalLines);
-        if (parsedRaw != null) {
-          _canProcess = false;
-          widget.onSuccess(parsedRaw, finalLines);
-          return true;
-        }
-
-
-        final correctedStrict = MRZHelper.fixForDocType(widget.documentType, finalLines);
-        if (correctedStrict != null) {
-          final parsedStrict = _parseScannedText(correctedStrict);
-          if (parsedStrict != null) {
-            _canProcess = false;
-            widget.onSuccess(parsedStrict, correctedStrict);
-            return true;
-          }
-        }
-      }
-      return false;
-
-    } catch (e) {
-      return false;
-    }
-  }
-
-
-
-
-  List<String> _extractCandidates(String ocrText, String label) {
+  List<String> _extractTesseractCandidates(String ocrText, String label) {
     final rawLines = ocrText
         .split(RegExp(r'[\r\n]+'))
         .map((s) => s.trim())
@@ -291,11 +363,15 @@ class MRZScannerState extends State<MRZScanner> with RouteAware {
     return best;
   }
 
+  // ===========================================================================
+  // --- SHARED PARSING LOGIC ---
+  // ===========================================================================
+
   dynamic _parseScannedText(List<String> lines) {
     final shape = "${lines.length}x${lines.isNotEmpty ? lines.first.length : 0}";
     final parserName = switch (widget.documentType) {
-      DocumentType.passport      => "PassportMrzParser",
-      DocumentType.identityCard  => "IdCardMrzParser",
+      DocumentType.passport => "PassportMrzParser",
+      DocumentType.identityCard => "IdCardMrzParser",
       DocumentType.drivingLicence => "DrivingLicenceMrzParser",
     };
 
