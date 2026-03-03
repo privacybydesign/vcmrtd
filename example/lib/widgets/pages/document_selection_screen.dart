@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtdapp/providers/active_authenticiation_provider.dart';
+import 'package:vcmrtdapp/providers/ocr_engine_provider.dart';
 import 'package:vcmrtdapp/theme/text_styles.dart';
 
 class DocumentTypeSelectionScreen extends StatelessWidget {
@@ -105,6 +106,31 @@ class _Header extends ConsumerWidget {
                   onChanged: (value) {
                     ref.read(activeAuthenticationProvider.notifier).set(value);
                   },
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('OCR engine', style: Theme.of(context).defaultTextStyles.hint),
+                DropdownButton<OcrEngine>(
+                  value: ref.watch(ocrEngineProvider),
+                  onChanged: (OcrEngine? value) {
+                    if (value != null) {
+                      ref.read(ocrEngineProvider.notifier).set(value);
+                    }
+                  },
+                  items: const [
+                    DropdownMenuItem(
+                      value: OcrEngine.googleMlKit,
+                      child: Text('Google ML Kit'),
+                    ),
+                    DropdownMenuItem(
+                      value: OcrEngine.tesseract4android,
+                      child: Text('Tesseract4Android'),
+                    ),
+                  ],
                 ),
               ],
             ),
