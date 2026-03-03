@@ -15,19 +15,19 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         GeneratedPluginRegistrant.registerWith(flutterEngine)
 
-        // OpenCV initialisatie
+        // OpenCV initialisatie for Tesseract Zone Detection
         if (!OpenCVLoader.initLocal()) {
             Log.e("OpenCV", "OpenCV initialization failed")
         }
 
-        // Deep link plugin
+        // Initialize deep link plugin
         deepLinkPlugin = DeepLinkPlugin()
         flutterEngine.plugins.add(deepLinkPlugin)
 
-        // OCR plugin
+        // Register Tesseract OCR plugin
         flutterEngine.plugins.add(TesseractOcrPlugin())
 
-        // image_channel
+        // Register image_channel for JP2 decoding (used for passport photo)
         ImageDecodeChannel.register(flutterEngine, applicationContext)
     }
 
