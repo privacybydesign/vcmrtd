@@ -17,9 +17,6 @@ class TesseractOcrEngine(private val context: Context) {
     private var tess: TessBaseAPI? = null
     private val tessLock = Any()
 
-    private var tessOsd: TessBaseAPI? = null
-    private val osdLock = Any()
-
     // ─── Initialisatie ─────────────────────────────────────────────────────────
 
     private fun ensureTesseractInitialized(lang: String) {
@@ -30,22 +27,6 @@ class TesseractOcrEngine(private val context: Context) {
             if (!init(dataPath, lang, TessBaseAPI.OEM_LSTM_ONLY)) {
                 throw IllegalStateException("Tesseract init failed for lang=$lang")
             }
-        }
-    }
-
-    private fun ensureOsdInitialized() {
-        if (tessOsd != null) return
-        try {
-            val dataPath = context.filesDir.absolutePath
-            copyTrainedDataIfNeeded(dataPath, "osd")
-            val t = TessBaseAPI()
-            if (t.init(dataPath, "osd", TessBaseAPI.OEM_TESSERACT_ONLY)) {
-                tessOsd = t
-            } else {
-                t.recycle()
-            }
-        } catch (e: Exception) {
-            tessOsd = null
         }
     }
 
@@ -67,45 +48,6 @@ class TesseractOcrEngine(private val context: Context) {
         }
     }
 
-    // ─── OSD orientatiedetectie ────────────────────────────────────────────────
-
-    private fun detectOsdAngle(bmp: Bitmap): Int = synchronized(osdLock) {
-        val t = tessOsd ?: return 0
-        return try {
-            t.pageSegMode = TessBaseAPI.PageSegMode.PSM_OSD_ONLY
-            t.setImage(bmp)
-            val hocr = t.getHOCRText(0) ?: ""
-            t.clear()
-
-            val match = Regex("""rotate\s+(\d+)""").find(hocr)
-            val angle = match?.groupValues?.get(1)?.toIntOrNull() ?: 0
-
-            angle
-        } catch (e: Exception) {
-            try { t.clear() } catch (_: Exception) {}
-            0
-        }
-    }
-
-    private fun rotateBitmap(bmp: Bitmap, degrees: Int): Bitmap {
-        if (degrees == 0) return bmp
-        val src = Mat()
-        Utils.bitmapToMat(bmp, src)
-        val dst = Mat()
-        val rotCode = when (degrees) {
-            90  -> Core.ROTATE_90_CLOCKWISE
-            180 -> Core.ROTATE_180
-            270 -> Core.ROTATE_90_COUNTERCLOCKWISE
-            else -> return bmp
-        }
-        Core.rotate(src, dst, rotCode)
-        src.release()
-        val result = Bitmap.createBitmap(dst.cols(), dst.rows(), Bitmap.Config.ARGB_8888)
-        Utils.matToBitmap(dst, result)
-        dst.release()
-        return result
-    }
-
     // ─── Publieke OCR methodes ─────────────────────────────────────────────────
 
     fun ocrNv21(
@@ -121,7 +63,7 @@ class TesseractOcrEngine(private val context: Context) {
         useZoneDetector: Boolean = false,
     ): String {
         ensureTesseractInitialized(lang)
-        ensureOsdInitialized()
+
 
         // 1. NV21 → Mat
         val yuvMat = Mat(height + height / 2, width, CvType.CV_8UC1)
@@ -157,14 +99,7 @@ class TesseractOcrEngine(private val context: Context) {
         Utils.matToBitmap(croppedMat, bmp)
         croppedMat.release()
 
-        // 6. OSD orientatiecorrectie
-        if (tessOsd != null) {
-            val angle = detectOsdAngle(bmp)
-            if (angle != 0) bmp = rotateBitmap(bmp, angle)
-        }
-
-        // 7. MrzZoneDetector op de crop voor verfijnde ROI
-        // eerst fallback dan
+        // 6. MrzZoneDetector op de crop voor verfijnde ROI
         if (useZoneDetector) {
             val zone = MrzZoneDetector.detect(bmp)
             if (zone != null) {
@@ -175,7 +110,7 @@ class TesseractOcrEngine(private val context: Context) {
             }
         }
 
-        // 8. OCR op gecorrigeerde crop
+        // 7. OCR op gecorrigeerde crop
         return ocrBitmapOcrOnly(bmp, tag = "full")
     }
 
@@ -216,7 +151,5 @@ class TesseractOcrEngine(private val context: Context) {
     fun close() {
         tess?.recycle()
         tess = null
-        tessOsd?.recycle()
-        tessOsd = null
     }
 }
