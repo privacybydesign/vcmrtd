@@ -145,37 +145,39 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
 
     final Map<String, String> dataGroups = {};
 
-    for (final (dataGroup, read, parse, progress) in [
-      (DataGroups.dg1, dataGroupReader.readDG1, documentParser.parseDG1, 0.1),
-      (DataGroups.dg2, dataGroupReader.readDG2, documentParser.parseDG2, 0.2),
-      (DataGroups.dg3, dataGroupReader.readDG3, documentParser.parseDG3, 0.3),
-      (DataGroups.dg4, dataGroupReader.readDG4, documentParser.parseDG4, 0.35),
-      (DataGroups.dg5, dataGroupReader.readDG5, documentParser.parseDG5, 0.4),
-      (DataGroups.dg6, dataGroupReader.readDG6, documentParser.parseDG6, 0.5),
-      (DataGroups.dg7, dataGroupReader.readDG7, documentParser.parseDG7, 0.6),
-      (DataGroups.dg8, dataGroupReader.readDG8, documentParser.parseDG8, 0.7),
-      (DataGroups.dg9, dataGroupReader.readDG9, documentParser.parseDG9, 0.75),
-      (DataGroups.dg10, dataGroupReader.readDG10, documentParser.parseDG10, 0.8),
-      (DataGroups.dg11, dataGroupReader.readDG11, documentParser.parseDG11, 0.85),
-      (DataGroups.dg12, dataGroupReader.readDG12, documentParser.parseDG12, 0.9),
-      (DataGroups.dg13, dataGroupReader.readDG13, documentParser.parseDG13, 0.9),
-      (DataGroups.dg14, dataGroupReader.readDG14, documentParser.parseDG14, 0.95),
-      (DataGroups.dg15, dataGroupReader.readDG15, documentParser.parseDG15, 0.9),
-      (DataGroups.dg16, dataGroupReader.readDG16, documentParser.parseDG16, 1.0),
+    // isMandatory: DG1, DG2 are mandatory; DG15 is mandatory if provided
+    for (final (dataGroup, read, parse, progress, isMandatory) in [
+      (DataGroups.dg1, dataGroupReader.readDG1, documentParser.parseDG1, 0.1, true),
+      (DataGroups.dg2, dataGroupReader.readDG2, documentParser.parseDG2, 0.2, true),
+      (DataGroups.dg3, dataGroupReader.readDG3, documentParser.parseDG3, 0.3, false),
+      (DataGroups.dg4, dataGroupReader.readDG4, documentParser.parseDG4, 0.35, false),
+      (DataGroups.dg5, dataGroupReader.readDG5, documentParser.parseDG5, 0.4, false),
+      (DataGroups.dg6, dataGroupReader.readDG6, documentParser.parseDG6, 0.5, false),
+      (DataGroups.dg7, dataGroupReader.readDG7, documentParser.parseDG7, 0.6, false),
+      (DataGroups.dg8, dataGroupReader.readDG8, documentParser.parseDG8, 0.7, false),
+      (DataGroups.dg9, dataGroupReader.readDG9, documentParser.parseDG9, 0.75, false),
+      (DataGroups.dg10, dataGroupReader.readDG10, documentParser.parseDG10, 0.8, false),
+      (DataGroups.dg11, dataGroupReader.readDG11, documentParser.parseDG11, 0.85, false),
+      (DataGroups.dg12, dataGroupReader.readDG12, documentParser.parseDG12, 0.9, false),
+      (DataGroups.dg13, dataGroupReader.readDG13, documentParser.parseDG13, 0.9, false),
+      (DataGroups.dg14, dataGroupReader.readDG14, documentParser.parseDG14, 0.95, false),
+      (DataGroups.dg15, dataGroupReader.readDG15, documentParser.parseDG15, 0.9, true),
+      (DataGroups.dg16, dataGroupReader.readDG16, documentParser.parseDG16, 1.0, false),
     ]) {
       if (!(config.shouldRead(dataGroup) && documentParser.documentContainsDataGroup(dataGroup))) {
         continue;
       }
 
       _setState(DocumentReaderReadingDataGroup(dataGroup: dataGroup.getName(), progress: progress));
+      Uint8List? bytes;
+
+      // First, read the bytes from the chip
       try {
         await _reconnectionLoop(
           authMethod: method,
           whenConnected: () async {
-            final bytes = await read();
-            parse(bytes);
-
-            final hexData = bytes.hex();
+            bytes = await read();
+            final hexData = bytes!.hex();
             if (hexData.isNotEmpty) {
               dataGroups[dataGroup.getName()] = hexData;
             }
@@ -187,6 +189,20 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
       } catch (e) {
         await _failure('Failure reading data group $dataGroup', e);
         return null;
+      }
+
+      // Then, parse the bytes (can fail for optional DGs)
+      if (bytes != null) {
+        try {
+          parse(bytes!);
+        } catch (e) {
+          if (isMandatory) {
+            await _failure('Failure parsing mandatory data group $dataGroup', e);
+            return null;
+          } else {
+            _addLog('Failed to parse optional data group $dataGroup: $e');
+          }
+        }
       }
     }
 

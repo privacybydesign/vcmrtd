@@ -64,7 +64,7 @@ class PersonalDataSection extends StatelessWidget {
       children: [
         InfoRow(
           label: 'Full Name',
-          value: '${passport.mrz.firstName} ${passport.mrz.lastName}',
+          value: passport.nameOfHolder ?? '${passport.mrz.firstName} ${passport.mrz.lastName}',
           iconData: Icons.person_outline,
         ),
         const SizedBox(height: 12),
