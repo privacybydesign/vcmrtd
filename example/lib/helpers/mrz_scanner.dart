@@ -1,4 +1,3 @@
-import '../custom/custom_logger_extension.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -139,7 +138,7 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
         }
       }
     } catch (e) {
-      "ML Kit OCR error: $e".logInfo();
+      debugPrint('ML Kit OCR error: $e');
     }
   }
 
@@ -368,13 +367,6 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
   // ===========================================================================
 
   dynamic _parseScannedText(List<String> lines) {
-    final shape = "${lines.length}x${lines.isNotEmpty ? lines.first.length : 0}";
-    final parserName = switch (widget.documentType) {
-      DocumentType.passport => "PassportMrzParser",
-      DocumentType.identityCard => "IdCardMrzParser",
-      DocumentType.drivingLicence => "DrivingLicenceMrzParser",
-    };
-
     try {
       switch (widget.documentType) {
         case DocumentType.passport:
@@ -384,26 +376,19 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
         case DocumentType.drivingLicence:
           return DrivingLicenceMrzParser().parse(lines);
       }
-    } on InvalidDocumentNumberException catch (e, st) {
-      "PARSE FAIL ($parserName shape=$shape): doc number check digit mismatch\n$e\n$st".logInfo();
+    } on InvalidDocumentNumberException {
       return null;
-    } on InvalidBirthDateException catch (e, st) {
-      "PARSE FAIL ($parserName shape=$shape): birth date check digit mismatch\n$e\n$st".logInfo();
+    } on InvalidBirthDateException {
       return null;
-    } on InvalidExpiryDateException catch (e, st) {
-      "PARSE FAIL ($parserName shape=$shape): expiry date check digit mismatch\n$e\n$st".logInfo();
+    } on InvalidExpiryDateException {
       return null;
-    } on InvalidOptionalDataException catch (e, st) {
-      "PARSE FAIL ($parserName shape=$shape): optional data check digit mismatch\n$e\n$st".logInfo();
+    } on InvalidOptionalDataException {
       return null;
-    } on InvalidMrzValueException catch (e, st) {
-      "PARSE FAIL ($parserName shape=$shape): final composite check digit mismatch\n$e\n$st".logInfo();
+    } on InvalidMrzValueException {
       return null;
-    } on InvalidMrzInputException catch (e, st) {
-      "PARSE FAIL ($parserName shape=$shape): invalid input shape/length\n$e\n$st".logInfo();
+    } on InvalidMrzInputException {
       return null;
-    } catch (e, st) {
-      "PARSE FAIL ($parserName shape=$shape): other\n$e\n$st".logInfo();
+    } catch (e) {
       return null;
     }
   }
