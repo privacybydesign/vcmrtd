@@ -218,8 +218,17 @@ class ResponseAPDUStep4Pace {
   late Uint8List data;
 
   late Uint8List _authToken;
+  Uint8List? _encryptedChipAuthData; // Optional: only present for PACE-CAM
 
   Uint8List get authToken => _authToken;
+
+  /// Returns the Encrypted Chip Authentication Data (tag 0x8A) if present.
+  /// This is only present for PACE-CAM (Chip Authentication Mapping).
+  Uint8List? get encryptedChipAuthData => _encryptedChipAuthData;
+
+  /// Returns true if this response contains Encrypted Chip Authentication Data,
+  /// indicating PACE-CAM was used.
+  bool get hasChipAuthData => _encryptedChipAuthData != null;
 
   static final _log = Logger("ResponseAPDUStep4Pace");
 
@@ -238,22 +247,49 @@ class ResponseAPDUStep4Pace {
     }
     _log.verbose("Pace.step4; Response data contains dynamic authentication data");
 
-    //checking if dynamic authentication data contains public element
-    TLV mappingData = TLV.fromBytes(dynamicAuthenticationData.value);
+    // Parse all TLV elements in the dynamic authentication data
+    // For GM: only tag 0x86 (auth token) is present
+    // For CAM: tag 0x86 (auth token) and tag 0x8A (encrypted chip auth data) are present
+    Uint8List remaining = dynamicAuthenticationData.value;
+    bool foundAuthToken = false;
 
-    int mappingDataResponseTag = mappingData.tag;
-    if (mappingDataResponseTag != ExchangedDataPACE.authenticationTokenResponse) {
+    while (remaining.isNotEmpty) {
+      final decodedTV = TLV.decode(remaining);
+      final tag = decodedTV.tag.value;
+      final value = decodedTV.value;
+
+      if (tag == ExchangedDataPACE.authenticationTokenResponse) {
+        // Tag 0x86: Authentication Token
+        if (value.isEmpty) {
+          _log.error("Pace.step4; Authentication token is empty");
+          throw ResponseAPDUStep4PaceError("Pace.step4; Authentication token is empty");
+        }
+        _authToken = value;
+        foundAuthToken = true;
+        _log.sdVerbose("Authentication token: ${_authToken.hex()}");
+      } else if (tag == ExchangedDataPACE.encryptedChipAuthenticationData) {
+        // Tag 0x8A: Encrypted Chip Authentication Data (PACE-CAM only)
+        _encryptedChipAuthData = value;
+        _log.debug("Pace.step4; Found Encrypted Chip Authentication Data (PACE-CAM)");
+        _log.sdVerbose("Encrypted Chip Auth Data: ${_encryptedChipAuthData!.hex()}");
+      } else {
+        _log.debug("Pace.step4; Ignoring unknown tag: 0x${tag.toRadixString(16)}");
+      }
+
+      // Move to the next TLV element
+      int elementSize = decodedTV.encodedLen;
+      if (elementSize >= remaining.length) {
+        break;
+      }
+      remaining = remaining.sublist(elementSize);
+    }
+
+    if (!foundAuthToken) {
       _log.error("Pace.step4; Dynamic authentication data does not contain authentication token");
       throw ResponseAPDUStep4PaceError("Pace.step4; Dynamic authentication data does not contain authentication token");
     }
 
-    if (mappingData.value.isEmpty) {
-      _log.error("Pace.step4; Mapping data is empty");
-      throw ResponseAPDUStep4PaceError("Pace.step4; Mapping data is empty");
-    }
-    _authToken = mappingData.value;
     _log.debug("Parsing step 4 response data was successful");
-    _log.sdVerbose("Authentication token: ${_authToken.hex()}");
   }
 }
 
