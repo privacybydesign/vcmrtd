@@ -72,9 +72,16 @@ class PaceInfo {
     _log.info("Parsing PaceInfo...");
     _log.sdDebug("Data: $content");
 
-    if (content.elements == null || content.elements!.length < 3) {
-      _log.error("Invalid structure of PaceInfo. Less than 3 elements in set.");
-      throw EfParseError("Invalid structure of PaceInfo. Less than 3 elements in set.");
+    // Per ICAO 9303 Part 11, parameterId is OPTIONAL:
+    // PACEInfo ::= SEQUENCE {
+    //   protocol OBJECT IDENTIFIER,
+    //   version INTEGER,
+    //   parameterId INTEGER OPTIONAL
+    // }
+    // Therefore we require at least 2 elements (protocol and version)
+    if (content.elements == null || content.elements!.length < 2) {
+      _log.error("Invalid structure of PaceInfo. Less than 2 elements in sequence.");
+      throw EfParseError("Invalid structure of PaceInfo. Less than 2 elements in sequence.");
     }
 
     //
@@ -114,42 +121,47 @@ class PaceInfo {
     _log.sdDebug("Version: $version");
 
     //
-    // parsing parameterId
+    // parsing parameterId (OPTIONAL per ICAO 9303 Part 11)
     //
 
-    _log.info("... parsing parameterId ...");
-    ASN1Integer parameterId = content.elements?[2] as ASN1Integer;
-    if (parameterId.integer == null) {
-      _log.error("Invalid parameterId in PaceInfo. ParameterId is null.");
-      throw EfParseError("Invalid parameterId in PaceInfo. ParameterId is null.");
-    }
-
-    _parameterId = parameterId.integer?.toInt() as int;
-
-    // checking if domain parameter is supported
-
-    try {
-      //check if DomainParameterSelectorEC(DH) raises exception
-      if (_protocol.tokenAgreementAlgorithm == TOKEN_AGREEMENT_ALGO.ECDH) {
-        DomainParameterSelectorECDH.getDomainParameter(id: _parameterId!);
-      } else {
-        DomainParameterSelectorDH.getDomainParameter(id: _parameterId!);
+    if (content.elements!.length >= 3) {
+      _log.info("... parsing parameterId ...");
+      ASN1Integer parameterId = content.elements?[2] as ASN1Integer;
+      if (parameterId.integer == null) {
+        _log.error("Invalid parameterId in PaceInfo. ParameterId is null.");
+        throw EfParseError("Invalid parameterId in PaceInfo. ParameterId is null.");
       }
 
-      _isPaceDomainParameterSupported = true;
-    } catch (e) {
-      // we do not raise exception, because we can use paceInfo for
-      // other purposes - not only for PACE
-      _log.error("Token agreement algorithm not supported. Exception: $e");
-      _log.debug(
-        "Token agreement algorithm '${_protocol.tokenAgreementAlgorithm}'"
-        " with domain parameterId '$_parameterId' is not supported.",
-      );
+      _parameterId = parameterId.integer?.toInt() as int;
+
+      // checking if domain parameter is supported
+      try {
+        //check if DomainParameterSelectorEC(DH) raises exception
+        if (_protocol.tokenAgreementAlgorithm == TOKEN_AGREEMENT_ALGO.ECDH) {
+          DomainParameterSelectorECDH.getDomainParameter(id: _parameterId!);
+        } else {
+          DomainParameterSelectorDH.getDomainParameter(id: _parameterId!);
+        }
+
+        _isPaceDomainParameterSupported = true;
+      } catch (e) {
+        // we do not raise exception, because we can use paceInfo for
+        // other purposes - not only for PACE
+        _log.error("Token agreement algorithm not supported. Exception: $e");
+        _log.debug(
+          "Token agreement algorithm '${_protocol.tokenAgreementAlgorithm}'"
+          " with domain parameterId '$_parameterId' is not supported.",
+        );
+        _isPaceDomainParameterSupported = false;
+      }
+
+      _log.info("... parameterId parsed ...");
+      _log.sdDebug("ParameterId: $_parameterId");
+    } else {
+      _log.info("... parameterId not present (optional field omitted)");
+      _parameterId = null;
       _isPaceDomainParameterSupported = false;
     }
-
-    _log.info("... parameterId parsed ...");
-    _log.sdDebug("ParameterId: $parameterId");
 
     _log.info("... paceInfo successfully parsed.");
   }
