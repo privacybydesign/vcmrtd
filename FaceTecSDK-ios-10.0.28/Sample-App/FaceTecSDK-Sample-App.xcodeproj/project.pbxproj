@@ -1,0 +1,630 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		31B000C82C4F5DCC006197AA /* SessionRequestProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31B000C72C4F5DCC006197AA /* SessionRequestProcessor.swift */; };
+		31B678A3269F24280003F0ED /* FaceTecSDK.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 31B678A2269F24280003F0ED /* FaceTecSDK.xcframework */; };
+		31B678A4269F24280003F0ED /* FaceTecSDK.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 31B678A2269F24280003F0ED /* FaceTecSDK.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		43014A8D282205840045C26C /* AdditionalReviewAnimationViewGreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43014A8C282205840045C26C /* AdditionalReviewAnimationViewGreen.swift */; };
+		43145D42249B249F009CB12B /* EKYCActivityIndicatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43145D41249B249F009CB12B /* EKYCActivityIndicatorView.swift */; };
+		43172DE224A2E6970044B57C /* EKYCSuccessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43172DE124A2E6970044B57C /* EKYCSuccessView.swift */; };
+		43172DE424A2E6B50044B57C /* EKYCUnsuccessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43172DE324A2E6B50044B57C /* EKYCUnsuccessView.swift */; };
+		4349D0B12AEA0B160073DD9D /* FaceTec.strings in Resources */ = {isa = PBXBuildFile; fileRef = 4349D0B32AEA0B160073DD9D /* FaceTec.strings */; };
+		4369C6C6291EF2C70083043A /* EKYCScrollIndicatorAnimationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4369C6C5291EF2C70083043A /* EKYCScrollIndicatorAnimationView.swift */; };
+		43B01CFE24971EC900BA3141 /* WellRoundedActivityIndicatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43B01CFD24971EC900BA3141 /* WellRoundedActivityIndicatorView.swift */; };
+		43B01D0024971F2E00BA3141 /* PseudoFullscreenActivityIndicatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43B01CFF24971F2E00BA3141 /* PseudoFullscreenActivityIndicatorView.swift */; };
+		43B01D0224971F6D00BA3141 /* PseudoFullscreenSuccessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43B01D0124971F6D00BA3141 /* PseudoFullscreenSuccessView.swift */; };
+		43B01D0424971F7F00BA3141 /* PseudoFullscreenUnsuccessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43B01D0324971F7F00BA3141 /* PseudoFullscreenUnsuccessView.swift */; };
+		43B01D0624971FB200BA3141 /* WellRoundedUnsuccessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43B01D0524971FB200BA3141 /* WellRoundedUnsuccessView.swift */; };
+		43B5A5C3262FD4020078B3BD /* FaceTec_OCR_Customization.json in Resources */ = {isa = PBXBuildFile; fileRef = 43B5A5C2262FD4010078B3BD /* FaceTec_OCR_Customization.json */; };
+		43B7226A255CBADB000A63D9 /* SampleAppActionButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43B72269255CBADB000A63D9 /* SampleAppActionButton.swift */; };
+		43BD2E8723A848C0005C70D9 /* ThemeHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43BD2E8623A848C0005C70D9 /* ThemeHelpers.swift */; };
+		43D0288B2490312B00F042E1 /* WellRoundedSuccessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43D0288A2490312B00F042E1 /* WellRoundedSuccessView.swift */; };
+		660548A126AE116300006091 /* NFCScanningAnimationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 660548A026AE116300006091 /* NFCScanningAnimationView.swift */; };
+		661704C72591417C00F5B6AD /* vocal_guidance_on.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 661704C52591417A00F5B6AD /* vocal_guidance_on.mp3 */; };
+		661704C82591417C00F5B6AD /* vocal_guidance_off.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 661704C62591417B00F5B6AD /* vocal_guidance_off.mp3 */; };
+		664810B525E6E3C700056B93 /* facescan_successful_sound_file.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 664810AF25E6E3BE00056B93 /* facescan_successful_sound_file.mp3 */; };
+		664810B625E6E3C700056B93 /* please_move_closer_sound_file.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 664810B025E6E3BF00056B93 /* please_move_closer_sound_file.mp3 */; };
+		664810B725E6E3C700056B93 /* please_frame_your_face_sound_file.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 664810B125E6E3C100056B93 /* please_frame_your_face_sound_file.mp3 */; };
+		664810B825E6E3C700056B93 /* please_retry_sound_file.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 664810B225E6E3C200056B93 /* please_retry_sound_file.mp3 */; };
+		664810B925E6E3C700056B93 /* uploading_sound_file.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 664810B325E6E3C400056B93 /* uploading_sound_file.mp3 */; };
+		664810BA25E6E3C700056B93 /* please_press_button_sound_file.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 664810B425E6E3C700056B93 /* please_press_button_sound_file.mp3 */; };
+		667A93C426C207AB0099861E /* NFCStartingAnimationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 667A93C326C207AB0099861E /* NFCStartingAnimationView.swift */; };
+		66AEACC426DEB93E008E757C /* NFCScanningAnimationViewBlack.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66AEACC326DEB93D008E757C /* NFCScanningAnimationViewBlack.swift */; };
+		66AEACC626DEB951008E757C /* NFCScanningAnimationViewGreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66AEACC526DEB951008E757C /* NFCScanningAnimationViewGreen.swift */; };
+		66AEACC826DEB966008E757C /* NFCScanningAnimationViewRed.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66AEACC726DEB966008E757C /* NFCScanningAnimationViewRed.swift */; };
+		66B443C42ECBC1E700D2228D /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66B443C32ECBC1E700D2228D /* SceneDelegate.swift */; };
+		66B702E82E512BE600A7F0DD /* SampleAppNetworkingRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66B702E72E512BE600A7F0DD /* SampleAppNetworkingRequest.swift */; };
+		66CAC3A52810CD2600A8F745 /* NFCCardScanningAnimationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66CAC3A42810CD2600A8F745 /* NFCCardScanningAnimationView.swift */; };
+		66CAC3A72810CD4300A8F745 /* NFCCardStartingAnimationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66CAC3A62810CD4300A8F745 /* NFCCardStartingAnimationView.swift */; };
+		66DDAF3724633908009B8475 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66DDAF3624633908009B8475 /* Config.swift */; };
+		66F4231F2DFCBB1C005C8E99 /* OfficialIDPhoto.xib in Resources */ = {isa = PBXBuildFile; fileRef = 66F4231E2DFCBB1C005C8E99 /* OfficialIDPhoto.xib */; };
+		66F423212DFCBF01005C8E99 /* SampleAppOfficialIDPhotoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66F423202DFCBF01005C8E99 /* SampleAppOfficialIDPhotoView.swift */; };
+		ACFA97321C4D8C9600DF6169 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACFA97311C4D8C9600DF6169 /* AppDelegate.swift */; };
+		ACFA97371C4D8C9600DF6169 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = ACFA97351C4D8C9600DF6169 /* Main.storyboard */; };
+		ACFA97391C4D8C9600DF6169 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = ACFA97381C4D8C9600DF6169 /* Assets.xcassets */; };
+		ACFA973C1C4D8C9600DF6169 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = ACFA973A1C4D8C9600DF6169 /* LaunchScreen.storyboard */; };
+		E72ECBD0203B3EFE00EC6B76 /* SampleAppViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E72ECBCF203B3EFE00EC6B76 /* SampleAppViewController.swift */; };
+		E72ECBD4203B40B700EC6B76 /* SampleAppUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = E72ECBD3203B40B700EC6B76 /* SampleAppUtilities.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		AC1D45ED1CD1A5CB0058FF0B /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				31B678A4269F24280003F0ED /* FaceTecSDK.xcframework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		31B000C72C4F5DCC006197AA /* SessionRequestProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionRequestProcessor.swift; sourceTree = "<group>"; };
+		31B678A2269F24280003F0ED /* FaceTecSDK.xcframework */ = {isa = PBXFileReference; explicitFileType = wrapper.xcframework; path = ../FaceTecSDK.xcframework; sourceTree = "<group>"; };
+		43014A8C282205840045C26C /* AdditionalReviewAnimationViewGreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdditionalReviewAnimationViewGreen.swift; sourceTree = "<group>"; };
+		43145D41249B249F009CB12B /* EKYCActivityIndicatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EKYCActivityIndicatorView.swift; sourceTree = "<group>"; };
+		43172DE124A2E6970044B57C /* EKYCSuccessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EKYCSuccessView.swift; sourceTree = "<group>"; };
+		43172DE324A2E6B50044B57C /* EKYCUnsuccessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EKYCUnsuccessView.swift; sourceTree = "<group>"; };
+		4349D0B22AEA0B160073DD9D /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/FaceTec.strings; sourceTree = "<group>"; };
+		4349D0B42AEA0B2E0073DD9D /* de */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = de; path = de.lproj/FaceTec.strings; sourceTree = "<group>"; };
+		4349D0BA2AEA0CC60073DD9D /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/FaceTec.strings; sourceTree = "<group>"; };
+		4349D0BB2AEA0D520073DD9D /* ar */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ar; path = ar.lproj/FaceTec.strings; sourceTree = "<group>"; };
+		4349D0BC2AEA0D790073DD9D /* af */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = af; path = af.lproj/FaceTec.strings; sourceTree = "<group>"; };
+		4349D0BD2AEA0D880073DD9D /* el */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = el; path = el.lproj/FaceTec.strings; sourceTree = "<group>"; };
+		4349D0BE2AEA0D990073DD9D /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/FaceTec.strings; sourceTree = "<group>"; };
+		4349D0BF2AEA0DA40073DD9D /* pt-BR */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "pt-BR"; path = "pt-BR.lproj/FaceTec.strings"; sourceTree = "<group>"; };
+		4349D0C02AEA0DEE0073DD9D /* kk */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = kk; path = kk.lproj/FaceTec.strings; sourceTree = "<group>"; };
+		4349D0C12AEA0DFD0073DD9D /* nb */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = nb; path = nb.lproj/FaceTec.strings; sourceTree = "<group>"; };
+		4349D0C22AEA0E070073DD9D /* fr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = fr; path = fr.lproj/FaceTec.strings; sourceTree = "<group>"; };
+		4369C6C5291EF2C70083043A /* EKYCScrollIndicatorAnimationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EKYCScrollIndicatorAnimationView.swift; sourceTree = "<group>"; };
+		43968AE32DC072FF00C1281B /* vi */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = vi; path = vi.lproj/FaceTec.strings; sourceTree = "<group>"; };
+		43968AE42DC0731800C1281B /* zh */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = zh; path = zh.lproj/FaceTec.strings; sourceTree = "<group>"; };
+		43968AE52DC0733700C1281B /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/FaceTec.strings; sourceTree = "<group>"; };
+		43B01CFD24971EC900BA3141 /* WellRoundedActivityIndicatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WellRoundedActivityIndicatorView.swift; sourceTree = "<group>"; };
+		43B01CFF24971F2E00BA3141 /* PseudoFullscreenActivityIndicatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PseudoFullscreenActivityIndicatorView.swift; sourceTree = "<group>"; };
+		43B01D0124971F6D00BA3141 /* PseudoFullscreenSuccessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PseudoFullscreenSuccessView.swift; sourceTree = "<group>"; };
+		43B01D0324971F7F00BA3141 /* PseudoFullscreenUnsuccessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PseudoFullscreenUnsuccessView.swift; sourceTree = "<group>"; };
+		43B01D0524971FB200BA3141 /* WellRoundedUnsuccessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WellRoundedUnsuccessView.swift; sourceTree = "<group>"; };
+		43B5A5C2262FD4010078B3BD /* FaceTec_OCR_Customization.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = FaceTec_OCR_Customization.json; sourceTree = "<group>"; };
+		43B72269255CBADB000A63D9 /* SampleAppActionButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleAppActionButton.swift; sourceTree = "<group>"; };
+		43BD2E8623A848C0005C70D9 /* ThemeHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeHelpers.swift; sourceTree = "<group>"; };
+		43D0288A2490312B00F042E1 /* WellRoundedSuccessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WellRoundedSuccessView.swift; sourceTree = "<group>"; };
+		660548A026AE116300006091 /* NFCScanningAnimationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NFCScanningAnimationView.swift; sourceTree = "<group>"; };
+		661704C52591417A00F5B6AD /* vocal_guidance_on.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = vocal_guidance_on.mp3; sourceTree = "<group>"; };
+		661704C62591417B00F5B6AD /* vocal_guidance_off.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = vocal_guidance_off.mp3; sourceTree = "<group>"; };
+		664810AF25E6E3BE00056B93 /* facescan_successful_sound_file.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = facescan_successful_sound_file.mp3; sourceTree = "<group>"; };
+		664810B025E6E3BF00056B93 /* please_move_closer_sound_file.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = please_move_closer_sound_file.mp3; sourceTree = "<group>"; };
+		664810B125E6E3C100056B93 /* please_frame_your_face_sound_file.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = please_frame_your_face_sound_file.mp3; sourceTree = "<group>"; };
+		664810B225E6E3C200056B93 /* please_retry_sound_file.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = please_retry_sound_file.mp3; sourceTree = "<group>"; };
+		664810B325E6E3C400056B93 /* uploading_sound_file.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = uploading_sound_file.mp3; sourceTree = "<group>"; };
+		664810B425E6E3C700056B93 /* please_press_button_sound_file.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = please_press_button_sound_file.mp3; sourceTree = "<group>"; };
+		667A93C326C207AB0099861E /* NFCStartingAnimationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NFCStartingAnimationView.swift; sourceTree = "<group>"; };
+		667A93D626C3172A0099861E /* FaceTecSDK-Sample-App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "FaceTecSDK-Sample-App.entitlements"; sourceTree = "<group>"; };
+		66AEACC326DEB93D008E757C /* NFCScanningAnimationViewBlack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NFCScanningAnimationViewBlack.swift; sourceTree = "<group>"; };
+		66AEACC526DEB951008E757C /* NFCScanningAnimationViewGreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NFCScanningAnimationViewGreen.swift; sourceTree = "<group>"; };
+		66AEACC726DEB966008E757C /* NFCScanningAnimationViewRed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NFCScanningAnimationViewRed.swift; sourceTree = "<group>"; };
+		66B443C32ECBC1E700D2228D /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		66B702E72E512BE600A7F0DD /* SampleAppNetworkingRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleAppNetworkingRequest.swift; sourceTree = "<group>"; };
+		66CAC3A42810CD2600A8F745 /* NFCCardScanningAnimationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NFCCardScanningAnimationView.swift; sourceTree = "<group>"; };
+		66CAC3A62810CD4300A8F745 /* NFCCardStartingAnimationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NFCCardStartingAnimationView.swift; sourceTree = "<group>"; };
+		66DDAF3624633908009B8475 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
+		66F4231E2DFCBB1C005C8E99 /* OfficialIDPhoto.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = OfficialIDPhoto.xib; sourceTree = "<group>"; };
+		66F423202DFCBF01005C8E99 /* SampleAppOfficialIDPhotoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleAppOfficialIDPhotoView.swift; sourceTree = "<group>"; };
+		ACA50F2F1C98147300ED4187 /* FaceTecConfigurationForTestApplication.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = FaceTecConfigurationForTestApplication.xcconfig; path = ../FaceTecConfigurationForTestApplication.xcconfig; sourceTree = "<group>"; };
+		ACFA972E1C4D8C9600DF6169 /* FaceTecSDK-Sample-App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "FaceTecSDK-Sample-App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		ACFA97311C4D8C9600DF6169 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		ACFA97361C4D8C9600DF6169 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
+		ACFA97381C4D8C9600DF6169 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		ACFA973B1C4D8C9600DF6169 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		ACFA973D1C4D8C9600DF6169 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		E72ECBCF203B3EFE00EC6B76 /* SampleAppViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SampleAppViewController.swift; sourceTree = "<group>"; };
+		E72ECBD3203B40B700EC6B76 /* SampleAppUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleAppUtilities.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		ACFA972B1C4D8C9600DF6169 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				31B678A3269F24280003F0ED /* FaceTecSDK.xcframework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		22E5FC881CD58494006CDE50 /* Storyboard */ = {
+			isa = PBXGroup;
+			children = (
+				ACFA973A1C4D8C9600DF6169 /* LaunchScreen.storyboard */,
+				ACFA97351C4D8C9600DF6169 /* Main.storyboard */,
+				66F4231E2DFCBB1C005C8E99 /* OfficialIDPhoto.xib */,
+			);
+			name = Storyboard;
+			sourceTree = "<group>";
+		};
+		22E5FC891CD584B9006CDE50 /* SupportingFiles */ = {
+			isa = PBXGroup;
+			children = (
+				ACFA97311C4D8C9600DF6169 /* AppDelegate.swift */,
+				43B01D092497377700BA3141 /* ThemeViews */,
+				ACFA97381C4D8C9600DF6169 /* Assets.xcassets */,
+				66B443C32ECBC1E700D2228D /* SceneDelegate.swift */,
+			);
+			path = SupportingFiles;
+			sourceTree = "<group>";
+		};
+		43B01D092497377700BA3141 /* ThemeViews */ = {
+			isa = PBXGroup;
+			children = (
+				43172DE324A2E6B50044B57C /* EKYCUnsuccessView.swift */,
+				43D0288A2490312B00F042E1 /* WellRoundedSuccessView.swift */,
+				43145D41249B249F009CB12B /* EKYCActivityIndicatorView.swift */,
+				4369C6C5291EF2C70083043A /* EKYCScrollIndicatorAnimationView.swift */,
+				43B01D0524971FB200BA3141 /* WellRoundedUnsuccessView.swift */,
+				43B01CFD24971EC900BA3141 /* WellRoundedActivityIndicatorView.swift */,
+				43B01CFF24971F2E00BA3141 /* PseudoFullscreenActivityIndicatorView.swift */,
+				43172DE124A2E6970044B57C /* EKYCSuccessView.swift */,
+				43014A8C282205840045C26C /* AdditionalReviewAnimationViewGreen.swift */,
+				43B01D0124971F6D00BA3141 /* PseudoFullscreenSuccessView.swift */,
+				43B01D0324971F7F00BA3141 /* PseudoFullscreenUnsuccessView.swift */,
+				667A93C326C207AB0099861E /* NFCStartingAnimationView.swift */,
+				660548A026AE116300006091 /* NFCScanningAnimationView.swift */,
+				66AEACC326DEB93D008E757C /* NFCScanningAnimationViewBlack.swift */,
+				66AEACC526DEB951008E757C /* NFCScanningAnimationViewGreen.swift */,
+				66AEACC726DEB966008E757C /* NFCScanningAnimationViewRed.swift */,
+				66CAC3A62810CD4300A8F745 /* NFCCardStartingAnimationView.swift */,
+				66CAC3A42810CD2600A8F745 /* NFCCardScanningAnimationView.swift */,
+			);
+			path = ThemeViews;
+			sourceTree = "<group>";
+		};
+		661704C22591412600F5B6AD /* VocalGuidanceSoundFiles */ = {
+			isa = PBXGroup;
+			children = (
+				664810AF25E6E3BE00056B93 /* facescan_successful_sound_file.mp3 */,
+				664810B125E6E3C100056B93 /* please_frame_your_face_sound_file.mp3 */,
+				664810B025E6E3BF00056B93 /* please_move_closer_sound_file.mp3 */,
+				664810B425E6E3C700056B93 /* please_press_button_sound_file.mp3 */,
+				664810B225E6E3C200056B93 /* please_retry_sound_file.mp3 */,
+				664810B325E6E3C400056B93 /* uploading_sound_file.mp3 */,
+				661704C62591417B00F5B6AD /* vocal_guidance_off.mp3 */,
+				661704C52591417A00F5B6AD /* vocal_guidance_on.mp3 */,
+			);
+			path = VocalGuidanceSoundFiles;
+			sourceTree = "<group>";
+		};
+		66C375531E739CE4002A519A /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				66B702E72E512BE600A7F0DD /* SampleAppNetworkingRequest.swift */,
+				43B72269255CBADB000A63D9 /* SampleAppActionButton.swift */,
+				E72ECBD3203B40B700EC6B76 /* SampleAppUtilities.swift */,
+				43BD2E8623A848C0005C70D9 /* ThemeHelpers.swift */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		ACFA97251C4D8C9600DF6169 = {
+			isa = PBXGroup;
+			children = (
+				4349D0B32AEA0B160073DD9D /* FaceTec.strings */,
+				43B5A5C2262FD4010078B3BD /* FaceTec_OCR_Customization.json */,
+				ACA50F2F1C98147300ED4187 /* FaceTecConfigurationForTestApplication.xcconfig */,
+				ACFA97301C4D8C9600DF6169 /* FaceTecSDK-Sample-App */,
+				ACFA972F1C4D8C9600DF6169 /* Products */,
+				BEC072F9210A39E40016ABAA /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		ACFA972F1C4D8C9600DF6169 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				ACFA972E1C4D8C9600DF6169 /* FaceTecSDK-Sample-App.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		ACFA97301C4D8C9600DF6169 /* FaceTecSDK-Sample-App */ = {
+			isa = PBXGroup;
+			children = (
+				667A93D626C3172A0099861E /* FaceTecSDK-Sample-App.entitlements */,
+				66DDAF3624633908009B8475 /* Config.swift */,
+				E72ECBCF203B3EFE00EC6B76 /* SampleAppViewController.swift */,
+				31B000C72C4F5DCC006197AA /* SessionRequestProcessor.swift */,
+				66F423202DFCBF01005C8E99 /* SampleAppOfficialIDPhotoView.swift */,
+				66C375531E739CE4002A519A /* Utilities */,
+				661704C22591412600F5B6AD /* VocalGuidanceSoundFiles */,
+				22E5FC891CD584B9006CDE50 /* SupportingFiles */,
+				22E5FC881CD58494006CDE50 /* Storyboard */,
+				ACFA973D1C4D8C9600DF6169 /* Info.plist */,
+			);
+			path = "FaceTecSDK-Sample-App";
+			sourceTree = "<group>";
+		};
+		BEC072F9210A39E40016ABAA /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				31B678A2269F24280003F0ED /* FaceTecSDK.xcframework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		ACFA972D1C4D8C9600DF6169 /* FaceTecSDK-Sample-App */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = ACFA97401C4D8C9600DF6169 /* Build configuration list for PBXNativeTarget "FaceTecSDK-Sample-App" */;
+			buildPhases = (
+				ACFA972A1C4D8C9600DF6169 /* Sources */,
+				ACFA972B1C4D8C9600DF6169 /* Frameworks */,
+				ACFA972C1C4D8C9600DF6169 /* Resources */,
+				AC1D45ED1CD1A5CB0058FF0B /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "FaceTecSDK-Sample-App";
+			productName = "FaceTecSDK-Sample-App";
+			productReference = ACFA972E1C4D8C9600DF6169 /* FaceTecSDK-Sample-App.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		ACFA97261C4D8C9600DF6169 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastSwiftUpdateCheck = 0720;
+				LastUpgradeCheck = 1340;
+				ORGANIZATIONNAME = "FaceTec, Inc";
+				TargetAttributes = {
+					ACFA972D1C4D8C9600DF6169 = {
+						CreatedOnToolsVersion = 7.2;
+						DevelopmentTeam = T8HNSGQ9RZ;
+						LastSwiftMigration = 0900;
+					};
+				};
+			};
+			buildConfigurationList = ACFA97291C4D8C9600DF6169 /* Build configuration list for PBXProject "FaceTecSDK-Sample-App" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+				de,
+				es,
+				ar,
+				af,
+				el,
+				ru,
+				"pt-BR",
+				kk,
+				nb,
+				fr,
+				vi,
+				zh,
+				ja,
+			);
+			mainGroup = ACFA97251C4D8C9600DF6169;
+			productRefGroup = ACFA972F1C4D8C9600DF6169 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				ACFA972D1C4D8C9600DF6169 /* FaceTecSDK-Sample-App */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		ACFA972C1C4D8C9600DF6169 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				664810B625E6E3C700056B93 /* please_move_closer_sound_file.mp3 in Resources */,
+				664810BA25E6E3C700056B93 /* please_press_button_sound_file.mp3 in Resources */,
+				661704C82591417C00F5B6AD /* vocal_guidance_off.mp3 in Resources */,
+				664810B525E6E3C700056B93 /* facescan_successful_sound_file.mp3 in Resources */,
+				ACFA973C1C4D8C9600DF6169 /* LaunchScreen.storyboard in Resources */,
+				ACFA97391C4D8C9600DF6169 /* Assets.xcassets in Resources */,
+				664810B825E6E3C700056B93 /* please_retry_sound_file.mp3 in Resources */,
+				4349D0B12AEA0B160073DD9D /* FaceTec.strings in Resources */,
+				664810B925E6E3C700056B93 /* uploading_sound_file.mp3 in Resources */,
+				43B5A5C3262FD4020078B3BD /* FaceTec_OCR_Customization.json in Resources */,
+				66F4231F2DFCBB1C005C8E99 /* OfficialIDPhoto.xib in Resources */,
+				ACFA97371C4D8C9600DF6169 /* Main.storyboard in Resources */,
+				661704C72591417C00F5B6AD /* vocal_guidance_on.mp3 in Resources */,
+				664810B725E6E3C700056B93 /* please_frame_your_face_sound_file.mp3 in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		ACFA972A1C4D8C9600DF6169 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				66B702E82E512BE600A7F0DD /* SampleAppNetworkingRequest.swift in Sources */,
+				43B01D0024971F2E00BA3141 /* PseudoFullscreenActivityIndicatorView.swift in Sources */,
+				66AEACC626DEB951008E757C /* NFCScanningAnimationViewGreen.swift in Sources */,
+				E72ECBD0203B3EFE00EC6B76 /* SampleAppViewController.swift in Sources */,
+				66AEACC426DEB93E008E757C /* NFCScanningAnimationViewBlack.swift in Sources */,
+				31B000C82C4F5DCC006197AA /* SessionRequestProcessor.swift in Sources */,
+				66AEACC826DEB966008E757C /* NFCScanningAnimationViewRed.swift in Sources */,
+				66CAC3A72810CD4300A8F745 /* NFCCardStartingAnimationView.swift in Sources */,
+				660548A126AE116300006091 /* NFCScanningAnimationView.swift in Sources */,
+				43B7226A255CBADB000A63D9 /* SampleAppActionButton.swift in Sources */,
+				43BD2E8723A848C0005C70D9 /* ThemeHelpers.swift in Sources */,
+				43B01D0624971FB200BA3141 /* WellRoundedUnsuccessView.swift in Sources */,
+				66CAC3A52810CD2600A8F745 /* NFCCardScanningAnimationView.swift in Sources */,
+				667A93C426C207AB0099861E /* NFCStartingAnimationView.swift in Sources */,
+				43172DE224A2E6970044B57C /* EKYCSuccessView.swift in Sources */,
+				66B443C42ECBC1E700D2228D /* SceneDelegate.swift in Sources */,
+				66DDAF3724633908009B8475 /* Config.swift in Sources */,
+				ACFA97321C4D8C9600DF6169 /* AppDelegate.swift in Sources */,
+				43172DE424A2E6B50044B57C /* EKYCUnsuccessView.swift in Sources */,
+				43D0288B2490312B00F042E1 /* WellRoundedSuccessView.swift in Sources */,
+				43B01CFE24971EC900BA3141 /* WellRoundedActivityIndicatorView.swift in Sources */,
+				43145D42249B249F009CB12B /* EKYCActivityIndicatorView.swift in Sources */,
+				43014A8D282205840045C26C /* AdditionalReviewAnimationViewGreen.swift in Sources */,
+				43B01D0224971F6D00BA3141 /* PseudoFullscreenSuccessView.swift in Sources */,
+				43B01D0424971F7F00BA3141 /* PseudoFullscreenUnsuccessView.swift in Sources */,
+				E72ECBD4203B40B700EC6B76 /* SampleAppUtilities.swift in Sources */,
+				4369C6C6291EF2C70083043A /* EKYCScrollIndicatorAnimationView.swift in Sources */,
+				66F423212DFCBF01005C8E99 /* SampleAppOfficialIDPhotoView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		4349D0B32AEA0B160073DD9D /* FaceTec.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				4349D0B22AEA0B160073DD9D /* en */,
+				4349D0B42AEA0B2E0073DD9D /* de */,
+				4349D0BA2AEA0CC60073DD9D /* es */,
+				4349D0BB2AEA0D520073DD9D /* ar */,
+				4349D0BC2AEA0D790073DD9D /* af */,
+				4349D0BD2AEA0D880073DD9D /* el */,
+				4349D0BE2AEA0D990073DD9D /* ru */,
+				4349D0BF2AEA0DA40073DD9D /* pt-BR */,
+				4349D0C02AEA0DEE0073DD9D /* kk */,
+				4349D0C12AEA0DFD0073DD9D /* nb */,
+				4349D0C22AEA0E070073DD9D /* fr */,
+				43968AE32DC072FF00C1281B /* vi */,
+				43968AE42DC0731800C1281B /* zh */,
+				43968AE52DC0733700C1281B /* ja */,
+			);
+			name = FaceTec.strings;
+			sourceTree = "<group>";
+		};
+		ACFA97351C4D8C9600DF6169 /* Main.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				ACFA97361C4D8C9600DF6169 /* Base */,
+			);
+			name = Main.storyboard;
+			sourceTree = "<group>";
+		};
+		ACFA973A1C4D8C9600DF6169 /* LaunchScreen.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				ACFA973B1C4D8C9600DF6169 /* Base */,
+			);
+			name = LaunchScreen.storyboard;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		ACFA973E1C4D8C9600DF6169 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = ACA50F2F1C98147300ED4187 /* FaceTecConfigurationForTestApplication.xcconfig */;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 10.0.28;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_SWIFT3_OBJC_INFERENCE = Off;
+				SWIFT_VERSION = 4.2;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		ACFA973F1C4D8C9600DF6169 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = ACA50F2F1C98147300ED4187 /* FaceTecConfigurationForTestApplication.xcconfig */;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 10.0.28;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = iphoneos;
+				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
+				SWIFT_SWIFT3_OBJC_INFERENCE = Off;
+				SWIFT_VERSION = 4.2;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		ACFA97411C4D8C9600DF6169 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "FaceTecSDK-Sample-App/FaceTecSDK-Sample-App.entitlements";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = T8HNSGQ9RZ;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)",
+				);
+				GCC_WARN_PEDANTIC = YES;
+				INFOPLIST_FILE = "$(SRCROOT)/FaceTecSDK-Sample-App/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.facetec.FaceTecSDK-Sample-App-2";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_SWIFT3_OBJC_INFERENCE = Off;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_VERSION = 4.2;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_WORKSPACE = NO;
+			};
+			name = Debug;
+		};
+		ACFA97421C4D8C9600DF6169 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "FaceTecSDK-Sample-App/FaceTecSDK-Sample-App.entitlements";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = T8HNSGQ9RZ;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)",
+				);
+				GCC_WARN_PEDANTIC = YES;
+				INFOPLIST_FILE = "$(SRCROOT)/FaceTecSDK-Sample-App/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.facetec.FaceTecSDK-Sample-App-2";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_SWIFT3_OBJC_INFERENCE = Off;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_VERSION = 4.2;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_WORKSPACE = NO;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		ACFA97291C4D8C9600DF6169 /* Build configuration list for PBXProject "FaceTecSDK-Sample-App" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				ACFA973E1C4D8C9600DF6169 /* Debug */,
+				ACFA973F1C4D8C9600DF6169 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		ACFA97401C4D8C9600DF6169 /* Build configuration list for PBXNativeTarget "FaceTecSDK-Sample-App" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				ACFA97411C4D8C9600DF6169 /* Debug */,
+				ACFA97421C4D8C9600DF6169 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = ACFA97261C4D8C9600DF6169 /* Project object */;
+}
