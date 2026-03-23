@@ -18,10 +18,7 @@ void main() {
           documentType: DocumentType.passport,
         );
 
-        final params = NfcReadingRouteParams(
-          scannedMRZ: scannedMRZ,
-          documentType: DocumentType.passport,
-        );
+        final params = NfcReadingRouteParams(scannedMRZ: scannedMRZ, documentType: DocumentType.passport);
 
         final queryParams = params.toQueryParams();
         final reconstructed = NfcReadingRouteParams.fromQueryParams(queryParams);
@@ -45,10 +42,7 @@ void main() {
           documentType: DocumentType.passport,
         );
 
-        final params = NfcReadingRouteParams(
-          scannedMRZ: scannedMRZ,
-          documentType: DocumentType.passport,
-        );
+        final params = NfcReadingRouteParams(scannedMRZ: scannedMRZ, documentType: DocumentType.passport);
 
         final queryParams = params.toQueryParams();
         expect(queryParams['document_type'], equals('passport'));
@@ -65,10 +59,7 @@ void main() {
           documentType: DocumentType.identityCard,
         );
 
-        final params = NfcReadingRouteParams(
-          scannedMRZ: scannedMRZ,
-          documentType: DocumentType.identityCard,
-        );
+        final params = NfcReadingRouteParams(scannedMRZ: scannedMRZ, documentType: DocumentType.identityCard);
 
         final queryParams = params.toQueryParams();
         final reconstructed = NfcReadingRouteParams.fromQueryParams(queryParams);
@@ -92,10 +83,7 @@ void main() {
           documentType: DocumentType.identityCard,
         );
 
-        final params = NfcReadingRouteParams(
-          scannedMRZ: scannedMRZ,
-          documentType: DocumentType.identityCard,
-        );
+        final params = NfcReadingRouteParams(scannedMRZ: scannedMRZ, documentType: DocumentType.identityCard);
 
         final queryParams = params.toQueryParams();
         expect(queryParams['document_type'], equals('identity_card'));
@@ -110,10 +98,7 @@ void main() {
           documentType: DocumentType.identityCard,
         );
 
-        final params = NfcReadingRouteParams(
-          scannedMRZ: scannedMRZ,
-          documentType: DocumentType.identityCard,
-        );
+        final params = NfcReadingRouteParams(scannedMRZ: scannedMRZ, documentType: DocumentType.identityCard);
 
         final queryParams = params.toQueryParams();
 
@@ -137,10 +122,7 @@ void main() {
           configuration: 'CONFIG',
         );
 
-        final params = NfcReadingRouteParams(
-          scannedMRZ: scannedMRZ,
-          documentType: DocumentType.drivingLicence,
-        );
+        final params = NfcReadingRouteParams(scannedMRZ: scannedMRZ, documentType: DocumentType.drivingLicence);
 
         final queryParams = params.toQueryParams();
         final reconstructed = NfcReadingRouteParams.fromQueryParams(queryParams);
@@ -165,10 +147,7 @@ void main() {
           configuration: 'CONFIG',
         );
 
-        final params = NfcReadingRouteParams(
-          scannedMRZ: scannedMRZ,
-          documentType: DocumentType.drivingLicence,
-        );
+        final params = NfcReadingRouteParams(scannedMRZ: scannedMRZ, documentType: DocumentType.drivingLicence);
 
         final queryParams = params.toQueryParams();
         expect(queryParams['document_type'], equals('drivers_license'));
@@ -185,10 +164,7 @@ void main() {
           'date_of_expiry': testDateOfExpiry.toIso8601String(),
         };
 
-        expect(
-          () => NfcReadingRouteParams.fromQueryParams(queryParams),
-          throwsException,
-        );
+        expect(() => NfcReadingRouteParams.fromQueryParams(queryParams), throwsException);
       });
     });
 
@@ -202,10 +178,7 @@ void main() {
           documentType: DocumentType.passport,
         );
 
-        final params = NfcReadingRouteParams(
-          scannedMRZ: scannedMRZ,
-          documentType: DocumentType.passport,
-        );
+        final params = NfcReadingRouteParams(scannedMRZ: scannedMRZ, documentType: DocumentType.passport);
 
         final queryParams = params.toQueryParams();
 
@@ -225,10 +198,7 @@ void main() {
           configuration: 'CONFIG',
         );
 
-        final params = NfcReadingRouteParams(
-          scannedMRZ: scannedMRZ,
-          documentType: DocumentType.drivingLicence,
-        );
+        final params = NfcReadingRouteParams(scannedMRZ: scannedMRZ, documentType: DocumentType.drivingLicence);
 
         final queryParams = params.toQueryParams();
 
