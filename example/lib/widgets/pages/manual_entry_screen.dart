@@ -381,6 +381,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
       documentNumber: _docNumberController.text.trim().toUpperCase(),
       dateOfBirth: _selectedDob!,
       dateOfExpiry: _selectedExpiry!,
+      documentType: widget.documentType,
     );
   }
 

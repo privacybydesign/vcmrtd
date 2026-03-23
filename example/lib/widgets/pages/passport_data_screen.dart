@@ -14,15 +14,17 @@ import '../common/issuance_result_dialogs.dart';
 import 'data_screen_widgets/verify_result.dart';
 
 class PassportDataScreen extends ConsumerStatefulWidget {
-  final PassportData passport;
+  final DocumentData document;
   final RawDocumentData passportDataResult;
   final VoidCallback onBackPressed;
+  final DocumentType documentType;
 
   const PassportDataScreen({
     super.key,
-    required this.passport,
+    required this.document,
     required this.onBackPressed,
     required this.passportDataResult,
+    this.documentType = DocumentType.passport,
   });
 
   @override
@@ -36,7 +38,7 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Passport Data'),
+        title: Text('${widget.documentType.displayName} Data'),
         leading: IconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBackPressed),
       ),
       body: SafeArea(
@@ -47,9 +49,9 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
             children: [
               if (widget.passportDataResult.sessionId != null)
                 WebBanner(sessionId: widget.passportDataResult.sessionId!),
-              PersonalDataSection(passport: widget.passport),
+              PersonalDataSection(passport: widget.document as PassportData),
               const SizedBox(height: 20),
-              SecurityContent(passport: widget.passport),
+              SecurityContent(passport: widget.document as PassportData),
               const SizedBox(height: 20),
               if (widget.passportDataResult.sessionId != null) ...[
                 const SizedBox(height: 20),
@@ -93,7 +95,7 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
     final issuer = ref.read(passportIssuerProvider);
 
     try {
-      final response = await issuer.startIrmaIssuanceSession(widget.passportDataResult, DocumentType.passport);
+      final response = await issuer.startIrmaIssuanceSession(widget.passportDataResult, widget.documentType);
       await launchUrl(response.toUniversalLink(), mode: LaunchMode.externalApplication);
       _showReturnSuccessDialog();
     } catch (e) {
@@ -102,15 +104,16 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
   }
 
   void _showReturnSuccessDialog() {
+    final docName = widget.documentType.displayName.toLowerCase();
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         icon: Icon(Icons.check_circle, color: Colors.green[600], size: 48),
         title: const Text('Success!'),
-        content: const Text(
-          'Your passport data has been securely transmitted to the web application. '
-          'You can now close this app or scan another passport.',
+        content: Text(
+          'Your $docName data has been securely transmitted to the web application. '
+          'You can now close this app or scan another document.',
         ),
         actions: [
           TextButton(

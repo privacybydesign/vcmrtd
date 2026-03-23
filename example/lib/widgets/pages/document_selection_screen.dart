@@ -23,33 +23,44 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
           ),
         ),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(14.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _Header(),
-                const SizedBox(height: 24),
-                _OptionCard(
-                  context: context,
-                  title: 'Passport',
-                  subtitle: 'Use a machine readable passport',
-                  icon: Icons.book,
-                  accentColor: const Color(0xFF6b6868),
-                  onTap: () => onDocumentTypeSelected(DocumentType.passport),
-                  showBadge: true,
-                  badgeText: 'Most common',
-                ),
-                const SizedBox(height: 16),
-                _OptionCard(
-                  context: context,
-                  title: 'Driving Licence',
-                  subtitle: 'Use a machine readable driving licence. Currently works primarily with Dutch licences.',
-                  icon: Icons.directions_car,
-                  accentColor: const Color(0xFF2196F3),
-                  onTap: () => onDocumentTypeSelected(DocumentType.drivingLicence),
-                ),
-              ],
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(14.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _Header(),
+                  const SizedBox(height: 24),
+                  _OptionCard(
+                    context: context,
+                    title: 'Passport',
+                    subtitle: 'Use a machine readable passport',
+                    icon: Icons.book,
+                    accentColor: const Color(0xFF6b6868),
+                    onTap: () => onDocumentTypeSelected(DocumentType.passport),
+                    showBadge: true,
+                    badgeText: 'Most common',
+                  ),
+                  const SizedBox(height: 16),
+                  _OptionCard(
+                    context: context,
+                    title: 'Identity Card',
+                    subtitle: 'Use a machine readable identity card',
+                    icon: Icons.credit_card,
+                    accentColor: const Color(0xFF4CAF50),
+                    onTap: () => onDocumentTypeSelected(DocumentType.identityCard),
+                  ),
+                  const SizedBox(height: 16),
+                  _OptionCard(
+                    context: context,
+                    title: 'Driving Licence',
+                    subtitle: 'Use a machine readable driving licence. Currently works primarily with Dutch licences.',
+                    icon: Icons.directions_car,
+                    accentColor: const Color(0xFF2196F3),
+                    onTap: () => onDocumentTypeSelected(DocumentType.drivingLicence),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

@@ -86,3 +86,49 @@ final drivingLicenceReaderProvider = NotifierProvider.autoDispose
 
       return docReader;
     });
+
+final identityCardReaderProvider = NotifierProvider.autoDispose
+    .family<DocumentReader<PassportData>, DocumentReaderState, ScannedPassportMRZ>((scannedIdentityCardMRZ) {
+      final nfc = NfcProvider();
+
+      final bacAccessKey = DBAKey(
+        scannedIdentityCardMRZ.documentNumber,
+        scannedIdentityCardMRZ.dateOfBirth,
+        scannedIdentityCardMRZ.dateOfExpiry,
+      );
+
+      final paceAccessKey = DBAKey(
+        scannedIdentityCardMRZ.documentNumber,
+        scannedIdentityCardMRZ.dateOfBirth,
+        scannedIdentityCardMRZ.dateOfExpiry,
+        paceMode: true,
+      );
+
+      final dgReader = DataGroupReader(nfc, DF1.PassportAID, bacAccessKey: bacAccessKey, paceAccessKey: paceAccessKey);
+      final parser = PassportParser();
+      final docReader = DocumentReader(
+        documentParser: parser,
+        dataGroupReader: dgReader,
+        nfc: nfc,
+        config: DocumentReaderConfig(
+          readIfAvailable: {
+            DataGroups.dg1,
+            DataGroups.dg2,
+            DataGroups.dg5,
+            DataGroups.dg6,
+            DataGroups.dg7,
+            DataGroups.dg8,
+            DataGroups.dg9,
+            DataGroups.dg10,
+            DataGroups.dg11,
+            DataGroups.dg12,
+            DataGroups.dg13,
+            DataGroups.dg14,
+            DataGroups.dg15,
+            DataGroups.dg16,
+          },
+        ),
+      );
+
+      return docReader;
+    });
