@@ -97,9 +97,8 @@ class MRZHelper {
     return null;
   }
 
-
   // ---------- SCORING (for best-window selection) ----------
-  
+
   /// Score a single MRZ line: higher = more MRZ-like.
   static int scoreLine(String line) {
     if (!_allowedLineLen.contains(line.length)) return -999;
@@ -164,14 +163,7 @@ class MRZHelper {
     'T': '7',
   };
 
-  static const Map<String, String> _toAlpha = {
-    '0': 'O',
-    '1': 'I',
-    '2': 'Z',
-    '5': 'S',
-    '6': 'G',
-    '8': 'B',
-  };
+  static const Map<String, String> _toAlpha = {'0': 'O', '1': 'I', '2': 'Z', '5': 'S', '6': 'G', '8': 'B'};
 
   static String _lettersToDigits(String s) {
     var out = s;
@@ -191,7 +183,7 @@ class MRZHelper {
 
   static String _fixSexChar(String c) {
     if (c == 'M' || c == 'F' || c == 'X' || c == '<') return c;
-    if (c == 'P') return 'F'; 
+    if (c == 'P') return 'F';
     return c;
   }
 
@@ -216,15 +208,15 @@ class MRZHelper {
     final l2 = lines[1];
 
     final docType = _digitsToLetters(l1.substring(0, 2));
-    final issuer  = _digitsToLetters(l1.substring(2, 5));
-    final names   = _digitsToLetters(l1.substring(5, 44));
-    final nat     = _digitsToLetters(l2.substring(10, 13));
+    final issuer = _digitsToLetters(l1.substring(2, 5));
+    final names = _digitsToLetters(l1.substring(5, 44));
+    final nat = _digitsToLetters(l2.substring(10, 13));
 
-    final docCd   = _lettersToDigits(l2.substring(9, 10));
-    final birth   = _lettersToDigits(l2.substring(13, 19));
+    final docCd = _lettersToDigits(l2.substring(9, 10));
+    final birth = _lettersToDigits(l2.substring(13, 19));
     final birthCd = _lettersToDigits(l2.substring(19, 20));
-    final exp     = _lettersToDigits(l2.substring(21, 27));
-    final expCd   = _lettersToDigits(l2.substring(27, 28));
+    final exp = _lettersToDigits(l2.substring(21, 27));
+    final expCd = _lettersToDigits(l2.substring(27, 28));
 
     final sex = _fixSexChar(l2.substring(20, 21));
 
@@ -241,16 +233,7 @@ class MRZHelper {
 
     final fixedL1 = docType + issuer + names;
 
-    final fixedL2 =
-        l2.substring(0, 9) +
-            docCd +
-            nat +
-            birth +
-            birthCd +
-            sex +
-            exp +
-            expCd +
-            l2.substring(28);
+    final fixedL2 = l2.substring(0, 9) + docCd + nat + birth + birthCd + sex + exp + expCd + l2.substring(28);
 
     return [fixedL1, fixedL2];
   }
@@ -263,13 +246,13 @@ class MRZHelper {
     final l3 = lines[2];
 
     final docType = _digitsToLetters(l1.substring(0, 2));
-    final issuer  = _digitsToLetters(l1.substring(2, 5));
+    final issuer = _digitsToLetters(l1.substring(2, 5));
 
-    final birth   = _lettersToDigits(l2.substring(0, 6));
+    final birth = _lettersToDigits(l2.substring(0, 6));
     final birthCd = _lettersToDigits(l2.substring(6, 7));
-    final exp     = _lettersToDigits(l2.substring(8, 14));
-    final expCd   = _lettersToDigits(l2.substring(14, 15));
-    final nat     = _digitsToLetters(l2.substring(15, 18));
+    final exp = _lettersToDigits(l2.substring(8, 14));
+    final expCd = _lettersToDigits(l2.substring(14, 15));
+    final nat = _digitsToLetters(l2.substring(15, 18));
     final finalCd = _lettersToDigits(l2.substring(29, 30));
 
     final sex = _fixSexChar(l2.substring(7, 8));
@@ -289,15 +272,7 @@ class MRZHelper {
 
     final fixedL1 = docType + issuer + l1.substring(5);
 
-    final fixedL2 =
-        birth +
-            birthCd +
-            sex +
-            exp +
-            expCd +
-            nat +
-            l2.substring(18, 29) +
-            finalCd;
+    final fixedL2 = birth + birthCd + sex + exp + expCd + nat + l2.substring(18, 29) + finalCd;
 
     final fixedL3 = names;
 
