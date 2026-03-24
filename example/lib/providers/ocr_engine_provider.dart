@@ -1,9 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-enum OcrEngine {
-  googleMlKit,
-  tesseract4android,
-}
+enum OcrEngine { googleMlKit, tesseract4android }
 
 class OcrEngineNotifier extends Notifier<OcrEngine> {
   @override
@@ -12,6 +9,4 @@ class OcrEngineNotifier extends Notifier<OcrEngine> {
   void set(OcrEngine engine) => state = engine;
 }
 
-final ocrEngineProvider = NotifierProvider<OcrEngineNotifier, OcrEngine>(
-  OcrEngineNotifier.new,
-);
+final ocrEngineProvider = NotifierProvider<OcrEngineNotifier, OcrEngine>(OcrEngineNotifier.new);

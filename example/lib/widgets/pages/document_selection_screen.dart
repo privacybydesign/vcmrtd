@@ -122,14 +122,8 @@ class _Header extends ConsumerWidget {
                     }
                   },
                   items: const [
-                    DropdownMenuItem(
-                      value: OcrEngine.googleMlKit,
-                      child: Text('Google ML Kit'),
-                    ),
-                    DropdownMenuItem(
-                      value: OcrEngine.tesseract4android,
-                      child: Text('Tesseract4Android'),
-                    ),
+                    DropdownMenuItem(value: OcrEngine.googleMlKit, child: Text('Google ML Kit')),
+                    DropdownMenuItem(value: OcrEngine.tesseract4android, child: Text('Tesseract4Android')),
                   ],
                 ),
               ],
