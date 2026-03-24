@@ -105,7 +105,6 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
       final recognizedText = await _textRecognizer.processImage(inputImage);
       String fullText = recognizedText.text;
 
-      // Original normalization logic for ML Kit
       String trimmedText = fullText.replaceAll(' ', '');
       List allText = trimmedText.split('\n');
 
@@ -146,220 +145,60 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
   // --- TESSERACT 4 ANDROID OCR ENGINE ---
   // ===========================================================================
 
+  /// Single call to native — MrzZoneDetector runs automatically in the native
+  /// layer, no need for multiple ROI attempts or useZoneDetector flag.
   Future<void> _processTesseractFrame(OcrFrame frame) async {
-    final docLeft = frame.roiLeft;
-    final docTop = frame.roiTop;
-    final docW = frame.roiWidth;
-    final docH = frame.roiHeight;
-
-    final strips = _mrzRoiAttempts(
-      docLeft: docLeft,
-      docTop: docTop,
-      docWidth: docW,
-      docHeight: docH,
-    );
-
-    final attempts = [
-      (label: 'full', l: docLeft, t: docTop, w: docW, h: docH, zone: false),
-      (label: strips[0].label, l: strips[0].l, t: strips[0].t, w: strips[0].w, h: strips[0].h, zone: false),
-      (label: strips[1].label, l: strips[1].l, t: strips[1].t, w: strips[1].w, h: strips[1].h, zone: false),
-      (label: strips[2].label, l: strips[2].l, t: strips[2].t, w: strips[2].w, h: strips[2].h, zone: false),
-      (label: 'full-zone', l: docLeft, t: docTop, w: docW, h: docH, zone: true),
-      (label: '${strips[0].label}-zone', l: strips[0].l, t: strips[0].t, w: strips[0].w, h: strips[0].h, zone: true),
-      (label: '${strips[1].label}-zone', l: strips[1].l, t: strips[1].t, w: strips[1].w, h: strips[1].h, zone: true),
-      (label: '${strips[2].label}-zone', l: strips[2].l, t: strips[2].t, w: strips[2].w, h: strips[2].h, zone: true),
-    ];
-
-    for (final a in attempts) {
-      if (!_canProcess) break;
-      final ok = await _runTesseractOcr(
-        frame: frame,
-        roiLeft: a.l,
-        roiTop: a.t,
-        roiWidth: a.w,
-        roiHeight: a.h,
-        label: a.label,
-        useZoneDetector: a.zone,
-      );
-      if (ok) break;
-    }
-  }
-
-  Future<bool> _runTesseractOcr({
-    required OcrFrame frame,
-    required double roiLeft,
-    required double roiTop,
-    required double roiWidth,
-    required double roiHeight,
-    required String label,
-    required bool useZoneDetector,
-  }) async {
-    if (!_canProcess) return false;
+    if (!_canProcess) return;
 
     try {
-      final String? res = await _ocrChannel.invokeMethod<String>('ocrNv21', {
-        'bytes': frame.bytes,
+      final plane = frame.bytes;
+
+      final String? res = await _ocrChannel.invokeMethod<String>('processImage', {
+        'bytes': plane,
         'width': frame.width,
         'height': frame.height,
+        'stride': frame.width,
         'rotation': frame.rotation,
         'lang': 'ocrb',
-        'roiLeft': roiLeft,
-        'roiTop': roiTop,
-        'roiWidth': roiWidth,
-        'roiHeight': roiHeight,
-        'useZoneDetector': useZoneDetector,
+        'roiLeft': frame.roiLeft,
+        'roiTop': frame.roiTop,
+        'roiWidth': frame.roiWidth,
+        'roiHeight': frame.roiHeight,
       });
+
       final text = res ?? '';
+      if (text.trim().isEmpty) return;
 
-      final candidates = _extractTesseractCandidates(text, label);
-      final finalLines = _selectFinalLines(candidates);
+      final lines = text
+          .split(RegExp(r'[\r\n]+'))
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .map((s) => MRZHelper.normalizeLine(s))
+          .where((s) => s.isNotEmpty)
+          .toList();
 
-      if (finalLines != null) {
-        final parsedRaw = _parseScannedText(finalLines);
-        if (parsedRaw != null) {
+      final finalLines = MRZHelper.getFinalListToParse(lines);
+      if (finalLines == null) return;
+
+      final parsedRaw = _parseScannedText(finalLines);
+      if (parsedRaw != null) {
+        _canProcess = false;
+        widget.onSuccess(parsedRaw, finalLines);
+        return;
+      }
+
+      final correctedStrict = MRZHelper.fixForDocType(widget.documentType, finalLines);
+      if (correctedStrict != null) {
+        final parsedStrict = _parseScannedText(correctedStrict);
+        if (parsedStrict != null) {
           _canProcess = false;
-          widget.onSuccess(parsedRaw, finalLines);
-          return true;
-        }
-
-        final correctedStrict = MRZHelper.fixForDocType(widget.documentType, finalLines);
-        if (correctedStrict != null) {
-          final parsedStrict = _parseScannedText(correctedStrict);
-          if (parsedStrict != null) {
-            _canProcess = false;
-            widget.onSuccess(parsedStrict, correctedStrict);
-            return true;
-          }
+          widget.onSuccess(parsedStrict, correctedStrict);
+          return;
         }
       }
-      return false;
     } catch (e) {
-      return false;
+      debugPrint('Tesseract OCR error: $e');
     }
-  }
-
-  // --- Tesseract Helper Methods ---
-
-  Map<String, double> _mrzStripFromDocRoi({
-    required double docLeft,
-    required double docTop,
-    required double docWidth,
-    required double docHeight,
-    required double startFrac,
-    required double heightFrac,
-    double insetXFrac = 0.04,
-  }) {
-    final roiTop = (docTop + docHeight * startFrac).clamp(0.0, 1.0);
-    final roiHeight = (docHeight * heightFrac).clamp(0.0, 1.0);
-    final roiLeft = (docLeft + docWidth * insetXFrac).clamp(0.0, 1.0);
-    final roiWidth = (docWidth * (1.0 - 2 * insetXFrac)).clamp(0.0, 1.0);
-
-    return {
-      'roiLeft': roiLeft,
-      'roiTop': roiTop,
-      'roiWidth': roiWidth,
-      'roiHeight': roiHeight,
-    };
-  }
-
-  List<({String label, double l, double t, double w, double h})> _mrzRoiAttempts({
-    required double docLeft,
-    required double docTop,
-    required double docWidth,
-    required double docHeight,
-  }) {
-    final a = _mrzStripFromDocRoi(
-      docLeft: docLeft, docTop: docTop, docWidth: docWidth, docHeight: docHeight,
-      startFrac: 0.68, heightFrac: 0.30, insetXFrac: 0.04,
-    );
-    final b = _mrzStripFromDocRoi(
-      docLeft: docLeft, docTop: docTop, docWidth: docWidth, docHeight: docHeight,
-      startFrac: 0.58, heightFrac: 0.40, insetXFrac: 0.04,
-    );
-    final c = _mrzStripFromDocRoi(
-      docLeft: docLeft, docTop: docTop, docWidth: docWidth, docHeight: docHeight,
-      startFrac: 0.45, heightFrac: 0.55, insetXFrac: 0.04,
-    );
-
-    return [
-      (label: 'mrz-A-bottom30', l: a['roiLeft']!, t: a['roiTop']!, w: a['roiWidth']!, h: a['roiHeight']!),
-      (label: 'mrz-B-bottom40', l: b['roiLeft']!, t: b['roiTop']!, w: b['roiWidth']!, h: b['roiHeight']!),
-      (label: 'mrz-C-bottom55', l: c['roiLeft']!, t: c['roiTop']!, w: c['roiWidth']!, h: c['roiHeight']!),
-    ];
-  }
-
-  List<String> _extractTesseractCandidates(String ocrText, String label) {
-    final rawLines = ocrText
-        .split(RegExp(r'[\r\n]+'))
-        .map((s) => s.trim())
-        .where((s) => s.isNotEmpty)
-        .toList();
-
-    final candidates = <String>[];
-    for (final line in rawLines) {
-      final t = MRZHelper.normalizeLine(line);
-      if (t.isNotEmpty) candidates.add(t);
-    }
-
-    return candidates;
-  }
-
-  List<String>? _selectFinalLines(List<String> candidates) {
-    if (candidates.isEmpty) return null;
-
-    List<String>? best;
-    int bestScore = -999999;
-
-    void consider(List<String> w) {
-      final ok = MRZHelper.getFinalListToParse(w);
-      if (ok == null) return;
-      final score = MRZHelper.scoreBlock(ok);
-      if (score > bestScore) {
-        bestScore = score;
-        best = ok;
-      }
-    }
-
-    void consider1LineOfLen(int len) {
-      for (final a in candidates) {
-        if (a.length == len) consider([a]);
-      }
-    }
-
-    void consider2LineOfLen(int len) {
-      for (int i = 0; i + 1 < candidates.length; i++) {
-        final a = candidates[i];
-        final b = candidates[i + 1];
-        if (a.length == len && b.length == len) consider([a, b]);
-      }
-    }
-
-    void consider3LineOfLen(int len) {
-      for (int i = 0; i + 2 < candidates.length; i++) {
-        final a = candidates[i];
-        final b = candidates[i + 1];
-        final c = candidates[i + 2];
-        if (a.length == len && b.length == len && c.length == len) consider([a, b, c]);
-      }
-    }
-
-    switch (widget.documentType) {
-      case DocumentType.passport:
-        consider2LineOfLen(44);
-        if (best != null) return best;
-        consider2LineOfLen(36);
-        break;
-      case DocumentType.identityCard:
-        consider3LineOfLen(30);
-        if (best != null) return best;
-        consider2LineOfLen(36);
-        break;
-      case DocumentType.drivingLicence:
-        consider1LineOfLen(30);
-        if (best != null) return best;
-        break;
-    }
-    return best;
   }
 
   // ===========================================================================
