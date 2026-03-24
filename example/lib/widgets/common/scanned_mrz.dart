@@ -6,11 +6,7 @@ sealed class ScannedMRZ {
   final String countryCode;
   final DocumentType documentType;
 
-  ScannedMRZ({
-    required this.documentNumber,
-    required this.countryCode,
-    required this.documentType,
-  });
+  ScannedMRZ({required this.documentNumber, required this.countryCode, required this.documentType});
 }
 
 // =====================
@@ -29,10 +25,7 @@ class ScannedPassportMRZ extends ScannedMRZ {
     super.documentType = DocumentType.passport,
   });
 
-  factory ScannedPassportMRZ.fromMRZResult(
-      PassportMrzResult mrz, {
-        DocumentType documentType = DocumentType.passport,
-      }) {
+  factory ScannedPassportMRZ.fromMRZResult(PassportMrzResult mrz, {DocumentType documentType = DocumentType.passport}) {
     return ScannedPassportMRZ(
       documentNumber: mrz.documentNumber,
       countryCode: mrz.countryCode,
@@ -75,9 +68,9 @@ class ScannedIdCardMRZ extends ScannedMRZ {
   });
 
   factory ScannedIdCardMRZ.fromMRZResult(
-      PassportMrzResult mrz, {
-        DocumentType documentType = DocumentType.identityCard,
-      }) {
+    PassportMrzResult mrz, {
+    DocumentType documentType = DocumentType.identityCard,
+  }) {
     return ScannedIdCardMRZ(
       documentNumber: mrz.documentNumber,
       countryCode: mrz.countryCode,
@@ -122,9 +115,9 @@ class ScannedDriverLicenseMRZ extends ScannedMRZ {
   });
 
   factory ScannedDriverLicenseMRZ.fromMRZResult(
-      DrivingLicenceMrzResult mrz, {
-        DocumentType documentType = DocumentType.drivingLicence,
-      }) {
+    DrivingLicenceMrzResult mrz, {
+    DocumentType documentType = DocumentType.drivingLicence,
+  }) {
     return ScannedDriverLicenseMRZ(
       documentNumber: mrz.documentNumber,
       countryCode: mrz.countryCode,
