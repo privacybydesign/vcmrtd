@@ -215,18 +215,6 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
         case DocumentType.drivingLicence:
           return DrivingLicenceMrzParser().parse(lines);
       }
-    } on InvalidDocumentNumberException {
-      return null;
-    } on InvalidBirthDateException {
-      return null;
-    } on InvalidExpiryDateException {
-      return null;
-    } on InvalidOptionalDataException {
-      return null;
-    } on InvalidMrzValueException {
-      return null;
-    } on InvalidMrzInputException {
-      return null;
     } catch (e) {
       return null;
     }
