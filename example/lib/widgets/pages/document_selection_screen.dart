@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/vcmrtd.dart';
@@ -109,25 +110,27 @@ class _Header extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('OCR engine', style: Theme.of(context).defaultTextStyles.hint),
-                DropdownButton<OcrEngine>(
-                  value: ref.watch(ocrEngineProvider),
-                  onChanged: (OcrEngine? value) {
-                    if (value != null) {
-                      ref.read(ocrEngineProvider.notifier).set(value);
-                    }
-                  },
-                  items: const [
-                    DropdownMenuItem(value: OcrEngine.googleMlKit, child: Text('Google ML Kit')),
-                    DropdownMenuItem(value: OcrEngine.tesseract4android, child: Text('Tesseract4Android')),
-                  ],
-                ),
-              ],
-            ),
+            if (Platform.isAndroid) ...[
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('OCR engine', style: Theme.of(context).defaultTextStyles.hint),
+                  DropdownButton<OcrEngine>(
+                    value: ref.watch(ocrEngineProvider),
+                    onChanged: (OcrEngine? value) {
+                      if (value != null) {
+                        ref.read(ocrEngineProvider.notifier).set(value);
+                      }
+                    },
+                    items: const [
+                      DropdownMenuItem(value: OcrEngine.googleMlKit, child: Text('Google ML Kit')),
+                      DropdownMenuItem(value: OcrEngine.tesseract4android, child: Text('Tesseract4Android')),
+                    ],
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
