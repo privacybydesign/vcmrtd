@@ -14,32 +14,10 @@ The example app demonstrates:
 
 ## Screenshots
 
-<div class="screenshot-grid">
-
-<div style={{display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'center'}}>
-  <figure style={{margin: 0, textAlign: 'center'}}>
-    <img src="/images/home.jpg" alt="Home Screen" style={{width: '180px'}} />
-    <figcaption>Choose reading mode</figcaption>
-  </figure>
-  <figure style={{margin: 0, textAlign: 'center'}}>
-    <img src="/images/scan.jpg" alt="MRZ Scanning" style={{width: '180px'}} />
-    <figcaption>MRZ scanning</figcaption>
-  </figure>
-  <figure style={{margin: 0, textAlign: 'center'}}>
-    <img src="/images/info.jpg" alt="NFC Positioning" style={{width: '180px'}} />
-    <figcaption>NFC positioning</figcaption>
-  </figure>
-  <figure style={{margin: 0, textAlign: 'center'}}>
-    <img src="/images/read.jpg" alt="Reading Progress" style={{width: '180px'}} />
-    <figcaption>Reading progress</figcaption>
-  </figure>
-  <figure style={{margin: 0, textAlign: 'center'}}>
-    <img src="/images/result.png" alt="Results" style={{width: '180px'}} />
-    <figcaption>Results</figcaption>
-  </figure>
-</div>
-
-</div>
+| | | | | |
+|:---:|:---:|:---:|:---:|:---:|
+| <img src="/vcmrtd/images/home.jpg" width="150" /> | <img src="/vcmrtd/images/scan.jpg" width="150" /> | <img src="/vcmrtd/images/info.jpg" width="150" /> | <img src="/vcmrtd/images/read.jpg" width="150" /> | <img src="/vcmrtd/images/result.png" width="150" /> |
+| Choose mode | MRZ scanning | NFC positioning | Reading | Results |
 
 ## Running the Example
 

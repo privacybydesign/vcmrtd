@@ -9,7 +9,7 @@ When you open the app, you'll see two options:
 - **Camera Mode**: Scan the MRZ using the device camera (recommended)
 - **Manual Mode**: Enter MRZ data manually
 
-<img src="/images/home.jpg" alt="Home Screen" style={{width: '200px'}} />
+<img src="/vcmrtd/images/home.jpg" alt="Home Screen" width="200" />
 
 Camera mode is faster and less error-prone for passports with clear MRZ printing.
 
@@ -19,7 +19,7 @@ Camera mode is faster and less error-prone for passports with clear MRZ printing
 
 Point the camera at the Machine Readable Zone on the passport's data page. The MRZ consists of two lines of text at the bottom of the page.
 
-<img src="/images/scan.jpg" alt="MRZ Scanning" style={{width: '200px'}} />
+<img src="/vcmrtd/images/scan.jpg" alt="MRZ Scanning" width="200" />
 
 The app will automatically detect and extract:
 - Document number
@@ -42,7 +42,7 @@ The document number is typically found in the top right of the passport data pag
 
 Once MRZ data is captured, the app will prompt you to position the passport for NFC reading.
 
-<img src="/images/info.jpg" alt="NFC Positioning" style={{width: '200px'}} />
+<img src="/vcmrtd/images/info.jpg" alt="NFC Positioning" width="200" />
 
 ### Tips for Successful NFC Reading
 
@@ -65,7 +65,7 @@ Once MRZ data is captured, the app will prompt you to position the passport for 
 
 During reading, the app shows progress through various stages:
 
-<img src="/images/read.jpg" alt="Reading Progress" style={{width: '200px'}} />
+<img src="/vcmrtd/images/read.jpg" alt="Reading Progress" width="200" />
 
 | Stage | Description |
 |-------|-------------|
@@ -93,7 +93,7 @@ Typical reading times:
 
 After successful reading, the app displays the extracted information:
 
-<img src="/images/result.png" alt="Results" style={{width: '200px'}} />
+<img src="/vcmrtd/images/result.png" alt="Results" width="200" />
 
 ### Displayed Information
 
