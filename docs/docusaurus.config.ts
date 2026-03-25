@@ -2,21 +2,15 @@ import {themes as prismThemes} from 'prism-react-renderer';
 import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
-// This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
-
 const config: Config = {
-  title: "DMRTD Documentation",
-  tagline: "Documentation for the DMR-TD project",
+  title: "VCMRTD Documentation",
+  tagline: "Read and verify Machine Readable Travel Documents via NFC",
   favicon: "img/favicon.ico",
-  // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
   future: {
-    v4: true, // Improve compatibility with the upcoming Docusaurus v4
+    v4: true,
   },
 
-  // Set the production url of your site here
   url: "https://privacybydesign.github.io/",
-  // Set the /<baseUrl>/ pathname under which your site is served
-  // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: "/vcmrtd/",
   trailingSlash: false,
   organizationName: "privacybydesign",
@@ -28,9 +22,6 @@ const config: Config = {
 
   staticDirectories: ["static"],
 
-  // Even if you don't use internationalization, you can use this field to set
-  // useful metadata like html lang. For example, if your site is Chinese, you
-  // may want to replace "en" with "zh-Hans".
   i18n: {
     defaultLocale: "en",
     locales: ["en"],
@@ -42,9 +33,9 @@ const config: Config = {
       {
         docs: {
           sidebarPath: "./sidebars.ts",
-          routeBasePath: "/", // This makes docs the root path
+          routeBasePath: "/",
         },
-        blog: false, // Disable blog
+        blog: false,
         theme: {
           customCss: "./src/css/custom.css",
         },
@@ -58,6 +49,7 @@ const config: Config = {
   themes: ['@docusaurus/theme-mermaid'],
   themeConfig: {
     navbar: {
+      title: "VCMRTD",
       items: [
         {
           type: "docSidebar",
@@ -65,11 +57,66 @@ const config: Config = {
           position: "left",
           label: "Documentation",
         },
+        {
+          href: "https://github.com/privacybydesign/vcmrtd",
+          label: "GitHub",
+          position: "right",
+        },
       ],
+    },
+    footer: {
+      style: "dark",
+      links: [
+        {
+          title: "Documentation",
+          items: [
+            {
+              label: "Getting Started",
+              to: "/getting-started",
+            },
+            {
+              label: "Integration Guide",
+              to: "/integration",
+            },
+          ],
+        },
+        {
+          title: "Related Projects",
+          items: [
+            {
+              label: "go-passport-issuer",
+              href: "https://github.com/privacybydesign/go-passport-issuer",
+            },
+            {
+              label: "GMRTD",
+              href: "https://github.com/gmrtd/gmrtd",
+            },
+            {
+              label: "Yivi",
+              href: "https://yivi.app",
+            },
+          ],
+        },
+        {
+          title: "More",
+          items: [
+            {
+              label: "GitHub",
+              href: "https://github.com/privacybydesign/vcmrtd",
+            },
+            {
+              label: "Privacy by Design Foundation",
+              href: "https://privacybydesign.foundation",
+            },
+          ],
+        },
+      ],
+      copyright: `Copyright ${new Date().getFullYear()} Yivi B.V. Built with Docusaurus.`,
     },
     prism: {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
+      additionalLanguages: ['dart', 'yaml', 'json'],
     },
   } satisfies Preset.ThemeConfig,
 };
