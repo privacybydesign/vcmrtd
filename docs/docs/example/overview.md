@@ -23,7 +23,7 @@ The example app demonstrates:
 
 ### Prerequisites
 
-- Flutter SDK 3.8.0+
+- Dart SDK 3.8.0+ (Flutter 3.32.0+)
 - A physical Android or iOS device with NFC
 - A test passport or eID card
 
