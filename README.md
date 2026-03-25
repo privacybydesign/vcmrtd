@@ -149,7 +149,7 @@ The repository includes a complete example application demonstrating:
 
 ### Prerequisites
 
-- Flutter SDK 3.8.0+
+- Dart SDK 3.8.0+ (Flutter 3.32.0+)
 - Android Studio or Xcode for mobile development
 - A physical device with NFC capability (emulators do not support NFC)
 

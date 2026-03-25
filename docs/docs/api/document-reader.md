@@ -207,6 +207,8 @@ final config = DocumentReaderConfig(
 
 ### DataGroups Enum
 
+The following table describes data groups for passports and ID cards. Driving licenses use a different data group layout.
+
 | Value | Description | Required |
 |-------|-------------|----------|
 | `dg1` | MRZ data | Yes |
@@ -240,7 +242,7 @@ final parser = PassportParser();
 
 ### DrivingLicenceParser
 
-For reading electronic driving licenses.
+For reading Dutch electronic driving licenses.
 
 ```dart
 final parser = DrivingLicenceParser();

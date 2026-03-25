@@ -1,6 +1,6 @@
 # VCMRTD
 
-VCMRTD is a Dart/Flutter library for reading and verifying Machine Readable Travel Documents (MRTDs) via NFC. It enables mobile applications to securely read ePassports, eID cards, and electronic driving licenses.
+VCMRTD (Verifiable Credentials from Machine Readable Travel Documents) is a Dart/Flutter library for reading and verifying MRTDs via NFC. It enables mobile applications to securely read ePassports, eID cards, and Dutch electronic driving licenses and issue Verifiable Credentials for use in the [Yivi](https://yivi.app) ecosystem.
 
 ## Overview
 

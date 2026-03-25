@@ -4,7 +4,7 @@ This guide explains how to integrate VCMRTD with your backend for secure documen
 
 ## Why Server-Side Verification?
 
-While VCMRTD reads document data directly from the chip, **Passive Authentication**—the cryptographic verification that the data is genuine—must be performed server-side. This is because:
+While VCMRTD reads document data directly from the chip via NFC, the data must still be verified for authenticity. **Passive Authentication** is the process of cryptographically verifying that the data on the chip was signed by the issuing country and has not been tampered with. This must be performed server-side because:
 
 1. **Certificate Chain Validation**: Verifying the Document Signer Certificate requires access to trusted Country Signing CA certificates (masterlists)
 2. **Masterlist Management**: Masterlists must be regularly updated and securely stored
@@ -202,6 +202,7 @@ The go-passport-issuer backend exposes the following endpoints:
 | `/api/verify-passport` | POST | Verify passport data |
 | `/api/verify-driving-licence` | POST | Verify driving license data |
 | `/api/issue-passport` | POST | Verify and issue passport credential |
+| `/api/issue-id-card` | POST | Verify and issue ID card credential |
 | `/api/issue-driving-licence` | POST | Verify and issue driving license credential |
 | `/api/health` | GET | Health check |
 

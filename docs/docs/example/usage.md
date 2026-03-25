@@ -17,7 +17,7 @@ Camera mode is faster and less error-prone for passports with clear MRZ printing
 
 ### Camera Mode
 
-Point the camera at the Machine Readable Zone on the passport's data page. The MRZ consists of two lines of text at the bottom of the page.
+Point the camera at the Machine Readable Zone on the passport's data page. The MRZ consists of two lines of text at the bottom of the page. Hold the phone parallel to the document to avoid tilted characters, and place the document flat on a table or other flat surface for best results.
 
 <img src="/vcmrtd/images/scan.jpg" alt="MRZ Scanning" width="200" />
 
@@ -49,8 +49,9 @@ Once MRZ data is captured, the app will prompt you to position the passport for 
 1. **Enable NFC**: Ensure NFC is enabled in your device settings
 2. **Remove cases**: Phone cases can interfere with NFC
 3. **Find the chip**: The NFC chip is usually near the photo, embedded in the cover
-4. **Stay still**: Keep both the phone and passport stationary during reading
-5. **Flat surface**: Place the passport on a flat surface if possible
+4. **Slide to find the reader**: Slowly slide the phone vertically over the document until you feel a vibration — NFC readers are in different places on different phones
+5. **Stay still**: Keep both the phone and passport stationary during reading
+6. **Flat surface**: Place the passport on a flat surface if possible
 
 ### Chip Location by Document Type
 
