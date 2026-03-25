@@ -1,40 +1,77 @@
-# Passport based Verifiable Credentials
+# VCMRTD
 
-This library and example app demonstrate how to read and verify Machine Readable Travel Documents (MRTDs) such as passports using NFC technology. The Passport Reader app is designed to work on modern smartphones, leveraging their NFC capabilities to read data stored in the passport's chip, including personal information and security features.
+VCMRTD (Verifiable Credentials from Machine Readable Travel Documents) is a Dart/Flutter library for reading and verifying MRTDs via NFC. It enables mobile applications to securely read ePassports, eID cards, and Dutch electronic driving licenses and issue Verifiable Credentials for use in the [Yivi](https://yivi.app) ecosystem.
 
-## System Architecture
+## Overview
 
-The system consists of the following components:
-- **dmrtd**: The core Dart library that provides the functionality to read and verify MRTDs via NFC
-- **docs**: Comprehensive documentation for the library, including usage instructions and examples
-- **vcmrtd-app**: A mobile application that utilizes the dmrtd library to read and verify passports
-- **Backend Integration**: [go-passport-issuer](https://github.com/privacybydesign/go-passport-issuer) backend service
+VCMRTD implements the ICAO 9303 standards for machine readable travel documents. It handles:
 
-## Technical Implementation
+- **NFC Communication**: Establish secure connections with document chips
+- **Authentication**: Support for BAC and PACE protocols
+- **Data Extraction**: Read all ICAO data groups (DG1-DG16)
+- **Security**: Active Authentication to prevent chip cloning
 
-### Core Libraries
-The backend leverages the [gmrtd](https://github.com/gmrtd/gmrtd) Go library, which provides:
-- Low-level MRTD chip communication protocols
-- Implementation of ICAO 9303 standards
-- Support for various passport security mechanisms
-- Cryptographic operations for document verification
+For production deployments, VCMRTD works with [go-passport-issuer](https://github.com/privacybydesign/go-passport-issuer) which provides server-side verification including Passive Authentication and certificate chain validation using the [GMRTD](https://github.com/gmrtd/gmrtd) library.
 
-### Authentication Mechanisms
+## Architecture
 
-#### Passive Authentication (PA) 
-- **Purpose**: Verifies the authenticity and integrity of data stored on the passport chip
-- **Implementation**: Digital signature verification using the Document Signer Certificate (DSC)
-- **Process**: Validates that passport data hasn't been tampered with since issuance
-- **Coverage**: Mandatory for all ICAO-compliant e-passports
+```mermaid
+flowchart LR
+    subgraph Mobile
+        A[Mobile App] --> B[VCMRTD Library]
+        B --> C[NFC]
+    end
 
-#### Active Authentication (AA)
-- **Purpose**: Prevents passport chip cloning by verifying chip authenticity
-- **Implementation**: Challenge-response protocol using chip's unique key pair
-- **Process**: Chip proves possession of private key corresponding to public key in DG15
-- **Coverage**: Optional feature, varies by issuing country (see support table)
+    subgraph Document
+        C --> D[ePassport Chip]
+    end
 
-### Certificate Authority Support
-The system includes comprehensive masterlist support for:
-- **Dutch Masterlists**: Full support for Netherlands passport verification infrastructure
-- **German Masterlists**: Complete integration with German Certificate Authority chains
-- **Multi-country Support**: Extensible framework for additional country-specific certificate validation
+    subgraph Backend
+        A --> E[go-passport-issuer]
+        E --> F[GMRTD]
+        E --> G[Masterlists]
+    end
+
+    subgraph Optional
+        E --> H[IRMA Server]
+    end
+```
+
+### Client-Side (VCMRTD)
+
+The VCMRTD library runs on the mobile device and handles:
+
+1. **NFC Connection**: Manages the low-level communication with the document chip
+2. **Access Control**: Performs BAC or PACE authentication using MRZ-derived keys
+3. **Data Reading**: Extracts data groups from the chip's file system
+4. **Active Authentication**: Executes challenge-response to prove chip authenticity
+
+### Server-Side (go-passport-issuer)
+
+The backend service performs cryptographic verification:
+
+1. **Passive Authentication**: Validates digital signatures against trusted Certificate Authorities
+2. **Certificate Chain Validation**: Verifies Document Signer Certificates against Country Signing CA
+3. **Masterlist Support**: Includes Dutch and German CA certificates
+4. **Credential Issuance**: Optionally generates Verifiable Credentials for the Yivi ecosystem
+
+## Supported Documents
+
+| Document Type | Countries Tested | BAC | PACE | Active Auth |
+|--------------|------------------|-----|------|-------------|
+| ePassports | Netherlands, Germany | ✓ | ✓ | ✓ |
+| eID Cards | Netherlands | ✓ | ✓ | ✓ |
+| eDriving Licenses | Netherlands | ✓ | ✓ | ✓ |
+
+The library should work with ICAO-compliant documents from other countries, though these have not been extensively tested.
+
+## Current Limitations
+
+- **Face Verification**: Biometric matching against the DG2 facial image is not yet implemented but is planned for a future release
+- **Extended Access Control**: While EAC is partially implemented, accessing protected biometric data (fingerprints, iris) requires additional Terminal Authentication infrastructure
+
+## Next Steps
+
+- [Getting Started](./getting-started) - Install and configure VCMRTD
+- [Integration Guide](./integration) - Integrate VCMRTD into your application
+- [Example Application](./example/overview) - See a complete implementation

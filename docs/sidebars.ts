@@ -1,66 +1,41 @@
 import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
 
-// This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
-
-/**
- * Creating a sidebar enables you to:
- - create an ordered group of docs
- - render a sidebar for each doc of that group
- - provide next/previous navigation
-
- The sidebars can be generated from the filesystem, or explicitly defined here.
-
- Create as many sidebars as you want.
- */
 const sidebars: SidebarsConfig = {
-  // By default, Docusaurus generates a sidebar from the docs folder structure
   docSidebar: [
+    'index',
+    'getting-started',
+    'integration',
     {
       type: 'category',
-      label: 'Overview',
+      label: 'Example Application',
       collapsed: false,
       items: [
-        'index'
+        'example/overview',
+        'example/usage',
       ],
     },
     {
       type: 'category',
-      label: 'Example Mobile Application',
+      label: 'API Reference',
       collapsed: false,
       items: [
-        'dmrtd/app',
-        // 'dmrtd/usage',
-        // 'dmrtd/advanced-usage',
-        // 'dmrtd/faq'
+        'api/document-reader',
+        'api/passport-issuer',
+        'api/backend',
       ],
     },
     {
       type: 'category',
-      label: 'Passport based Veriable Credentials',
-      collapsed: false,
+      label: 'Technical Reference',
+      collapsed: true,
       items: [
-        'library/support',
-        'library/flow',
-        'library/api',
+        'reference/standards',
+        'reference/authentication',
+        'reference/data-groups',
+        'reference/pki',
       ],
     },
-    {
-      type: 'category',
-      label: 'Background information',
-      collapsed: false,
-      items: [
-        'info/aa',
-        'info/bac',
-        'info/pace',
-        'info/pa',
-        'info/standards',
-        'info/pki',
-      ],
-    }
   ],
-
-  // But you can create a sidebar manually
-
 };
 
 export default sidebars;
