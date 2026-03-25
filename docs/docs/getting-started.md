@@ -4,7 +4,7 @@ This guide will help you set up VCMRTD in your Flutter project.
 
 ## Prerequisites
 
-- Flutter SDK 3.8.0 or higher
+- Dart SDK 3.8.0+ (Flutter 3.32.0+)
 - A physical device with NFC capability (emulators do not support NFC)
 - Android Studio or Xcode for mobile development
 
