@@ -15,12 +15,14 @@ class DrivingLicenceDataScreen extends ConsumerStatefulWidget {
   final DrivingLicenceData drivingLicence;
   final RawDocumentData drivingLicenceDataResult;
   final VoidCallback onBackPressed;
+  final Function(Uint8List) onFaceVerification;
 
   const DrivingLicenceDataScreen({
     super.key,
     required this.drivingLicence,
     required this.drivingLicenceDataResult,
     required this.onBackPressed,
+    required this.onFaceVerification,
   });
 
   @override
@@ -67,6 +69,12 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
                 const SizedBox(height: 24),
                 _buildCategoriesSection(widget.drivingLicence.categories),
               ],
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () => widget.onFaceVerification(widget.drivingLicence.photoImageData),
+                icon: const Icon(Icons.face),
+                label: const Text('Start Face Verification'),
+              ),
               if (widget.drivingLicenceDataResult.sessionId != null) ...[
                 const SizedBox(height: 20),
                 if (_verificationResponse == null)
@@ -94,7 +102,6 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
 
   Future<void> _verifyDrivingLicence() async {
     final issuer = ref.read(passportIssuerProvider);
-
     try {
       final result = await issuer.verifyDrivingLicence(widget.drivingLicenceDataResult);
       setState(() {
@@ -107,7 +114,6 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
 
   Future<void> _issueDrivingLicence() async {
     final issuer = ref.read(passportIssuerProvider);
-
     try {
       final response = await issuer.startIrmaIssuanceSession(
         widget.drivingLicenceDataResult,
@@ -125,7 +131,7 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
       context: context,
       title: 'Success!',
       message:
-          'Your driving licence data has been securely transmitted to the web application. '
+      'Your driving licence data has been securely transmitted to the web application. '
           'You can now close this app or scan another document.',
       onContinue: widget.onBackPressed,
     );
@@ -254,11 +260,9 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
 
   String? _formatDate(String? date) {
     if (date == null || date.length != 8) return date;
-
     final day = date.substring(0, 2);
     final month = date.substring(2, 4);
     final year = date.substring(4, 8);
-
     return '$day/$month/$year';
   }
 }

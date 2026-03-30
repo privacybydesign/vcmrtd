@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,12 +19,14 @@ class PassportDataScreen extends ConsumerStatefulWidget {
   final RawDocumentData passportDataResult;
   final VoidCallback onBackPressed;
   final DocumentType documentType;
+  final Function(Uint8List) onFaceVerification;
 
   const PassportDataScreen({
     super.key,
     required this.document,
     required this.onBackPressed,
     required this.passportDataResult,
+    required this.onFaceVerification,
     this.documentType = DocumentType.passport,
   });
 
@@ -53,6 +56,14 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
               const SizedBox(height: 20),
               SecurityContent(passport: widget.document as PassportData),
               const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () {
+                  final photo = (widget.document as PassportData).photoImageData;
+                  widget.onFaceVerification(photo);
+                },
+                icon: const Icon(Icons.face),
+                label: const Text('Start Face Verification'),
+              ),
               if (widget.passportDataResult.sessionId != null) ...[
                 const SizedBox(height: 20),
                 if (_verificationResponse == null)
@@ -113,7 +124,7 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
         title: const Text('Success!'),
         content: Text(
           'Your $docName data has been securely transmitted to the web application. '
-          'You can now close this app or scan another document.',
+              'You can now close this app or scan another document.',
         ),
         actions: [
           TextButton(

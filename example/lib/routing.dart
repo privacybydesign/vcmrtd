@@ -1,4 +1,6 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtdapp/widgets/pages/document_selection_screen.dart';
@@ -7,6 +9,7 @@ import 'package:vcmrtdapp/widgets/pages/manual_entry_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_reading_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/passport_data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/scanner_wrapper.dart';
+import 'package:vcmrtdapp/widgets/pages/face_verification_screen.dart';
 
 extension CustomRouteExtensions on BuildContext {
   void pushNfcReadingScreen(NfcReadingRouteParams params) {
@@ -22,6 +25,17 @@ extension CustomRouteExtensions on BuildContext {
   void pushManualEntryScreen(ManualEntryRouteParams params) {
     final path = Uri(path: '/manual_entry', queryParameters: params.toQueryParams());
     push(path.toString());
+  }
+
+  // Vanuit resultaten scherm met NFC pasfoto
+  void pushFaceVerificationScreen(Uint8List nfcImageBytes) {
+    push('/face_verification', extra: {'nfcImageBytes': nfcImageBytes});
+  }
+
+  // Vanuit test knop zonder NFC pasfoto, laadt direct een foto uit assets. makkelijker testen
+  Future<void> pushFaceVerificationScreenTest() async {
+    final bytes = await rootBundle.load('assets/test/test_face.jpg');
+    push('/face_verification', extra: {'nfcImageBytes': bytes.buffer.asUint8List()});
   }
 }
 
@@ -39,6 +53,7 @@ GoRouter createRouter() {
             onDocumentTypeSelected: (docType) {
               context.pushMrzReaderScreen(MrzReaderRouteParams(documentType: docType));
             },
+            onTestFaceVerification: () => context.pushFaceVerificationScreenTest(),
           );
         },
       ),
@@ -105,13 +120,27 @@ GoRouter createRouter() {
               passportDataResult: result,
               documentType: ty,
               onBackPressed: () => context.go('/select_doc_type'),
+              onFaceVerification: (nfcImageBytes) => context.pushFaceVerificationScreen(nfcImageBytes),
             ),
             DocumentType.drivingLicence => DrivingLicenceDataScreen(
               drivingLicence: s['document'] as DrivingLicenceData,
               drivingLicenceDataResult: result,
               onBackPressed: () => context.go('/select_doc_type'),
+              onFaceVerification: (nfcImageBytes) => context.pushFaceVerificationScreen(nfcImageBytes),
             ),
           };
+        },
+      ),
+      GoRoute(
+        path: '/face_verification',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          final nfcImageBytes = extra['nfcImageBytes'] as Uint8List?;
+
+          return FaceVerificationScreen(
+            nfcImageBytes: nfcImageBytes,
+            onBackPressed: context.pop,
+          );
         },
       ),
     ],
