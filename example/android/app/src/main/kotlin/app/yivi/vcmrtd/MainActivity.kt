@@ -7,6 +7,7 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugins.GeneratedPluginRegistrant
 import org.opencv.android.OpenCVLoader
 import foundation.privacybydesign.vcmrtd.ocr.TesseractOcrPlugin
+import foundation.privacybydesign.vcmrtd.biometrics.FaceVerificationPlugin
 
 class MainActivity : FlutterActivity() {
 
@@ -26,6 +27,9 @@ class MainActivity : FlutterActivity() {
 
         // Register Tesseract OCR plugin
         flutterEngine.plugins.add(TesseractOcrPlugin())
+
+        // Register Face Verification plugin
+        flutterEngine.plugins.add(FaceVerificationPlugin())
 
         // Register image_channel for JP2 decoding (used for passport photo)
         ImageDecodeChannel.register(flutterEngine, applicationContext)
