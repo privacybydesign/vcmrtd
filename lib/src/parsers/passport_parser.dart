@@ -414,7 +414,14 @@ class PassportParser extends DocumentParser<PassportData> {
           issuingAuthority = utf8.decode(uvtv.value);
           break;
         case DATE_OF_ISSUE_TAG:
-          dateOfIssue = String.fromCharCodes(uvtv.value).parseDate();
+          // ICAO 9303 Part 10: "It is RECOMMENDED that Inspection Systems support
+          // both 8 bytes ASCII and BCD date/time encoding."
+          // Some countries (e.g. Austria, Taiwan) use 4 bytes BCD encoding.
+          if (uvtv.value.length == 4) {
+            dateOfIssue = uvtv.value.binaryDecodeCCYYMMDD();
+          } else {
+            dateOfIssue = String.fromCharCodes(uvtv.value).parseDate();
+          }
           break;
       }
     }
