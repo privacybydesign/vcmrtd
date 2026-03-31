@@ -29,24 +29,9 @@ The example app demonstrates:
 
 ### Steps
 
-1. Clone the repository:
-
-```bash
-git clone https://github.com/privacybydesign/vcmrtd.git
-cd vcmrtd/example
-```
-
-2. Install dependencies:
-
-```bash
-flutter pub get
-```
-
-3. Run on a connected device:
-
-```bash
-flutter run
-```
+1. Clone the repository and navigate to the example directory
+2. Install dependencies with `flutter pub get`
+3. Run on a connected device with `flutter run`
 
 :::note
 The app must run on a physical device. NFC is not available in emulators or simulators.
@@ -60,46 +45,19 @@ By default, the example app connects to the Yivi staging server. To use a differ
 
 ### Android Debug Keystore
 
-For Android, ensure your debug keystore SHA256 fingerprint is registered with the backend:
-
-```bash
-keytool -list -v -alias androiddebugkey \
-  -keystore ~/.android/debug.keystore \
-  -storepass android -keypass android
-```
-
-Add the SHA256 fingerprint to the `assetlinks.json` configuration on the backend.
+For Android, ensure your debug keystore SHA256 fingerprint is registered with the backend. Use keytool to get the fingerprint and add it to the assetlinks.json configuration on the backend.
 
 ## App Structure
 
-```
-example/
-├── lib/
-│   ├── main.dart              # App entry point
-│   ├── screens/
-│   │   ├── home_screen.dart   # Mode selection
-│   │   ├── mrz_screen.dart    # MRZ scanning
-│   │   ├── manual_screen.dart # Manual entry
-│   │   ├── nfc_screen.dart    # NFC reading
-│   │   └── result_screen.dart # Results display
-│   └── services/
-│       └── passport_service.dart
-├── android/
-├── ios/
-└── pubspec.yaml
-```
+The example app is organized with:
+- `lib/main.dart` - App entry point
+- `lib/screens/` - UI screens (home, mrz, manual, nfc, result)
+- `lib/services/` - Business logic (passport_service.dart)
+- `android/` and `ios/` - Platform-specific configuration
 
 ## Without Backend
 
-The example can also run without a backend for testing purposes:
-
-```dart
-// Read document without Active Authentication
-final result = await reader.readDocument(
-  iosNfcMessages: (state) => _getIosMessage(state),
-  // Omit activeAuthenticationParams to skip AA
-);
-```
+The example can also run without a backend for testing purposes by omitting the activeAuthenticationParams when calling readDocument.
 
 In this mode:
 - Document data is read and parsed locally

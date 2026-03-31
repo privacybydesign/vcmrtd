@@ -10,54 +10,13 @@ This guide will help you set up VCMRTD in your Flutter project.
 
 ## Installation
 
-Add VCMRTD to your `pubspec.yaml`:
-
-```yaml
-dependencies:
-  vcmrtd:
-    git:
-      url: https://github.com/privacybydesign/vcmrtd.git
-      ref: master
-```
-
-Then run:
-
-```bash
-flutter pub get
-```
+Add VCMRTD to your `pubspec.yaml` and then run `flutter pub get`.
 
 ## Platform Configuration
 
 ### Android
 
-Add NFC permissions to `android/app/src/main/AndroidManifest.xml`:
-
-```xml
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-permission android:name="android.permission.NFC" />
-    <uses-feature android:name="android.hardware.nfc" android:required="true" />
-
-    <application ...>
-        <!-- Enable NFC discovery -->
-        <intent-filter>
-            <action android:name="android.nfc.action.TECH_DISCOVERED" />
-        </intent-filter>
-        <meta-data
-            android:name="android.nfc.action.TECH_DISCOVERED"
-            android:resource="@xml/nfc_tech_filter" />
-    </application>
-</manifest>
-```
-
-Create `android/app/src/main/res/xml/nfc_tech_filter.xml`:
-
-```xml
-<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <tech-list>
-        <tech>android.nfc.tech.IsoDep</tech>
-    </tech-list>
-</resources>
-```
+Add NFC permissions to `android/app/src/main/AndroidManifest.xml`.
 
 ### iOS
 
@@ -68,91 +27,23 @@ Add NFC capabilities to your iOS project:
 3. Go to "Signing & Capabilities"
 4. Click "+ Capability" and add "Near Field Communication Tag Reading"
 
-Add to `ios/Runner/Info.plist`:
-
-```xml
-<key>NFCReaderUsageDescription</key>
-<string>This app uses NFC to read passport data</string>
-<key>com.apple.developer.nfc.readersession.iso7816.select-identifiers</key>
-<array>
-    <string>A0000002471001</string>
-    <string>A0000002472001</string>
-</array>
-```
+Add the NFCReaderUsageDescription and ISO7816 select identifiers to `ios/Runner/Info.plist`.
 
 ## Basic Usage
 
-Here's a minimal example to read a passport:
+To read a passport, you need to:
 
-```dart
-import 'package:vcmrtd/vcmrtd.dart';
-
-Future<void> readPassport({
-  required String documentNumber,
-  required DateTime dateOfBirth,
-  required DateTime dateOfExpiry,
-}) async {
-  // 1. Create access key from MRZ data
-  final accessKey = DBAKey(
-    documentNumber: documentNumber,
-    dateOfBirth: dateOfBirth,
-    dateOfExpiry: dateOfExpiry,
-  );
-
-  // 2. Initialize components
-  final nfc = NfcProvider();
-  final dataGroupReader = DataGroupReader(
-    accessKey: accessKey,
-    nfc: nfc,
-  );
-  final parser = PassportParser();
-
-  // 3. Configure which data groups to read
-  final config = DocumentReaderConfig(
-    readIfAvailable: {
-      DataGroups.dg1,  // MRZ data (required)
-      DataGroups.dg2,  // Facial image (required)
-      DataGroups.dg15, // Active Authentication public key
-    },
-  );
-
-  // 4. Create reader
-  final reader = DocumentReader(
-    documentParser: parser,
-    dataGroupReader: dataGroupReader,
-    nfc: nfc,
-    config: config,
-  );
-
-  // 5. Read the document
-  final result = await reader.readDocument(
-    iosNfcMessages: (state) => _getIosMessage(state),
-  );
-
-  if (result != null) {
-    final (document, rawData) = result;
-    print('Document Number: ${document.documentNumber}');
-    print('Name: ${document.firstName} ${document.lastName}');
-    print('Nationality: ${document.nationality}');
-  }
-}
-
-String _getIosMessage(DocumentReaderState state) {
-  return switch (state) {
-    DocumentReaderConnecting() => 'Hold your passport near the phone',
-    DocumentReaderAuthenticating() => 'Authenticating...',
-    DocumentReaderReadingDataGroup() => 'Reading passport data...',
-    DocumentReaderSuccess() => 'Done!',
-    _ => 'Processing...',
-  };
-}
-```
+1. Create an access key from MRZ data (document number, date of birth, date of expiry)
+2. Initialize NfcProvider and DataGroupReader components
+3. Configure which data groups to read using DocumentReaderConfig
+4. Create a DocumentReader with the appropriate parser
+5. Call readDocument() to read the passport via NFC
 
 ## MRZ Data
 
 To authenticate with the passport chip, you need three pieces of information from the Machine Readable Zone (MRZ):
 
-- **Document Number**: The passport number (9 characters)
+- **Document Number**: The number of the document.
 - **Date of Birth**: In YYMMDD format
 - **Date of Expiry**: In YYMMDD format
 
@@ -182,4 +73,3 @@ The `DocumentReader` emits states as it progresses through the reading process:
 
 - [Integration Guide](./integration) - Learn how to integrate with the backend for verification
 - [Example Application](./example/overview) - See a complete implementation
-- [API Reference](./api/document-reader) - Detailed API documentation

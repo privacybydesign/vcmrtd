@@ -153,4 +153,3 @@ The server does not store personal data after verification.
 ## Next Steps
 
 - [Integration Guide](../integration) - Integrate VCMRTD in your own app
-- [API Reference](../api/document-reader) - Learn about the DocumentReader API

@@ -22,175 +22,19 @@ VCMRTD is designed to work with [go-passport-issuer](https://github.com/privacyb
 
 ### Verification Flow
 
-```mermaid
-sequenceDiagram
-    participant App as Mobile App
-    participant Passport as ePassport
-    participant Backend as go-passport-issuer
+The verification flow involves:
+1. Mobile app requests a session from the backend (POST /api/start-validation)
+2. Backend returns session_id and nonce
+3. Mobile app authenticates with passport via NFC (BAC/PACE)
+4. Mobile app reads data groups (DG1, DG2, DG15, EF.SOD)
+5. Mobile app performs Active Authentication with nonce
+6. Mobile app sends data to backend (POST /api/verify-passport)
+7. Backend performs Passive Authentication, certificate validation, and AA signature verification
+8. Backend returns verification result
 
-    App->>Backend: POST /api/start-validation
-    Backend-->>App: session_id, nonce
+## Verifiable Credentials
 
-    App->>Passport: NFC: Authenticate (BAC/PACE)
-    Passport-->>App: Session established
-
-    App->>Passport: NFC: Read DG1, DG2, DG15, EF.SOD
-    Passport-->>App: Data groups
-
-    App->>Passport: NFC: Active Authentication (with nonce)
-    Passport-->>App: AA signature
-
-    App->>Backend: POST /api/verify-passport
-    Note over Backend: Passive Authentication<br/>Certificate validation<br/>AA signature verification
-    Backend-->>App: Verification result
-```
-
-## Implementation
-
-### 1. Configure the Passport Issuer
-
-```dart
-import 'package:vcmrtd/vcmrtd.dart';
-
-final issuer = DefaultPassportIssuer(
-  hostName: 'https://your-passport-issuer.example.com',
-);
-```
-
-### 2. Start a Verification Session
-
-Before reading the document, start a session to get a nonce for Active Authentication:
-
-```dart
-final session = await issuer.startSessionAtPassportIssuer();
-// session.sessionId - Unique session identifier
-// session.nonce - Challenge for Active Authentication
-```
-
-### 3. Read the Document
-
-Pass the session parameters to the reader:
-
-```dart
-final result = await reader.readDocument(
-  iosNfcMessages: (state) => _getIosMessage(state),
-  activeAuthenticationParams: session, // Include session for AA
-);
-```
-
-### 4. Verify Server-Side
-
-Send the raw document data to the backend for verification:
-
-```dart
-if (result != null) {
-  final (document, rawData) = result;
-
-  // Verify with backend
-  final verification = await issuer.verifyPassport(rawData);
-
-  if (verification.passiveAuthenticationPassed) {
-    print('Document is authentic!');
-  }
-
-  if (verification.activeAuthenticationPassed) {
-    print('Chip is genuine (not cloned)!');
-  }
-}
-```
-
-## Complete Example
-
-```dart
-import 'package:vcmrtd/vcmrtd.dart';
-
-class PassportVerificationService {
-  final PassportIssuer issuer;
-
-  PassportVerificationService({required this.issuer});
-
-  Future<VerificationResult> verifyPassport({
-    required String documentNumber,
-    required DateTime dateOfBirth,
-    required DateTime dateOfExpiry,
-  }) async {
-    // Start backend session
-    final session = await issuer.startSessionAtPassportIssuer();
-
-    // Configure reader
-    final accessKey = DBAKey(
-      documentNumber: documentNumber,
-      dateOfBirth: dateOfBirth,
-      dateOfExpiry: dateOfExpiry,
-    );
-
-    final nfc = NfcProvider();
-    final reader = DocumentReader(
-      documentParser: PassportParser(),
-      dataGroupReader: DataGroupReader(accessKey: accessKey, nfc: nfc),
-      nfc: nfc,
-      config: DocumentReaderConfig(
-        readIfAvailable: {
-          DataGroups.dg1,
-          DataGroups.dg2,
-          DataGroups.dg15,
-        },
-      ),
-    );
-
-    // Read document
-    final result = await reader.readDocument(
-      iosNfcMessages: (state) => 'Reading passport...',
-      activeAuthenticationParams: session,
-    );
-
-    if (result == null) {
-      throw Exception('Failed to read document');
-    }
-
-    final (document, rawData) = result;
-
-    // Verify with backend
-    final verification = await issuer.verifyPassport(rawData);
-
-    return VerificationResult(
-      document: document,
-      passiveAuthPassed: verification.passiveAuthenticationPassed,
-      activeAuthPassed: verification.activeAuthenticationPassed,
-    );
-  }
-}
-
-class VerificationResult {
-  final DocumentData document;
-  final bool passiveAuthPassed;
-  final bool activeAuthPassed;
-
-  VerificationResult({
-    required this.document,
-    required this.passiveAuthPassed,
-    required this.activeAuthPassed,
-  });
-
-  bool get isAuthentic => passiveAuthPassed;
-  bool get isNotCloned => activeAuthPassed;
-}
-```
-
-## Verifiable Credentials (Optional)
-
-For integration with the [Yivi](https://yivi.app) ecosystem, you can issue Verifiable Credentials after successful verification:
-
-```dart
-// After successful verification, issue credentials
-final sessionPointer = await issuer.startIrmaIssuanceSession(
-  rawData,
-  DocumentType.passport,
-);
-
-// The session pointer can be used to open the Yivi app
-// for credential acceptance
-```
+For integration with the [Yivi](https://yivi.app) ecosystem, you can issue Verifiable Credentials after successful verification using the startIrmaIssuanceSession method.
 
 ## API Endpoints
 
@@ -210,45 +54,11 @@ See the [Backend API Reference](./api/backend) for detailed request/response for
 
 ## Driving License Support
 
-VCMRTD also supports Dutch electronic driving licenses:
-
-```dart
-// Use DrivingLicenceParser instead of PassportParser
-final parser = DrivingLicenceParser();
-
-final reader = DocumentReader(
-  documentParser: parser,
-  dataGroupReader: dataGroupReader,
-  nfc: nfc,
-  config: config,
-);
-
-// Verify with appropriate endpoint
-final verification = await issuer.verifyDrivingLicence(rawData);
-```
+VCMRTD also supports Dutch electronic driving licenses. Use DrivingLicenceParser instead of PassportParser and verify with the verifyDrivingLicence endpoint.
 
 ## Error Handling
 
-Handle verification failures gracefully:
-
-```dart
-try {
-  final verification = await issuer.verifyPassport(rawData);
-
-  if (!verification.passiveAuthenticationPassed) {
-    // Document signature invalid - possibly tampered or forged
-    handleInvalidDocument();
-  }
-
-  if (!verification.activeAuthenticationPassed) {
-    // Chip may be cloned
-    handlePossibleClone();
-  }
-} on Exception catch (e) {
-  // Network or server error
-  handleVerificationError(e);
-}
-```
+Handle verification failures gracefully by catching exceptions and checking the passiveAuthenticationPassed and activeAuthenticationPassed flags in the verification response.
 
 ## Next Steps
 

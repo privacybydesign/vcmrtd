@@ -3,7 +3,6 @@
 VCMRTD (Verifiable Credentials from Machine Readable Travel Documents) is a Dart/Flutter library for reading and verifying MRTDs via NFC. It enables mobile applications to securely read ePassports, eID cards, and Dutch electronic driving licenses and issue Verifiable Credentials for use in the [Yivi](https://yivi.app) ecosystem.
 
 ## Overview
-
 VCMRTD implements the ICAO 9303 standards for machine readable travel documents. It handles:
 
 - **NFC Communication**: Establish secure connections with document chips
@@ -14,28 +13,6 @@ VCMRTD implements the ICAO 9303 standards for machine readable travel documents.
 For production deployments, VCMRTD works with [go-passport-issuer](https://github.com/privacybydesign/go-passport-issuer) which provides server-side verification including Passive Authentication and certificate chain validation using the [GMRTD](https://github.com/gmrtd/gmrtd) library.
 
 ## Architecture
-
-```mermaid
-flowchart LR
-    subgraph Mobile
-        A[Mobile App] --> B[VCMRTD Library]
-        B --> C[NFC]
-    end
-
-    subgraph Document
-        C --> D[ePassport Chip]
-    end
-
-    subgraph Backend
-        A --> E[go-passport-issuer]
-        E --> F[GMRTD]
-        E --> G[Masterlists]
-    end
-
-    subgraph Optional
-        E --> H[IRMA Server]
-    end
-```
 
 ### Client-Side (VCMRTD)
 

@@ -40,17 +40,10 @@ After establishing the NFC connection, communication uses Application Protocol D
 
 ### File System Structure
 
-```
-Master File (MF)
-└── Dedicated File (DF) - MRTD Application
-    ├── EF.COM    - List of data groups present
-    ├── EF.SOD    - Security Object (signatures)
-    ├── EF.DG1    - MRZ Data
-    ├── EF.DG2    - Facial Image
-    ├── EF.DG3    - Fingerprints (protected)
-    ├── ...
-    └── EF.DG16   - Reserved
-```
+The e-passport file system consists of:
+- Master File (MF) at the root
+- Dedicated File (DF) for the MRTD Application
+- Elementary Files: EF.COM, EF.SOD, EF.DG1 through EF.DG16
 
 ### Application Identifier
 

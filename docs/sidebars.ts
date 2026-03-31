@@ -19,8 +19,6 @@ const sidebars: SidebarsConfig = {
       label: 'API Reference',
       collapsed: false,
       items: [
-        'api/document-reader',
-        'api/passport-issuer',
         'api/backend',
       ],
     },

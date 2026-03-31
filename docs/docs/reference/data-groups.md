@@ -45,19 +45,7 @@ DG1 uses ASN.1 encoding with the MRZ stored as ASCII text.
 
 ### Access in VCMRTD
 
-```dart
-final config = DocumentReaderConfig(
-  readIfAvailable: {DataGroups.dg1},
-);
-
-// After reading:
-final document = result.document;
-print(document.documentNumber);
-print(document.firstName);
-print(document.lastName);
-print(document.nationality);
-print(document.dateOfBirth);
-```
+Include DataGroups.dg1 in your DocumentReaderConfig's readIfAvailable set. After reading, access document properties like documentNumber, firstName, lastName, nationality, and dateOfBirth.
 
 ## DG2 - Facial Image
 
@@ -78,15 +66,7 @@ DG2 is typically the largest data group:
 
 ### Access in VCMRTD
 
-```dart
-final config = DocumentReaderConfig(
-  readIfAvailable: {DataGroups.dg2},
-);
-
-// After reading:
-final document = result.document;
-final photoBytes = document.photo; // JPEG bytes
-```
+Include DataGroups.dg2 in your config. After reading, access the photo property on the document.
 
 :::note
 Reading DG2 takes the longest due to its size. Expect 5-15 seconds depending on the document.
@@ -138,11 +118,7 @@ Contains an image of the holder's signature or mark.
 
 ### Access in VCMRTD
 
-```dart
-final config = DocumentReaderConfig(
-  readIfAvailable: {DataGroups.dg7},
-);
-```
+Include DataGroups.dg7 in your config.
 
 ## DG11 - Additional Personal Details
 
@@ -163,13 +139,7 @@ Contains additional personal information not in the MRZ.
 
 ### Access in VCMRTD
 
-```dart
-final config = DocumentReaderConfig(
-  readIfAvailable: {DataGroups.dg11},
-);
-
-// Content varies by issuing country
-```
+Include DataGroups.dg11 in your config. Content varies by issuing country.
 
 ## DG12 - Additional Document Details
 
@@ -220,13 +190,7 @@ Contains the public key for Active Authentication.
 
 ### Access in VCMRTD
 
-```dart
-final config = DocumentReaderConfig(
-  readIfAvailable: {DataGroups.dg15},
-);
-
-// Required for Active Authentication
-```
+Include DataGroups.dg15 in your config. Required for Active Authentication.
 
 ### Importance
 
@@ -253,44 +217,15 @@ Rarely implemented in practice.
 
 ### Minimal Configuration
 
-```dart
-final config = DocumentReaderConfig(
-  readIfAvailable: {
-    DataGroups.dg1,  // Required
-    DataGroups.dg2,  // Required
-  },
-);
-```
+Include DataGroups.dg1 (required) and DataGroups.dg2 (required) in your readIfAvailable set.
 
 ### With Active Authentication
 
-```dart
-final config = DocumentReaderConfig(
-  readIfAvailable: {
-    DataGroups.dg1,
-    DataGroups.dg2,
-    DataGroups.dg15, // For AA
-  },
-);
-```
+Add DataGroups.dg15 to enable Active Authentication.
 
 ### Full Read (where supported)
 
-```dart
-final config = DocumentReaderConfig(
-  readIfAvailable: {
-    DataGroups.dg1,
-    DataGroups.dg2,
-    DataGroups.dg5,
-    DataGroups.dg7,
-    DataGroups.dg11,
-    DataGroups.dg12,
-    DataGroups.dg13,
-    DataGroups.dg14,
-    DataGroups.dg15,
-  },
-);
-```
+Include dg1, dg2, dg5, dg7, dg11, dg12, dg13, dg14, and dg15 for maximum data extraction.
 
 ## EF.COM
 

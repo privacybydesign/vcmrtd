@@ -18,22 +18,14 @@ BAC prevents unauthorized reading of passport data by requiring knowledge of MRZ
 
 ### How It Works
 
-```mermaid
-sequenceDiagram
-    participant R as Reader
-    participant C as Chip
-
-    Note over R: Derive Kenc and Kmac from MRZ
-    R->>C: GET CHALLENGE
-    C-->>R: RND.IC (8 bytes)
-    Note over R: Generate RND.IFD, K.IFD
-    Note over R: Encrypt with Kenc, MAC with Kmac
-    R->>C: EXTERNAL AUTHENTICATE (E.IFD, M.IFD)
-    Note over C: Decrypt, verify MAC
-    Note over C: Generate K.IC
-    C-->>R: E.IC, M.IC
-    Note over R,C: Derive session keys KSenc, KSmac
-```
+BAC uses a challenge-response protocol:
+1. Reader derives Kenc and Kmac keys from MRZ data
+2. Reader requests a challenge from the chip (GET CHALLENGE)
+3. Chip returns random bytes (RND.IC)
+4. Reader generates its own random data, encrypts with Kenc, and MACs with Kmac
+5. Reader sends EXTERNAL AUTHENTICATE command
+6. Chip verifies the data, generates its own key material
+7. Both parties derive session keys (KSenc, KSmac)
 
 ### Key Derivation
 
@@ -44,13 +36,7 @@ Session keys are derived from:
 
 ### VCMRTD Implementation
 
-```dart
-final accessKey = DBAKey(
-  documentNumber: 'AB1234567',
-  dateOfBirth: DateTime(1990, 1, 15),
-  dateOfExpiry: DateTime(2030, 1, 15),
-);
-```
+Create a DBAKey with documentNumber, dateOfBirth, and dateOfExpiry to use BAC authentication.
 
 ### Limitations
 
@@ -71,27 +57,14 @@ PACE is a stronger alternative to BAC, required on EU passports since 2014.
 
 ### How It Works
 
-```mermaid
-sequenceDiagram
-    participant R as Reader
-    participant C as Chip
-
-    R->>C: MSE:Set AT (select PACE)
-    C-->>R: OK
-    R->>C: GENERAL AUTHENTICATE (request nonce)
-    C-->>R: Encrypted nonce z
-    Note over R: Decrypt z with password-derived key
-    Note over R,C: Diffie-Hellman key agreement
-    R->>C: GENERAL AUTHENTICATE (ephemeral pubkey)
-    C-->>R: Chip ephemeral pubkey
-    Note over R,C: Map to new domain parameters
-    R->>C: GENERAL AUTHENTICATE (mapped pubkey)
-    C-->>R: Chip mapped pubkey
-    Note over R,C: Compute shared secret, derive keys
-    R->>C: GENERAL AUTHENTICATE (auth token)
-    C-->>R: Chip auth token
-    Note over R,C: Verify tokens, session established
-```
+PACE uses the following protocol:
+1. Reader selects PACE via MSE:Set AT
+2. Reader requests encrypted nonce from chip
+3. Reader decrypts nonce with password-derived key
+4. Diffie-Hellman key agreement occurs
+5. Keys are mapped to new domain parameters
+6. Authentication tokens are exchanged and verified
+7. Session is established
 
 ### Password Sources
 
@@ -103,13 +76,7 @@ sequenceDiagram
 
 ### VCMRTD Implementation
 
-VCMRTD automatically attempts PACE if BAC fails and EF.CardAccess is present:
-
-```dart
-// PACE is handled automatically
-// You can also use CAN explicitly:
-final accessKey = CANKey(can: '123456');
-```
+VCMRTD automatically attempts PACE if BAC fails and EF.CardAccess is present. You can also explicitly use CAN with CANKey.
 
 ## Passive Authentication (PA)
 
@@ -128,22 +95,6 @@ PA verifies that passport data is genuine and unmodified. It is the **only manda
    - Verify certificate chain to trusted CSCA
    - Hash each data group, compare to signed hashes
 
-```mermaid
-flowchart TD
-    A[EF.SOD] --> B[Extract Signature]
-    A --> C[Extract DS Certificate]
-    C --> D[Verify against CSCA]
-    B --> E[Verify signature]
-    F[Read DG1, DG2...] --> G[Hash each DG]
-    G --> H[Compare to SOD hashes]
-    D --> I{Chain Valid?}
-    E --> J{Signature Valid?}
-    H --> K{Hashes Match?}
-    I --> L[PA Result]
-    J --> L
-    K --> L
-```
-
 ### Why Server-Side?
 
 PA requires:
@@ -156,14 +107,7 @@ These are better handled server-side.
 
 ### VCMRTD Implementation
 
-VCMRTD reads EF.SOD and sends it to go-passport-issuer for verification:
-
-```dart
-final verification = await issuer.verifyPassport(rawData);
-if (verification.passiveAuthenticationPassed) {
-  // Data is authentic
-}
-```
+VCMRTD reads EF.SOD and sends it to go-passport-issuer for verification. Check the passiveAuthenticationPassed flag in the verification response.
 
 ## Active Authentication (AA)
 
@@ -171,20 +115,11 @@ AA prevents chip cloning by proving the chip possesses a unique private key.
 
 ### How It Works
 
-```mermaid
-sequenceDiagram
-    participant R as Reader
-    participant C as Chip
-    participant S as Server
-
-    S->>R: nonce (challenge)
-    R->>C: INTERNAL AUTHENTICATE (nonce)
-    Note over C: Sign nonce with private key
-    C-->>R: signature
-    R->>S: signature, DG15 (public key)
-    Note over S: Verify signature with public key
-    S-->>R: AA result
-```
+1. Server generates a nonce (challenge)
+2. Reader sends nonce to chip via INTERNAL AUTHENTICATE
+3. Chip signs the nonce with its private key
+4. Reader sends signature and DG15 (public key) to server
+5. Server verifies the signature with the public key
 
 ### Key Points
 
@@ -195,22 +130,7 @@ sequenceDiagram
 
 ### VCMRTD Implementation
 
-```dart
-// Start session to get nonce
-final session = await issuer.startSessionAtPassportIssuer();
-
-// Read document with AA
-final result = await reader.readDocument(
-  iosNfcMessages: (state) => 'Reading...',
-  activeAuthenticationParams: session, // Include session
-);
-
-// Verify (including AA)
-final verification = await issuer.verifyPassport(rawData);
-if (verification.activeAuthenticationPassed) {
-  // Chip is genuine
-}
-```
+Start a session to get a nonce, read the document with activeAuthenticationParams set to the session, then verify with the backend. Check activeAuthenticationPassed in the response.
 
 ### Limitations
 
@@ -253,13 +173,9 @@ Without TA, protected data groups (DG3, DG4) cannot be read.
 
 VCMRTD automatically selects the best available protocol:
 
-```
 1. Try BAC
-   ↓ (if fails)
-2. Read EF.CardAccess
-   ↓
+2. If BAC fails, read EF.CardAccess
 3. Try PACE with MRZ-derived key
-```
 
 ## Security Recommendations
 

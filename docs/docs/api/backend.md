@@ -14,17 +14,9 @@ The API is typically deployed at a URL like:
 
 Check if the service is running.
 
-```
-GET /api/health
-```
+**GET** `/api/health`
 
-**Response**
-
-```json
-{
-  "ok": true
-}
-```
+**Response**: Returns `{"ok": true}` on success.
 
 ---
 
@@ -32,20 +24,11 @@ GET /api/health
 
 Start a new document validation session. Returns a session ID and nonce for Active Authentication.
 
-```
-POST /api/start-validation
-```
+**POST** `/api/start-validation`
 
 **Request Body**: Empty
 
-**Response**
-
-```json
-{
-  "session_id": "4f3c2a1b5e6d7c8f9a0b1c2d3e4f5a6b",
-  "nonce": "d4e5f6a7"
-}
-```
+**Response**:
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -58,25 +41,9 @@ POST /api/start-validation
 
 Verify passport data without issuing credentials.
 
-```
-POST /api/verify-passport
-```
+**POST** `/api/verify-passport`
 
-**Request Body**
-
-```json
-{
-  "session_id": "4f3c2a1b5e6d7c8f9a0b1c2d3e4f5a6b",
-  "nonce": "d4e5f6a7",
-  "data_groups": {
-    "DG1": "<base64>",
-    "DG2": "<base64>",
-    "DG15": "<base64>"
-  },
-  "ef_sod": "<base64>",
-  "aa_signature": "<base64>"
-}
-```
+**Request Body**:
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -86,20 +53,7 @@ POST /api/verify-passport
 | `ef_sod` | string | Base64-encoded EF.SOD (Security Object Document) |
 | `aa_signature` | string? | Base64-encoded Active Authentication signature (optional) |
 
-**Response**
-
-```json
-{
-  "passive_authentication_passed": true,
-  "active_authentication_passed": true,
-  "document_signer_certificate": {
-    "subject": "C=NL, O=Kingdom of the Netherlands, ...",
-    "issuer": "C=NL, O=Kingdom of the Netherlands, ...",
-    "valid_from": "2020-01-01T00:00:00Z",
-    "valid_to": "2030-12-31T23:59:59Z"
-  }
-}
-```
+**Response**: Returns `passive_authentication_passed`, `active_authentication_passed`, and `document_signer_certificate` information.
 
 ---
 
@@ -107,9 +61,7 @@ POST /api/verify-passport
 
 Verify Dutch electronic driving licence data.
 
-```
-POST /api/verify-driving-licence
-```
+**POST** `/api/verify-driving-licence`
 
 **Request Body**: Same format as verify-passport
 
@@ -121,20 +73,11 @@ POST /api/verify-driving-licence
 
 Verify passport and initiate Verifiable Credential issuance.
 
-```
-POST /api/issue-passport
-```
+**POST** `/api/issue-passport`
 
 **Request Body**: Same format as verify-passport
 
-**Response**
-
-```json
-{
-  "jwt": "<signed-jwt-token>",
-  "irma_server_url": "https://irma.example.com"
-}
-```
+**Response**:
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -147,9 +90,7 @@ POST /api/issue-passport
 
 Verify ID card and initiate Verifiable Credential issuance.
 
-```
-POST /api/issue-id-card
-```
+**POST** `/api/issue-id-card`
 
 **Request/Response**: Same format as issue-passport
 
@@ -159,9 +100,7 @@ POST /api/issue-id-card
 
 Verify driving licence and initiate Verifiable Credential issuance.
 
-```
-POST /api/issue-driving-licence
-```
+**POST** `/api/issue-driving-licence`
 
 **Request/Response**: Same format as issue-passport
 
@@ -171,18 +110,14 @@ POST /api/issue-driving-licence
 
 ### Android Asset Links
 
-```
-GET /.well-known/assetlinks.json
-```
+**GET** `/.well-known/assetlinks.json`
 
 Returns [Android Digital Asset Links](https://developer.android.com/training/app-links/verify-site-associations) for app deep linking.
 
 ### iOS App Site Association
 
-```
-GET /.well-known/apple-app-site-association
-GET /apple-app-site-association
-```
+**GET** `/.well-known/apple-app-site-association`
+**GET** `/apple-app-site-association`
 
 Returns [Apple App Site Association](https://developer.apple.com/documentation/xcode/supporting-associated-domains) for universal links.
 
@@ -201,12 +136,7 @@ Returns [Apple App Site Association](https://developer.apple.com/documentation/x
 
 ### Error Format
 
-```json
-{
-  "error": "Error message",
-  "code": "ERROR_CODE"
-}
-```
+Errors are returned as JSON with `error` and `code` fields.
 
 ### Common Error Codes
 
@@ -244,12 +174,7 @@ The backend performs the following verification steps:
 
 ## Data Group Encoding
 
-Data groups must be base64-encoded. The raw bytes from the chip should be encoded directly:
-
-```dart
-// In Dart
-final base64DG1 = base64Encode(dg1Bytes);
-```
+Data groups must be base64-encoded. The raw bytes from the chip should be encoded directly.
 
 The data groups typically included are:
 
@@ -266,46 +191,10 @@ The data groups typically included are:
 After successful verification with credential issuance:
 
 1. Backend returns JWT and IRMA server URL
-2. Client starts session with IRMA server:
-   ```
-   POST {irma_server_url}/session
-   Body: {jwt}
-   ```
+2. Client starts session with IRMA server
 3. IRMA server returns session pointer
 4. Client opens Yivi app with session pointer
 5. User accepts credentials in Yivi app
-
----
-
-## Example: Complete Flow
-
-```bash
-# 1. Start session
-curl -X POST https://api.example.com/api/start-validation
-
-# Response:
-# {"session_id":"abc123","nonce":"deadbeef"}
-
-# 2. [Client reads passport with VCMRTD]
-
-# 3. Verify passport
-curl -X POST https://api.example.com/api/verify-passport \
-  -H "Content-Type: application/json" \
-  -d '{
-    "session_id": "abc123",
-    "nonce": "deadbeef",
-    "data_groups": {
-      "DG1": "base64...",
-      "DG2": "base64...",
-      "DG15": "base64..."
-    },
-    "ef_sod": "base64...",
-    "aa_signature": "base64..."
-  }'
-
-# Response:
-# {"passive_authentication_passed":true,"active_authentication_passed":true}
-```
 
 ---
 
