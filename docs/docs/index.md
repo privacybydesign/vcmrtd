@@ -7,7 +7,7 @@ VCMRTD implements the ICAO 9303 standards for machine readable travel documents.
 
 - **NFC Communication**: Establish secure connections with document chips
 - **Authentication**: Support for BAC and PACE protocols
-- **Data Extraction**: Read all ICAO data groups (DG1-DG16)
+- **Data Extraction**: Read all selected data groups (DG1-DG16)
 - **Security**: Active Authentication to prevent chip cloning
 
 For production deployments, VCMRTD works with [go-passport-issuer](https://github.com/privacybydesign/go-passport-issuer) which provides server-side verification including Passive Authentication and certificate chain validation using the [GMRTD](https://github.com/gmrtd/gmrtd) library.
