@@ -1,13 +1,31 @@
+import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-enum _VerificationState { idle, takingSelfie, reviewingSelfie, processing, result }
+enum _VerificationState { idle, recording, processing, result }
+
+Uint8List _readFileBytes(String path) => File(path).readAsBytesSync();
+
+class VerificationResult {
+  final double matchScore;
+  final bool isLive;
+
+  const VerificationResult({
+    required this.matchScore,
+    required this.isLive,
+  });
+}
 
 class FaceVerificationScreen extends StatefulWidget {
   final Uint8List? nfcImageBytes;
   final VoidCallback onBackPressed;
+
+  static const double matchThreshold = 0.6;
 
   const FaceVerificationScreen({
     super.key,
@@ -19,102 +37,222 @@ class FaceVerificationScreen extends StatefulWidget {
   State<FaceVerificationScreen> createState() => _FaceVerificationScreenState();
 }
 
-class _FaceVerificationScreenState extends State<FaceVerificationScreen> {
-  _VerificationState _state = _VerificationState.idle;
+class _FaceVerificationScreenState extends State<FaceVerificationScreen>
+    with WidgetsBindingObserver {
+  static const int _recordingDuration = 3; // record duration in seconds, more needed for active liveness or more accurate passive liveness
+  static const MethodChannel _channel =
+  MethodChannel('foundation.privacybydesign.vcmrtd/face_verification');
+
   CameraController? _cameraController;
-  List<CameraDescription>? _cameras;
-  Uint8List? _selfieBytes;
-  double? _matchScore;
+  VerificationResult? _result;
   String? _errorMessage;
+  Timer? _countdownTimer;
+
+  _VerificationState _state = _VerificationState.idle;
+  int _countdown = _recordingDuration;
+  bool _cameraOpening = false;
 
   @override
   void initState() {
     super.initState();
-    _initCameras();
+    WidgetsBinding.instance.addObserver(this);
+    _openCamera();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _countdownTimer?.cancel();
     _cameraController?.dispose();
     super.dispose();
   }
 
-  Future<void> _initCameras() async {
-    try {
-      _cameras = await availableCameras();
-    } catch (e) {
-      setState(() => _errorMessage = 'Could not access camera: $e');
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive) {
+      _cameraController?.dispose();
+      _cameraController = null;
+      return;
+    }
+
+    if (state == AppLifecycleState.resumed &&
+        _state == _VerificationState.idle &&
+        (_cameraController == null ||
+            _cameraController?.value.isInitialized != true)) {
+      _openCamera();
     }
   }
 
   Future<void> _openCamera() async {
-    if (_cameras == null || _cameras!.isEmpty) {
-      setState(() => _errorMessage = 'No camera available');
-      return;
-    }
+    if (_cameraOpening) return;
+    if (_cameraController?.value.isInitialized == true) return;
 
-    // Use the front camera, But first let me take a selfie
-    final frontCamera = _cameras!.firstWhere(
-          (c) => c.lensDirection == CameraLensDirection.front,
-      orElse: () => _cameras!.first,
-    );
-
-    _cameraController = CameraController(frontCamera, ResolutionPreset.high);
-
+    _cameraOpening = true;
     try {
-      await _cameraController!.initialize();
-      setState(() => _state = _VerificationState.takingSelfie);
-    } catch (e) {
-      setState(() => _errorMessage = 'Could not initialize camera: $e');
-    }
-  }
+      final cameras = await availableCameras();
+      if (!mounted) return;
 
-  Future<void> _takeSelfie() async {
-    if (_cameraController == null || !_cameraController!.value.isInitialized) return;
+      if (cameras.isEmpty) {
+        setState(() => _errorMessage = 'No camera available');
+        return;
+      }
 
-    try {
-      final file = await _cameraController!.takePicture();
-      final bytes = await file.readAsBytes();
-      await _cameraController!.dispose();
-      _cameraController = null;
+      final front = cameras.firstWhere(
+            (c) => c.lensDirection == CameraLensDirection.front,
+        orElse: () => cameras.first,
+      );
+
+      final controller = CameraController(
+        front,
+        ResolutionPreset.medium,
+        enableAudio: false,
+      );
+
+      await controller.initialize();
+
+      if (!mounted) {
+        await controller.dispose();
+        return;
+      }
+
       setState(() {
-        _selfieBytes = bytes;
-        _state = _VerificationState.reviewingSelfie;
+        _cameraController = controller;
+        _errorMessage = null;
       });
     } catch (e) {
-      setState(() => _errorMessage = 'Could not take photo: $e');
+      if (mounted) {
+        setState(() => _errorMessage = 'Could not open camera: $e');
+      }
+    } finally {
+      _cameraOpening = false;
     }
   }
 
-  Future<void> _retakeSelfie() async {
-    setState(() {
-      _selfieBytes = null;
-      _state = _VerificationState.idle;
-    });
-  }
-
-  static const _channel = MethodChannel('foundation.privacybydesign.vcmrtd/face_verification');
-
-  Future<void> _startVerification() async {
-    setState(() => _state = _VerificationState.processing);
+  Future<void> _startRecording() async {
+    final ctrl = _cameraController;
+    if (ctrl == null || !ctrl.value.isInitialized) return;
+    if (ctrl.value.isRecordingVideo) return;
 
     try {
-      final score = await _channel.invokeMethod<double>('verifyFace', {
+      await ctrl.startVideoRecording();
+      if (!mounted) return;
+
+      setState(() {
+        _state = _VerificationState.recording;
+        _countdown = _recordingDuration;
+        _errorMessage = null;
+      });
+
+      _countdownTimer?.cancel();
+      _countdownTimer =
+          Timer.periodic(const Duration(seconds: 1), (timer) async {
+            if (!mounted) {
+              timer.cancel();
+              return;
+            }
+
+            if (_countdown > 1) {
+              setState(() => _countdown--);
+              return;
+            }
+
+            setState(() => _countdown = 0);
+            timer.cancel();
+            await _stopRecordingAndVerify();
+          });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _errorMessage = 'Could not start recording: $e');
+      }
+    }
+  }
+
+  Future<void> _stopRecordingAndVerify() async {
+    _countdownTimer?.cancel();
+
+    final ctrl = _cameraController;
+    if (ctrl == null || !ctrl.value.isRecordingVideo) return;
+
+    try {
+      final videoFile = await ctrl.stopVideoRecording();
+      await ctrl.dispose();
+
+      if (!mounted) return;
+
+      setState(() {
+        _cameraController = null;
+        _state = _VerificationState.processing;
+      });
+
+      final videoBytes = await compute(_readFileBytes, videoFile.path);
+      await _runVerification(videoBytes);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _errorMessage = 'Could not stop recording: $e');
+      }
+    }
+  }
+
+  Future<void> _runVerification(Uint8List videoBytes) async {
+    try {
+      final result =
+      await _channel.invokeMethod<Map>('verifyFaceAndLiveness', {
         'nfcImage': widget.nfcImageBytes,
-        'selfieImage': _selfieBytes,
+        'videoBytes': videoBytes,
       });
+
+      if (!mounted) return;
+
       setState(() {
-        _matchScore = score;
+        _result = VerificationResult(
+          matchScore: (result?['matchScore'] as num?)?.toDouble() ?? 0.0,
+          isLive: (result?['isLive'] as bool?) ?? false,
+        );
         _state = _VerificationState.result;
       });
     } on PlatformException catch (e) {
+      if (!mounted) return;
+
       setState(() {
         _errorMessage = e.code == 'NO_FACE'
-            ? 'No face detected in one of the photos. Please try again.'
+            ? 'No face detected. Please try again.'
             : 'Verification failed: ${e.message}';
         _state = _VerificationState.idle;
       });
+
+      await _openCamera();
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _errorMessage = 'Verification failed: $e';
+        _state = _VerificationState.idle;
+      });
+
+      await _openCamera();
     }
+  }
+
+  Future<void> _retry() async {
+    _countdownTimer?.cancel();
+    _cameraController?.dispose();
+    _cameraController = null;
+
+    setState(() {
+      _result = null;
+      _errorMessage = null;
+      _state = _VerificationState.idle;
+      _countdown = _recordingDuration;
+    });
+
+    await _openCamera();
+  }
+
+  void _handleBack() {
+    _countdownTimer?.cancel();
+    _cameraController?.dispose();
+    _cameraController = null;
+    widget.onBackPressed();
   }
 
   @override
@@ -124,10 +262,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> {
         title: const Text('Face Verification'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            _cameraController?.dispose();
-            widget.onBackPressed();
-          },
+          onPressed: _handleBack,
         ),
       ),
       body: SafeArea(
@@ -135,8 +270,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> {
             ? _buildError()
             : switch (_state) {
           _VerificationState.idle => _buildIdle(),
-          _VerificationState.takingSelfie => _buildCamera(),
-          _VerificationState.reviewingSelfie => _buildReview(),
+          _VerificationState.recording => _buildRecording(),
           _VerificationState.processing => _buildProcessing(),
           _VerificationState.result => _buildResult(),
         },
@@ -144,97 +278,110 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> {
     );
   }
 
-  Widget _buildIdle() {
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Icon(Icons.face, size: 80, color: Colors.grey),
-          const SizedBox(height: 24),
-          const Text(
-            'Take a selfie to verify your identity',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 18),
+  Widget _buildCameraPreview() {
+    final ctrl = _cameraController;
+    if (ctrl == null || !ctrl.value.isInitialized) {
+      return const ColoredBox(
+        color: Colors.black,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: Colors.white),
+              SizedBox(height: 12),
+              Text(
+                'Opening camera…',
+                style: TextStyle(color: Colors.white70),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Make sure your face is clearly visible and well lit',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey),
-          ),
-          const SizedBox(height: 40),
-          ElevatedButton.icon(
-            onPressed: _openCamera,
-            icon: const Icon(Icons.camera_alt),
-            label: const Text('Take Selfie'),
-          ),
-        ],
+        ),
+      );
+    }
+
+    return ColoredBox(
+      color: Colors.black,
+      child: Center(
+        child: AspectRatio(
+          aspectRatio: 3 / 4,
+          child: CameraPreview(ctrl),
+        ),
       ),
     );
   }
 
-  Widget _buildCamera() {
-    if (_cameraController == null || !_cameraController!.value.isInitialized) {
-      return const Center(child: CircularProgressIndicator());
-    }
+  Widget _buildIdle() {
+    final ready = _cameraController?.value.isInitialized == true;
 
-    return Column(
+    return Stack(
+      fit: StackFit.expand,
       children: [
-        Expanded(child: CameraPreview(_cameraController!)),
-        Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: ElevatedButton.icon(
-            onPressed: _takeSelfie,
-            icon: const Icon(Icons.camera),
-            label: const Text('Take Photo'),
+        _buildCameraPreview(),
+        Positioned(
+          bottom: 40,
+          left: 24,
+          right: 24,
+          child: Column(
+            children: [
+              const Text(
+                'Make sure your face is clearly visible and well lit',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  shadows: [Shadow(blurRadius: 4)],
+                ),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: ready ? _startRecording : null,
+                icon: const Icon(Icons.videocam),
+                label: const Text('Start Verification'),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
 
-  Widget _buildReview() {
-    return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            'Review your selfie',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.memory(_selfieBytes!, fit: BoxFit.cover),
+  Widget _buildRecording() {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        _buildCameraPreview(),
+        Positioned(
+          bottom: 40,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.fiber_manual_record,
+                    color: Colors.red,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Recording… $_countdown',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _retakeSelfie,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Retake'),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _startVerification,
-                  icon: const Icon(Icons.check),
-                  label: const Text('Use this photo'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -245,15 +392,21 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> {
         children: [
           CircularProgressIndicator(),
           SizedBox(height: 24),
-          Text('Verifying identity...', style: TextStyle(fontSize: 16)),
+          Text(
+            'Analyzing liveness and face match…',
+            style: TextStyle(fontSize: 16),
+            textAlign: TextAlign.center,
+          ),
         ],
       ),
     );
   }
 
   Widget _buildResult() {
-    // TODO: drempelwaarde bepalen na testen met het model begin met 50%
-    final isMatch = (_matchScore ?? 0) > 0.6;
+    final result = _result!;
+    final passed =
+        result.matchScore > FaceVerificationScreen.matchThreshold &&
+            result.isLive;
 
     return Padding(
       padding: const EdgeInsets.all(24.0),
@@ -262,33 +415,36 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Icon(
-            isMatch ? Icons.check_circle : Icons.cancel,
+            passed ? Icons.check_circle : Icons.cancel,
             size: 80,
-            color: isMatch ? Colors.green : Colors.red,
+            color: passed ? Colors.green : Colors.red,
           ),
           const SizedBox(height: 24),
           Text(
-            isMatch ? 'Identity Verified' : 'Verification Failed',
+            passed ? 'Identity Verified' : 'Verification Failed',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: isMatch ? Colors.green : Colors.red,
+              color: passed ? Colors.green : Colors.red,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           Text(
-            'Match score: ${((_matchScore ?? 0) * 100).toStringAsFixed(1)}%',
+            'Match score: ${(result.matchScore * 100).toStringAsFixed(1)}%',
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.grey),
           ),
+          Text(
+            'Liveness: ${result.isLive ? 'Live' : 'Not live'}',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: result.isLive ? Colors.green : Colors.red,
+            ),
+          ),
           const SizedBox(height: 40),
           OutlinedButton(
-            onPressed: () => setState(() {
-              _selfieBytes = null;
-              _matchScore = null;
-              _state = _VerificationState.idle;
-            }),
+            onPressed: _retry,
             child: const Text('Try Again'),
           ),
         ],
@@ -308,8 +464,13 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> {
             Text(_errorMessage!, textAlign: TextAlign.center),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: widget.onBackPressed,
+              onPressed: _handleBack,
               child: const Text('Go Back'),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: _retry,
+              child: const Text('Try Again'),
             ),
           ],
         ),
