@@ -48,27 +48,20 @@ bool _isPaceInfo(String oid) =>
 
 /// `PACEDomainParameterInfo` — OID is exactly one of the 5 PACE base OIDs.
 bool _isPaceDomainParameterInfo(String oid) =>
-    oid == oidPaceDhGm ||
-    oid == oidPaceEcdhGm ||
-    oid == oidPaceDhIm ||
-    oid == oidPaceEcdhIm ||
-    oid == oidPaceEcdhCam;
+    oid == oidPaceDhGm || oid == oidPaceEcdhGm || oid == oidPaceDhIm || oid == oidPaceEcdhIm || oid == oidPaceEcdhCam;
 
 /// `ActiveAuthenticationInfo` — OID is `id-icao-mrtd-security-aaProtocolObject`.
 bool _isActiveAuthenticationInfo(String oid) => oid == oidAaProtocol;
 
 /// `ChipAuthenticationInfo` — OID is a strict child of `id-CA-DH` or
 /// `id-CA-ECDH`.
-bool _isChipAuthenticationInfo(String oid) =>
-    oidHasPrefix(oid, oidCaDh) || oidHasPrefix(oid, oidCaEcdh);
+bool _isChipAuthenticationInfo(String oid) => oidHasPrefix(oid, oidCaDh) || oidHasPrefix(oid, oidCaEcdh);
 
 /// `ChipAuthenticationPublicKeyInfo` — OID is exactly `id-PK-DH` or `id-PK-ECDH`.
-bool _isChipAuthenticationPublicKeyInfo(String oid) =>
-    oid == oidPkDh || oid == oidPkEcdh;
+bool _isChipAuthenticationPublicKeyInfo(String oid) => oid == oidPkDh || oid == oidPkEcdh;
 
 /// `TerminalAuthenticationInfo` — OID is `id-TA` or a child of `id-TA`.
-bool _isTerminalAuthenticationInfo(String oid) =>
-    oid == oidTa || oidHasPrefix(oid, oidTa);
+bool _isTerminalAuthenticationInfo(String oid) => oid == oidTa || oidHasPrefix(oid, oidTa);
 
 /// `EFDIRInfo` — OID is exactly `id-EFDIR`.
 bool _isEfDirInfo(String oid) => oid == oidEfDir;
@@ -82,11 +75,7 @@ class PaceDomainParameterInfo {
   final ASN1Sequence domainParameter;
   final int? parameterId;
 
-  PaceDomainParameterInfo({
-    required this.protocol,
-    required this.domainParameter,
-    required this.parameterId,
-  });
+  PaceDomainParameterInfo({required this.protocol, required this.domainParameter, required this.parameterId});
 }
 
 class ActiveAuthenticationInfo {
@@ -94,11 +83,7 @@ class ActiveAuthenticationInfo {
   final int version;
   final String signatureAlgorithm;
 
-  ActiveAuthenticationInfo({
-    required this.protocol,
-    required this.version,
-    required this.signatureAlgorithm,
-  });
+  ActiveAuthenticationInfo({required this.protocol, required this.version, required this.signatureAlgorithm});
 }
 
 class ChipAuthenticationInfo {
@@ -106,11 +91,7 @@ class ChipAuthenticationInfo {
   final int version;
   final int? keyId;
 
-  ChipAuthenticationInfo({
-    required this.protocol,
-    required this.version,
-    required this.keyId,
-  });
+  ChipAuthenticationInfo({required this.protocol, required this.version, required this.keyId});
 }
 
 class ChipAuthenticationPublicKeyInfo {
@@ -156,8 +137,7 @@ class SecurityInfos {
   final List<PaceDomainParameterInfo> paceDomainParameterInfos = [];
   final List<ActiveAuthenticationInfo> activeAuthenticationInfos = [];
   final List<ChipAuthenticationInfo> chipAuthenticationInfos = [];
-  final List<ChipAuthenticationPublicKeyInfo> chipAuthenticationPublicKeyInfos =
-      [];
+  final List<ChipAuthenticationPublicKeyInfo> chipAuthenticationPublicKeyInfos = [];
   final List<TerminalAuthenticationInfo> terminalAuthenticationInfos = [];
   final List<EfDirInfo> efDirInfos = [];
   final List<UnhandledInfo> unhandledInfos = [];
@@ -187,9 +167,7 @@ class SecurityInfos {
     }
     final top = parser.nextObject();
     if (top is! ASN1Set) {
-      throw EfParseError(
-        "Invalid SecurityInfos. Top-level object is not an ASN.1 SET.",
-      );
+      throw EfParseError("Invalid SecurityInfos. Top-level object is not an ASN.1 SET.");
     }
 
     final elements = top.elements;
@@ -249,13 +227,11 @@ class SecurityInfos {
         return;
       }
       if (_isChipAuthenticationPublicKeyInfo(oid)) {
-        chipAuthenticationPublicKeyInfos
-            .add(_parseChipAuthenticationPublicKeyInfo(oid, seq));
+        chipAuthenticationPublicKeyInfos.add(_parseChipAuthenticationPublicKeyInfo(oid, seq));
         return;
       }
       if (_isTerminalAuthenticationInfo(oid)) {
-        terminalAuthenticationInfos
-            .add(_parseTerminalAuthenticationInfo(oid, seq));
+        terminalAuthenticationInfos.add(_parseTerminalAuthenticationInfo(oid, seq));
         return;
       }
       if (_isEfDirInfo(oid)) {
@@ -270,76 +246,44 @@ class SecurityInfos {
     unhandledInfos.add(UnhandledInfo(protocol: oid, raw: seq));
   }
 
-  PaceDomainParameterInfo _parsePaceDomainParameterInfo(
-    String oid,
-    ASN1Sequence seq,
-  ) {
+  PaceDomainParameterInfo _parsePaceDomainParameterInfo(String oid, ASN1Sequence seq) {
     final els = seq.elements!;
     final domainParameter = els[1] as ASN1Sequence;
     int? parameterId;
     if (els.length >= 3) {
       parameterId = (els[2] as ASN1Integer).integer?.toInt();
     }
-    return PaceDomainParameterInfo(
-      protocol: oid,
-      domainParameter: domainParameter,
-      parameterId: parameterId,
-    );
+    return PaceDomainParameterInfo(protocol: oid, domainParameter: domainParameter, parameterId: parameterId);
   }
 
-  ActiveAuthenticationInfo _parseActiveAuthenticationInfo(
-    String oid,
-    ASN1Sequence seq,
-  ) {
+  ActiveAuthenticationInfo _parseActiveAuthenticationInfo(String oid, ASN1Sequence seq) {
     final els = seq.elements!;
     final version = (els[1] as ASN1Integer).integer!.toInt();
-    final sigAlg =
-        (els[2] as ASN1ObjectIdentifier).objectIdentifierAsString!;
-    return ActiveAuthenticationInfo(
-      protocol: oid,
-      version: version,
-      signatureAlgorithm: sigAlg,
-    );
+    final sigAlg = (els[2] as ASN1ObjectIdentifier).objectIdentifierAsString!;
+    return ActiveAuthenticationInfo(protocol: oid, version: version, signatureAlgorithm: sigAlg);
   }
 
-  ChipAuthenticationInfo _parseChipAuthenticationInfo(
-    String oid,
-    ASN1Sequence seq,
-  ) {
+  ChipAuthenticationInfo _parseChipAuthenticationInfo(String oid, ASN1Sequence seq) {
     final els = seq.elements!;
     final version = (els[1] as ASN1Integer).integer!.toInt();
     int? keyId;
     if (els.length >= 3) {
       keyId = (els[2] as ASN1Integer).integer?.toInt();
     }
-    return ChipAuthenticationInfo(
-      protocol: oid,
-      version: version,
-      keyId: keyId,
-    );
+    return ChipAuthenticationInfo(protocol: oid, version: version, keyId: keyId);
   }
 
-  ChipAuthenticationPublicKeyInfo _parseChipAuthenticationPublicKeyInfo(
-    String oid,
-    ASN1Sequence seq,
-  ) {
+  ChipAuthenticationPublicKeyInfo _parseChipAuthenticationPublicKeyInfo(String oid, ASN1Sequence seq) {
     final els = seq.elements!;
     final spki = els[1] as ASN1Sequence;
     int? keyId;
     if (els.length >= 3) {
       keyId = (els[2] as ASN1Integer).integer?.toInt();
     }
-    return ChipAuthenticationPublicKeyInfo(
-      protocol: oid,
-      chipAuthenticationPublicKey: spki,
-      keyId: keyId,
-    );
+    return ChipAuthenticationPublicKeyInfo(protocol: oid, chipAuthenticationPublicKey: spki, keyId: keyId);
   }
 
-  TerminalAuthenticationInfo _parseTerminalAuthenticationInfo(
-    String oid,
-    ASN1Sequence seq,
-  ) {
+  TerminalAuthenticationInfo _parseTerminalAuthenticationInfo(String oid, ASN1Sequence seq) {
     final els = seq.elements!;
     final version = (els[1] as ASN1Integer).integer!.toInt();
     return TerminalAuthenticationInfo(protocol: oid, version: version);
@@ -348,9 +292,6 @@ class SecurityInfos {
   EfDirInfo _parseEfDirInfo(String oid, ASN1Sequence seq) {
     final els = seq.elements!;
     final octetString = els[1] as ASN1OctetString;
-    return EfDirInfo(
-      protocol: oid,
-      efDir: Uint8List.fromList(octetString.octets ?? Uint8List(0)),
-    );
+    return EfDirInfo(protocol: oid, efDir: Uint8List.fromList(octetString.octets ?? Uint8List(0)));
   }
 }

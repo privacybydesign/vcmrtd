@@ -29,16 +29,12 @@ void main() {
     // Single PACEInfo using id-PACE-ECDH-GM-AES-CBC-CMAC-128 (0.4.0.127.0.7.2.2.4.2.2)
     // with version=2 and parameterId=13. Representative of an Austrian passport.
     test('Parses AT SecurityInfos with a single PACEInfo (ECDH-GM-128)', () {
-      final data =
-          '31143012060a04007f0007020204020202010202010d'.parseHex();
+      final data = '31143012060a04007f0007020204020202010202010d'.parseHex();
 
       final ef = EfCardAccess.fromBytes(data);
 
       expect(ef.paceInfo, isNotNull);
-      expect(
-        ef.paceInfo!.protocol.identifierString,
-        '0.4.0.127.0.7.2.2.4.2.2',
-      );
+      expect(ef.paceInfo!.protocol.identifierString, '0.4.0.127.0.7.2.2.4.2.2');
       expect(ef.paceInfo!.version, 2);
       expect(ef.paceInfo!.parameterId, 13);
     });
@@ -66,10 +62,7 @@ void main() {
       // After the fix, a CAM-capable chip should have its CAM entry selected
       // as the preferred PACEInfo (PACE-CAM is strictly stronger than PACE-GM
       // because it additionally authenticates the chip; ICAO 9303 p11 §4.4).
-      expect(
-        ef.paceInfo!.protocol.identifierString,
-        '0.4.0.127.0.7.2.2.4.6.2',
-      );
+      expect(ef.paceInfo!.protocol.identifierString, '0.4.0.127.0.7.2.2.4.6.2');
       expect(ef.paceInfo!.version, 2);
       expect(ef.paceInfo!.parameterId, 13);
     });
@@ -92,29 +85,23 @@ void main() {
     // After the fix EF.CardAccess should be parsed as a heterogeneous
     // SET OF SecurityInfo — exactly the approach gmrtd takes in
     // document/security_infos.go (DecodeSecurityInfos + per-type handlers).
-    test(
-      'Parses SecurityInfos with TerminalAuthenticationInfo before PACEInfo (issue #120)',
-      () {
-        // SET (len 0x23 = 35):
-        //   SEQUENCE (len 13): id-TA (0.4.0.127.0.7.2.2.2), version 2
-        //   SEQUENCE (len 18): id-PACE-ECDH-CAM-AES-CBC-CMAC-128, v2, paramId 13
-        final data =
-            ('3123'
-                    '300d060804007f0007020202020102'
-                    '3012060a04007f0007020204060202010202010d')
-                .parseHex();
+    test('Parses SecurityInfos with TerminalAuthenticationInfo before PACEInfo (issue #120)', () {
+      // SET (len 0x23 = 35):
+      //   SEQUENCE (len 13): id-TA (0.4.0.127.0.7.2.2.2), version 2
+      //   SEQUENCE (len 18): id-PACE-ECDH-CAM-AES-CBC-CMAC-128, v2, paramId 13
+      final data =
+          ('3123'
+                  '300d060804007f0007020202020102'
+                  '3012060a04007f0007020204060202010202010d')
+              .parseHex();
 
-        final ef = EfCardAccess.fromBytes(data);
+      final ef = EfCardAccess.fromBytes(data);
 
-        expect(ef.paceInfo, isNotNull);
-        expect(
-          ef.paceInfo!.protocol.identifierString,
-          '0.4.0.127.0.7.2.2.4.6.2',
-        );
-        expect(ef.paceInfo!.version, 2);
-        expect(ef.paceInfo!.parameterId, 13);
-      },
-    );
+      expect(ef.paceInfo, isNotNull);
+      expect(ef.paceInfo!.protocol.identifierString, '0.4.0.127.0.7.2.2.4.6.2');
+      expect(ef.paceInfo!.version, 2);
+      expect(ef.paceInfo!.parameterId, 13);
+    });
 
     // Matches gmrtd: document/security_infos_test.go
     // TestDecodeSecurityInfosCardSecFile
@@ -132,8 +119,7 @@ void main() {
     //   - 2 x ChipAuthenticationPublicKeyInfo
     //
     // On master this blows up in the exact way issue #120 reports.
-    test('Parses real-world DE SecurityInfos (CardSecurity) with mixed types',
-        () {
+    test('Parses real-world DE SecurityInfos (CardSecurity) with mixed types', () {
       final data =
           ('31820131'
                   '300d060804007f0007020202020102'
@@ -152,10 +138,7 @@ void main() {
       expect(ef.paceInfo, isNotNull);
       // A German passport advertising PACE-CAM must have the CAM protocol
       // selected as the active PACEInfo.
-      expect(
-        ef.paceInfo!.protocol.identifierString,
-        '0.4.0.127.0.7.2.2.4.6.2',
-      );
+      expect(ef.paceInfo!.protocol.identifierString, '0.4.0.127.0.7.2.2.4.6.2');
       expect(ef.paceInfo!.version, 2);
       expect(ef.paceInfo!.parameterId, 13);
     });
@@ -167,13 +150,10 @@ void main() {
     // throw during parsing. There is no PACEInfo present, so `paceInfo`
     // should simply be null / unset. The current master parser throws on
     // this input because it tries to parse element[0] as a PACEInfo.
-    test(
-      'Does not throw on SecurityInfos containing only TerminalAuthenticationInfo',
-      () {
-        final data = '310f300d060804007f0007020202020101'.parseHex();
+    test('Does not throw on SecurityInfos containing only TerminalAuthenticationInfo', () {
+      final data = '310f300d060804007f0007020202020101'.parseHex();
 
-        expect(() => EfCardAccess.fromBytes(data), returnsNormally);
-      },
-    );
+      expect(() => EfCardAccess.fromBytes(data), returnsNormally);
+    });
   });
 }

@@ -84,9 +84,7 @@ PaceInfo? _selectPreferredPaceInfo(List<PaceInfo>? infos) {
   }
   final sorted = [...infos];
   sorted.sort((a, b) {
-    final byMapping =
-        _mappingPreference(b.protocol.mappingType) -
-            _mappingPreference(a.protocol.mappingType);
+    final byMapping = _mappingPreference(b.protocol.mappingType) - _mappingPreference(a.protocol.mappingType);
     if (byMapping != 0) return byMapping;
     return b.protocol.keyLength.value.compareTo(a.protocol.keyLength.value);
   });
