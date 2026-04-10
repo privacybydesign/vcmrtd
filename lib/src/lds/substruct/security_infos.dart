@@ -28,69 +28,50 @@ import 'package:pointycastle/asn1/primitives/asn1_octet_string.dart';
 import 'package:pointycastle/asn1/primitives/asn1_sequence.dart';
 import 'package:pointycastle/asn1/primitives/asn1_set.dart';
 
+import '../asn1ObjectIdentifiers.dart';
 import '../ef.dart';
 import 'pace_info.dart';
 
 // ----------------------------------------------------------------------------
-// Base OIDs (ICAO 9303 Part 11 §9.2), matching gmrtd/oid/oid.go.
-// ----------------------------------------------------------------------------
-
-const String _oidPaceDhGm = '0.4.0.127.0.7.2.2.4.1';
-const String _oidPaceEcdhGm = '0.4.0.127.0.7.2.2.4.2';
-const String _oidPaceDhIm = '0.4.0.127.0.7.2.2.4.3';
-const String _oidPaceEcdhIm = '0.4.0.127.0.7.2.2.4.4';
-const String _oidPaceEcdhCam = '0.4.0.127.0.7.2.2.4.6';
-const String _oidTa = '0.4.0.127.0.7.2.2.2';
-const String _oidCaDh = '0.4.0.127.0.7.2.2.3.1';
-const String _oidCaEcdh = '0.4.0.127.0.7.2.2.3.2';
-const String _oidPkDh = '0.4.0.127.0.7.2.2.1.1';
-const String _oidPkEcdh = '0.4.0.127.0.7.2.2.1.2';
-const String _oidAaProtocol = '2.23.136.1.1.5';
-const String _oidEfDir = '1.3.27.1.1.13';
-
-/// Strict OID prefix test: `oid` must have strictly more arcs than `prefix`
-/// (matches gmrtd's `OidHasPrefix`).
-bool _oidHasPrefix(String oid, String prefix) =>
-    oid.startsWith('$prefix.');
-
-// ----------------------------------------------------------------------------
-// Type predicates — mirror the `isXxx` helpers in gmrtd/document/security_infos.go.
+// Type predicates — mirror the `isXxx` helpers in
+// gmrtd/document/security_infos.go. Base OIDs and `oidHasPrefix` live in
+// asn1ObjectIdentifiers.dart.
 // ----------------------------------------------------------------------------
 
 /// `PACEInfo` — OID is a strict child of one of the 5 PACE base OIDs.
 bool _isPaceInfo(String oid) =>
-    _oidHasPrefix(oid, _oidPaceDhGm) ||
-    _oidHasPrefix(oid, _oidPaceEcdhGm) ||
-    _oidHasPrefix(oid, _oidPaceDhIm) ||
-    _oidHasPrefix(oid, _oidPaceEcdhIm) ||
-    _oidHasPrefix(oid, _oidPaceEcdhCam);
+    oidHasPrefix(oid, oidPaceDhGm) ||
+    oidHasPrefix(oid, oidPaceEcdhGm) ||
+    oidHasPrefix(oid, oidPaceDhIm) ||
+    oidHasPrefix(oid, oidPaceEcdhIm) ||
+    oidHasPrefix(oid, oidPaceEcdhCam);
 
 /// `PACEDomainParameterInfo` — OID is exactly one of the 5 PACE base OIDs.
 bool _isPaceDomainParameterInfo(String oid) =>
-    oid == _oidPaceDhGm ||
-    oid == _oidPaceEcdhGm ||
-    oid == _oidPaceDhIm ||
-    oid == _oidPaceEcdhIm ||
-    oid == _oidPaceEcdhCam;
+    oid == oidPaceDhGm ||
+    oid == oidPaceEcdhGm ||
+    oid == oidPaceDhIm ||
+    oid == oidPaceEcdhIm ||
+    oid == oidPaceEcdhCam;
 
 /// `ActiveAuthenticationInfo` — OID is `id-icao-mrtd-security-aaProtocolObject`.
-bool _isActiveAuthenticationInfo(String oid) => oid == _oidAaProtocol;
+bool _isActiveAuthenticationInfo(String oid) => oid == oidAaProtocol;
 
 /// `ChipAuthenticationInfo` — OID is a strict child of `id-CA-DH` or
 /// `id-CA-ECDH`.
 bool _isChipAuthenticationInfo(String oid) =>
-    _oidHasPrefix(oid, _oidCaDh) || _oidHasPrefix(oid, _oidCaEcdh);
+    oidHasPrefix(oid, oidCaDh) || oidHasPrefix(oid, oidCaEcdh);
 
 /// `ChipAuthenticationPublicKeyInfo` — OID is exactly `id-PK-DH` or `id-PK-ECDH`.
 bool _isChipAuthenticationPublicKeyInfo(String oid) =>
-    oid == _oidPkDh || oid == _oidPkEcdh;
+    oid == oidPkDh || oid == oidPkEcdh;
 
 /// `TerminalAuthenticationInfo` — OID is `id-TA` or a child of `id-TA`.
 bool _isTerminalAuthenticationInfo(String oid) =>
-    oid == _oidTa || _oidHasPrefix(oid, _oidTa);
+    oid == oidTa || oidHasPrefix(oid, oidTa);
 
 /// `EFDIRInfo` — OID is exactly `id-EFDIR`.
-bool _isEfDirInfo(String oid) => oid == _oidEfDir;
+bool _isEfDirInfo(String oid) => oid == oidEfDir;
 
 // ----------------------------------------------------------------------------
 // Concrete SecurityInfo record types.

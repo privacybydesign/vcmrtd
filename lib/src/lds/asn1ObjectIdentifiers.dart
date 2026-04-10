@@ -9,6 +9,43 @@ import '../types/exception.dart';
 
 // here you can add additional object identifiers that are not defined in pointycastle library
 
+// ----------------------------------------------------------------------------
+// Base OIDs used for dispatching heterogeneous `SecurityInfos` entries
+// (ICAO 9303 Part 11 §9.2). Concrete cipher-specific OIDs (e.g.
+// id-PACE-ECDH-CAM-AES-CBC-CMAC-128) are children of these base OIDs.
+//
+// Matches gmrtd/oid/oid.go so vcmrtd's SecurityInfos dispatcher can be
+// compared 1:1 against the reference implementation.
+// ----------------------------------------------------------------------------
+
+// PACE protocol families (children of id-PACE = 0.4.0.127.0.7.2.2.4)
+const String oidPaceDhGm = '0.4.0.127.0.7.2.2.4.1';
+const String oidPaceEcdhGm = '0.4.0.127.0.7.2.2.4.2';
+const String oidPaceDhIm = '0.4.0.127.0.7.2.2.4.3';
+const String oidPaceEcdhIm = '0.4.0.127.0.7.2.2.4.4';
+const String oidPaceEcdhCam = '0.4.0.127.0.7.2.2.4.6';
+
+// Chip Authentication (children of id-CA = 0.4.0.127.0.7.2.2.3)
+const String oidCaDh = '0.4.0.127.0.7.2.2.3.1';
+const String oidCaEcdh = '0.4.0.127.0.7.2.2.3.2';
+
+// Chip Authentication public keys (children of id-PK = 0.4.0.127.0.7.2.2.1)
+const String oidPkDh = '0.4.0.127.0.7.2.2.1.1';
+const String oidPkEcdh = '0.4.0.127.0.7.2.2.1.2';
+
+// Terminal Authentication
+const String oidTa = '0.4.0.127.0.7.2.2.2';
+
+// Active Authentication (id-icao-mrtd-security-aaProtocolObject)
+const String oidAaProtocol = '2.23.136.1.1.5';
+
+// EF.DIR info (id-EFDIR)
+const String oidEfDir = '1.3.27.1.1.13';
+
+/// Strict OID prefix test: `oid` must have strictly more arcs than [prefix].
+/// Equivalent to gmrtd's `OidHasPrefix`.
+bool oidHasPrefix(String oid, String prefix) => oid.startsWith('$prefix.');
+
 /*
   ID_PACE_DH_GM_3DES_CBC_CBC,       0.4.0.127.0.7.2.2.4.1.1
   ID_PACE_DH_GM_AES_CBC_CMAC_128,   0.4.0.127.0.7.2.2.4.1.2
