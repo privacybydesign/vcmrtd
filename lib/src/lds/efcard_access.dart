@@ -6,17 +6,38 @@ import 'dart:typed_data';
 import 'package:vcmrtd/extensions.dart';
 import "package:vcmrtd/src/lds/df1/dg.dart";
 import 'package:logging/logging.dart';
-import 'package:pointycastle/asn1.dart';
 
+import '../lds/asn1ObjectIdentifiers.dart';
 import 'ef.dart';
 import 'substruct/pace_info.dart';
+import 'substruct/security_infos.dart';
 
 class EfCardAccess extends ElementaryFile {
   static const FID = 0x011C;
   static const SFI = 0x1C;
   static const TAG = DgTag(0x6C);
 
-  PaceInfo? paceInfo;
+  SecurityInfos? _securityInfos;
+
+  /// All SecurityInfos parsed from this EF.CardAccess file.
+  ///
+  /// EF.CardAccess is a `SET OF SecurityInfo` (ICAO 9303 Part 11 §9.2) and may
+  /// contain heterogeneous entries — PACEInfo, PACEDomainParameterInfo,
+  /// ChipAuthenticationInfo, ChipAuthenticationPublicKeyInfo,
+  /// TerminalAuthenticationInfo, ActiveAuthenticationInfo, EFDIRInfo — in any
+  /// combination. Use this getter when you need to inspect the full set;
+  /// most callers want [paceInfo] for the preferred PACEInfo.
+  SecurityInfos? get securityInfos => _securityInfos;
+
+  /// Preferred `PACEInfo` for running a PACE session.
+  ///
+  /// When a chip advertises multiple PACEInfos (e.g. German ePassports
+  /// advertise both `id-PACE-ECDH-GM-AES-CBC-CMAC-128` and
+  /// `id-PACE-ECDH-CAM-AES-CBC-CMAC-128`), this getter returns the
+  /// cryptographically strongest one: CAM is preferred over GM, GM is
+  /// preferred over IM, and within the same mapping type a larger key
+  /// length wins. Returns `null` if the file advertises no PACEInfo.
+  PaceInfo? get paceInfo => _selectPreferredPaceInfo(_securityInfos?.paceInfos);
 
   bool get isPaceInfoSet => paceInfo != null;
 
@@ -34,68 +55,51 @@ class EfCardAccess extends ElementaryFile {
   void parse(Uint8List content) {
     _log.sdVerbose("Parsing EF.CardAccess${content.hex()}");
 
-    var parser = ASN1Parser(content);
-    if (!parser.hasNext()) {
-      _log.error("Invalid structure of EF.CardAccess. No data to parse.");
-      throw EfParseError("Invalid structure of EF.CardAccess. No data to parse.");
-    }
+    _securityInfos = SecurityInfos.parse(content);
 
-    ASN1Set set = parser.nextObject() as ASN1Set;
+    _log.info(
+      "Parsed EF.CardAccess SecurityInfos: "
+      "total=${_securityInfos!.totalCount}, "
+      "paceInfos=${_securityInfos!.paceInfos.length}, "
+      "paceDomainParameterInfos=${_securityInfos!.paceDomainParameterInfos.length}, "
+      "activeAuthenticationInfos=${_securityInfos!.activeAuthenticationInfos.length}, "
+      "chipAuthenticationInfos=${_securityInfos!.chipAuthenticationInfos.length}, "
+      "chipAuthenticationPublicKeyInfos=${_securityInfos!.chipAuthenticationPublicKeyInfos.length}, "
+      "terminalAuthenticationInfos=${_securityInfos!.terminalAuthenticationInfos.length}, "
+      "efDirInfos=${_securityInfos!.efDirInfos.length}, "
+      "unhandled=${_securityInfos!.unhandledInfos.length}",
+    );
+  }
+}
 
-    // there are 2 structures of EF.CardAccess but second one is not required
-    // - PaceInfo
-    // - PACEDomainParameterInfo
+/// Selects the cryptographically strongest `PaceInfo` from [infos].
+///
+/// Preference order:
+///   1. Mapping type: CAM > GM > IM (CAM additionally authenticates the chip
+///      and is strictly stronger than GM; see ICAO 9303 p11 §4.4).
+///   2. Key length (s256 > s192 > s128) within the same mapping type.
+PaceInfo? _selectPreferredPaceInfo(List<PaceInfo>? infos) {
+  if (infos == null || infos.isEmpty) {
+    return null;
+  }
+  final sorted = [...infos];
+  sorted.sort((a, b) {
+    final byMapping =
+        _mappingPreference(b.protocol.mappingType) -
+            _mappingPreference(a.protocol.mappingType);
+    if (byMapping != 0) return byMapping;
+    return b.protocol.keyLength.value.compareTo(a.protocol.keyLength.value);
+  });
+  return sorted.first;
+}
 
-    if (set.elements == null || set.elements!.isEmpty) {
-      _log.error("Invalid structure of EF.CardAccess. More than one element in set.");
-      throw EfParseError("Invalid structure of EF.CardAccess. More than one element in set.");
-    }
-
-    if (set.elements![0] is! ASN1Sequence) {
-      _log.error("Invalid structure of EF.CardAccess. First element in set is not ASN1Sequence.");
-      throw EfParseError("Invalid structure of EF.CardAccess. First element in set is not ASN1Sequence.");
-    }
-
-    PaceInfo pi = PaceInfo(content: set.elements![0] as ASN1Sequence);
-    _log.info("PaceInfo parsed.");
-
-    _log.sdDebug("PaceInfo: $pi");
-
-    paceInfo = pi;
-
-    _log.severe("PaceInfo substruct has been saved to efcardaccess member ( paceInfo )");
-
-    //TODO: parse PACEDomainParameterInfo(9303 p11, 9.2.1)
-    /*
-      PACEDomainParameterInfo ::= SEQUENCE {
-        protocol OBJECT IDENTIFIER(
-        id-PACE-DH-GM |
-        id-PACE-ECDH-GM |
-        id-PACE-DH-IM |
-        id-PACE-ECDH-IM |
-        id-PACE-ECDH-CAM),
-        domainParameter AlgorithmIdentifier,
-        parameterId INTEGER OPTIONAL
-      }
-     */
-
-    /*String paceOID = "id-PACE-ECDH-GM-AES-CBC-CMAC-128"; //0.4.0.127.0.7.2.2.4.2.2
-    int parameterSpec = 2;
-    PaceMappingType paceMappingType = PaceMappingType.GM;
-    String aggrementAlgorithm = "ECDH";
-    String cipherAlgorithm = "AES";
-    String digestAlgorithm = "SHA-1";
-    int keyLength = 128;
-    String mrzKey = "PB1777140590020743305304";
-
-    //List<int> buf = utf8.encode(mrzKey);
-    Uint8List buf = Uint8List.fromList(utf8.encode(mrzKey));
-    Digest sha1 = Digest("SHA-1");
-    List<int> sha1Bytes = sha1.process(buf);
-    String sha1Hex = sha1Bytes.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
-
-    var smskg = SecureMessagingSessionKeyGenerator();
-    var key = await smskg.deriveKey(keySeed: hash, cipherAlgName: cipherAlg, keyLength: keyLength, nonce: null, mode: SecureMessagingSessionKeyDerivationMode.PACE_MODE, paceKeyReference: paceKeyType);
-    return key;*/
+int _mappingPreference(MAPPING_TYPE mappingType) {
+  switch (mappingType) {
+    case MAPPING_TYPE.CAM:
+      return 2;
+    case MAPPING_TYPE.GM:
+      return 1;
+    case MAPPING_TYPE.IM:
+      return 0;
   }
 }
