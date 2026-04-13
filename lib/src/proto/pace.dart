@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:collection/collection.dart';
 import 'package:vcmrtd/extensions.dart';
+import 'package:pointycastle/asn1/primitives/asn1_sequence.dart';
 import 'package:vcmrtd/src/lds/asn1ObjectIdentifiers.dart';
 import 'package:vcmrtd/src/proto/public_key_pace.dart';
 import 'package:vcmrtd/src/crypto/kdf.dart';
@@ -18,6 +19,7 @@ import 'package:pointycastle/ecc/api.dart';
 
 import "package:vcmrtd/src/lds/tlv.dart";
 import "package:vcmrtd/src/proto/iso7816/icc.dart";
+import 'iso7816/response_apdu.dart';
 import 'package:vcmrtd/src/lds/efcard_access.dart';
 
 import '../lds/tlvSet.dart';
@@ -26,6 +28,9 @@ import 'access_key.dart';
 import 'ecdh_pace.dart';
 import 'dh_pace.dart';
 import 'aes_smcipher.dart';
+import 'pace_cam.dart';
+import '../lds/efcard_security.dart';
+import '../lds/substruct/security_infos.dart' show ChipAuthenticationPublicKeyInfo;
 
 // Specified in section 9.2.1 of ICAO 9303 p11 doc only this algorithms are
 // supported
@@ -298,6 +303,19 @@ class PACEError implements Exception {
   PACEError(this.message);
   @override
   String toString() => message;
+}
+
+/// Result of a PACE session establishment, analogous to gmrtd's document.PaceResult.
+class PaceResult {
+  final String oid;
+  final int parameterId;
+  final bool chipAuthenticated;
+
+  PaceResult({
+    required this.oid,
+    required this.parameterId,
+    this.chipAuthenticated = false,
+  });
 }
 
 /// Class defines Password Authenticated Connection Establishment (PACE)
@@ -602,11 +620,12 @@ class PACE {
     }
   }
 
-  static Future<void> ecdh({
+  static Future<bool> ecdh({
     required ICC icc,
     required Uint8List nonce,
     required int paceDomainParameterId,
     required OIEPaceProtocol paceProtocol,
+    required MAPPING_TYPE mappingType,
   }) async {
     try {
       _log.debug("PACE >ECDH< key establishment (from step 2 to step 4) ...");
@@ -747,6 +766,9 @@ class PACE {
           throw PACEError("PACE(4); Auth token from ICC and terminal are not the same");
         }
 
+        // Save ECAD and mapping public key before setting up SM (needed for CAM)
+        final ecad = apduStep4Pace.encryptedChipAuthData;
+
         _log.debug("Finished PACE SM key establishment");
         _log.debug("Setting up SM session ...");
         CipherAlgorithm cipherAlgo = paceProtocol.cipherAlgoritm;
@@ -761,6 +783,41 @@ class PACE {
           throw PACEError("PACE.Cipher algorithm is not supported");
         }
         _log.debug("... SM (with ECDH) session is set up.");
+
+        // PACE-CAM chip authentication verification (ICAO 9303 Part 11 §4.4.3.5)
+        // Matching gmrtd pace.go:571-583 (doGenericMappingGmCam → doCamEcdh)
+        bool chipAuthenticated = false;
+        if (mappingType == MAPPING_TYPE.CAM) {
+          if (ecad == null || ecad.isEmpty) {
+            throw PACEError("PACE-CAM: ECAD missing from step 4 response");
+          }
+
+          _log.debug("PACE-CAM: reading EF.CardSecurity over SM ...");
+          final cardSecurityBytes = await _readCardSecurity(icc);
+          final cardSecurity = EfCardSecurity.fromBytes(cardSecurityBytes);
+          final secInfos = cardSecurity.securityInfos;
+          if (secInfos == null || secInfos.chipAuthenticationPublicKeyInfos.isEmpty) {
+            throw PACEError("PACE-CAM: no ChipAuthenticationPublicKeyInfo in EF.CardSecurity");
+          }
+
+          // Extract PK_IC matching domain parameter ID
+          // Matching gmrtd pace.go:421-443 (icPubKeyECForCAM)
+          final pkIc = _extractPkIcForCAM(secInfos.chipAuthenticationPublicKeyInfos, paceDomainParameterId);
+
+          PaceCam.verifyChipAuthentication(
+            encryptedChipAuthData: ecad,
+            ksEnc: encKey,
+            keyLength: paceProtocol.keyLength,
+            pkIcX: pkIc.x,
+            pkIcY: pkIc.y,
+            pkMapIcX: publicICCenvelope!.xBytes,
+            pkMapIcY: publicICCenvelope!.yBytes,
+            domainParameterId: paceDomainParameterId,
+          );
+          _log.debug("PACE-CAM verification successful");
+          chipAuthenticated = true;
+        }
+        return chipAuthenticated;
       } on Exception catch (e) {
         _log.error("PACE <ECDH> (4); Failed: $e");
         throw PACEError("PACE <ECDH> (4); Failed: $e");
@@ -940,7 +997,100 @@ class PACE {
     }
   }
 
-  static Future<void> initSession({
+  /// Reads EF.CardSecurity (FID 0x011D) from the chip over secure messaging.
+  /// Matching gmrtd pace.go:529-543 (loadCardSecurityFile).
+  static Future<Uint8List> _readCardSecurity(ICC icc) async {
+    _log.debug("Reading EF.CardSecurity (FID 0x011D) ...");
+    final efId = Uint8List(2);
+    ByteData.view(efId.buffer).setUint16(0, EfCardSecurity.FID);
+    await icc.selectEF(efId: efId);
+
+    // Read initial chunk to determine file length
+    final chunk1 = await icc.readBinary(offset: 0, ne: 256);
+    if (chunk1.data == null || chunk1.data!.isEmpty) {
+      throw PACEError("PACE-CAM: Failed to read EF.CardSecurity");
+    }
+
+    final dtl = TLV.decodeTagAndLength(chunk1.data!);
+    final totalLen = dtl.encodedLen + dtl.length.value;
+
+    // Read remaining chunks
+    var data = Uint8List.fromList(chunk1.data!);
+    while (data.length < totalLen) {
+      final remaining = totalLen - data.length;
+      final nRead = remaining > 256 ? 256 : remaining;
+      final ResponseAPDU chunk;
+      if (data.length > 0x7FFF) {
+        chunk = await icc.readBinaryExt(offset: data.length, ne: nRead);
+      } else {
+        chunk = await icc.readBinary(offset: data.length, ne: nRead);
+      }
+      if (chunk.data == null || chunk.data!.isEmpty) break;
+      data = Uint8List.fromList(data + chunk.data!);
+    }
+    _log.debug("EF.CardSecurity read: ${data.length} bytes");
+    return data;
+  }
+
+  /// Extracts the chip's static EC public key (PK_IC) from ChipAuthenticationPublicKeyInfo
+  /// entries, matching the given domain parameter ID.
+  /// Matching gmrtd pace.go:421-443 (icPubKeyECForCAM).
+  static ({Uint8List x, Uint8List y}) _extractPkIcForCAM(
+    List<ChipAuthenticationPublicKeyInfo> caPubKeyInfos,
+    int domainParameterId,
+  ) {
+    for (final info in caPubKeyInfos) {
+      // Only evaluate EC keys (protocol == id-PK-ECDH)
+      if (info.protocol != '0.4.0.127.0.7.2.2.1.2') continue;
+
+      final spki = info.chipAuthenticationPublicKey;
+      final spkiElements = spki.elements;
+      if (spkiElements == null || spkiElements.length < 2) continue;
+
+      // SubjectPublicKeyInfo = SEQUENCE { algorithm, subjectPublicKey }
+      // algorithm = SEQUENCE { algorithm OID, parameters (domain param ID) }
+      final algorithmObj = spkiElements[0];
+      if (algorithmObj is! ASN1Sequence) continue;
+      final algElements = algorithmObj.elements;
+      if (algElements == null || algElements.length < 2) continue;
+
+      // Parameters encode the domain parameter ID
+      final params = algElements[1];
+      final paramBytes = params.valueBytes;
+      if (paramBytes == null || paramBytes.isEmpty) continue;
+
+      // Decode parameter ID from the encoded value
+      int paramId = 0;
+      for (final b in paramBytes) {
+        paramId = (paramId << 8) | b;
+      }
+      if (paramId != domainParameterId) continue;
+
+      // Extract the SubjectPublicKey (BIT STRING)
+      // BIT STRING encoding: first byte = unused bits count, rest = data
+      final subjectPublicKeyObj = spkiElements[1];
+      var keyBytes = subjectPublicKeyObj.valueBytes;
+      if (keyBytes == null || keyBytes.isEmpty) continue;
+
+      // Skip unused-bits byte if present (BIT STRING)
+      if (keyBytes[0] == 0x00) {
+        keyBytes = keyBytes.sublist(1);
+      }
+
+      // X9.62 uncompressed point: 04 || X || Y
+      if (keyBytes[0] != 0x04) {
+        _log.warning("PACE-CAM: Expected uncompressed EC point (0x04 prefix)");
+        continue;
+      }
+      final coordLen = (keyBytes.length - 1) ~/ 2;
+      final x = Uint8List.fromList(keyBytes.sublist(1, 1 + coordLen));
+      final y = Uint8List.fromList(keyBytes.sublist(1 + coordLen));
+      return (x: x, y: y);
+    }
+    throw PACEError("PACE-CAM: unable to find EC public key for domain parameter $domainParameterId in EF.CardSecurity");
+  }
+
+  static Future<PaceResult> initSession({
     required PaceKey paceKey,
     required ICC icc,
     required EfCardAccess efCardAccess,
@@ -966,6 +1116,13 @@ class PACE {
 
       OIEPaceProtocol paceProtocol = efCardAccess.paceInfo!.protocol;
       _log.debug("Protocol: $paceProtocol");
+
+      // Reject PACE-IM before any APDU is sent (matching gmrtd pace.go:704)
+      MAPPING_TYPE mappingType = paceProtocol.mappingType;
+      if (mappingType == MAPPING_TYPE.IM) {
+        _log.error("PACE-IM is not implemented");
+        throw PACEError("PACE-IM NOT IMPLEMENTED");
+      }
 
       int paceDomainParameterId = efCardAccess.paceInfo!.parameterId!;
       // we already know that protocol is supported
@@ -1010,13 +1167,15 @@ class PACE {
       }
 
       //step 2, 3 and 4
+      bool chipAuthenticated = false;
       if (paceProtocol.tokenAgreementAlgorithm == TOKEN_AGREEMENT_ALGO.ECDH) {
         _log.debug("Going to ECDH key establishment (on step 2, 3 and 4)");
-        await ecdh(
+        chipAuthenticated = await ecdh(
           icc: icc,
           nonce: decryptedNonce,
           paceDomainParameterId: paceDomainParameterId,
           paceProtocol: paceProtocol,
+          mappingType: mappingType,
         );
       } else if (paceProtocol.tokenAgreementAlgorithm == TOKEN_AGREEMENT_ALGO.DH) {
         _log.debug("Going to DH key establishment (on step 2, 3 and 4)");
@@ -1030,6 +1189,12 @@ class PACE {
         _log.error("PACE token agreement algorithm is not supported");
         throw PACEError("PACE token agreement algorithm is not supported");
       }
+
+      return PaceResult(
+        oid: paceProtocol.identifierString,
+        parameterId: paceDomainParameterId,
+        chipAuthenticated: chipAuthenticated,
+      );
     } on Exception catch (e) {
       _log.error("PACE key establishment failed: $e");
       throw PACEError("PACE key establishment failed: $e");
