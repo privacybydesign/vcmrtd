@@ -1,0 +1,31 @@
+name: twentyface_flutter_example
+description: "Demonstrates how to use the twentyface_flutter plugin."
+publish_to: 'none'
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  twentyface_flutter:
+    path: ../
+
+  cupertino_icons: ^1.0.8
+  camera: ^0.11.0
+  http: ^1.2.0
+  image_picker: ^1.0.7
+
+dev_dependencies:
+  integration_test:
+    sdk: flutter
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/

@@ -1,0 +1,27 @@
+name: twentyface_flutter
+description: "Flutter plugin for 20face SDK face verification. Enables comparison of live camera images against passport photos (DG2)."
+version: 0.0.1
+homepage: https://github.com/privacybydesign/vcmrtd
+
+environment:
+  sdk: ^3.10.4
+  flutter: '>=3.3.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  camera: ^0.11.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: nl.twentyface.twentyface_flutter
+        pluginClass: TwentyfaceFlutterPlugin
+      ios:
+        pluginClass: TwentyfaceFlutterPlugin
