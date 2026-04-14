@@ -1,16 +1,15 @@
-# Workflow to check whether changes in a pull request fulfill all requirements.
-# We execute build stages in separate jobs to prevent artifact duplication.
+# Workflow to check whether changes to master fulfill all requirements.
 name: Status checks
 
 on:
+  push:
+    branches: [ master ]
   pull_request:
   schedule:
-    # Run every sunday at noon. The weekly run ensures that cached resources don't expire.
-    - cron: "0 12 * * 0"
-
-concurrency:
-  group: ${{ github.ref }}
-  cancel-in-progress: true
+    # Run every monday on 9:00 in the morning (UTC).
+    - cron: "0 9 * * 1"
+  # Make it possible to trigger the checks manually.
+  workflow_dispatch:
 
 jobs:
   # We make sure that lint succeeds before we start any other job to
@@ -36,24 +35,21 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+
       - name: Setup build environment
         uses: ./.github/actions/setup-build-environment
+
       - name: Run tests with coverage
         run: flutter test --coverage
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           files: coverage/lcov.info
-          fail_ci_if_error: false
+          flags: dart
+          fail_ci_if_error: true
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@v4
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   build-prototypes-android:
     runs-on: ubuntu-latest
