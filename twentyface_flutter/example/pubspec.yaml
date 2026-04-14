@@ -13,6 +13,7 @@ dependencies:
     path: ../
 
   cupertino_icons: ^1.0.8
+  camera: ^0.11.0
   http: ^1.2.0
   image_picker: ^1.0.7
 

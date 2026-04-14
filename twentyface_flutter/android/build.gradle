@@ -51,6 +51,9 @@ android {
         // Coroutines for background processing
         implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
 
+        // ExifInterface — needed to read JPEG orientation from camera captures
+        implementation 'androidx.exifinterface:exifinterface:1.3.7'
+
         // 20face SDK and JP2 decoder - compileOnly as they must be provided by consuming app
         compileOnly files('libs/twentyface-sdk.aar')
         compileOnly files('libs/jp2-android-1.0.3.aar')

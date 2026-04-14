@@ -3,6 +3,8 @@ package nl.twentyface.twentyface_flutter
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import androidx.exifinterface.media.ExifInterface
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -15,10 +17,15 @@ import com.example.twentyface_sdk_library.classes.Comparison
 import com.example.twentyface_sdk_library.classes.Detection
 import com.example.twentyface_sdk_library.classes.Status
 import com.gemalto.jp2.JP2Decoder
+import android.util.Log
 import java.io.ByteArrayInputStream
 
 /** TwentyfaceFlutterPlugin */
 class TwentyfaceFlutterPlugin : FlutterPlugin, MethodCallHandler {
+    companion object {
+        private const val TAG = "TwentyfaceFlutter"
+    }
+
     private lateinit var channel: MethodChannel
     private lateinit var context: Context
     private var lib: twentyfacelib? = null
@@ -50,19 +57,29 @@ class TwentyfaceFlutterPlugin : FlutterPlugin, MethodCallHandler {
                 val license = call.argument<String>("license")
                     ?: throw IllegalArgumentException("License is required")
 
+                Log.d(TAG, "Initializing TwentyfaceSDK...")
+                Log.d(TAG, "License (first 8 chars): ${license.take(8)}...")
+
                 // Copy models to internal storage
+                Log.d(TAG, "Copying models to internal storage...")
                 twentyfacelib.models_assets_to_internal(context)
+                Log.d(TAG, "Models copied successfully")
 
                 // Set the license
+                Log.d(TAG, "Setting license...")
                 twentyfacelib.setLicense(license)
+                Log.d(TAG, "License set successfully")
 
                 // Create library instance
+                Log.d(TAG, "Creating twentyfacelib instance...")
                 lib = twentyfacelib()
+                Log.d(TAG, "TwentyfaceSDK initialized successfully")
 
                 withContext(Dispatchers.Main) {
                     result.success(null)
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "Failed to initialize TwentyfaceSDK: ${e.message}", e)
                 withContext(Dispatchers.Main) {
                     result.error("INIT_ERROR", e.message, e.stackTraceToString())
                 }
@@ -115,15 +132,15 @@ class TwentyfaceFlutterPlugin : FlutterPlugin, MethodCallHandler {
                 val referenceImageType = call.argument<String>("referenceImageType") ?: "jpeg"
                 val configMap = call.argument<Map<String, Any>>("config")
 
-                // Decode live image (JPEG)
-                val liveImage = BitmapFactory.decodeByteArray(liveImageData, 0, liveImageData.size)
+                // Decode live image (JPEG) — applies EXIF orientation
+                val liveImage = decodeJpegWithOrientation(liveImageData)
                     ?: throw IllegalArgumentException("Failed to decode live image")
 
                 // Decode reference image (JPEG or JPEG2000)
                 val referenceImage = if (referenceImageType == "jpeg2000") {
                     decodeJpeg2000(referenceImageData)
                 } else {
-                    BitmapFactory.decodeByteArray(referenceImageData, 0, referenceImageData.size)
+                    decodeJpegWithOrientation(referenceImageData)
                 } ?: throw IllegalArgumentException("Failed to decode reference image")
 
                 // Create configuration
@@ -155,11 +172,15 @@ class TwentyfaceFlutterPlugin : FlutterPlugin, MethodCallHandler {
                     ?: throw IllegalArgumentException("image is required")
                 val configMap = call.argument<Map<String, Any>>("config")
 
-                val bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.size)
+                val bitmap = decodeJpegWithOrientation(imageData)
                     ?: throw IllegalArgumentException("Failed to decode image")
+
+                Log.d(TAG, "detectFaces: bitmap ${bitmap.width}x${bitmap.height}, ${imageData.size} bytes")
 
                 val config = createConfiguration(configMap)
                 val detections = library.detectFaces(bitmap, config)
+
+                Log.d(TAG, "detectFaces: found ${detections.size} face(s)")
 
                 val resultList = detections.map { detectionToMap(it) }
 
@@ -183,7 +204,7 @@ class TwentyfaceFlutterPlugin : FlutterPlugin, MethodCallHandler {
                     ?: throw IllegalArgumentException("image is required")
                 val configMap = call.argument<Map<String, Any>>("config")
 
-                val bitmap = BitmapFactory.decodeByteArray(imageData, 0, imageData.size)
+                val bitmap = decodeJpegWithOrientation(imageData)
                     ?: throw IllegalArgumentException("Failed to decode image")
 
                 // Force passive liveness enabled
@@ -231,6 +252,55 @@ class TwentyfaceFlutterPlugin : FlutterPlugin, MethodCallHandler {
     private fun decodeJpeg2000(data: ByteArray): Bitmap {
         val inputStream = ByteArrayInputStream(data)
         return JP2Decoder(inputStream).decode()
+    }
+
+    /**
+     * Decode a JPEG and apply EXIF orientation so the resulting bitmap is
+     * upright. Camera captures (image_picker, native camera intents) often
+     * store the raw sensor pixels plus an EXIF orientation tag — without
+     * applying it, faces end up sideways and the SDK can't detect them.
+     */
+    private fun decodeJpegWithOrientation(data: ByteArray): Bitmap? {
+        val bitmap = BitmapFactory.decodeByteArray(data, 0, data.size) ?: return null
+
+        val orientation = try {
+            ExifInterface(ByteArrayInputStream(data))
+                .getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to read EXIF: ${e.message}")
+            ExifInterface.ORIENTATION_NORMAL
+        }
+
+        if (orientation == ExifInterface.ORIENTATION_NORMAL ||
+            orientation == ExifInterface.ORIENTATION_UNDEFINED) {
+            return bitmap
+        }
+
+        val matrix = Matrix()
+        when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+            ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+            ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+            ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.postScale(-1f, 1f)
+            ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.postScale(1f, -1f)
+            ExifInterface.ORIENTATION_TRANSPOSE -> {
+                matrix.postRotate(90f); matrix.postScale(-1f, 1f)
+            }
+            ExifInterface.ORIENTATION_TRANSVERSE -> {
+                matrix.postRotate(270f); matrix.postScale(-1f, 1f)
+            }
+        }
+
+        Log.d(TAG, "Applying EXIF orientation: $orientation")
+
+        return try {
+            val rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+            if (rotated != bitmap) bitmap.recycle()
+            rotated
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to rotate bitmap: ${e.message}", e)
+            bitmap
+        }
     }
 
     private fun createConfiguration(configMap: Map<String, Any>?): Configuration {
