@@ -810,8 +810,8 @@ class PACE {
             keyLength: paceProtocol.keyLength,
             pkIcX: pkIc.x,
             pkIcY: pkIc.y,
-            pkMapIcX: publicICCenvelope!.xBytes,
-            pkMapIcY: publicICCenvelope!.yBytes,
+            pkMapIcX: publicICCenvelope.xBytes,
+            pkMapIcY: publicICCenvelope.yBytes,
             domainParameterId: paceDomainParameterId,
           );
           _log.debug("PACE-CAM verification successful");
