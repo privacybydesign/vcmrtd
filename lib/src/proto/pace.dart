@@ -311,11 +311,7 @@ class PaceResult {
   final int parameterId;
   final bool chipAuthenticated;
 
-  PaceResult({
-    required this.oid,
-    required this.parameterId,
-    this.chipAuthenticated = false,
-  });
+  PaceResult({required this.oid, required this.parameterId, this.chipAuthenticated = false});
 }
 
 /// Class defines Password Authenticated Connection Establishment (PACE)
@@ -1087,7 +1083,9 @@ class PACE {
       final y = Uint8List.fromList(keyBytes.sublist(1 + coordLen));
       return (x: x, y: y);
     }
-    throw PACEError("PACE-CAM: unable to find EC public key for domain parameter $domainParameterId in EF.CardSecurity");
+    throw PACEError(
+      "PACE-CAM: unable to find EC public key for domain parameter $domainParameterId in EF.CardSecurity",
+    );
   }
 
   static Future<PaceResult> initSession({

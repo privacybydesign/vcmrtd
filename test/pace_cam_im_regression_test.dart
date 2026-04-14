@@ -23,11 +23,20 @@ class _RecordingComProvider extends ComProvider {
   _RecordingComProvider() : super(Logger('_RecordingComProvider'));
 
   @override
-  Future<void> connect() async { _connected = true; }
+  Future<void> connect() async {
+    _connected = true;
+  }
+
   @override
-  Future<void> disconnect() async { _connected = false; }
+  Future<void> disconnect() async {
+    _connected = false;
+  }
+
   @override
-  Future<void> reconnect() async { _connected = true; }
+  Future<void> reconnect() async {
+    _connected = true;
+  }
+
   @override
   bool isConnected() => _connected;
 
@@ -107,8 +116,10 @@ void main() {
           encryptedChipAuthData: Uint8List(0),
           ksEnc: Uint8List.fromList(List.generate(16, (i) => (i + 1) & 0xff)),
           keyLength: KEY_LENGTH.s128,
-          pkIcX: pk, pkIcY: pk,
-          pkMapIcX: pk, pkMapIcY: pk,
+          pkIcX: pk,
+          pkIcY: pk,
+          pkMapIcX: pk,
+          pkMapIcY: pk,
           domainParameterId: 13,
         ),
         throwsA(isA<PaceCamError>()),
