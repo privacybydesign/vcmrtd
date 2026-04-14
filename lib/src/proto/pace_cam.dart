@@ -169,6 +169,11 @@ class PaceCam {
   }) {
     _log.debug('Performing complete PACE-CAM verification...');
 
+    // Guard: ECAD must be non-empty (mirroring gmrtd doCamEcdh)
+    if (encryptedChipAuthData.isEmpty) {
+      throw PaceCamError('ECAD missing');
+    }
+
     // Step 1: Decrypt ECAD to get CA_IC
     final caIc = decryptEcad(encryptedChipAuthData: encryptedChipAuthData, ksEnc: ksEnc, keyLength: keyLength);
 

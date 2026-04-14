@@ -1,3 +1,12 @@
+[![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=privacybydesign_vcmrtd&metric=ncloc)](https://sonarcloud.io/summary/new_code?id=privacybydesign_vcmrtd)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=privacybydesign_vcmrtd&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=privacybydesign_vcmrtd)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=privacybydesign_vcmrtd&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=privacybydesign_vcmrtd)
+[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=privacybydesign_vcmrtd&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=privacybydesign_vcmrtd)
+[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=privacybydesign_vcmrtd&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=privacybydesign_vcmrtd)
+[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=privacybydesign_vcmrtd&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=privacybydesign_vcmrtd)
+[![Technical Debt](https://sonarcloud.io/api/project_badges/measure?project=privacybydesign_vcmrtd&metric=sqale_index)](https://sonarcloud.io/summary/new_code?id=privacybydesign_vcmrtd)
+[![codecov](https://codecov.io/gh/privacybydesign/vcmrtd/graph/badge.svg)](https://codecov.io/gh/privacybydesign/vcmrtd)
+
 # VCMRTD
 
 A Dart/Flutter library for reading and verifying Machine Readable Travel Documents (MRTDs) via NFC.
