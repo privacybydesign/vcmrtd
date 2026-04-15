@@ -16,19 +16,19 @@ class FaceVerificationEngine(private val context: Context) {
      * Compare NFC photo with selfie.
      */
     fun verify(nfcImageBytes: ByteArray, selfieBytes: ByteArray): Float {
-        // Detecteer en crop gezicht uit NFC pasfoto
+        // Detect and crop face from NFC passport/photo
         val nfcFace = detector.detectAndCrop(nfcImageBytes)
             ?: throw IllegalStateException("No face found in NFC photo")
 
-        // Detecteer en crop gezicht uit selfie
+        // Detect and crop face from selfie
         val selfieFace = detector.detectAndCrop(selfieBytes)
             ?: throw IllegalStateException("No face found in selfie")
 
-        // Genereer embeddings
+        // Generate face embeddings
         val nfcEmbedding = recognizer.generateEmbedding(nfcFace)
         val selfieEmbedding = recognizer.generateEmbedding(selfieFace)
 
-        // Bereken en geef similarity terug
+        // Compute and return similarity
         return recognizer.cosineSimilarity(nfcEmbedding, selfieEmbedding)
     }
 

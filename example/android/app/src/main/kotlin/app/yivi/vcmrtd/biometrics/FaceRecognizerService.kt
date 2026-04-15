@@ -18,7 +18,6 @@ class FaceRecognizerService(private val context: Context) {
         private const val MODEL_FILE     = "GhostFaceNet.tflite"
         private const val INPUT_SIZE     = 112
         private const val EMBEDDING_SIZE = 512
-        private const val MATCH_THRESHOLD = 0.5f
     }
 
     fun initialize() {
@@ -52,8 +51,6 @@ class FaceRecognizerService(private val context: Context) {
         for (i in a.indices) dot += a[i] * b[i]
         return dot.coerceIn(0f, 1f)
     }
-
-    fun isMatch(similarity: Float): Boolean = similarity > MATCH_THRESHOLD
 
     private fun preprocessFace(bitmap: Bitmap): Array<Array<Array<FloatArray>>> {
         val input = Array(1) { Array(INPUT_SIZE) { Array(INPUT_SIZE) { FloatArray(3) } } }
