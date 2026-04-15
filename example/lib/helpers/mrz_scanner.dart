@@ -127,8 +127,7 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
         bytes: _yuv420ToNv21(image),
         metadata: InputImageMetadata(
           size: Size(image.width.toDouble(), image.height.toDouble()),
-          rotation: InputImageRotationValue.fromRawValue(frame.rotation) ??
-              InputImageRotation.rotation0deg,
+          rotation: InputImageRotationValue.fromRawValue(frame.rotation) ?? InputImageRotation.rotation0deg,
           format: InputImageFormat.nv21,
           bytesPerRow: image.width,
         ),
@@ -140,8 +139,7 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
         bytes: plane.bytes,
         metadata: InputImageMetadata(
           size: Size(image.width.toDouble(), image.height.toDouble()),
-          rotation: InputImageRotationValue.fromRawValue(frame.rotation) ??
-              InputImageRotation.rotation0deg,
+          rotation: InputImageRotationValue.fromRawValue(frame.rotation) ?? InputImageRotation.rotation0deg,
           format: InputImageFormat.bgra8888,
           bytesPerRow: plane.bytesPerRow,
         ),
@@ -159,15 +157,15 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
     if (image.planes.length < 3) return;
 
     final String? res = await _ocrChannel.invokeMethod<String>('processImage', {
-      'bytes':     _yuv420ToNv21(image),
-      'width':     image.width,
-      'height':    image.height,
-      'stride':    image.width,
-      'rotation':  frame.rotation,
-      'lang':      'ocrb',
-      'roiLeft':   frame.roiLeft,
-      'roiTop':    frame.roiTop,
-      'roiWidth':  frame.roiWidth,
+      'bytes': _yuv420ToNv21(image),
+      'width': image.width,
+      'height': image.height,
+      'stride': image.width,
+      'rotation': frame.rotation,
+      'lang': 'ocrb',
+      'roiLeft': frame.roiLeft,
+      'roiTop': frame.roiTop,
+      'roiWidth': frame.roiWidth,
       'roiHeight': frame.roiHeight,
     });
 

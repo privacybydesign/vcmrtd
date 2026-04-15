@@ -55,8 +55,7 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
                   _OptionCard(
                     context: context,
                     title: 'Driving Licence',
-                    subtitle:
-                        'Use a machine readable driving licence. Currently works primarily with Dutch licences.',
+                    subtitle: 'Use a machine readable driving licence. Currently works primarily with Dutch licences.',
                     icon: Icons.directions_car,
                     accentColor: const Color(0xFF2196F3),
                     onTap: () => onDocumentTypeSelected(DocumentType.drivingLicence),
@@ -107,12 +106,7 @@ class _Header extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 // Expanded prevents the label overflowing the Row
-                Expanded(
-                  child: Text(
-                    'Perform active authentication',
-                    style: Theme.of(context).defaultTextStyles.hint,
-                  ),
-                ),
+                Expanded(child: Text('Perform active authentication', style: Theme.of(context).defaultTextStyles.hint)),
                 Switch(
                   value: ref.watch(activeAuthenticationProvider),
                   onChanged: (value) {
@@ -128,12 +122,7 @@ class _Header extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(
-                    child: Text(
-                      'OCR engine',
-                      style: Theme.of(context).defaultTextStyles.hint,
-                    ),
-                  ),
+                  Expanded(child: Text('OCR engine', style: Theme.of(context).defaultTextStyles.hint)),
                   DropdownButton<OcrEngine>(
                     value: selectedEngine,
                     onChanged: (OcrEngine? value) {
@@ -142,12 +131,7 @@ class _Header extends ConsumerWidget {
                       }
                     },
                     items: availableEngines
-                        .map(
-                          (engine) => DropdownMenuItem(
-                            value: engine,
-                            child: Text(_engineLabel(engine)),
-                          ),
-                        )
+                        .map((engine) => DropdownMenuItem(value: engine, child: Text(_engineLabel(engine))))
                         .toList(),
                   ),
                 ],
@@ -200,10 +184,7 @@ class _OptionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: Container(
           height: 122,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            color: Colors.white,
-          ),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: Colors.white),
           child: Stack(
             children: [
               Padding(
@@ -227,11 +208,7 @@ class _OptionCard extends StatelessWidget {
                         children: [
                           Text(
                             title,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF212121),
-                            ),
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF212121)),
                           ),
                           const SizedBox(height: 4),
                           Text(
@@ -252,17 +229,10 @@ class _OptionCard extends StatelessWidget {
                   right: 8,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: accentColor,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    decoration: BoxDecoration(color: accentColor, borderRadius: BorderRadius.circular(12)),
                     child: Text(
                       badgeText!,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),

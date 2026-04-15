@@ -103,9 +103,9 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
   void didPop() => _enqueue(_doStop);
 
   void _enqueue(Future<void> Function() action) {
-    _cameraChain = _cameraChain.then((_) => action()).catchError(
-      (Object e, StackTrace st) => Error.throwWithStackTrace(e, st),
-    );
+    _cameraChain = _cameraChain
+        .then((_) => action())
+        .catchError((Object e, StackTrace st) => Error.throwWithStackTrace(e, st));
   }
 
   /// Discovers cameras and selects the correct index, then starts the feed.
@@ -115,13 +115,9 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
     _cameras = await availableCameras();
     if (_cameras.isEmpty) return;
 
-    _cameraIndex = _cameras.indexWhere(
-      (c) => c.lensDirection == widget.initialDirection && c.sensorOrientation == 90,
-    );
+    _cameraIndex = _cameras.indexWhere((c) => c.lensDirection == widget.initialDirection && c.sensorOrientation == 90);
     if (_cameraIndex == -1) {
-      _cameraIndex = _cameras.indexWhere(
-        (c) => c.lensDirection == widget.initialDirection,
-      );
+      _cameraIndex = _cameras.indexWhere((c) => c.lensDirection == widget.initialDirection);
     }
     if (_cameraIndex == -1) _cameraIndex = 0;
 
@@ -137,8 +133,7 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
       _cameras[_cameraIndex],
       ResolutionPreset.high,
       enableAudio: false,
-      imageFormatGroup:
-          Platform.isAndroid ? ImageFormatGroup.yuv420 : ImageFormatGroup.bgra8888,
+      imageFormatGroup: Platform.isAndroid ? ImageFormatGroup.yuv420 : ImageFormatGroup.bgra8888,
     );
 
     await controller.initialize();
@@ -164,9 +159,7 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
   @override
   Widget build(BuildContext context) {
     final body = _liveFeedBody();
-    return Scaffold(
-      body: widget.showOverlay ? MRZCameraOverlay(child: body) : body,
-    );
+    return Scaffold(body: widget.showOverlay ? MRZCameraOverlay(child: body) : body);
   }
 
   Widget _liveFeedBody() {
@@ -187,10 +180,7 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
           Transform.scale(
             scale: scale,
             child: Center(
-              child: AspectRatio(
-                aspectRatio: 9 / 16,
-                child: CameraPreview(_controller!),
-              ),
+              child: AspectRatio(aspectRatio: 9 / 16, child: CameraPreview(_controller!)),
             ),
           ),
         ],
@@ -221,15 +211,17 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
     final intersection = overlay.intersect(preview);
     final roi = intersection.isEmpty ? preview : intersection;
 
-    widget.onImage(OcrFrame(
-      image: image,
-      rotation: rotation,
-      format: Platform.isAndroid ? FrameFormat.nv21 : FrameFormat.bgra8888,
-      roiLeft:  ((roi.left   - preview.left)   / preview.width ).clamp(0.0, 1.0),
-      roiTop:   ((roi.top    - preview.top)    / preview.height).clamp(0.0, 1.0),
-      roiWidth:  (roi.width  / preview.width ).clamp(0.0, 1.0),
-      roiHeight: (roi.height / preview.height).clamp(0.0, 1.0),
-    ));
+    widget.onImage(
+      OcrFrame(
+        image: image,
+        rotation: rotation,
+        format: Platform.isAndroid ? FrameFormat.nv21 : FrameFormat.bgra8888,
+        roiLeft: ((roi.left - preview.left) / preview.width).clamp(0.0, 1.0),
+        roiTop: ((roi.top - preview.top) / preview.height).clamp(0.0, 1.0),
+        roiWidth: (roi.width / preview.width).clamp(0.0, 1.0),
+        roiHeight: (roi.height / preview.height).clamp(0.0, 1.0),
+      ),
+    );
   }
 
   Rect _overlayRect(Size size) {
@@ -242,11 +234,7 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
       h = size.height * 0.75;
       w = h * ratio;
     }
-    return Rect.fromLTWH(
-      (size.width - w) / 2,
-      (size.height - h) / 2 - 60.0,
-      w, h,
-    );
+    return Rect.fromLTWH((size.width - w) / 2, (size.height - h) / 2 - 60.0, w, h);
   }
 
   Rect _previewRect(Size size) {
@@ -261,10 +249,6 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
     }
     final sw = baseW * _previewScale;
     final sh = baseH * _previewScale;
-    return Rect.fromLTWH(
-      (size.width - sw) / 2,
-      (size.height - sh) / 2,
-      sw, sh,
-    );
+    return Rect.fromLTWH((size.width - sw) / 2, (size.height - sh) / 2, sw, sh);
   }
 }

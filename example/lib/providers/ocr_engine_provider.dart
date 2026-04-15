@@ -27,6 +27,4 @@ class OcrEngineNotifier extends Notifier<OcrEngine> {
   }
 }
 
-final ocrEngineProvider = NotifierProvider<OcrEngineNotifier, OcrEngine>(
-  OcrEngineNotifier.new,
-);
+final ocrEngineProvider = NotifierProvider<OcrEngineNotifier, OcrEngine>(OcrEngineNotifier.new);
