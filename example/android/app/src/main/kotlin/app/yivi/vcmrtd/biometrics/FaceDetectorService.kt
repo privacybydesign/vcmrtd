@@ -41,6 +41,8 @@ class FaceDetectorService(private val context: Context) {
     }
 
     fun initialize() {
+        if (faceLandmarker != null) return
+
         val baseOptions = BaseOptions.builder()
             .setModelAssetPath(MODEL_FILE)
             .build()
@@ -61,23 +63,15 @@ class FaceDetectorService(private val context: Context) {
      */
     fun detectAndCrop(imageBytes: ByteArray): Bitmap? {
         val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)?.toArgb8888()
-        if (bitmap == null) {
-            return null // image decode failed
-        }
+            ?: return null
 
         val corrected = correctRotation(bitmap, imageBytes)
-
         val mpImage = BitmapImageBuilder(corrected).build()
         val result = faceLandmarker?.detect(mpImage)
 
-        if (result == null || result.faceLandmarks().isEmpty()) {
-            return null // no face found
-        }
+        if (result == null || result.faceLandmarks().isEmpty()) return null
 
-        // Apply 5-point similarity transform → directly outputs 112x112
-        val aligned = similarityWarp(corrected, result)
-
-        return aligned
+        return similarityWarp(corrected, result)
     }
 
     /**
@@ -90,7 +84,6 @@ class FaceDetectorService(private val context: Context) {
         val w = bitmap.width.toFloat()
         val h = bitmap.height.toFloat()
 
-        // Source: 5 landmark positions in pixel coordinates
         val src = floatArrayOf(
             landmarks[IDX_LEFT_EYE].x()  * w, landmarks[IDX_LEFT_EYE].y()  * h,
             landmarks[IDX_RIGHT_EYE].x() * w, landmarks[IDX_RIGHT_EYE].y() * h,
@@ -99,13 +92,9 @@ class FaceDetectorService(private val context: Context) {
             landmarks[IDX_MOUTH_R].x()   * w, landmarks[IDX_MOUTH_R].y()   * h
         )
 
-        // Estimate similarity transform from src → dst using least squares
         val matrix = estimateSimilarityTransform(src, DST_POINTS)
-
-        // Apply forward transform: src image → 112x112 output
         val output = Bitmap.createBitmap(TARGET_SIZE, TARGET_SIZE, Bitmap.Config.ARGB_8888)
         Canvas(output).drawBitmap(bitmap, matrix, Paint(Paint.FILTER_BITMAP_FLAG))
-
         return output
     }
 
@@ -113,12 +102,11 @@ class FaceDetectorService(private val context: Context) {
      * Estimates a similarity transform matrix (rotation + uniform scale + translation)
      * that maps src points to dst points using least squares.
      *
-     * Based on Umeyama algorithm — same as scikit-image SimilarityTransform.estimate()
+     * Based on Umeyama algorithm same as scikit-image SimilarityTransform.estimate() 
      */
     private fun estimateSimilarityTransform(src: FloatArray, dst: FloatArray): Matrix {
         val n = src.size / 2
 
-        // Compute means
         var srcMx = 0f; var srcMy = 0f
         var dstMx = 0f; var dstMy = 0f
         for (i in 0 until n) {
@@ -128,7 +116,6 @@ class FaceDetectorService(private val context: Context) {
         srcMx /= n; srcMy /= n
         dstMx /= n; dstMy /= n
 
-        // Compute scale, rotation components
         var a = 0f; var b = 0f; var srcVar = 0f
         for (i in 0 until n) {
             val sx = src[i * 2] - srcMx;     val sy = src[i * 2 + 1] - srcMy
@@ -142,11 +129,9 @@ class FaceDetectorService(private val context: Context) {
         val cos   = if (srcVar > 0f) a / (srcVar * scale) else 1f
         val sin   = if (srcVar > 0f) b / (srcVar * scale) else 0f
 
-        // Translation
         val tx = dstMx - scale * (cos * srcMx - sin * srcMy)
         val ty = dstMy - scale * (sin * srcMx + cos * srcMy)
 
-        // Android Matrix is row-major: [a, b, tx, c, d, ty, 0, 0, 1]
         val matrix = Matrix()
         matrix.setValues(floatArrayOf(
             scale * cos,  -scale * sin,  tx,
@@ -182,10 +167,5 @@ class FaceDetectorService(private val context: Context) {
     fun close() {
         faceLandmarker?.close()
         faceLandmarker = null
-    }
-
-    private fun Bitmap.toArgb8888(): Bitmap {
-        if (config == Bitmap.Config.ARGB_8888) return this
-        return copy(Bitmap.Config.ARGB_8888, false)
     }
 }
