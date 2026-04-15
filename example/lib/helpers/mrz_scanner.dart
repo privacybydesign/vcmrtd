@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,6 +11,15 @@ import '../routing.dart';
 import '../providers/ocr_engine_provider.dart';
 import 'camera_viewfinder.dart';
 import 'mrz_helper.dart';
+
+/// Single shared [TextRecognizer] for the app lifetime.
+/// ML Kit loads its TFLite models on first use (~500 ms). One instance means
+/// that load only ever happens once, not on every navigation.
+final textRecognizerProvider = Provider<TextRecognizer>((ref) {
+  final recognizer = TextRecognizer();
+  ref.onDispose(recognizer.close);
+  return recognizer;
+});
 
 class MRZScanner extends ConsumerStatefulWidget {
   const MRZScanner({
@@ -29,9 +40,7 @@ class MRZScanner extends ConsumerStatefulWidget {
 }
 
 class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
-  // --- Common OCR State ---
   static const MethodChannel _ocrChannel = MethodChannel('tesseract_ocr');
-  final TextRecognizer _textRecognizer = TextRecognizer();
 
   bool _canProcess = true;
   bool _isBusy = false;
@@ -49,7 +58,6 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
   void dispose() {
     routeObserver.unsubscribe(this);
     _canProcess = false;
-    _textRecognizer.close();
     super.dispose();
   }
 
@@ -61,151 +69,173 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
 
   @override
   Widget build(BuildContext context) {
-    final selectedEngine = ref.watch(ocrEngineProvider);
+    final engine = ref.watch(ocrEngineProvider);
 
     return MRZCameraView(
       showOverlay: widget.showOverlay,
       initialDirection: widget.initialDirection,
-      onImage: (frame) => _processFrame(frame, selectedEngine),
+      onImage: (frame) => _processFrame(frame, engine),
     );
   }
 
-  /// Main dispatcher that chooses the engine based on UI selection
   Future<void> _processFrame(OcrFrame frame, OcrEngine engine) async {
     if (!_canProcess || _isBusy) return;
-
     _isBusy = true;
+
     try {
-      if (engine == OcrEngine.tesseract4android) {
-        await _processTesseractFrame(frame);
-      } else {
-        await _runGoogleMlKitOcr(frame);
+      switch (engine) {
+        case OcrEngine.googleMlKit:
+          await _runGoogleMlKitOcr(frame);
+        case OcrEngine.tesseract4android:
+          await _runTesseractOcr(frame);
       }
     } finally {
-      _isBusy = false;
+      if (_canProcess) _isBusy = false;
     }
   }
 
   // ===========================================================================
-  // --- GOOGLE ML KIT OCR ENGINE ---
+  // GOOGLE ML KIT PIPELINE
+  // Android: yuv420 → NV21 → InputImage → TextRecognizer
+  // iOS:     bgra8888 plane → InputImage → TextRecognizer
   // ===========================================================================
 
   Future<void> _runGoogleMlKitOcr(OcrFrame frame) async {
-    try {
-      final inputImage = InputImage.fromBytes(
-        bytes: frame.bytes,
+    final inputImage = _buildMlKitInputImage(frame);
+    if (inputImage == null) return;
+
+    final recognizedText = await ref.read(textRecognizerProvider).processImage(inputImage);
+    final fullText = recognizedText.text;
+    if (fullText.trim().isEmpty) return;
+
+    final lines = fullText
+        .replaceAll(' ', '')
+        .split('\n')
+        .map(MRZHelper.testTextLine)
+        .where((s) => s.isNotEmpty)
+        .toList();
+
+    _tryParse(lines);
+  }
+
+  InputImage? _buildMlKitInputImage(OcrFrame frame) {
+    final image = frame.image;
+
+    if (frame.format == FrameFormat.nv21) {
+      if (image.planes.length < 3) return null;
+      return InputImage.fromBytes(
+        bytes: _yuv420ToNv21(image),
         metadata: InputImageMetadata(
-          size: Size(frame.width.toDouble(), frame.height.toDouble()),
-          rotation: InputImageRotationValue.fromRawValue(frame.rotation) ?? InputImageRotation.rotation0deg,
+          size: Size(image.width.toDouble(), image.height.toDouble()),
+          rotation: InputImageRotationValue.fromRawValue(frame.rotation) ??
+              InputImageRotation.rotation0deg,
           format: InputImageFormat.nv21,
-          bytesPerRow: frame.width,
+          bytesPerRow: image.width,
         ),
       );
-
-      final recognizedText = await _textRecognizer.processImage(inputImage);
-      String fullText = recognizedText.text;
-
-      String trimmedText = fullText.replaceAll(' ', '');
-      List allText = trimmedText.split('\n');
-
-      List<String> ableToScanText = [];
-      for (var e in allText) {
-        final normalized = MRZHelper.testTextLine(e.toString());
-        if (normalized.isNotEmpty) {
-          ableToScanText.add(normalized);
-        }
-      }
-
-      final finalLines = MRZHelper.getFinalListToParse(ableToScanText);
-
-      if (finalLines != null) {
-        final parsedRaw = _parseScannedText(finalLines);
-        if (parsedRaw != null) {
-          _canProcess = false;
-          widget.onSuccess(parsedRaw, finalLines);
-          return;
-        }
-
-        final correctedStrict = MRZHelper.fixForDocType(widget.documentType, finalLines);
-        if (correctedStrict != null) {
-          final parsedStrict = _parseScannedText(correctedStrict);
-          if (parsedStrict != null) {
-            _canProcess = false;
-            widget.onSuccess(parsedStrict, correctedStrict);
-            return;
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('ML Kit OCR error: $e');
+    } else {
+      if (image.planes.isEmpty) return null;
+      final plane = image.planes.first;
+      return InputImage.fromBytes(
+        bytes: plane.bytes,
+        metadata: InputImageMetadata(
+          size: Size(image.width.toDouble(), image.height.toDouble()),
+          rotation: InputImageRotationValue.fromRawValue(frame.rotation) ??
+              InputImageRotation.rotation0deg,
+          format: InputImageFormat.bgra8888,
+          bytesPerRow: plane.bytesPerRow,
+        ),
+      );
     }
   }
 
   // ===========================================================================
-  // --- TESSERACT 4 ANDROID OCR ENGINE ---
+  // TESSERACT PIPELINE (Android only)
+  // yuv420 → NV21 bytes + ROI → native channel → text → MRZHelper
   // ===========================================================================
 
-  /// Single call to native — MrzZoneDetector runs automatically in the native
-  /// layer, no need for multiple ROI attempts or useZoneDetector flag.
-  Future<void> _processTesseractFrame(OcrFrame frame) async {
-    if (!_canProcess) return;
+  Future<void> _runTesseractOcr(OcrFrame frame) async {
+    final image = frame.image;
+    if (image.planes.length < 3) return;
 
-    try {
-      final plane = frame.bytes;
+    final String? res = await _ocrChannel.invokeMethod<String>('processImage', {
+      'bytes':     _yuv420ToNv21(image),
+      'width':     image.width,
+      'height':    image.height,
+      'stride':    image.width,
+      'rotation':  frame.rotation,
+      'lang':      'ocrb',
+      'roiLeft':   frame.roiLeft,
+      'roiTop':    frame.roiTop,
+      'roiWidth':  frame.roiWidth,
+      'roiHeight': frame.roiHeight,
+    });
 
-      final String? res = await _ocrChannel.invokeMethod<String>('processImage', {
-        'bytes': plane,
-        'width': frame.width,
-        'height': frame.height,
-        'stride': frame.width,
-        'rotation': frame.rotation,
-        'lang': 'ocrb',
-        'roiLeft': frame.roiLeft,
-        'roiTop': frame.roiTop,
-        'roiWidth': frame.roiWidth,
-        'roiHeight': frame.roiHeight,
-      });
+    final text = res ?? '';
+    if (text.trim().isEmpty) return;
 
-      final text = res ?? '';
-      if (text.trim().isEmpty) return;
+    final lines = text
+        .split(RegExp(r'[\r\n]+'))
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .map(MRZHelper.normalizeLine)
+        .where((s) => s.isNotEmpty)
+        .toList();
 
-      final lines = text
-          .split(RegExp(r'[\r\n]+'))
-          .map((s) => s.trim())
-          .where((s) => s.isNotEmpty)
-          .map((s) => MRZHelper.normalizeLine(s))
-          .where((s) => s.isNotEmpty)
-          .toList();
-
-      final finalLines = MRZHelper.getFinalListToParse(lines);
-      if (finalLines == null) return;
-
-      final parsedRaw = _parseScannedText(finalLines);
-      if (parsedRaw != null) {
-        _canProcess = false;
-        widget.onSuccess(parsedRaw, finalLines);
-        return;
-      }
-
-      final correctedStrict = MRZHelper.fixForDocType(widget.documentType, finalLines);
-      if (correctedStrict != null) {
-        final parsedStrict = _parseScannedText(correctedStrict);
-        if (parsedStrict != null) {
-          _canProcess = false;
-          widget.onSuccess(parsedStrict, correctedStrict);
-          return;
-        }
-      }
-    } catch (e) {
-      debugPrint('Tesseract OCR error: $e');
-    }
+    _tryParse(lines);
   }
 
   // ===========================================================================
-  // --- SHARED PARSING LOGIC ---
+  // SHARED BYTE CONVERSION
   // ===========================================================================
 
-  dynamic _parseScannedText(List<String> lines) {
+  Uint8List _yuv420ToNv21(CameraImage img) {
+    final w = img.width;
+    final h = img.height;
+    final ySize = w * h;
+    final nv21 = Uint8List(ySize + w * h ~/ 2);
+
+    nv21.setRange(0, ySize, img.planes[0].bytes);
+
+    final u = img.planes[1];
+    final v = img.planes[2];
+    final uPixel = u.bytesPerPixel ?? 1;
+    final vPixel = v.bytesPerPixel ?? 1;
+
+    int uvIndex = ySize;
+    for (int row = 0; row < h ~/ 2; row++) {
+      final uRow = row * u.bytesPerRow;
+      final vRow = row * v.bytesPerRow;
+      for (int col = 0; col < w ~/ 2; col++) {
+        nv21[uvIndex++] = v.bytes[vRow + col * vPixel];
+        nv21[uvIndex++] = u.bytes[uRow + col * uPixel];
+      }
+    }
+    return nv21;
+  }
+
+  // ===========================================================================
+  // SHARED MRZ PARSING
+  // ===========================================================================
+
+  void _tryParse(List<String> lines) {
+    final finalLines = MRZHelper.getFinalListToParse(lines);
+    if (finalLines == null) return;
+
+    final result = _parse(finalLines);
+    if (result != null) {
+      _succeed(result, finalLines);
+      return;
+    }
+
+    final corrected = MRZHelper.fixForDocType(widget.documentType, finalLines);
+    if (corrected == null) return;
+
+    final correctedResult = _parse(corrected);
+    if (correctedResult != null) _succeed(correctedResult, corrected);
+  }
+
+  dynamic _parse(List<String> lines) {
     try {
       switch (widget.documentType) {
         case DocumentType.passport:
@@ -218,5 +248,10 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
     } catch (e) {
       return null;
     }
+  }
+
+  void _succeed(dynamic result, List<String> lines) {
+    _canProcess = false;
+    widget.onSuccess(result, lines);
   }
 }

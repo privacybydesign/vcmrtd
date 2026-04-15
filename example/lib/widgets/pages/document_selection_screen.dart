@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/vcmrtd.dart';
@@ -14,7 +13,7 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Select document type')),
+      appBar: AppBar(title: const Text('Select document type')),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -31,7 +30,7 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _Header(),
+                  const _Header(),
                   const SizedBox(height: 24),
                   _OptionCard(
                     context: context,
@@ -56,7 +55,8 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
                   _OptionCard(
                     context: context,
                     title: 'Driving Licence',
-                    subtitle: 'Use a machine readable driving licence. Currently works primarily with Dutch licences.',
+                    subtitle:
+                        'Use a machine readable driving licence. Currently works primarily with Dutch licences.',
                     icon: Icons.directions_car,
                     accentColor: const Color(0xFF2196F3),
                     onTap: () => onDocumentTypeSelected(DocumentType.drivingLicence),
@@ -72,8 +72,13 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
 }
 
 class _Header extends ConsumerWidget {
+  const _Header();
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final availableEngines = ref.watch(availableEnginesProvider);
+    final selectedEngine = ref.watch(ocrEngineProvider);
+
     return Card(
       elevation: 8,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -101,7 +106,13 @@ class _Header extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Perform active authentication', style: Theme.of(context).defaultTextStyles.hint),
+                // Expanded prevents the label overflowing the Row
+                Expanded(
+                  child: Text(
+                    'Perform active authentication',
+                    style: Theme.of(context).defaultTextStyles.hint,
+                  ),
+                ),
                 Switch(
                   value: ref.watch(activeAuthenticationProvider),
                   onChanged: (value) {
@@ -110,23 +121,34 @@ class _Header extends ConsumerWidget {
                 ),
               ],
             ),
-            if (Platform.isAndroid) ...[
+            // Only show engine selector when there is more than one option.
+            // On iOS availableEngines has only googleMlKit, so this is hidden.
+            if (availableEngines.length > 1) ...[
               const SizedBox(height: 8),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('OCR engine', style: Theme.of(context).defaultTextStyles.hint),
+                  Expanded(
+                    child: Text(
+                      'OCR engine',
+                      style: Theme.of(context).defaultTextStyles.hint,
+                    ),
+                  ),
                   DropdownButton<OcrEngine>(
-                    value: ref.watch(ocrEngineProvider),
+                    value: selectedEngine,
                     onChanged: (OcrEngine? value) {
                       if (value != null) {
                         ref.read(ocrEngineProvider.notifier).set(value);
                       }
                     },
-                    items: const [
-                      DropdownMenuItem(value: OcrEngine.googleMlKit, child: Text('Google ML Kit')),
-                      DropdownMenuItem(value: OcrEngine.tesseract4android, child: Text('Tesseract4Android')),
-                    ],
+                    items: availableEngines
+                        .map(
+                          (engine) => DropdownMenuItem(
+                            value: engine,
+                            child: Text(_engineLabel(engine)),
+                          ),
+                        )
+                        .toList(),
                   ),
                 ],
               ),
@@ -135,6 +157,15 @@ class _Header extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  String _engineLabel(OcrEngine engine) {
+    switch (engine) {
+      case OcrEngine.googleMlKit:
+        return 'Google ML Kit';
+      case OcrEngine.tesseract4android:
+        return 'Tesseract4Android';
+    }
   }
 }
 
@@ -169,7 +200,10 @@ class _OptionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: Container(
           height: 122,
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: Colors.white),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.white,
+          ),
           child: Stack(
             children: [
               Padding(
@@ -193,7 +227,11 @@ class _OptionCard extends StatelessWidget {
                         children: [
                           Text(
                             title,
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF212121)),
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF212121),
+                            ),
                           ),
                           const SizedBox(height: 4),
                           Text(
@@ -214,10 +252,17 @@ class _OptionCard extends StatelessWidget {
                   right: 8,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: accentColor, borderRadius: BorderRadius.circular(12)),
+                    decoration: BoxDecoration(
+                      color: accentColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     child: Text(
                       badgeText!,
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
