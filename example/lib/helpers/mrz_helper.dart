@@ -3,19 +3,20 @@ import 'package:vcmrtd/vcmrtd.dart' show DocumentType;
 
 /// ICAO 9303 MRZ helper:
 /// - Normalizes lines to the MRZ character set: A-Z 0-9 <
-/// - Detects TD1 (3x30), TD2 (2x36), TD3 (2x44)
-/// - Post-corrects field types (numeric vs alpha) and check digits
-/// - Validates ICAO checksums
-/// - Scores candidate blocks to pick the best MRZ window
+/// - Detects TD1 (3×30), TD2 (2×36), TD3 (2×44), Driver's Licence
+/// - Post-corrects field types (numeric vs alpha) per document type
 class MRZHelper {
   static const _mrzChar = r'[A-Z0-9<]';
   static final _mrzCharRe = RegExp('^$_mrzChar\$');
   static final _allowedLineLen = <int>{30, 36, 44};
 
-  // ---------- NORMALIZATION ----------
+  // ==========================================================================
+  // NORMALIZATION
+  // ==========================================================================
 
   /// Normalize one OCR line into an MRZ line candidate.
-  /// Returns '' if not an exact MRZ line length (30/36/44).
+  /// Used by the Tesseract pipeline.
+  /// Returns '' if the line length is not a valid MRZ length (30/36/44).
   static String normalizeLine(String text) {
     final s = text.toUpperCase().replaceAll(RegExp(r'\s+'), '');
 
@@ -30,12 +31,13 @@ class MRZHelper {
     return '';
   }
 
-  /// Original normalization used by Google ML Kit path.
+  /// Normalize one OCR line into an MRZ line candidate.
+  /// Used by the Google ML Kit pipeline (preserves original behaviour).
+  /// Returns '' if the line length is not a valid MRZ length (30/36/44).
   static String testTextLine(String text) {
     String res = text.replaceAll(' ', '');
     List<String> list = res.split('');
 
-    // to check if the text belongs to any MRZ format or not
     if (list.length != 44 && list.length != 30 && list.length != 36) {
       return '';
     }
@@ -43,25 +45,25 @@ class MRZHelper {
     for (int i = 0; i < list.length; i++) {
       if (RegExp(r'^[A-Za-z0-9_.]+$').hasMatch(list[i])) {
         list[i] = list[i].toUpperCase();
-        // to ensure that every letter is uppercase
       }
       if (double.tryParse(list[i]) == null && !(RegExp(r'^[A-Za-z0-9_.]+$').hasMatch(list[i]))) {
         list[i] = '<';
-        // sometimes < sign not recognized well
       }
     }
-    String result = list.join('');
-    return result;
+    return list.join('');
   }
 
-  /// Returns the lines if they match a supported MRZ "shape".
-  /// Merged version of original and advanced helper logic.
+  // ==========================================================================
+  // SHAPE DETECTION
+  // ==========================================================================
+
+  /// Returns the lines if they match a supported MRZ shape, null otherwise.
   static List<String>? getFinalListToParse(List<String> lines) {
     if (lines.isEmpty) return null;
     final l = lines.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
     if (l.isEmpty) return null;
 
-    // Check for driver's license (starts with D1, D2, or DL)
+    // Driver's licence: starts with D1, D2, or DL
     final first = l.first;
     if (first.length >= 2) {
       final pfx = first.substring(0, 2);
@@ -71,16 +73,14 @@ class MRZHelper {
       }
     }
 
-    // Check for passport/visa/ID (requires at least 2 lines)
+    // Passport / visa / ID requires at least 2 lines of equal length
     if (l.length < 2) return null;
 
     final len = l.first.length;
     if (!l.every((e) => e.length == len)) return null;
 
-    // Original logic: Check if it starts with P, V, or I
     final fChar = l.first[0];
-    final supportedDocTypes = ['P', 'V', 'I'];
-    if (supportedDocTypes.contains(fChar)) {
+    if (['P', 'V', 'I'].contains(fChar)) {
       if (fChar == 'I') {
         'Identity Card MRZ detected'.logInfo();
       } else {
@@ -89,7 +89,7 @@ class MRZHelper {
       return [...l];
     }
 
-    // Advanced logic fallback: exact ICAO shapes
+    // Fallback: exact ICAO shapes without doc-type prefix match
     if (l.length == 3 && len == 30) return [...l]; // TD1
     if (l.length == 2 && len == 36) return [...l]; // TD2
     if (l.length == 2 && len == 44) return [...l]; // TD3
@@ -97,58 +97,10 @@ class MRZHelper {
     return null;
   }
 
-  // ---------- SCORING (for best-window selection) ----------
+  // ==========================================================================
+  // FIXER — corrects common OCR letter↔digit misreads
+  // ==========================================================================
 
-  /// Score a single MRZ line: higher = more MRZ-like.
-  static int scoreLine(String line) {
-    if (!_allowedLineLen.contains(line.length)) return -999;
-
-    int score = 0;
-
-    // MRZ typically contains many '<'
-    final lt = '<'.allMatches(line).length;
-    score += (lt * 2);
-
-    // Penalize if too few '<' (often means not MRZ)
-    if (lt < (line.length * 0.15)) score -= 20;
-
-    // Reward if line starts with typical doc code for ICAO docs
-    if (line.startsWith('P<') ||
-        line.startsWith('V<') ||
-        line.startsWith('I<') ||
-        line.startsWith('A<') ||
-        line.startsWith('C<')) {
-      score += 40;
-    }
-
-    // Reward if looks like a name line
-    if (line.contains('<<')) score += 25;
-
-    // Slight reward if contains a plausible 3-letter code token
-    if (RegExp(r'[A-Z]{3}').hasMatch(line)) score += 5;
-
-    return score;
-  }
-
-  /// Score a whole MRZ block (2 or 3 lines), preferring exact ICAO shapes.
-  static int scoreBlock(List<String> block) {
-    if (block.isEmpty) return -999;
-
-    int score = 0;
-    final len = block.first.length;
-
-    if (block.length == 3 && len == 30) score += 200; // TD1
-    if (block.length == 2 && len == 36) score += 200; // TD2
-    if (block.length == 2 && len == 44) score += 200; // TD3
-
-    for (final l in block) {
-      score += scoreLine(l);
-    }
-
-    return score;
-  }
-
-  // ---------- FIXER ----------
   static const Map<String, String> _toDigit = {
     'O': '0',
     'Q': '0',
@@ -187,22 +139,23 @@ class MRZHelper {
     return c;
   }
 
-  /// Main entry: fix per DocumentType.
+  /// Attempts to fix OCR misreads in [lines] for the given [docType].
+  /// Returns corrected lines, or null if the lines cannot be corrected.
   static List<String>? fixForDocType(DocumentType docType, List<String> lines) {
     switch (docType) {
       case DocumentType.passport:
         return _fixTd3(lines);
-
       case DocumentType.identityCard:
         return _fixTd1(lines);
-
       case DocumentType.drivingLicence:
         return null;
     }
   }
 
   static List<String>? _fixTd3(List<String> lines) {
-    if (lines.length != 2 || lines[0].length != 44 || lines[1].length != 44) return null;
+    if (lines.length != 2 || lines[0].length != 44 || lines[1].length != 44) {
+      return null;
+    }
 
     final l1 = lines[0];
     final l2 = lines[1];
@@ -217,14 +170,12 @@ class MRZHelper {
     final birthCd = _lettersToDigits(l2.substring(19, 20));
     final exp = _lettersToDigits(l2.substring(21, 27));
     final expCd = _lettersToDigits(l2.substring(27, 28));
-
     final sex = _fixSexChar(l2.substring(20, 21));
 
     if (!_isLettersOrFiller(docType)) return null;
     if (!_isLetters(issuer)) return null;
     if (!_isLettersOrFiller(names)) return null;
     if (!_isLetters(nat)) return null;
-
     if (!_isDigits(docCd)) return null;
     if (!_isDigits(birth) || birth.length != 6) return null;
     if (!_isDigits(birthCd)) return null;
@@ -232,7 +183,6 @@ class MRZHelper {
     if (!_isDigits(expCd)) return null;
 
     final fixedL1 = docType + issuer + names;
-
     final fixedL2 = l2.substring(0, 9) + docCd + nat + birth + birthCd + sex + exp + expCd + l2.substring(28);
 
     return [fixedL1, fixedL2];
@@ -254,28 +204,22 @@ class MRZHelper {
     final expCd = _lettersToDigits(l2.substring(14, 15));
     final nat = _digitsToLetters(l2.substring(15, 18));
     final finalCd = _lettersToDigits(l2.substring(29, 30));
-
     final sex = _fixSexChar(l2.substring(7, 8));
-    final names = _digitsToLetters(l3); // letters/<
+    final names = _digitsToLetters(l3);
 
     if (!_isLettersOrFiller(docType)) return null;
     if (!_isLetters(issuer)) return null;
-
     if (!_isDigits(birth) || birth.length != 6) return null;
     if (!_isDigits(birthCd)) return null;
     if (!_isDigits(exp) || exp.length != 6) return null;
     if (!_isDigits(expCd)) return null;
     if (!_isLetters(nat)) return null;
     if (!_isDigits(finalCd)) return null;
-
     if (!_isLettersOrFiller(names)) return null;
 
     final fixedL1 = docType + issuer + l1.substring(5);
-
     final fixedL2 = birth + birthCd + sex + exp + expCd + nat + l2.substring(18, 29) + finalCd;
 
-    final fixedL3 = names;
-
-    return [fixedL1, fixedL2, fixedL3];
+    return [fixedL1, fixedL2, names];
   }
 }

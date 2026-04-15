@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:camera/camera.dart';
@@ -9,40 +8,33 @@ import 'package:flutter/services.dart';
 import 'camera_overlay.dart';
 import '../routing.dart';
 
-/// Which platform pixel format the camera is delivering.
-enum FrameFormat { nv21, bgra8888 }
-
-/// Lightweight token passed on every frame — no byte conversion happens here.
-/// Each OCR engine extracts what it needs in its own way after the busy check.
-class OcrFrame {
+/// Engine-agnostic frame that the viewfinder hands to the scanner.
+///
+/// Contains the raw [CameraImage] so each OCR engine can do its own
+/// byte conversion (ML Kit needs InputImage, Tesseract needs NV21 + ROI).
+class CameraFrame {
   final CameraImage image;
   final int rotation;
-  final FrameFormat format;
-  final double roiLeft;
-  final double roiTop;
-  final double roiWidth;
-  final double roiHeight;
+  final Rect overlayRect;
+  final Rect previewRect;
 
-  const OcrFrame({
+  const CameraFrame({
     required this.image,
     required this.rotation,
-    required this.format,
-    required this.roiLeft,
-    required this.roiTop,
-    required this.roiWidth,
-    required this.roiHeight,
+    required this.overlayRect,
+    required this.previewRect,
   });
 }
 
 class MRZCameraView extends StatefulWidget {
   const MRZCameraView({
     super.key,
-    required this.onImage,
+    required this.onFrame,
     this.initialDirection = CameraLensDirection.back,
     required this.showOverlay,
   });
 
-  final Function(OcrFrame frame) onImage;
+  final Function(CameraFrame frame) onFrame;
   final CameraLensDirection initialDirection;
   final bool showOverlay;
 
@@ -57,10 +49,6 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
   Size? _viewSize;
   double _previewScale = 1.0;
 
-  /// Every camera operation chains onto this future.
-  /// Guarantees strict sequential execution and prevents start/stop races.
-  Future<void> _cameraChain = Future.value();
-
   final _orientations = const {
     DeviceOrientation.portraitUp: 0,
     DeviceOrientation.landscapeLeft: 90,
@@ -68,10 +56,14 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
     DeviceOrientation.landscapeRight: 270,
   };
 
+  // ---------------------------------------------------------------------------
+  // Lifecycle — matches the direct async pattern from both original pipelines
+  // ---------------------------------------------------------------------------
+
   @override
   void initState() {
     super.initState();
-    _enqueue(_initAndStart);
+    _initCamera();
   }
 
   @override
@@ -86,75 +78,92 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
   @override
   void dispose() {
     routeObserver.unsubscribe(this);
-    _enqueue(_doStop);
+    _stopLiveFeed();
     super.dispose();
   }
 
+  // RouteAware — same pattern as both originals
   @override
-  void didPush() => _enqueue(_doStart);
-
-  @override
-  void didPushNext() => _enqueue(_doStop);
-
-  @override
-  void didPopNext() => _enqueue(_doStart);
-
-  @override
-  void didPop() => _enqueue(_doStop);
-
-  void _enqueue(Future<void> Function() action) {
-    _cameraChain = _cameraChain
-        .then((_) => action())
-        .catchError((Object e, StackTrace st) => Error.throwWithStackTrace(e, st));
+  void didPush() async {
+    if (_cameras.isEmpty) return;
+    await _startLiveFeed();
   }
 
-  /// Discovers cameras and selects the correct index, then starts the feed.
-  /// Runs inside the queue so _cameras is always populated before any
-  /// subsequent start or stop can execute.
-  Future<void> _initAndStart() async {
+  @override
+  void didPushNext() async {
+    await _stopLiveFeed();
+  }
+
+  @override
+  void didPopNext() async {
+    try {
+      await _startLiveFeed();
+    } catch (e) {
+      debugPrint('error while starting live feed: $e');
+    }
+  }
+
+  @override
+  void didPop() async {
+    await _stopLiveFeed();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Camera init — matches both originals
+  // ---------------------------------------------------------------------------
+
+  Future<void> _initCamera() async {
     _cameras = await availableCameras();
     if (_cameras.isEmpty) return;
 
-    _cameraIndex = _cameras.indexWhere((c) => c.lensDirection == widget.initialDirection && c.sensorOrientation == 90);
-    if (_cameraIndex == -1) {
-      _cameraIndex = _cameras.indexWhere((c) => c.lensDirection == widget.initialDirection);
+    try {
+      _cameraIndex = _cameras.indexWhere(
+        (c) => c.lensDirection == widget.initialDirection && c.sensorOrientation == 90,
+      );
+      if (_cameraIndex == -1) {
+        _cameraIndex = _cameras.indexWhere((c) => c.lensDirection == widget.initialDirection);
+      }
+      if (_cameraIndex == -1) _cameraIndex = 0;
+    } catch (e) {
+      if (kDebugMode) print(e);
     }
-    if (_cameraIndex == -1) _cameraIndex = 0;
 
-    await _doStart();
+    await _startLiveFeed();
   }
 
-  Future<void> _doStart() async {
-    if (_cameras.isEmpty) return;
-    await _doStop();
-    if (!mounted) return;
+  // ---------------------------------------------------------------------------
+  // Start / stop — direct async, no queue
+  // ---------------------------------------------------------------------------
 
-    final controller = CameraController(
-      _cameras[_cameraIndex],
+  Future<void> _startLiveFeed() async {
+    if (_cameras.isEmpty) return;
+
+    final camera = _cameras[_cameraIndex];
+    _controller = CameraController(
+      camera,
       ResolutionPreset.high,
       enableAudio: false,
+      // Android: yuv420 → scanner converts to NV21 for both engines
+      // iOS:     bgra8888 → scanner passes single plane directly to ML Kit
       imageFormatGroup: Platform.isAndroid ? ImageFormatGroup.yuv420 : ImageFormatGroup.bgra8888,
     );
 
-    await controller.initialize();
-
-    if (!mounted) {
-      await controller.dispose();
-      return;
-    }
-
-    _controller = controller;
-    await _controller!.startImageStream(_onCameraImage);
-    if (mounted) setState(() {});
+    _controller?.initialize().then((_) {
+      if (!mounted) return;
+      _controller?.startImageStream(_onCameraImage);
+      setState(() {});
+    });
   }
 
-  Future<void> _doStop() async {
-    final c = _controller;
+  Future<void> _stopLiveFeed() async {
+    await _controller?.stopImageStream();
+    await _controller?.dispose();
     _controller = null;
-    if (c == null) return;
-    await c.stopImageStream().catchError((_) {});
-    await c.dispose().catchError((_) {});
   }
+
+  // ---------------------------------------------------------------------------
+  // UI
+  // ---------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -163,7 +172,9 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
   }
 
   Widget _liveFeedBody() {
-    if (_controller?.value.isInitialized != true) return const SizedBox.shrink();
+    if (_controller?.value.isInitialized != true) {
+      return const SizedBox.shrink();
+    }
 
     final size = MediaQuery.of(context).size;
     var scale = size.aspectRatio * _controller!.value.aspectRatio;
@@ -188,14 +199,17 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
     );
   }
 
-  /// Cheap per-frame callback: rotation + ROI only, no byte conversion.
-  /// Byte work happens in the scanner after the busy check.
+  // ---------------------------------------------------------------------------
+  // Frame callback — computes rotation, passes raw image + screen rects
+  // ---------------------------------------------------------------------------
+
   void _onCameraImage(CameraImage image) {
     if (_controller == null || _viewSize == null) return;
 
     final camera = _cameras[_cameraIndex];
     final size = _viewSize!;
 
+    // Compute rotation — same logic as both original pipelines.
     final int rotation;
     if (Platform.isAndroid) {
       final comp = _orientations[_controller!.value.deviceOrientation] ?? 0;
@@ -203,26 +217,18 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
           ? (camera.sensorOrientation + comp) % 360
           : (camera.sensorOrientation - comp + 360) % 360;
     } else {
+      // iOS: sensor orientation directly, matching the original ML Kit viewfinder.
       rotation = camera.sensorOrientation;
     }
 
-    final preview = _previewRect(size);
-    final overlay = _overlayRect(size);
-    final intersection = overlay.intersect(preview);
-    final roi = intersection.isEmpty ? preview : intersection;
-
-    widget.onImage(
-      OcrFrame(
-        image: image,
-        rotation: rotation,
-        format: Platform.isAndroid ? FrameFormat.nv21 : FrameFormat.bgra8888,
-        roiLeft: ((roi.left - preview.left) / preview.width).clamp(0.0, 1.0),
-        roiTop: ((roi.top - preview.top) / preview.height).clamp(0.0, 1.0),
-        roiWidth: (roi.width / preview.width).clamp(0.0, 1.0),
-        roiHeight: (roi.height / preview.height).clamp(0.0, 1.0),
-      ),
+    widget.onFrame(
+      CameraFrame(image: image, rotation: rotation, overlayRect: _overlayRect(size), previewRect: _previewRect(size)),
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // Overlay / preview geometry (used for Tesseract ROI)
+  // ---------------------------------------------------------------------------
 
   Rect _overlayRect(Size size) {
     const ratio = 1.42;
