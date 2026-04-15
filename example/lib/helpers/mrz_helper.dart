@@ -57,30 +57,31 @@ class MRZHelper {
   // SHAPE DETECTION
   // ==========================================================================
 
+  static bool _isDriverLicence(String first) {
+    if (first.length < 2) return false;
+    final pfx = first.substring(0, 2);
+    return pfx == 'D1' || pfx == 'D2' || pfx == 'DL';
+  }
+
+  static bool _isKnownDocType(String fChar) => fChar == 'P' || fChar == 'V' || fChar == 'I';
+
   /// Returns the lines if they match a supported MRZ shape, null otherwise.
   static List<String>? getFinalListToParse(List<String> lines) {
     if (lines.isEmpty) return null;
     final l = lines.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
     if (l.isEmpty) return null;
 
-    // Driver's licence: starts with D1, D2, or DL
-    final first = l.first;
-    if (first.length >= 2) {
-      final pfx = first.substring(0, 2);
-      if (pfx == 'D1' || pfx == 'D2' || pfx == 'DL') {
-        "Driver's License MRZ detected".logInfo();
-        return [...l];
-      }
+    if (_isDriverLicence(l.first)) {
+      "Driver's License MRZ detected".logInfo();
+      return [...l];
     }
 
-    // Passport / visa / ID requires at least 2 lines of equal length
     if (l.length < 2) return null;
-
     final len = l.first.length;
     if (!l.every((e) => e.length == len)) return null;
 
     final fChar = l.first[0];
-    if (['P', 'V', 'I'].contains(fChar)) {
+    if (_isKnownDocType(fChar)) {
       if (fChar == 'I') {
         'Identity Card MRZ detected'.logInfo();
       } else {
@@ -89,7 +90,6 @@ class MRZHelper {
       return [...l];
     }
 
-    // Fallback: exact ICAO shapes without doc-type prefix match
     if (l.length == 3 && len == 30) return [...l]; // TD1
     if (l.length == 2 && len == 36) return [...l]; // TD2
     if (l.length == 2 && len == 44) return [...l]; // TD3

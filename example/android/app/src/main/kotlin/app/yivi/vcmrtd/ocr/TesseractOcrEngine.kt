@@ -9,6 +9,13 @@ import org.opencv.core.Scalar
 import java.io.File
 import java.io.FileOutputStream
 
+data class OcrRoi(
+    val left: Double,
+    val top: Double,
+    val width: Double,
+    val height: Double,
+)
+
 class TesseractOcrEngine(private val context: Context) {
 
     private var tess: TessBaseAPI? = null
@@ -26,8 +33,8 @@ class TesseractOcrEngine(private val context: Context) {
             copyTrainedDataIfNeeded(dataPath, lang)
 
             tess = TessBaseAPI().apply {
-                if (!init(dataPath, lang, TessBaseAPI.OEM_LSTM_ONLY)) {
-                    throw IllegalStateException("Tesseract init failed for lang=$lang")
+                check(init(dataPath, lang, TessBaseAPI.OEM_LSTM_ONLY)) {
+                    "Tesseract init failed for lang=$lang"
                 }
                 setVariable("load_system_dawg", "0")
                 setVariable("load_freq_dawg", "0")
@@ -66,10 +73,7 @@ class TesseractOcrEngine(private val context: Context) {
         stride: Int,
         rotation: Int,
         lang: String,
-        roiLeft: Double,
-        roiTop: Double,
-        roiWidth: Double,
-        roiHeight: Double,
+        roi: OcrRoi,
     ): String {
         ensureTesseractInitialized(lang)
 
@@ -88,22 +92,22 @@ class TesseractOcrEngine(private val context: Context) {
 
         when (rotation) {
             90 -> {
-                lx = (roiTop * width).toInt()
-                ly = ((1.0 - roiLeft - roiWidth) * height).toInt()
-                lcw = (roiHeight * width).toInt()
-                lch = (roiWidth * height).toInt()
+                lx = (roi.top * width).toInt()
+                ly = ((1.0 - roi.left - roi.width) * height).toInt()
+                lcw = (roi.height * width).toInt()
+                lch = (roi.width * height).toInt()
             }
             270 -> {
-                lx = ((1.0 - roiTop - roiHeight) * width).toInt()
-                ly = (roiLeft * height).toInt()
-                lcw = (roiHeight * width).toInt()
-                lch = (roiWidth * height).toInt()
+                lx = ((1.0 - roi.top - roi.height) * width).toInt()
+                ly = (roi.left * height).toInt()
+                lcw = (roi.height * width).toInt()
+                lch = (roi.width * height).toInt()
             }
             else -> {
-                lx = (roiLeft * width).toInt()
-                ly = (roiTop * height).toInt()
-                lcw = (roiWidth * width).toInt()
-                lch = (roiHeight * height).toInt()
+                lx = (roi.left * width).toInt()
+                ly = (roi.top * height).toInt()
+                lcw = (roi.width * width).toInt()
+                lch = (roi.height * height).toInt()
             }
         }
 
