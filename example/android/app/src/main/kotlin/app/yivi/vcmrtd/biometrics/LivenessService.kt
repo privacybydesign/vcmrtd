@@ -12,6 +12,7 @@ import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarker
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.abs
+import kotlin.math.asin
 
 /**
  * Synchronous MediaPipe face landmark detector (IMAGE mode).
@@ -80,8 +81,8 @@ class LivenessService(private val context: Context) {
      * Returns null if no face is found.
      */
     fun detectImage(bitmap: Bitmap): FaceLandmarkerResult? {
-        // Lokale referentie pakken zodat switchToCpu() ondertussen faceLandmarker
-        // kan vervangen zonder dat deze aanroep crasht.
+        // Local reference so switchToCpu() can swap out faceLandmarker concurrently
+        // without crashing this call.
         val lm = faceLandmarker ?: return null
         val mpImg = BitmapImageBuilder(bitmap).build()
 
@@ -164,6 +165,19 @@ class LivenessService(private val context: Context) {
         for (p in px) { sR += Color.red(p); sG += Color.green(p); sB += Color.blue(p) }
         val n = px.size.toFloat()
         return floatArrayOf(sR / n, sG / n, sB / n)
+    }
+
+    /**
+     * Extracts the yaw angle (degrees) from the facial transformation matrix.
+     * Positive = turned right, negative = turned left.
+     * Returns null if no transformation matrix is present in the result.
+     */
+    fun matrixYaw(result: FaceLandmarkerResult): Float? {
+        val opt = result.facialTransformationMatrixes()
+        if (opt == null || !opt.isPresent) return null
+        val mats = opt.get(); if (mats.isEmpty()) return null
+        val m = mats[0]; if (m.size < 3) return null
+        return Math.toDegrees(asin(-m[2].toDouble().coerceIn(-1.0, 1.0))).toFloat()
     }
 
     fun resetLiveState() { latestResult = null }

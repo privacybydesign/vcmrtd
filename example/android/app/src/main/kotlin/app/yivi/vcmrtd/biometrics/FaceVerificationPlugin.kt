@@ -220,7 +220,8 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                     }
                 }
 
-                activeService.startAction(currentActions.first())
+                // startAction is called by the alignment phase once the face is
+                // stable in frame (see processFrameInternal alignment block).
                 startFrameLoop(runId)
 
                 android.util.Log.d(TAG, "Active liveness started: $currentActions")
@@ -333,12 +334,32 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
                 framesSinceLastAction++
 
+                val service = activeLivenessService
+                    ?: throw IllegalStateException("ActiveLivenessService unavailable")
+
+                // ── Alignment phase ──
+                // Delegated entirely to ActiveLivenessService — it owns isAligning,
+                // accumulates measurements, and calls startAction internally once ready.
+                if (service.isAligning) {
+                    val timedOut = framesSinceLastAction > ACTION_TIMEOUT_FRAMES
+                    val done = service.processAlignmentFrame(
+                        bitmap, pendingActions[currentActionIndex], timedOut
+                    )
+                    if (done) {
+                        framesSinceLastAction = 0
+                        val deferred = firstFrameDeferred
+                        if (deferred != null && !deferred.isCompleted) {
+                            deferred.complete(bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, false))
+                        }
+                        sendEvent(runId, mapOf("type" to "nextAction",
+                            "action" to pendingActions[currentActionIndex].name))
+                    }
+                    return@withLock
+                }
+
                 if (framesSinceLastAction > ACTION_TIMEOUT_FRAMES) {
                     handleTimeoutLocked(runId); return@withLock
                 }
-
-                val service = activeLivenessService
-                    ?: throw IllegalStateException("ActiveLivenessService unavailable")
 
                 val detectStartMs = SystemClock.elapsedRealtime()
                 val actionDone    = service.processFrame(bitmap)
@@ -371,7 +392,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 }
 
                 val next = pendingActions[currentActionIndex]
-                service.queueNextAction(next) // ← enige wijziging: was startAction
+                service.queueNextAction(next) // queue with rest-phase baseline instead of starting immediately
                 sendEvent(runId, mapOf("type" to "nextAction", "action" to next.name))
             }
         } finally {
@@ -444,13 +465,13 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 }
             } catch (_: CancellationException) { return@launch }
 
-            val antiSpoofScore    = activeLivenessService?.getAntiSpoofScore()
-            val antiSpoofPassed   = activeLivenessService?.isAntiSpoofPassed() ?: true
-            val totalFrames       = activeLivenessService?.getTotalFrames() ?: 0
-            val antiSpoofAttempts = activeLivenessService?.getAntiSpoofAttempts() ?: 0
+            val antiSpoofScore    = passiveLivenessService?.getAntiSpoofScore()
+            val antiSpoofPassed   = passiveLivenessService?.isAntiSpoofPassed() ?: true
+            val totalFrames       = passiveLivenessService?.getTotalFrames() ?: 0
+            val antiSpoofAttempts = passiveLivenessService?.getAntiSpoofAttempts() ?: 0
             val sessionDurationMs = SystemClock.elapsedRealtime() - sessionStartMs
 
-            val rppgResult = activeLivenessService?.getRppgResult()
+            val rppgResult = passiveLivenessService?.getRppgResult()
             val rppgPassed = rppgResult?.passed ?: false
 
             val finalPassed = passed && antiSpoofPassed && rppgPassed
