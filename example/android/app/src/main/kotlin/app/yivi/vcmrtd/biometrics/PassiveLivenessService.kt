@@ -165,7 +165,7 @@ class PassiveLivenessService(
         val isFrontal = yaw == null || abs(yaw) < ANTISPOOF_MAX_YAW_DEG
         if (!isFrontal) {
             android.util.Log.d(TAG,
-                "AntiSpoof: frame skipped (yaw=${"%.1f".format(yaw!!)}° > ${ANTISPOOF_MAX_YAW_DEG}°)")
+                "AntiSpoof: frame skipped (yaw=${"%.1f".format(yaw)}° > ${ANTISPOOF_MAX_YAW_DEG}°)")
             return
         }
         val rois = livenessService.extractRois(result) ?: return
