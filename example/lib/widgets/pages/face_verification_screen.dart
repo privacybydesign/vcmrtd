@@ -489,10 +489,10 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> with Wi
 
   /// Oval face-guide overlay, sized and positioned to match the camera preview
   /// (same Center + AspectRatio 3/4 container) so it is correct on all devices.
-  Widget _buildOvalOverlay() => Center(
+  Widget _buildOvalOverlay() => const Center(
     child: AspectRatio(
       aspectRatio: 3 / 4,
-      child: CustomPaint(painter: const _FaceOvalPainter()),
+      child: CustomPaint(painter: _FaceOvalPainter()),
     ),
   );
 
@@ -546,11 +546,11 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> with Wi
                       style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
                     ),
                     SizedBox(height: 6),
-                    const _StepRow(number: '1', text: 'Center your face inside the oval'),
+                    _StepRow(number: '1', text: 'Center your face inside the oval'),
                     SizedBox(height: 4),
-                    const _StepRow(number: '2', text: 'Tap the button below'),
+                    _StepRow(number: '2', text: 'Tap the button below'),
                     SizedBox(height: 4),
-                    const _StepRow(number: '3', text: 'Follow the on-screen prompts'),
+                    _StepRow(number: '3', text: 'Follow the on-screen prompts'),
                   ],
                 ),
               ),
@@ -619,10 +619,10 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> with Wi
         children: _actions.asMap().entries.map((e) {
           final done = _completedActions.contains(e.value);
           final current = e.value == action;
-          final itemIcon = done
-              ? Icons.check_circle
-              : (current ? Icons.radio_button_checked : Icons.radio_button_unchecked);
-          final itemColor = done ? Colors.green : (current ? Colors.white : Colors.white38);
+          final iconWhenNotDone = current ? Icons.radio_button_checked : Icons.radio_button_unchecked;
+          final itemIcon = done ? Icons.check_circle : iconWhenNotDone;
+          final colorWhenNotDone = current ? Colors.white : Colors.white38;
+          final itemColor = done ? Colors.green : colorWhenNotDone;
           final itemWeight = current ? FontWeight.bold : FontWeight.normal;
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 3),

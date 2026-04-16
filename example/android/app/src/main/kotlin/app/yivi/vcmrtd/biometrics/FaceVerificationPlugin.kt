@@ -50,7 +50,9 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         private const val ACTIONS_NEEDED_TO_PASS = 2
         private const val ACTION_TIMEOUT_FRAMES  = 150
 
-        private const val ERR_ACTIVE_SERVICE = "ActiveLivenessService unavailable"
+        private const val ERR_ACTIVE_SERVICE   = "ActiveLivenessService unavailable"
+        private const val LOG_JOB_CANCEL        = "faceMatchJob cancel failed"
+        private const val LOG_SERVICE_RESET     = "activeLivenessService reset failed"
     }
 
     private var activeRunId = 0
@@ -143,7 +145,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         activeFlowMutex.withLock {
             sessionStopping = true; sessionFinished = true; activeRunId++
 
-            try { faceMatchJob?.cancel() } catch (e: Exception) { android.util.Log.w(TAG, "faceMatchJob cancel failed", e) }
+            try { faceMatchJob?.cancel() } catch (e: Exception) { android.util.Log.w(TAG, LOG_JOB_CANCEL, e) }
             faceMatchJob = null
 
             firstFrameDeferred?.let { if (!it.isCompleted) it.cancel() }
@@ -153,7 +155,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             extraActionMode = false; framesSinceLastAction = 0
             nfcImageForMatch = null; matchScoreResult = null
 
-            try { activeLivenessService?.reset() } catch (e: Exception) { android.util.Log.w(TAG, "activeLivenessService reset failed", e) }
+            try { activeLivenessService?.reset() } catch (e: Exception) { android.util.Log.w(TAG, LOG_SERVICE_RESET, e) }
             sessionStopping = false
         }
     }
@@ -218,23 +220,27 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             try {
                 bmp = deferred.await()
                 if (isShuttingDown) return@launch
-                val jpeg  = bitmapToJpeg(bmp, 95)
-                val score = engine.verify(nfc, jpeg)
-                activeFlowMutex.withLock {
-                    if (runId == activeRunId && !isShuttingDown) {
-                        matchScoreResult = score.toDouble()
-                    }
-                }
+                val score = engine.verify(nfc, bitmapToJpeg(bmp, 95))
+                storeMatchScore(runId, score.toDouble())
             } catch (_: CancellationException) { return@launch }
-            catch (e: Exception) {
-                activeFlowMutex.withLock {
-                    if (runId == activeRunId && !isShuttingDown) {
-                        android.util.Log.e(TAG, "Face match error", e)
-                        matchScoreResult = 0.0
-                    }
-                }
-            } finally {
+            catch (e: Exception) { storeMatchError(runId, e) }
+            finally {
                 if (bmp != null && !bmp.isRecycled) bmp.recycle()
+            }
+        }
+    }
+
+    private suspend fun storeMatchScore(runId: Int, score: Double) {
+        activeFlowMutex.withLock {
+            if (runId == activeRunId && !isShuttingDown) matchScoreResult = score
+        }
+    }
+
+    private suspend fun storeMatchError(runId: Int, e: Exception) {
+        activeFlowMutex.withLock {
+            if (runId == activeRunId && !isShuttingDown) {
+                android.util.Log.e(TAG, "Face match error", e)
+                matchScoreResult = 0.0
             }
         }
     }
@@ -265,7 +271,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private fun stopActiveRunInternalLocked() {
         sessionFinished = true; sessionStopping = true
 
-        try { faceMatchJob?.cancel() } catch (e: Exception) { android.util.Log.w(TAG, "faceMatchJob cancel failed", e) }
+        try { faceMatchJob?.cancel() } catch (e: Exception) { android.util.Log.w(TAG, LOG_JOB_CANCEL, e) }
         faceMatchJob = null
 
         firstFrameDeferred?.let { if (!it.isCompleted) it.cancel() }
@@ -275,7 +281,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         extraActionMode = false; framesSinceLastAction = 0
         nfcImageForMatch = null; matchScoreResult = null
 
-        try { activeLivenessService?.reset() } catch (e: Exception) { android.util.Log.w(TAG, "activeLivenessService reset failed", e) }
+        try { activeLivenessService?.reset() } catch (e: Exception) { android.util.Log.w(TAG, LOG_SERVICE_RESET, e) }
         sessionStopping = false
     }
 
@@ -358,7 +364,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 android.util.Log.d(TAG,
                     "⏱ wait=${waitMs}ms decode=${decodeMs}ms detect=${detectMs2}ms total=${totalMs}ms")
 
-                firstFrameDeferred?.let { if (!it.isCompleted) it.complete(bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, false)) }
+                completeFirstFrameDeferred(bitmap)
 
                 if (!actionDone) return@withLock
                 handleActionDetectedLocked(runId, service)
@@ -368,12 +374,16 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         }
     }
 
+    private fun completeFirstFrameDeferred(bitmap: Bitmap) {
+        firstFrameDeferred?.let { if (!it.isCompleted) it.complete(bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, false)) }
+    }
+
     private fun processAlignmentPhaseLocked(runId: Int, service: ActiveLivenessService, bitmap: Bitmap) {
         val timedOut = framesSinceLastAction > ACTION_TIMEOUT_FRAMES
         val done = service.processAlignmentFrame(bitmap, pendingActions[currentActionIndex], timedOut)
         if (done) {
             framesSinceLastAction = 0
-            firstFrameDeferred?.let { if (!it.isCompleted) it.complete(bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, false)) }
+            completeFirstFrameDeferred(bitmap)
             sendEvent(runId, mapOf("type" to "nextAction", "action" to pendingActions[currentActionIndex].name))
         }
     }
@@ -504,16 +514,17 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             ))
         }
 
-        activeFlowMutex.withLock {
-            if (runId == activeRunId) {
-                pendingActions.clear(); currentActionIndex = 0
-                completedCount = 0; extraActionMode = false
-                framesSinceLastAction = 0; nfcImageForMatch = null
-                matchScoreResult = null; firstFrameDeferred = null
-                faceMatchJob = null
-                try { activeLivenessService?.reset() } catch (e: Exception) { android.util.Log.w(TAG, "activeLivenessService reset failed", e) }
-            }
-        }
+        activeFlowMutex.withLock { cleanUpSessionStateLocked(runId) }
+    }
+
+    private fun cleanUpSessionStateLocked(runId: Int) {
+        if (runId != activeRunId) return
+        pendingActions.clear(); currentActionIndex = 0
+        completedCount = 0; extraActionMode = false
+        framesSinceLastAction = 0; nfcImageForMatch = null
+        matchScoreResult = null; firstFrameDeferred = null
+        faceMatchJob = null
+        try { activeLivenessService?.reset() } catch (e: Exception) { android.util.Log.w(TAG, LOG_SERVICE_RESET, e) }
     }
 
     private suspend fun abortActiveRun(runId: Int, message: String) {
@@ -524,7 +535,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             if (runId != activeRunId || sessionStopping) return@withLock false
             sessionStopping = true; sessionFinished = true; activeRunId++
 
-            try { faceMatchJob?.cancel() } catch (e: Exception) { android.util.Log.w(TAG, "faceMatchJob cancel failed", e) }
+            try { faceMatchJob?.cancel() } catch (e: Exception) { android.util.Log.w(TAG, LOG_JOB_CANCEL, e) }
             faceMatchJob = null
 
             firstFrameDeferred?.let { if (!it.isCompleted) it.cancel() }
@@ -534,7 +545,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             extraActionMode = false; framesSinceLastAction = 0
             nfcImageForMatch = null; matchScoreResult = null
 
-            try { activeLivenessService?.reset() } catch (e: Exception) { android.util.Log.w(TAG, "activeLivenessService reset failed", e) }
+            try { activeLivenessService?.reset() } catch (e: Exception) { android.util.Log.w(TAG, LOG_SERVICE_RESET, e) }
             sessionStopping = false
             true
         }

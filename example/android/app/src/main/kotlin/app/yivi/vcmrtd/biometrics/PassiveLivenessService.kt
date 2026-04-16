@@ -165,7 +165,7 @@ class PassiveLivenessService(
         val isFrontal = yaw == null || abs(yaw) < ANTISPOOF_MAX_YAW_DEG
         if (!isFrontal) {
             android.util.Log.d(TAG,
-                "AntiSpoof: frame skipped (yaw=${"%.1f".format(yaw ?: 0f)}° > ${ANTISPOOF_MAX_YAW_DEG}°)")
+                "AntiSpoof: frame skipped (yaw=${"%.1f".format(yaw!!)}° > ${ANTISPOOF_MAX_YAW_DEG}°)")
             return
         }
         val rois = livenessService.extractRois(result) ?: return
@@ -238,11 +238,14 @@ class PassiveLivenessService(
             try {
                 val res = evaluateRppg(windowSamples, windowFps)
                 if (res.passed) return res
-                if (bestResult == null || res.snr > bestResult.snr) bestResult = res
+                if (isBetterRppgResult(res, bestResult)) bestResult = res
             } catch (e: Exception) { android.util.Log.w(TAG, "getRppgResult: window evaluation error", e) }
         }
         return bestResult
     }
+
+    private fun isBetterRppgResult(candidate: RppgResult, current: RppgResult?): Boolean =
+        current == null || candidate.snr > current.snr
 
     private fun hasWindowGap(windowTimes: List<Long>): Boolean {
         for (i in 1 until windowTimes.size) {
