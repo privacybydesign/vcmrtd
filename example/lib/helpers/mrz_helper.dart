@@ -74,8 +74,7 @@ class MRZHelper {
     return _matchIcaoShape(l, len);
   }
 
-  static bool _isDriversLicensePrefix(String pfx) =>
-      pfx == 'D1' || pfx == 'D2' || pfx == 'DL';
+  static bool _isDriversLicensePrefix(String pfx) => pfx == 'D1' || pfx == 'D2' || pfx == 'DL';
 
   static List<String>? _matchIcaoShape(List<String> l, int len) {
     final fChar = l.first[0];
