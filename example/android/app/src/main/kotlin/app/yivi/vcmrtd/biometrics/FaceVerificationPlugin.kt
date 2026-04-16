@@ -144,19 +144,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
         activeFlowMutex.withLock {
             sessionStopping = true; sessionFinished = true; activeRunId++
-
-            try { faceMatchJob?.cancel() } catch (e: Exception) { android.util.Log.w(TAG, LOG_JOB_CANCEL, e) }
-            faceMatchJob = null
-
-            firstFrameDeferred?.let { if (!it.isCompleted) it.cancel() }
-            firstFrameDeferred = null
-
-            pendingActions.clear(); completedCount = 0; currentActionIndex = 0
-            extraActionMode = false; framesSinceLastAction = 0
-            nfcImageForMatch = null; matchScoreResult = null
-
-            try { activeLivenessService?.reset() } catch (e: Exception) { android.util.Log.w(TAG, LOG_SERVICE_RESET, e) }
-            sessionStopping = false
+            clearSessionStateLocked()
         }
     }
 
@@ -270,19 +258,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
     private fun stopActiveRunInternalLocked() {
         sessionFinished = true; sessionStopping = true
-
-        try { faceMatchJob?.cancel() } catch (e: Exception) { android.util.Log.w(TAG, LOG_JOB_CANCEL, e) }
-        faceMatchJob = null
-
-        firstFrameDeferred?.let { if (!it.isCompleted) it.cancel() }
-        firstFrameDeferred = null
-
-        pendingActions.clear(); completedCount = 0; currentActionIndex = 0
-        extraActionMode = false; framesSinceLastAction = 0
-        nfcImageForMatch = null; matchScoreResult = null
-
-        try { activeLivenessService?.reset() } catch (e: Exception) { android.util.Log.w(TAG, LOG_SERVICE_RESET, e) }
-        sessionStopping = false
+        clearSessionStateLocked()
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -519,12 +495,23 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
     private fun cleanUpSessionStateLocked(runId: Int) {
         if (runId != activeRunId) return
-        pendingActions.clear(); currentActionIndex = 0
-        completedCount = 0; extraActionMode = false
-        framesSinceLastAction = 0; nfcImageForMatch = null
-        matchScoreResult = null; firstFrameDeferred = null
+        clearSessionStateLocked()
+    }
+
+    /** Must only be called while holding the [activeFlowMutex] lock. */
+    private fun clearSessionStateLocked() {
+        try { faceMatchJob?.cancel() } catch (e: Exception) { android.util.Log.w(TAG, LOG_JOB_CANCEL, e) }
         faceMatchJob = null
+
+        firstFrameDeferred?.let { if (!it.isCompleted) it.cancel() }
+        firstFrameDeferred = null
+
+        pendingActions.clear(); completedCount = 0; currentActionIndex = 0
+        extraActionMode = false; framesSinceLastAction = 0
+        nfcImageForMatch = null; matchScoreResult = null
+
         try { activeLivenessService?.reset() } catch (e: Exception) { android.util.Log.w(TAG, LOG_SERVICE_RESET, e) }
+        sessionStopping = false
     }
 
     private suspend fun abortActiveRun(runId: Int, message: String) {
@@ -534,19 +521,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         val shouldNotify = activeFlowMutex.withLock {
             if (runId != activeRunId || sessionStopping) return@withLock false
             sessionStopping = true; sessionFinished = true; activeRunId++
-
-            try { faceMatchJob?.cancel() } catch (e: Exception) { android.util.Log.w(TAG, LOG_JOB_CANCEL, e) }
-            faceMatchJob = null
-
-            firstFrameDeferred?.let { if (!it.isCompleted) it.cancel() }
-            firstFrameDeferred = null
-
-            pendingActions.clear(); completedCount = 0; currentActionIndex = 0
-            extraActionMode = false; framesSinceLastAction = 0
-            nfcImageForMatch = null; matchScoreResult = null
-
-            try { activeLivenessService?.reset() } catch (e: Exception) { android.util.Log.w(TAG, LOG_SERVICE_RESET, e) }
-            sessionStopping = false
+            clearSessionStateLocked()
             true
         }
 

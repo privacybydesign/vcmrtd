@@ -119,22 +119,7 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
       final finalLines = MRZHelper.getFinalListToParse(ableToScanText);
 
       if (finalLines != null) {
-        final parsedRaw = _parseScannedText(finalLines);
-        if (parsedRaw != null) {
-          _canProcess = false;
-          widget.onSuccess(parsedRaw, finalLines);
-          return;
-        }
-
-        final correctedStrict = MRZHelper.fixForDocType(widget.documentType, finalLines);
-        if (correctedStrict != null) {
-          final parsedStrict = _parseScannedText(correctedStrict);
-          if (parsedStrict != null) {
-            _canProcess = false;
-            widget.onSuccess(parsedStrict, correctedStrict);
-            return;
-          }
-        }
+        if (_tryParseAndNotify(finalLines)) return;
       }
     } catch (e) {
       debugPrint('ML Kit OCR error: $e');
@@ -180,22 +165,7 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
       final finalLines = MRZHelper.getFinalListToParse(lines);
       if (finalLines == null) return;
 
-      final parsedRaw = _parseScannedText(finalLines);
-      if (parsedRaw != null) {
-        _canProcess = false;
-        widget.onSuccess(parsedRaw, finalLines);
-        return;
-      }
-
-      final correctedStrict = MRZHelper.fixForDocType(widget.documentType, finalLines);
-      if (correctedStrict != null) {
-        final parsedStrict = _parseScannedText(correctedStrict);
-        if (parsedStrict != null) {
-          _canProcess = false;
-          widget.onSuccess(parsedStrict, correctedStrict);
-          return;
-        }
-      }
+      if (_tryParseAndNotify(finalLines)) return;
     } catch (e) {
       debugPrint('Tesseract OCR error: $e');
     }
@@ -204,6 +174,25 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
   // ===========================================================================
   // --- SHARED PARSING LOGIC ---
   // ===========================================================================
+
+  bool _tryParseAndNotify(List<String> lines) {
+    final parsedRaw = _parseScannedText(lines);
+    if (parsedRaw != null) {
+      _canProcess = false;
+      widget.onSuccess(parsedRaw, lines);
+      return true;
+    }
+    final correctedStrict = MRZHelper.fixForDocType(widget.documentType, lines);
+    if (correctedStrict != null) {
+      final parsedStrict = _parseScannedText(correctedStrict);
+      if (parsedStrict != null) {
+        _canProcess = false;
+        widget.onSuccess(parsedStrict, correctedStrict);
+        return true;
+      }
+    }
+    return false;
+  }
 
   dynamic _parseScannedText(List<String> lines) {
     try {
