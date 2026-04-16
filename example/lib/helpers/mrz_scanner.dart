@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +11,40 @@ import '../routing.dart';
 import '../providers/ocr_engine_provider.dart';
 import 'camera_viewfinder.dart';
 import 'mrz_helper.dart';
+
+// =============================================================================
+// Top-level function for isolate — must not reference any instance or class.
+// =============================================================================
+
+Uint8List _convertYuv420ToNv21(Map<String, dynamic> p) {
+  final int w = p['w'];
+  final int h = p['h'];
+  final Uint8List yBytes = p['yBytes'];
+  final Uint8List uBytes = p['uBytes'];
+  final Uint8List vBytes = p['vBytes'];
+  final int uBytesPerRow = p['uBytesPerRow'];
+  final int vBytesPerRow = p['vBytesPerRow'];
+  final int uPixelStride = p['uPixelStride'];
+  final int vPixelStride = p['vPixelStride'];
+
+  final ySize = w * h;
+  final nv21 = Uint8List(ySize + w * h ~/ 2);
+
+  nv21.setRange(0, ySize, yBytes);
+
+  int uvIndex = ySize;
+  for (int row = 0; row < h ~/ 2; row++) {
+    final uRow = row * uBytesPerRow;
+    final vRow = row * vBytesPerRow;
+    for (int col = 0; col < w ~/ 2; col++) {
+      nv21[uvIndex++] = vBytes[vRow + col * vPixelStride];
+      nv21[uvIndex++] = uBytes[uRow + col * uPixelStride];
+    }
+  }
+  return nv21;
+}
+
+// =============================================================================
 
 /// Shared [TextRecognizer] managed by Riverpod so it is properly disposed.
 final textRecognizerProvider = Provider<TextRecognizer>((ref) {
@@ -67,7 +102,6 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
 
   @override
   void didPopNext() {
-    // Screen became visible again — allow scanning.
     _canProcess = true;
     _isBusy = false;
   }
@@ -83,6 +117,9 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
     return MRZCameraView(
       showOverlay: widget.showOverlay,
       initialDirection: widget.initialDirection,
+      // ML Kit is fastest with direct NV21 from the camera (no conversion).
+      // Tesseract needs YUV420 so we can convert + crop with ROI in the isolate.
+      useNv21: engine == OcrEngine.googleMlKit,
       onFrame: (frame) => _processFrame(frame, engine),
     );
   }
@@ -102,19 +139,17 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
         await _runTesseractOcr(frame);
       }
     } finally {
-      // Only release the busy-lock if we haven't already stopped processing
-      // (i.e. a successful scan sets _canProcess = false).
       if (_canProcess) _isBusy = false;
     }
   }
 
   // ===========================================================================
   // GOOGLE ML KIT PIPELINE
-  // Works on both Android and iOS — exactly like the original working version.
+  // Works on both Android and iOS.
   // ===========================================================================
 
   Future<void> _runGoogleMlKitOcr(CameraFrame frame) async {
-    final inputImage = _buildMlKitInputImage(frame);
+    final inputImage = await _buildMlKitInputImage(frame);
     if (inputImage == null) return;
 
     try {
@@ -122,7 +157,6 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
       final fullText = recognizedText.text;
       if (fullText.trim().isEmpty) return;
 
-      // Use the ML Kit normalizer (preserves original working behaviour).
       final lines = fullText
           .replaceAll(' ', '')
           .split('\n')
@@ -138,29 +172,26 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
 
   /// Builds an [InputImage] from a [CameraFrame].
   ///
-  /// Android: converts YUV420 → NV21, uses the Y-plane's actual bytesPerRow.
-  /// iOS:     uses the single BGRA8888 plane directly with its bytesPerRow.
-  ///
-  /// This matches what the original working ML Kit viewfinder did internally.
-  InputImage? _buildMlKitInputImage(CameraFrame frame) {
+  /// If the camera already delivers NV21 (1 plane), uses it directly — no
+  /// conversion needed, same speed as the original standalone ML Kit version.
+  /// If the camera delivers YUV420 (3 planes), converts in an isolate.
+  Future<InputImage?> _buildMlKitInputImage(CameraFrame frame) async {
     final image = frame.image;
 
     if (Platform.isAndroid) {
-      // YUV420 has 3 planes; convert to NV21.
-      if (image.planes.length < 3) return null;
+      final nv21 = await _getNv21Bytes(image);
+      if (nv21 == null) return null;
       return InputImage.fromBytes(
-        bytes: _yuv420ToNv21(image),
+        bytes: nv21.bytes,
         metadata: InputImageMetadata(
           size: Size(image.width.toDouble(), image.height.toDouble()),
           rotation: InputImageRotationValue.fromRawValue(frame.rotation) ?? InputImageRotation.rotation0deg,
           format: InputImageFormat.nv21,
-          // After our manual YUV→NV21 conversion the bytes are written
-          // without padding, so bytesPerRow equals the image width.
-          bytesPerRow: image.width,
+          bytesPerRow: nv21.bytesPerRow,
         ),
       );
     } else {
-      // iOS: BGRA8888 has a single plane.
+      // iOS: BGRA8888 has a single plane — use directly.
       if (image.planes.isEmpty) return null;
       final plane = image.planes.first;
       return InputImage.fromBytes(
@@ -177,22 +208,22 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
 
   // ===========================================================================
   // TESSERACT 4 ANDROID PIPELINE (Android only)
-  // The provider guarantees this engine is never selected on iOS.
   // ===========================================================================
 
   Future<void> _runTesseractOcr(CameraFrame frame) async {
     final image = frame.image;
-    if (image.planes.length < 3) return;
 
-    // Compute normalised ROI from overlay ↔ preview screen rects.
+    final nv21 = await _getNv21Bytes(image);
+    if (nv21 == null) return;
+
     final roi = _normaliseRoi(frame.overlayRect, frame.previewRect);
 
     try {
       final String? res = await _ocrChannel.invokeMethod<String>('processImage', {
-        'bytes': _yuv420ToNv21(image),
+        'bytes': nv21.bytes,
         'width': image.width,
         'height': image.height,
-        'stride': image.width,
+        'stride': nv21.bytesPerRow,
         'rotation': frame.rotation,
         'lang': 'ocrb',
         'roiLeft': roi.left,
@@ -204,7 +235,6 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
       final text = res ?? '';
       if (text.trim().isEmpty) return;
 
-      // Use the Tesseract normalizer.
       final lines = text
           .split(RegExp(r'[\r\n]+'))
           .map((s) => s.trim())
@@ -219,8 +249,6 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
     }
   }
 
-  /// Converts overlay and preview screen rects into normalised ROI fractions
-  /// (0..1) relative to the preview rect.
   Rect _normaliseRoi(Rect overlayRect, Rect previewRect) {
     final intersection = overlayRect.intersect(previewRect);
     final roi = intersection.isEmpty ? previewRect : intersection;
@@ -234,53 +262,51 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
   }
 
   // ===========================================================================
-  // SHARED: YUV420 → NV21 byte conversion (used by both Android pipelines)
+  // SHARED: NV21 byte acquisition
+  //
+  // If the camera already delivers NV21 (1 plane) → use directly, zero cost.
+  // If it delivers YUV420 (3 planes) → convert in an isolate off the UI thread.
   // ===========================================================================
 
-  Uint8List _yuv420ToNv21(CameraImage img) {
-    final w = img.width;
-    final h = img.height;
-    final ySize = w * h;
-    final nv21 = Uint8List(ySize + w * h ~/ 2);
-
-    // Copy Y plane.
-    nv21.setRange(0, ySize, img.planes[0].bytes);
-
-    // Interleave V and U (NV21 = VUVU…).
-    final u = img.planes[1];
-    final v = img.planes[2];
-    final uPixel = u.bytesPerPixel ?? 1;
-    final vPixel = v.bytesPerPixel ?? 1;
-
-    int uvIndex = ySize;
-    for (int row = 0; row < h ~/ 2; row++) {
-      final uRow = row * u.bytesPerRow;
-      final vRow = row * v.bytesPerRow;
-      for (int col = 0; col < w ~/ 2; col++) {
-        nv21[uvIndex++] = v.bytes[vRow + col * vPixel];
-        nv21[uvIndex++] = u.bytes[uRow + col * uPixel];
-      }
+  /// Simple container for NV21 bytes + the correct bytesPerRow.
+  Future<_Nv21Frame?> _getNv21Bytes(CameraImage image) async {
+    if (image.planes.length == 1) {
+      // Camera delivered NV21 directly — same as the original ML Kit version.
+      return _Nv21Frame(bytes: image.planes[0].bytes, bytesPerRow: image.planes[0].bytesPerRow);
     }
-    return nv21;
+    if (image.planes.length >= 3) {
+      // YUV420 — convert in isolate.
+      final nv21 = await compute(_convertYuv420ToNv21, {
+        'w': image.width,
+        'h': image.height,
+        'yBytes': Uint8List.fromList(image.planes[0].bytes),
+        'uBytes': Uint8List.fromList(image.planes[1].bytes),
+        'vBytes': Uint8List.fromList(image.planes[2].bytes),
+        'uBytesPerRow': image.planes[1].bytesPerRow,
+        'vBytesPerRow': image.planes[2].bytesPerRow,
+        'uPixelStride': image.planes[1].bytesPerPixel ?? 1,
+        'vPixelStride': image.planes[2].bytesPerPixel ?? 1,
+      });
+      // After manual conversion there is no row padding.
+      return _Nv21Frame(bytes: nv21, bytesPerRow: image.width);
+    }
+    return null;
   }
 
   // ===========================================================================
-  // SHARED: MRZ parsing — used by both pipelines
+  // SHARED: MRZ parsing
   // ===========================================================================
 
-  /// Tries to parse [lines] as MRZ, with optional OCR-fix fallback.
   void _tryParse(List<String> lines) {
     final finalLines = MRZHelper.getFinalListToParse(lines);
     if (finalLines == null) return;
 
-    // First attempt: parse the raw lines.
     final result = _parse(finalLines);
     if (result != null) {
       _succeed(result, finalLines);
       return;
     }
 
-    // Second attempt: apply OCR corrections and retry.
     final corrected = MRZHelper.fixForDocType(widget.documentType, finalLines);
     if (corrected == null) return;
 
@@ -307,4 +333,12 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
     _canProcess = false;
     widget.onSuccess(result, lines);
   }
+}
+
+/// Holds NV21 bytes together with the correct bytesPerRow/stride value.
+class _Nv21Frame {
+  final Uint8List bytes;
+  final int bytesPerRow;
+
+  const _Nv21Frame({required this.bytes, required this.bytesPerRow});
 }

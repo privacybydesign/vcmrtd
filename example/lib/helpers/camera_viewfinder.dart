@@ -32,11 +32,19 @@ class MRZCameraView extends StatefulWidget {
     required this.onFrame,
     this.initialDirection = CameraLensDirection.back,
     required this.showOverlay,
+    this.useNv21 = false,
   });
 
   final Function(CameraFrame frame) onFrame;
   final CameraLensDirection initialDirection;
   final bool showOverlay;
+
+  /// When true, requests [ImageFormatGroup.nv21] on Android so the camera
+  /// delivers NV21 directly (1 plane, no conversion needed — fastest for
+  /// Google ML Kit). When false, requests [ImageFormatGroup.yuv420] which
+  /// gives 3 planes that can be converted to NV21 (needed by Tesseract).
+  /// Ignored on iOS which always uses [ImageFormatGroup.bgra8888].
+  final bool useNv21;
 
   @override
   MRZCameraViewState createState() => MRZCameraViewState();
@@ -57,7 +65,7 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
   };
 
   // ---------------------------------------------------------------------------
-  // Lifecycle — matches the direct async pattern from both original pipelines
+  // Lifecycle
   // ---------------------------------------------------------------------------
 
   @override
@@ -82,7 +90,6 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
     super.dispose();
   }
 
-  // RouteAware — same pattern as both originals
   @override
   void didPush() async {
     if (_cameras.isEmpty) return;
@@ -109,7 +116,7 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
   }
 
   // ---------------------------------------------------------------------------
-  // Camera init — matches both originals
+  // Camera init
   // ---------------------------------------------------------------------------
 
   Future<void> _initCamera() async {
@@ -132,8 +139,10 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
   }
 
   // ---------------------------------------------------------------------------
-  // Start / stop — direct async, no queue
+  // Start / stop
   // ---------------------------------------------------------------------------
+
+  ImageFormatGroup get _androidImageFormat => widget.useNv21 ? ImageFormatGroup.nv21 : ImageFormatGroup.yuv420;
 
   Future<void> _startLiveFeed() async {
     if (_cameras.isEmpty) return;
@@ -143,9 +152,7 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
       camera,
       ResolutionPreset.high,
       enableAudio: false,
-      // Android: yuv420 → scanner converts to NV21 for both engines
-      // iOS:     bgra8888 → scanner passes single plane directly to ML Kit
-      imageFormatGroup: Platform.isAndroid ? ImageFormatGroup.yuv420 : ImageFormatGroup.bgra8888,
+      imageFormatGroup: Platform.isAndroid ? _androidImageFormat : ImageFormatGroup.bgra8888,
     );
 
     _controller?.initialize().then((_) {
@@ -155,10 +162,19 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
     });
   }
 
+  /// Safely tears down the camera. Catches [CameraException] because dispose()
+  /// can race with _startLiveFeed's .then() — the controller may already be
+  /// disposed or the stream may not have started yet.
   Future<void> _stopLiveFeed() async {
-    await _controller?.stopImageStream();
-    await _controller?.dispose();
+    final c = _controller;
     _controller = null;
+    if (c == null) return;
+    try {
+      await c.stopImageStream();
+    } on CameraException catch (_) {}
+    try {
+      await c.dispose();
+    } on CameraException catch (_) {}
   }
 
   // ---------------------------------------------------------------------------
@@ -200,7 +216,7 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
   }
 
   // ---------------------------------------------------------------------------
-  // Frame callback — computes rotation, passes raw image + screen rects
+  // Frame callback
   // ---------------------------------------------------------------------------
 
   void _onCameraImage(CameraImage image) {
@@ -209,7 +225,6 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
     final camera = _cameras[_cameraIndex];
     final size = _viewSize!;
 
-    // Compute rotation — same logic as both original pipelines.
     final int rotation;
     if (Platform.isAndroid) {
       final comp = _orientations[_controller!.value.deviceOrientation] ?? 0;
@@ -217,7 +232,6 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
           ? (camera.sensorOrientation + comp) % 360
           : (camera.sensorOrientation - comp + 360) % 360;
     } else {
-      // iOS: sensor orientation directly, matching the original ML Kit viewfinder.
       rotation = camera.sensorOrientation;
     }
 
@@ -227,7 +241,7 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
   }
 
   // ---------------------------------------------------------------------------
-  // Overlay / preview geometry (used for Tesseract ROI)
+  // Overlay / preview geometry
   // ---------------------------------------------------------------------------
 
   Rect _overlayRect(Size size) {
