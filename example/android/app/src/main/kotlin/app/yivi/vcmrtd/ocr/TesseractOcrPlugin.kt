@@ -66,10 +66,7 @@ class TesseractOcrPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                     stride = stride,
                     rotation = rotation,
                     lang = lang,
-                    roiLeft = roiLeft,
-                    roiTop = roiTop,
-                    roiWidth = roiWidth,
-                    roiHeight = roiHeight,
+                    roi = RoiParams(roiLeft, roiTop, roiWidth, roiHeight),
                 )
                 main.post { result.success(text) }
             } catch (e: Exception) {

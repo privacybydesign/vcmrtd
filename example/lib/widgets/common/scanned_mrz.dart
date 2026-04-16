@@ -39,7 +39,7 @@ class ScannedPassportMRZ extends ScannedMRZ {
     required String documentNumber,
     required DateTime dateOfBirth,
     required DateTime dateOfExpiry,
-    String countryCode = '', // TODO: Get country code from manual entry screen as well
+    String countryCode = '',
     DocumentType documentType = DocumentType.passport,
   }) {
     return ScannedPassportMRZ(
@@ -84,7 +84,7 @@ class ScannedIdCardMRZ extends ScannedMRZ {
     required String documentNumber,
     required DateTime dateOfBirth,
     required DateTime dateOfExpiry,
-    String countryCode = '', // TODO: Get country code from manual entry screen as well
+    String countryCode = '',
     DocumentType documentType = DocumentType.identityCard,
   }) {
     return ScannedIdCardMRZ(

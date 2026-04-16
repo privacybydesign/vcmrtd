@@ -41,7 +41,7 @@ class PassiveLivenessService(
 
         // Placeholder: thresholds may need adjustment after real-device testing
         // Current behaviour: null scores (no face detected) are treated as pass
-        const val ANTISPOOF_MIN_SCORE = 0.65  // TODO: calibrate with real test data
+        const val ANTISPOOF_MIN_SCORE = 0.65
 
         // ── Per-session passive metric collection ──
         private const val ANTISPOOF_SAMPLE_RATE = 0.30f  // fraction of frames scored
@@ -153,66 +153,61 @@ class PassiveLivenessService(
     fun collectPassiveMetrics(bitmap: Bitmap, result: FaceLandmarkerResult) {
         totalFrames++
         val yaw = livenessService.matrixYaw(result)
+        sampleAntiSpoof(bitmap, result, yaw)
+        try {
+            sampleRppg(bitmap, result, yaw)
+        } catch (e: Exception) { android.util.Log.w(TAG, "collectPassiveMetrics: rPPG sampling error", e) }
+    }
 
-        // ── Anti-spoof sampling ──
-        if (Random.nextFloat() < ANTISPOOF_SAMPLE_RATE) {
-            antiSpoofAttempts++
-            val isFrontal = yaw == null || abs(yaw) < ANTISPOOF_MAX_YAW_DEG
-            if (isFrontal) {
-                val rois = livenessService.extractRois(result)
-                if (rois != null) {
-                    val score = scoreFrame(bitmap, rois)
-                    antiSpoofScores.add(score)
-                    if (score != null) {
-                        android.util.Log.d(TAG,
-                            "AntiSpoof score=${"%.3f".format(score)} " +
-                            "yaw=${yaw?.let { "%.1f".format(it) } ?: "null"} " +
-                            "samples=${antiSpoofScores.filterNotNull().size}")
-                    }
-                }
-            } else {
-                android.util.Log.d(TAG,
-                    "AntiSpoof: frame skipped (yaw=${"%.1f".format(yaw!!)}° > ${ANTISPOOF_MAX_YAW_DEG}°)")
+    private fun sampleAntiSpoof(bitmap: Bitmap, result: FaceLandmarkerResult, yaw: Float?) {
+        if (Random.nextFloat() >= ANTISPOOF_SAMPLE_RATE) return
+        antiSpoofAttempts++
+        val isFrontal = yaw == null || abs(yaw) < ANTISPOOF_MAX_YAW_DEG
+        if (!isFrontal) {
+            android.util.Log.d(TAG,
+                "AntiSpoof: frame skipped (yaw=${"%.1f".format(yaw ?: 0f)}° > ${ANTISPOOF_MAX_YAW_DEG}°)")
+            return
+        }
+        val rois = livenessService.extractRois(result) ?: return
+        val score = scoreFrame(bitmap, rois)
+        antiSpoofScores.add(score)
+        if (score != null) {
+            android.util.Log.d(TAG,
+                "AntiSpoof score=${"%.3f".format(score)} " +
+                "yaw=${yaw?.let { "%.1f".format(it) } ?: "null"} " +
+                "samples=${antiSpoofScores.filterNotNull().size}")
+        }
+    }
+
+    private fun sampleRppg(bitmap: Bitmap, result: FaceLandmarkerResult, yaw: Float?) {
+        val roisAll = livenessService.extractRois(result) ?: return
+        val now = SystemClock.elapsedRealtime()
+        if (rppgSampleTimes.isNotEmpty() && now - rppgSampleTimes.last() > RPPG_MAX_GAP_MS) {
+            rppgSamples.clear(); rppgSampleTimes.clear()
+        }
+        if (yaw != null && abs(yaw) > RPPG_FRONTAL_MAX_YAW) return
+        val zones = listOf(
+            LivenessService.RoiZone.FOREHEAD,
+            LivenessService.RoiZone.LEFT_CHEEK,
+            LivenessService.RoiZone.RIGHT_CHEEK,
+            LivenessService.RoiZone.NOSE
+        )
+        var sumR = 0f; var sumG = 0f; var sumB = 0f; var cnt = 0
+        for (z in zones) {
+            var rroi = roisAll[z] ?: continue
+            if ((rroi[2] * bitmap.width).toInt() < RPPG_MIN_ROI_PIX) {
+                rroi = floatArrayOf(rroi[0], rroi[1], (rroi[2] * RPPG_ENLARGE_FACTOR).coerceAtMost(0.5f))
+            }
+            val rgb = livenessService.extractRgbFromRoi(bitmap, rroi)
+            if (rgb != null) { sumR += rgb[0]; sumG += rgb[1]; sumB += rgb[2]; cnt++ }
+        }
+        if (cnt > 0) {
+            rppgSamples.add(floatArrayOf(sumR / cnt, sumG / cnt, sumB / cnt))
+            rppgSampleTimes.add(now)
+            if (rppgSamples.size > 1200) {
+                rppgSamples.removeAt(0); rppgSampleTimes.removeAt(0)
             }
         }
-
-        // ── rPPG sampling ──
-        try {
-            val roisAll = livenessService.extractRois(result)
-            if (roisAll != null) {
-                val now = SystemClock.elapsedRealtime()
-                if (rppgSampleTimes.isNotEmpty() && now - rppgSampleTimes.last() > RPPG_MAX_GAP_MS) {
-                    rppgSamples.clear(); rppgSampleTimes.clear()
-                }
-                val isRppgFrontal = yaw == null || abs(yaw) <= RPPG_FRONTAL_MAX_YAW
-                if (isRppgFrontal) {
-                    val zones = listOf(
-                        LivenessService.RoiZone.FOREHEAD,
-                        LivenessService.RoiZone.LEFT_CHEEK,
-                        LivenessService.RoiZone.RIGHT_CHEEK,
-                        LivenessService.RoiZone.NOSE
-                    )
-                    var sumR = 0f; var sumG = 0f; var sumB = 0f; var cnt = 0
-                    for (z in zones) {
-                        var rroi = roisAll[z] ?: continue
-                        val estPix = (rroi[2] * bitmap.width).toInt()
-                        if (estPix < RPPG_MIN_ROI_PIX) {
-                            rroi = floatArrayOf(rroi[0], rroi[1],
-                                (rroi[2] * RPPG_ENLARGE_FACTOR).coerceAtMost(0.5f))
-                        }
-                        val rgb = livenessService.extractRgbFromRoi(bitmap, rroi)
-                        if (rgb != null) { sumR += rgb[0]; sumG += rgb[1]; sumB += rgb[2]; cnt++ }
-                    }
-                    if (cnt > 0) {
-                        rppgSamples.add(floatArrayOf(sumR / cnt, sumG / cnt, sumB / cnt))
-                        rppgSampleTimes.add(now)
-                        if (rppgSamples.size > 1200) {
-                            rppgSamples.removeAt(0); rppgSampleTimes.removeAt(0)
-                        }
-                    }
-                }
-            }
-        } catch (_: Exception) {}
     }
 
     /**
@@ -226,7 +221,6 @@ class PassiveLivenessService(
 
         val durationMs = (times.last() - times.first()).coerceAtLeast(1L)
         val fps = (((rppgSamples.size - 1) * 1000) / durationMs).coerceAtLeast(1).toInt()
-
         val effectiveMinDuration = 2500L
         if (durationMs < effectiveMinDuration) return null
 
@@ -235,27 +229,26 @@ class PassiveLivenessService(
 
         var bestResult: RppgResult? = null
         for (start in 0..(rppgSamples.size - requiredSamples)) {
-            val end = start + requiredSamples
-            val windowTimes = times.subList(start, end)
-            var hasLargeGap = false
-            for (i in 1 until windowTimes.size) {
-                if (windowTimes[i] - windowTimes[i - 1] > RPPG_MAX_GAP_MS) {
-                    hasLargeGap = true; break
-                }
-            }
-            if (hasLargeGap) continue
+            val windowTimes = times.subList(start, start + requiredSamples)
+            if (hasWindowGap(windowTimes)) continue
             val durationWindow = (windowTimes.last() - windowTimes.first()).coerceAtLeast(1L)
             if (durationWindow < effectiveMinDuration) continue
-            val windowSamples = rppgSamples.subList(start, end)
-            val windowFps = (((windowSamples.size - 1) * 1000) / durationWindow)
-                .coerceAtLeast(1).toInt()
+            val windowSamples = rppgSamples.subList(start, start + requiredSamples)
+            val windowFps = (((windowSamples.size - 1) * 1000) / durationWindow).coerceAtLeast(1).toInt()
             try {
                 val res = evaluateRppg(windowSamples, windowFps)
                 if (res.passed) return res
                 if (bestResult == null || res.snr > bestResult.snr) bestResult = res
-            } catch (_: Exception) {}
+            } catch (e: Exception) { android.util.Log.w(TAG, "getRppgResult: window evaluation error", e) }
         }
         return bestResult
+    }
+
+    private fun hasWindowGap(windowTimes: List<Long>): Boolean {
+        for (i in 1 until windowTimes.size) {
+            if (windowTimes[i] - windowTimes[i - 1] > RPPG_MAX_GAP_MS) return true
+        }
+        return false
     }
 
     /**
@@ -336,60 +329,10 @@ class PassiveLivenessService(
 
             frames.forEachIndexed { idx, frame ->
                 val rois = faceRois.getOrNull(idx) ?: return@forEachIndexed
-
-                    // V1: always use the full frame, no bbox required
-                    val cropV1 = cropWithScale(frame, intArrayOf(0, 0, frame.width, frame.height), null)
-                    ?: return@forEachIndexed
-
-                // v2: only use with valid bbox, otherwise skip frame
-                val bbox = faceBoxPixels(rois, frame.width, frame.height) ?: run {
-                    if (!cropV1.isRecycled) cropV1.recycle()
-                    return@forEachIndexed
-                }
-
-                val cropV2 = cropWithScale(frame, bbox, SCALE_V2) ?: run {
-                    if (!cropV1.isRecycled) cropV1.recycle()
-                    return@forEachIndexed
-                }
-
-                try {
-                    val inV1 = if (isNchwV1) preprocessNchw(cropV1) else preprocessNhwc(cropV1)
-                    val inV2 = if (isNchwV2) preprocessNchw(cropV2) else preprocessNhwc(cropV2)
-
-                    val outV1 = Array(1) { FloatArray(3) }
-                    val outV2 = Array(1) { FloatArray(3) }
-
-                    v1.run(inV1, outV1)
-                    v2.run(inV2, outV2)
-
-                    val smV1 = softmax(outV1[0])
-                    val smV2 = softmax(outV2[0])
-                    val combined = FloatArray(3) { i -> smV1[i] + smV2[i] }
-
-                    var label = 0
-                    var best = Float.NEGATIVE_INFINITY
-                    combined.forEachIndexed { i, v ->
-                        if (v > best) {
-                            best = v
-                            label = i
-                        }
-                    }
-
-                    val liveConf = (combined[LIVE_CLASS_IDX] / 2f).toDouble()
-                    totalUsed++
-                    if (label == LIVE_CLASS_IDX) liveFrames++
-                    frameScores.add(if (label == LIVE_CLASS_IDX) liveConf else 0.0)
-
-                    android.util.Log.d(
-                        TAG,
-                        "MiniFASNet frame $idx: label=$label liveConf=${"%.3f".format(liveConf)} " +
-                                "v1=[${smV1.joinToString { "%.3f".format(it) }}] " +
-                                "v2=[${smV2.joinToString { "%.3f".format(it) }}]"
-                    )
-                } finally {
-                    if (!cropV1.isRecycled) cropV1.recycle()
-                    if (!cropV2.isRecycled) cropV2.recycle()
-                }
+                val scored = scoreFrame(frame, rois, v1, v2, isNchwV1, isNchwV2, idx) ?: return@forEachIndexed
+                totalUsed++
+                if (scored.first == LIVE_CLASS_IDX) liveFrames++
+                frameScores.add(scored.second)
             }
 
             if (totalUsed == 0) return AntiSpoofResult(0.0, 0.0, 0)
@@ -398,6 +341,43 @@ class PassiveLivenessService(
                 liveRatio    = liveFrames.toDouble() / totalUsed,
                 usedFrames   = totalUsed
             )
+        }
+
+        // Returns (label, liveConf) or null if the frame cannot be scored.
+        private fun scoreFrame(
+            frame: Bitmap,
+            rois: Map<LivenessService.RoiZone, FloatArray>,
+            v1: Interpreter, v2: Interpreter,
+            isNchwV1: Boolean, isNchwV2: Boolean,
+            idx: Int
+        ): Pair<Int, Double>? {
+            val cropV1 = cropWithScale(frame, intArrayOf(0, 0, frame.width, frame.height), null)
+                ?: return null
+            val bbox = faceBoxPixels(rois, frame.width, frame.height) ?: run {
+                if (!cropV1.isRecycled) cropV1.recycle(); return null
+            }
+            val cropV2 = cropWithScale(frame, bbox, SCALE_V2) ?: run {
+                if (!cropV1.isRecycled) cropV1.recycle(); return null
+            }
+            try {
+                val inV1 = if (isNchwV1) preprocessNchw(cropV1) else preprocessNhwc(cropV1)
+                val inV2 = if (isNchwV2) preprocessNchw(cropV2) else preprocessNhwc(cropV2)
+                val outV1 = Array(1) { FloatArray(3) }; val outV2 = Array(1) { FloatArray(3) }
+                v1.run(inV1, outV1); v2.run(inV2, outV2)
+                val smV1 = softmax(outV1[0]); val smV2 = softmax(outV2[0])
+                val combined = FloatArray(3) { i -> smV1[i] + smV2[i] }
+                var label = 0; var best = Float.NEGATIVE_INFINITY
+                combined.forEachIndexed { i, v -> if (v > best) { best = v; label = i } }
+                val liveConf = (combined[LIVE_CLASS_IDX] / 2f).toDouble()
+                android.util.Log.d(TAG,
+                    "MiniFASNet frame $idx: label=$label liveConf=${"%.3f".format(liveConf)} " +
+                    "v1=[${smV1.joinToString { "%.3f".format(it) }}] " +
+                    "v2=[${smV2.joinToString { "%.3f".format(it) }}]")
+                return Pair(label, if (label == LIVE_CLASS_IDX) liveConf else 0.0)
+            } finally {
+                if (!cropV1.isRecycled) cropV1.recycle()
+                if (!cropV2.isRecycled) cropV2.recycle()
+            }
         }
 
         fun close() {
@@ -435,37 +415,38 @@ class PassiveLivenessService(
             var bmp: Bitmap? = null
             val source = if (bitmap.config == Bitmap.Config.ARGB_8888) bitmap
             else bitmap.copy(Bitmap.Config.ARGB_8888, false)?.also { bmp = it } ?: return null
-            val srcW = source.width; val srcH = source.height
-
             return try {
-                    if (scale == null) {
-                    // Original approach: scale the full frame directly to 80x80
-                    // This works regardless of the face size in the frame
+                if (scale == null) {
                     Bitmap.createScaledBitmap(source, INPUT_SIZE, INPUT_SIZE, true)
                 } else {
-                    val s = min((srcH - 1f) / bbox[3], min((srcW - 1f) / bbox[2], scale))
-                    val cx = bbox[2] / 2f + bbox[0]; val cy = bbox[3] / 2f + bbox[1]
-                    var ltX = cx - bbox[2] * s / 2f; var ltY = cy - bbox[3] * s / 2f
-                    var rbX = cx + bbox[2] * s / 2f; var rbY = cy + bbox[3] * s / 2f
-
-                    if (ltX < 0f) { rbX -= ltX; ltX = 0f }
-                    if (ltY < 0f) { rbY -= ltY; ltY = 0f }
-                    if (rbX > srcW - 1f) { ltX -= rbX - srcW + 1; rbX = srcW - 1f }
-                    if (rbY > srcH - 1f) { ltY -= rbY - srcH + 1; rbY = srcH - 1f }
-
-                    val x1 = ltX.toInt().coerceIn(0, srcW - 1)
-                    val y1 = ltY.toInt().coerceIn(0, srcH - 1)
-                    val x2 = rbX.toInt().coerceIn(0, srcW - 1)
-                    val y2 = rbY.toInt().coerceIn(0, srcH - 1)
-                    if (x2 <= x1 || y2 <= y1) return null
-
-                    val cropped = Bitmap.createBitmap(source, x1, y1, x2 - x1, y2 - y1)
-                    Bitmap.createScaledBitmap(cropped, INPUT_SIZE, INPUT_SIZE, true).also {
-                        if (cropped !== it && !cropped.isRecycled) cropped.recycle()
-                    }
+                    scaledCrop(source, bbox, scale)
                 }
             } finally {
-                if (bmp != null && bmp !== bitmap && !bmp!!.isRecycled) bmp!!.recycle()
+                if (bmp != null && bmp !== bitmap && !bmp.isRecycled) bmp.recycle()
+            }
+        }
+
+        private fun scaledCrop(source: Bitmap, bbox: IntArray, scale: Float): Bitmap? {
+            val srcW = source.width; val srcH = source.height
+            val s = min((srcH - 1f) / bbox[3], min((srcW - 1f) / bbox[2], scale))
+            val cx = bbox[2] / 2f + bbox[0]; val cy = bbox[3] / 2f + bbox[1]
+            var ltX = cx - bbox[2] * s / 2f; var ltY = cy - bbox[3] * s / 2f
+            var rbX = cx + bbox[2] * s / 2f; var rbY = cy + bbox[3] * s / 2f
+
+            if (ltX < 0f) { rbX -= ltX; ltX = 0f }
+            if (ltY < 0f) { rbY -= ltY; ltY = 0f }
+            if (rbX > srcW - 1f) { ltX -= rbX - srcW + 1; rbX = srcW - 1f }
+            if (rbY > srcH - 1f) { ltY -= rbY - srcH + 1; rbY = srcH - 1f }
+
+            val x1 = ltX.toInt().coerceIn(0, srcW - 1)
+            val y1 = ltY.toInt().coerceIn(0, srcH - 1)
+            val x2 = rbX.toInt().coerceIn(0, srcW - 1)
+            val y2 = rbY.toInt().coerceIn(0, srcH - 1)
+            if (x2 <= x1 || y2 <= y1) return null
+
+            val cropped = Bitmap.createBitmap(source, x1, y1, x2 - x1, y2 - y1)
+            return Bitmap.createScaledBitmap(cropped, INPUT_SIZE, INPUT_SIZE, true).also {
+                if (cropped !== it && !cropped.isRecycled) cropped.recycle()
             }
         }
 

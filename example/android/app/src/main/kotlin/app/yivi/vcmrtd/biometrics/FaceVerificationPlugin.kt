@@ -49,6 +49,8 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         private const val REQUIRED_ACTIONS      = 3
         private const val ACTIONS_NEEDED_TO_PASS = 2
         private const val ACTION_TIMEOUT_FRAMES  = 150
+
+        private const val ERR_ACTIVE_SERVICE = "ActiveLivenessService unavailable"
     }
 
     private var activeRunId = 0
@@ -103,9 +105,9 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         eventChannel.setStreamHandler(null)
         scope.cancel()
 
-        try { engine?.close() } catch (_: Exception) {}
-        try { passiveLivenessService?.close() } catch (_: Exception) {}
-        try { livenessService?.close() } catch (_: Exception) {}
+        try { engine?.close() } catch (e: Exception) { android.util.Log.w(TAG, "engine close failed", e) }
+        try { passiveLivenessService?.close() } catch (e: Exception) { android.util.Log.w(TAG, "passiveLivenessService close failed", e) }
+        try { livenessService?.close() } catch (e: Exception) { android.util.Log.w(TAG, "livenessService close failed", e) }
 
         engine = null; passiveLivenessService = null
         activeLivenessService = null; livenessService = null
@@ -141,7 +143,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         activeFlowMutex.withLock {
             sessionStopping = true; sessionFinished = true; activeRunId++
 
-            try { faceMatchJob?.cancel() } catch (_: Exception) {}
+            try { faceMatchJob?.cancel() } catch (e: Exception) { android.util.Log.w(TAG, "faceMatchJob cancel failed", e) }
             faceMatchJob = null
 
             firstFrameDeferred?.let { if (!it.isCompleted) it.cancel() }
@@ -151,7 +153,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             extraActionMode = false; framesSinceLastAction = 0
             nfcImageForMatch = null; matchScoreResult = null
 
-            try { activeLivenessService?.reset() } catch (_: Exception) {}
+            try { activeLivenessService?.reset() } catch (e: Exception) { android.util.Log.w(TAG, "activeLivenessService reset failed", e) }
             sessionStopping = false
         }
     }
@@ -189,39 +191,10 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                     ?: throw IllegalStateException("Session not initialized")
                 val nfc = activeFlowMutex.withLock { nfcImageForMatch }
                     ?: throw IllegalStateException("NFC image failed")
-                val localEngine   = engine               ?: throw IllegalStateException("Engine unavailable")
-                val activeService = activeLivenessService ?: throw IllegalStateException("ActiveLivenessService unavailable")
+                val localEngine = engine ?: throw IllegalStateException("Engine unavailable")
+                activeLivenessService ?: throw IllegalStateException(ERR_ACTIVE_SERVICE)
 
-                faceMatchJob?.cancel()
-                faceMatchJob = scope.launch(Dispatchers.IO) {
-                    var bmp: Bitmap? = null
-                    try {
-                        bmp = deferred.await()
-                        if (isShuttingDown) return@launch
-
-                        val jpeg  = bitmapToJpeg(bmp, 95)
-                        val score = localEngine.verify(nfc, jpeg)
-
-                        activeFlowMutex.withLock {
-                            if (runId == activeRunId && !isShuttingDown) {
-                                matchScoreResult = score.toDouble()
-                            }
-                        }
-                    } catch (_: CancellationException) { return@launch }
-                    catch (e: Exception) {
-                        activeFlowMutex.withLock {
-                            if (runId == activeRunId && !isShuttingDown) {
-                                android.util.Log.e(TAG, "Face match error", e)
-                                matchScoreResult = 0.0
-                            }
-                        }
-                    } finally {
-                        if (bmp != null && !bmp.isRecycled) bmp.recycle()
-                    }
-                }
-
-                // startAction is called by the alignment phase once the face is
-                // stable in frame (see processFrameInternal alignment block).
+                launchFaceMatchJob(runId, deferred, localEngine, nfc)
                 startFrameLoop(runId)
 
                 android.util.Log.d(TAG, "Active liveness started: $currentActions")
@@ -229,6 +202,39 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             } catch (e: Exception) {
                 android.util.Log.e(TAG, "startActiveLiveness error", e)
                 result.error("ERROR", e.message, null)
+            }
+        }
+    }
+
+    private fun launchFaceMatchJob(
+        runId: Int,
+        deferred: CompletableDeferred<Bitmap>,
+        engine: FaceVerificationEngine,
+        nfc: ByteArray
+    ) {
+        faceMatchJob?.cancel()
+        faceMatchJob = scope.launch(Dispatchers.IO) {
+            var bmp: Bitmap? = null
+            try {
+                bmp = deferred.await()
+                if (isShuttingDown) return@launch
+                val jpeg  = bitmapToJpeg(bmp, 95)
+                val score = engine.verify(nfc, jpeg)
+                activeFlowMutex.withLock {
+                    if (runId == activeRunId && !isShuttingDown) {
+                        matchScoreResult = score.toDouble()
+                    }
+                }
+            } catch (_: CancellationException) { return@launch }
+            catch (e: Exception) {
+                activeFlowMutex.withLock {
+                    if (runId == activeRunId && !isShuttingDown) {
+                        android.util.Log.e(TAG, "Face match error", e)
+                        matchScoreResult = 0.0
+                    }
+                }
+            } finally {
+                if (bmp != null && !bmp.isRecycled) bmp.recycle()
             }
         }
     }
@@ -259,7 +265,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private fun stopActiveRunInternalLocked() {
         sessionFinished = true; sessionStopping = true
 
-        try { faceMatchJob?.cancel() } catch (_: Exception) {}
+        try { faceMatchJob?.cancel() } catch (e: Exception) { android.util.Log.w(TAG, "faceMatchJob cancel failed", e) }
         faceMatchJob = null
 
         firstFrameDeferred?.let { if (!it.isCompleted) it.cancel() }
@@ -269,7 +275,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         extraActionMode = false; framesSinceLastAction = 0
         nfcImageForMatch = null; matchScoreResult = null
 
-        try { activeLivenessService?.reset() } catch (_: Exception) {}
+        try { activeLivenessService?.reset() } catch (e: Exception) { android.util.Log.w(TAG, "activeLivenessService reset failed", e) }
         sessionStopping = false
     }
 
@@ -281,29 +287,32 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         frameLoopJob?.cancel()
         frameLoopJob = scope.launch(Dispatchers.IO) {
             android.util.Log.d(TAG, "Frame loop started (runId=$runId)")
-
             while (isActive && !isShuttingDown) {
-                val active = activeFlowMutex.withLock {
-                    !sessionFinished && !sessionStopping && runId == activeRunId
-                }
-                if (!active) break
-
-                val data = latestFrameData.getAndSet(null)
-                if (data == null) { delay(8); continue }
-
-                try {
-                    processFrameInternal(runId, data)
-                } catch (_: CancellationException) {
-                    break
-                } catch (e: Exception) {
-                    android.util.Log.e(TAG, "Frame loop error", e)
-                    abortActiveRun(runId, "Liveness processing failed. Please try again.")
-                    break
-                }
+                if (!runFrameLoopIteration(runId)) break
             }
-
             android.util.Log.d(TAG, "Frame loop ended (runId=$runId)")
         }
+    }
+
+    private suspend fun runFrameLoopIteration(runId: Int): Boolean {
+        val active = activeFlowMutex.withLock {
+            !sessionFinished && !sessionStopping && runId == activeRunId
+        }
+        if (!active) return false
+
+        val data = latestFrameData.getAndSet(null)
+        if (data == null) { delay(8); return true }
+
+        try {
+            processFrameInternal(runId, data)
+        } catch (_: CancellationException) {
+            return false
+        } catch (e: Exception) {
+            android.util.Log.e(TAG, "Frame loop error", e)
+            abortActiveRun(runId, "Liveness processing failed. Please try again.")
+            return false
+        }
+        return true
     }
 
     private fun handleProcessFrame(call: MethodCall, result: MethodChannel.Result) {
@@ -321,8 +330,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private suspend fun processFrameInternal(runId: Int, data: ByteArray) {
         if (isShuttingDown) return
 
-        val pickupMs  = SystemClock.elapsedRealtime()
-        val waitMs    = pickupMs - latestFrameReceivedMs
+        val waitMs    = SystemClock.elapsedRealtime() - latestFrameReceivedMs
         val decodeStartMs = SystemClock.elapsedRealtime()
         val bitmap    = decodeNv21Frame(data) ?: return
         val decodeMs  = SystemClock.elapsedRealtime() - decodeStartMs
@@ -333,71 +341,62 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 if (currentActionIndex >= pendingActions.size) return@withLock
 
                 framesSinceLastAction++
+                val service = activeLivenessService ?: throw IllegalStateException(ERR_ACTIVE_SERVICE)
 
-                val service = activeLivenessService
-                    ?: throw IllegalStateException("ActiveLivenessService unavailable")
-
-                // ── Alignment phase ──
-                // Delegated entirely to ActiveLivenessService — it owns isAligning,
-                // accumulates measurements, and calls startAction internally once ready.
                 if (service.isAligning) {
-                    val timedOut = framesSinceLastAction > ACTION_TIMEOUT_FRAMES
-                    val done = service.processAlignmentFrame(
-                        bitmap, pendingActions[currentActionIndex], timedOut
-                    )
-                    if (done) {
-                        framesSinceLastAction = 0
-                        val deferred = firstFrameDeferred
-                        if (deferred != null && !deferred.isCompleted) {
-                            deferred.complete(bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, false))
-                        }
-                        sendEvent(runId, mapOf("type" to "nextAction",
-                            "action" to pendingActions[currentActionIndex].name))
-                    }
-                    return@withLock
+                    processAlignmentPhaseLocked(runId, service, bitmap); return@withLock
                 }
-
                 if (framesSinceLastAction > ACTION_TIMEOUT_FRAMES) {
                     handleTimeoutLocked(runId); return@withLock
                 }
 
                 val detectStartMs = SystemClock.elapsedRealtime()
                 val actionDone    = service.processFrame(bitmap)
-                val detectMs      = SystemClock.elapsedRealtime() - detectStartMs
+                val detectMs2     = SystemClock.elapsedRealtime() - detectStartMs
                 val totalMs       = SystemClock.elapsedRealtime() - latestFrameReceivedMs
 
                 android.util.Log.d(TAG,
-                    "⏱ wait=${waitMs}ms decode=${decodeMs}ms detect=${detectMs}ms total=${totalMs}ms")
+                    "⏱ wait=${waitMs}ms decode=${decodeMs}ms detect=${detectMs2}ms total=${totalMs}ms")
 
-                val deferred = firstFrameDeferred
-                if (deferred != null && !deferred.isCompleted ) {
-                    deferred.complete(bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, false))
-                }
+                firstFrameDeferred?.let { if (!it.isCompleted) it.complete(bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, false)) }
 
                 if (!actionDone) return@withLock
-
-                val completed = pendingActions[currentActionIndex]
-                completedCount++; currentActionIndex++; framesSinceLastAction = 0
-
-                android.util.Log.d(TAG,
-                    "Action $completed done — $completedCount completed, index=$currentActionIndex/${pendingActions.size}")
-
-                sendEvent(runId, mapOf("type" to "actionDetected", "action" to completed.name))
-
-                if (currentActionIndex >= pendingActions.size) {
-                    if (shouldStartExtra()) { startExtraLocked(runId); return@withLock }
-                    val passed = if (extraActionMode) completedCount >= ACTIONS_NEEDED_TO_PASS + 1
-                    else completedCount >= REQUIRED_ACTIONS
-                    finishSessionLocked(runId, passed); return@withLock
-                }
-
-                val next = pendingActions[currentActionIndex]
-                service.queueNextAction(next) // queue with rest-phase baseline instead of starting immediately
-                sendEvent(runId, mapOf("type" to "nextAction", "action" to next.name))
+                handleActionDetectedLocked(runId, service)
             }
         } finally {
             if (!bitmap.isRecycled) bitmap.recycle()
         }
+    }
+
+    private fun processAlignmentPhaseLocked(runId: Int, service: ActiveLivenessService, bitmap: Bitmap) {
+        val timedOut = framesSinceLastAction > ACTION_TIMEOUT_FRAMES
+        val done = service.processAlignmentFrame(bitmap, pendingActions[currentActionIndex], timedOut)
+        if (done) {
+            framesSinceLastAction = 0
+            firstFrameDeferred?.let { if (!it.isCompleted) it.complete(bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, false)) }
+            sendEvent(runId, mapOf("type" to "nextAction", "action" to pendingActions[currentActionIndex].name))
+        }
+    }
+
+    private suspend fun handleActionDetectedLocked(runId: Int, service: ActiveLivenessService) {
+        val completed = pendingActions[currentActionIndex]
+        completedCount++; currentActionIndex++; framesSinceLastAction = 0
+
+        android.util.Log.d(TAG,
+            "Action $completed done — $completedCount completed, index=$currentActionIndex/${pendingActions.size}")
+
+        sendEvent(runId, mapOf("type" to "actionDetected", "action" to completed.name))
+
+        if (currentActionIndex >= pendingActions.size) {
+            if (shouldStartExtra()) { startExtraLocked(runId); return }
+            val passed = if (extraActionMode) completedCount >= ACTIONS_NEEDED_TO_PASS + 1
+            else completedCount >= REQUIRED_ACTIONS
+            finishSessionLocked(runId, passed); return
+        }
+
+        val next = pendingActions[currentActionIndex]
+        service.queueNextAction(next)
+        sendEvent(runId, mapOf("type" to "nextAction", "action" to next.name))
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -419,7 +418,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             finishSessionLocked(runId, passed); return
         }
 
-        val service = activeLivenessService ?: throw IllegalStateException("ActiveLivenessService unavailable")
+        val service = activeLivenessService ?: throw IllegalStateException(ERR_ACTIVE_SERVICE)
         val next = pendingActions[currentActionIndex]
         service.startAction(next)
         sendEvent(runId, mapOf("type" to "nextAction", "action" to next.name))
@@ -432,7 +431,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 completedCount == ACTIONS_NEEDED_TO_PASS
 
     private suspend fun startExtraLocked(runId: Int) {
-        val service = activeLivenessService ?: throw IllegalStateException("ActiveLivenessService unavailable")
+        val service = activeLivenessService ?: throw IllegalStateException(ERR_ACTIVE_SERVICE)
         val extra = ActiveLivenessService.ALL_ACTIONS
             .filter { it !in pendingActions }.randomOrNull()
             ?: ActiveLivenessService.ALL_ACTIONS.random()
@@ -451,70 +450,68 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         latestFrameData.set(null)
 
         sendEvent(runId, mapOf("type" to "processing"))
+        scope.launch(Dispatchers.IO) { collectAndSendResult(runId, passed) }
+    }
 
-        scope.launch(Dispatchers.IO) {
-            var score = 0.0
-            try {
-                while (isActive && !isShuttingDown) {
-                    val s = activeFlowMutex.withLock {
-                        if (runId != activeRunId || sessionStopping) return@launch
-                        matchScoreResult
-                    }
-                    if (s != null) { score = s; break }
-                    delay(50)
+    private suspend fun collectAndSendResult(runId: Int, passed: Boolean) {
+        var score = 0.0
+        try {
+            while (!isShuttingDown) {
+                val s = activeFlowMutex.withLock {
+                    if (runId != activeRunId || sessionStopping) return
+                    matchScoreResult
                 }
-            } catch (_: CancellationException) { return@launch }
-
-            val antiSpoofScore    = passiveLivenessService?.getAntiSpoofScore()
-            val antiSpoofPassed   = passiveLivenessService?.isAntiSpoofPassed() ?: true
-            val totalFrames       = passiveLivenessService?.getTotalFrames() ?: 0
-            val antiSpoofAttempts = passiveLivenessService?.getAntiSpoofAttempts() ?: 0
-            val sessionDurationMs = SystemClock.elapsedRealtime() - sessionStartMs
-
-            val rppgResult = passiveLivenessService?.getRppgResult()
-            val rppgPassed = rppgResult?.passed ?: false
-
-            val finalPassed = passed && antiSpoofPassed && rppgPassed
-
-
-            val shouldSend = activeFlowMutex.withLock {
-                runId == activeRunId && !isShuttingDown && !sessionStopping
+                if (s != null) { score = s; break }
+                delay(50)
             }
+        } catch (_: CancellationException) { return }
 
-            if (shouldSend) {
-                android.util.Log.d(TAG,
-                    "✅ SESSION RESULT: livenessPassed=$passed antiSpoofPassed=$antiSpoofPassed rppgPassed=$rppgPassed " +
-                            "finalPassed=$finalPassed matchScore=$score " +
-                            "antiSpoofScore=$antiSpoofScore actions=$completedCount " +
-                            "duration=${sessionDurationMs}ms frames=$totalFrames " +
-                            "antiSpoofAttempts=$antiSpoofAttempts " +
-                            "effectiveFps=${"%.1f".format(totalFrames / (sessionDurationMs / 1000.0))}")
-                sendEvent(runId, mapOf(
-                    "type"            to "complete",
-                    "passed"          to finalPassed,
-                    "matchScore"      to score,
-                    "antiSpoofScore"  to antiSpoofScore,
-                    "antiSpoofPassed" to antiSpoofPassed,
-                    "rppg"            to mapOf(
-                        "hr" to rppgResult?.hr,
-                        "snr" to rppgResult?.snr,
-                        "harmonicsOk" to rppgResult?.harmonicsOk,
-                        "passed" to rppgResult?.passed,
-                        "sampleCount" to rppgResult?.sampleCount,
-                        "durationMs" to rppgResult?.durationMs
-                    ),
-                ))
-            }
+        val antiSpoofScore    = passiveLivenessService?.getAntiSpoofScore()
+        val antiSpoofPassed   = passiveLivenessService?.isAntiSpoofPassed() ?: true
+        val totalFrames       = passiveLivenessService?.getTotalFrames() ?: 0
+        val antiSpoofAttempts = passiveLivenessService?.getAntiSpoofAttempts() ?: 0
+        val sessionDurationMs = SystemClock.elapsedRealtime() - sessionStartMs
+        val rppgResult        = passiveLivenessService?.getRppgResult()
+        val rppgPassed        = rppgResult?.passed ?: false
+        val finalPassed       = passed && antiSpoofPassed && rppgPassed
 
-            activeFlowMutex.withLock {
-                if (runId == activeRunId) {
-                    pendingActions.clear(); currentActionIndex = 0
-                    completedCount = 0; extraActionMode = false
-                    framesSinceLastAction = 0; nfcImageForMatch = null
-                    matchScoreResult = null; firstFrameDeferred = null
-                    faceMatchJob = null
-                    try { activeLivenessService?.reset() } catch (_: Exception) {}
-                }
+        val shouldSend = activeFlowMutex.withLock {
+            runId == activeRunId && !isShuttingDown && !sessionStopping
+        }
+
+        if (shouldSend) {
+            android.util.Log.d(TAG,
+                "✅ SESSION RESULT: livenessPassed=$passed antiSpoofPassed=$antiSpoofPassed rppgPassed=$rppgPassed " +
+                        "finalPassed=$finalPassed matchScore=$score " +
+                        "antiSpoofScore=$antiSpoofScore actions=$completedCount " +
+                        "duration=${sessionDurationMs}ms frames=$totalFrames " +
+                        "antiSpoofAttempts=$antiSpoofAttempts " +
+                        "effectiveFps=${"%.1f".format(totalFrames / (sessionDurationMs / 1000.0))}")
+            sendEvent(runId, mapOf(
+                "type"            to "complete",
+                "passed"          to finalPassed,
+                "matchScore"      to score,
+                "antiSpoofScore"  to antiSpoofScore,
+                "antiSpoofPassed" to antiSpoofPassed,
+                "rppg"            to mapOf(
+                    "hr" to rppgResult?.hr,
+                    "snr" to rppgResult?.snr,
+                    "harmonicsOk" to rppgResult?.harmonicsOk,
+                    "passed" to rppgResult?.passed,
+                    "sampleCount" to rppgResult?.sampleCount,
+                    "durationMs" to rppgResult?.durationMs
+                ),
+            ))
+        }
+
+        activeFlowMutex.withLock {
+            if (runId == activeRunId) {
+                pendingActions.clear(); currentActionIndex = 0
+                completedCount = 0; extraActionMode = false
+                framesSinceLastAction = 0; nfcImageForMatch = null
+                matchScoreResult = null; firstFrameDeferred = null
+                faceMatchJob = null
+                try { activeLivenessService?.reset() } catch (e: Exception) { android.util.Log.w(TAG, "activeLivenessService reset failed", e) }
             }
         }
     }
@@ -527,7 +524,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             if (runId != activeRunId || sessionStopping) return@withLock false
             sessionStopping = true; sessionFinished = true; activeRunId++
 
-            try { faceMatchJob?.cancel() } catch (_: Exception) {}
+            try { faceMatchJob?.cancel() } catch (e: Exception) { android.util.Log.w(TAG, "faceMatchJob cancel failed", e) }
             faceMatchJob = null
 
             firstFrameDeferred?.let { if (!it.isCompleted) it.cancel() }
@@ -537,7 +534,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             extraActionMode = false; framesSinceLastAction = 0
             nfcImageForMatch = null; matchScoreResult = null
 
-            try { activeLivenessService?.reset() } catch (_: Exception) {}
+            try { activeLivenessService?.reset() } catch (e: Exception) { android.util.Log.w(TAG, "activeLivenessService reset failed", e) }
             sessionStopping = false
             true
         }
@@ -610,7 +607,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             if (isShuttingDown) return@launch
             val ok = activeFlowMutex.withLock { runId == activeRunId && !sessionStopping }
             if (!ok) return@launch
-            try { eventSink?.success(data) } catch (_: Exception) {}
+            try { eventSink?.success(data) } catch (e: Exception) { android.util.Log.w(TAG, "eventSink send failed", e) }
         }
     }
 
@@ -619,7 +616,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         scope.launch(Dispatchers.Main) {
             if (isShuttingDown) return@launch
             try { eventSink?.success(mapOf("type" to "error", "message" to message)) }
-            catch (_: Exception) {}
+            catch (e: Exception) { android.util.Log.w(TAG, "eventSink terminal error send failed", e) }
         }
     }
 
