@@ -183,14 +183,14 @@ class LivenessService(private val context: Context) {
     fun resetLiveState() { latestResult = null }
 
     fun close() {
-        try { faceLandmarker?.close() } catch (_: Exception) {}
+        try { faceLandmarker?.close() } catch (e: Exception) { android.util.Log.w(TAG, "close: faceLandmarker close failed", e) }
         faceLandmarker = null; usingGpu = false; resetLiveState()
     }
 
     private fun switchToCpu(): Boolean {
         if (!switchingToCpu.compareAndSet(false, true)) return false
         return try {
-            try { faceLandmarker?.close() } catch (_: Exception) {}
+            try { faceLandmarker?.close() } catch (e: Exception) { android.util.Log.w(TAG, "switchToCpu: close failed", e) }
             faceLandmarker = createFaceLandmarker(Delegate.CPU)
             usingGpu = false; resetLiveState()
             android.util.Log.w(TAG, "Switched to CPU after GPU failure")

@@ -416,45 +416,43 @@ class ActiveLivenessService(
         val lmYaw  = landmarkYaw(lm)
 
         if (baselineYaw < BASELINE_FRAMES) {
-            if (matYaw != null) blYawMatrix.add(matYaw)
-            blYawLandmark.add(lmYaw)
-            baselineYaw++
-            if (baselineYaw == BASELINE_FRAMES) {
-                neutralYawMatrix   = blYawMatrix.medianOrNull()
-                neutralYawLandmark = blYawLandmark.median()
-            }
+            collectTurnBaseline(matYaw, lmYaw)
             return false
         }
 
         val matD = matYaw?.let { it - (neutralYawMatrix ?: 0f) }
         val lmD  = lmYaw - (neutralYawLandmark ?: 0f)
-
-        val detected = if (!turnDetectedLatch) {
-            val matOk = matD?.let {
-                if (left) it >= YAW_THRESHOLD_DEG else it <= -YAW_THRESHOLD_DEG
-            } ?: false
-
-            val lmOk = if (matYaw == null) {
-                if (left) lmD <= -LANDMARK_TURN_THRESHOLD
-                else      lmD >= LANDMARK_TURN_THRESHOLD
-            } else {
-                false
-            }
-
-            android.util.Log.v(TAG, "turn detail: matOk=$matOk lmOk=$lmOk")
-
-            val hit = matOk || lmOk
-            if (hit) turnDetectedLatch = true
-            hit
-        } else {
-            val back = (matD?.let { abs(it) < YAW_RELEASE_DEG } ?: true) &&
-                    abs(lmD) < LANDMARK_TURN_RELEASE
-            if (back) { turnDetectedLatch = false; false } else true
-        }
+        val detected = isTurnDetected(matYaw, matD, lmD, left)
 
         android.util.Log.v(TAG,
             "turn: left=$left matD=${fmt(matD)} lmD=${"%.4f".format(lmD)} det=$detected")
         return detected
+    }
+
+    private fun collectTurnBaseline(matYaw: Float?, lmYaw: Float) {
+        if (matYaw != null) blYawMatrix.add(matYaw)
+        blYawLandmark.add(lmYaw)
+        baselineYaw++
+        if (baselineYaw == BASELINE_FRAMES) {
+            neutralYawMatrix   = blYawMatrix.medianOrNull()
+            neutralYawLandmark = blYawLandmark.median()
+        }
+    }
+
+    private fun isTurnDetected(matYaw: Float?, matD: Float?, lmD: Float, left: Boolean): Boolean {
+        return if (!turnDetectedLatch) {
+            val matOk = matD?.let {
+                if (left) it >= YAW_THRESHOLD_DEG else it <= -YAW_THRESHOLD_DEG
+            } ?: false
+            val lmOk = matYaw == null && if (left) lmD <= -LANDMARK_TURN_THRESHOLD else lmD >= LANDMARK_TURN_THRESHOLD
+            android.util.Log.v(TAG, "turn detail: matOk=$matOk lmOk=$lmOk")
+            val hit = matOk || lmOk
+            if (hit) turnDetectedLatch = true
+            hit
+        } else {
+            val back = (matD?.let { abs(it) < YAW_RELEASE_DEG } ?: true) && abs(lmD) < LANDMARK_TURN_RELEASE
+            if (back) { turnDetectedLatch = false; false } else true
+        }
     }
 
     private fun landmarkYaw(lm: List<NormalizedLandmark>): Float {

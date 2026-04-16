@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
@@ -173,21 +172,25 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> with Wi
 
       final ctrl = _cameraController;
       if (ctrl != null) {
-        try {
-          if (ctrl.value.isStreamingImages) await ctrl.stopImageStream();
-        } catch (_) {}
-
-        if (disposeCamera) {
-          _cameraClosing = true;
-          try {
-            await ctrl.dispose();
-          } catch (_) {}
-          if (identical(_cameraController, ctrl)) _cameraController = null;
-          _cameraClosing = false;
-        }
+        await _disposeCameraController(ctrl, disposeCamera: disposeCamera);
       }
     } finally {
       _activeLivenessStopping = false;
+    }
+  }
+
+  Future<void> _disposeCameraController(CameraController ctrl, {required bool disposeCamera}) async {
+    try {
+      if (ctrl.value.isStreamingImages) await ctrl.stopImageStream();
+    } catch (_) {}
+
+    if (disposeCamera) {
+      _cameraClosing = true;
+      try {
+        await ctrl.dispose();
+      } catch (_) {}
+      if (identical(_cameraController, ctrl)) _cameraController = null;
+      _cameraClosing = false;
     }
   }
 
@@ -259,16 +262,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> with Wi
       await _eventSub?.cancel();
       _eventSub = _eventChannel.receiveBroadcastStream().listen(
         _onLivenessEvent,
-        onError: (Object e) {
-          if (mounted && !_isDisposed) {
-            _invalidateFramePipeline();
-            setState(() {
-              _state = _VerificationState.idle;
-              _currentAction = null;
-              _errorMessage = 'Liveness error: $e';
-            });
-          }
-        },
+        onError: _onLivenessStreamError,
       );
 
       final actions = await _methodChannel.invokeMethod<List<dynamic>>('startActiveLiveness', {'nfcImage': nfcImage});
@@ -295,6 +289,17 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> with Wi
       }
     } finally {
       _startingLiveness = false;
+    }
+  }
+
+  void _onLivenessStreamError(Object e) {
+    if (mounted && !_isDisposed) {
+      _invalidateFramePipeline();
+      setState(() {
+        _state = _VerificationState.idle;
+        _currentAction = null;
+        _errorMessage = 'Liveness error: $e';
+      });
     }
   }
 
@@ -544,11 +549,11 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> with Wi
                       style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
                     ),
                     SizedBox(height: 6),
-                    _StepRow(number: '1', text: 'Center your face inside the oval'),
+                    const _StepRow(number: '1', text: 'Center your face inside the oval'),
                     SizedBox(height: 4),
-                    _StepRow(number: '2', text: 'Tap the button below'),
+                    const _StepRow(number: '2', text: 'Tap the button below'),
                     SizedBox(height: 4),
-                    _StepRow(number: '3', text: 'Follow the on-screen prompts'),
+                    const _StepRow(number: '3', text: 'Follow the on-screen prompts'),
                   ],
                 ),
               ),
@@ -576,110 +581,102 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> with Wi
       fit: StackFit.expand,
       children: [
         _buildCameraPreview(),
-        if (_actionFlash) Container(color: Colors.green.withOpacity(0.25)),
-
-        // ── Oval alignment overlay ──
-        // Stays visible after the button is tapped while the baseline is being
-        // collected. Disappears automatically once the first action is ready.
-        if (isAligning) ...[
-          _buildOvalOverlay(),
-          Positioned(
-            bottom: 40,
-            left: 24,
-            right: 24,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(24)),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 13,
-                    height: 13,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
-                  ),
-                  SizedBox(width: 10),
-                  Text('Hold still — reading your face…', style: TextStyle(color: Colors.white70, fontSize: 15)),
-                ],
-              ),
-            ),
-          ),
-        ],
-
-        // ── Action checklist — hidden during alignment so the user isn't confused ──
-        if (!isAligning)
-          Positioned(
-            top: 16,
-            left: 16,
-            right: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(16)),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: _actions.asMap().entries.map((e) {
-                  final done = _completedActions.contains(e.value);
-                  final current = e.value == action;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 3),
-                    child: Row(
-                      children: [
-                        Icon(
-                          done
-                              ? Icons.check_circle
-                              : (current ? Icons.radio_button_checked : Icons.radio_button_unchecked),
-                          color: done ? Colors.green : (current ? Colors.white : Colors.white38),
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _actionLabel(e.value),
-                            style: TextStyle(
-                              color: done ? Colors.green : (current ? Colors.white : Colors.white38),
-                              fontWeight: current ? FontWeight.bold : FontWeight.normal,
-                            ),
-                          ),
-                        ),
-                        if (_extraActionMode && e.key == _actions.length - 1)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(8)),
-                            child: const Text('extra', style: TextStyle(color: Colors.white, fontSize: 10)),
-                          ),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-
-        // ── Current action instruction ──
-        if (action != null)
-          Positioned(
-            bottom: 40,
-            left: 24,
-            right: 24,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(24)),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(_actionIcon(action), color: Colors.white, size: 28),
-                  const SizedBox(width: 12),
-                  Text(
-                    _actionLabel(action),
-                    style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-            ),
-          ),
+        if (_actionFlash) Container(color: Colors.green.withValues(alpha: 0.25)),
+        if (isAligning) ..._buildAlignmentOverlay(),
+        if (!isAligning) _buildActionChecklist(action),
+        if (action != null) _buildActionInstruction(action),
       ],
     );
   }
+
+  List<Widget> _buildAlignmentOverlay() => [
+    _buildOvalOverlay(),
+    Positioned(
+      bottom: 40,
+      left: 24,
+      right: 24,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(24)),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 13,
+              height: 13,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
+            ),
+            SizedBox(width: 10),
+            Text('Hold still — reading your face…', style: TextStyle(color: Colors.white70, fontSize: 15)),
+          ],
+        ),
+      ),
+    ),
+  ];
+
+  Widget _buildActionChecklist(String action) => Positioned(
+    top: 16,
+    left: 16,
+    right: 16,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: _actions.asMap().entries.map((e) {
+          final done = _completedActions.contains(e.value);
+          final current = e.value == action;
+          final itemIcon = done
+              ? Icons.check_circle
+              : (current ? Icons.radio_button_checked : Icons.radio_button_unchecked);
+          final itemColor = done ? Colors.green : (current ? Colors.white : Colors.white38);
+          final itemWeight = current ? FontWeight.bold : FontWeight.normal;
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            child: Row(
+              children: [
+                Icon(itemIcon, color: itemColor, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _actionLabel(e.value),
+                    style: TextStyle(color: itemColor, fontWeight: itemWeight),
+                  ),
+                ),
+                if (_extraActionMode && e.key == _actions.length - 1)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(8)),
+                    child: const Text('extra', style: TextStyle(color: Colors.white, fontSize: 10)),
+                  ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    ),
+  );
+
+  Widget _buildActionInstruction(String action) => Positioned(
+    bottom: 40,
+    left: 24,
+    right: 24,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(24)),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(_actionIcon(action), color: Colors.white, size: 28),
+          const SizedBox(width: 12),
+          Text(
+            _actionLabel(action),
+            style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    ),
+  );
 
   Widget _buildProcessing() => const Center(
     child: Column(
@@ -790,7 +787,7 @@ class _FaceOvalPainter extends CustomPainter {
 
     // Dark overlay with the oval punched out.
     canvas.saveLayer(Offset.zero & size, Paint());
-    canvas.drawRect(Offset.zero & size, Paint()..color = Colors.black.withOpacity(0.50));
+    canvas.drawRect(Offset.zero & size, Paint()..color = Colors.black.withValues(alpha: 0.50));
     canvas.drawOval(ovalRect, Paint()..blendMode = BlendMode.clear);
     canvas.restore();
 
@@ -798,7 +795,7 @@ class _FaceOvalPainter extends CustomPainter {
     canvas.drawOval(
       ovalRect,
       Paint()
-        ..color = Colors.white.withOpacity(0.85)
+        ..color = Colors.white.withValues(alpha: 0.85)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.5,
     );

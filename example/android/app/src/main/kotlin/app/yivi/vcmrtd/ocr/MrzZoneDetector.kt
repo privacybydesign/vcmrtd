@@ -144,19 +144,8 @@ object MrzZoneDetector {
 
         if (bestScore < 0.10) return null
 
-        // Expand band until density drops
         val cutoff = bestScore * 0.25
-        var mrzTop = bestStart
-        var mrzBottom = minOf(bestStart + bestWindow, bh - 1)
-
-        for (y in (bestStart - 1) downTo 0) {
-            if (smoothed[y] < cutoff) { mrzTop = y + 1; break }
-            mrzTop = y
-        }
-        for (y in (bestStart + bestWindow) until bh) {
-            if (smoothed[y] < cutoff) { mrzBottom = y - 1; break }
-            mrzBottom = y
-        }
+        val (mrzTop, mrzBottom) = expandBand(smoothed, bestStart, bestWindow, bh, cutoff)
 
         // Translate to full image coordinates + margin
         var absTop = mrzTop + searchStartY
@@ -172,6 +161,20 @@ object MrzZoneDetector {
         if (roiHeight < 0.08 || roiHeight > 0.45) return null
 
         return RoiResult(0.02, roiTop, 0.96, roiHeight)
+    }
+
+    private fun expandBand(smoothed: DoubleArray, bestStart: Int, bestWindow: Int, bh: Int, cutoff: Double): Pair<Int, Int> {
+        var mrzTop = bestStart
+        var mrzBottom = minOf(bestStart + bestWindow, bh - 1)
+        for (y in (bestStart - 1) downTo 0) {
+            if (smoothed[y] < cutoff) { mrzTop = y + 1; break }
+            mrzTop = y
+        }
+        for (y in (bestStart + bestWindow) until bh) {
+            if (smoothed[y] < cutoff) { mrzBottom = y - 1; break }
+            mrzBottom = y
+        }
+        return Pair(mrzTop, mrzBottom)
     }
 
     /**
@@ -233,19 +236,17 @@ object MrzZoneDetector {
             if (heightRatio > 0.35) continue
             if (centerY < 0.4) continue
 
-            if (ar > 2.5 && crWidth > 0.25 && rect.height > 15 && areaRatio > 0.05) {
-                if (centerY > bestCenterY) {
-                    val pX = (rect.width * 0.08).toInt()
-                    val pY = (rect.height * 0.20).toInt()
+            if (ar > 2.5 && crWidth > 0.25 && rect.height > 15 && areaRatio > 0.05 && centerY > bestCenterY) {
+                val pX = (rect.width * 0.08).toInt()
+                val pY = (rect.height * 0.20).toInt()
 
-                    val left = maxOf(rect.x - pX, 0).toDouble() / w
-                    val top = maxOf(rect.y - pY, 0).toDouble() / h
-                    val right = minOf(rect.x + rect.width + pX, w).toDouble() / w
-                    val bottom = minOf(rect.y + rect.height + pY, h).toDouble() / h
+                val left = maxOf(rect.x - pX, 0).toDouble() / w
+                val top = maxOf(rect.y - pY, 0).toDouble() / h
+                val right = minOf(rect.x + rect.width + pX, w).toDouble() / w
+                val bottom = minOf(rect.y + rect.height + pY, h).toDouble() / h
 
-                    best = RoiResult(left, top, right - left, bottom - top)
-                    bestCenterY = centerY
-                }
+                best = RoiResult(left, top, right - left, bottom - top)
+                bestCenterY = centerY
             }
         }
 

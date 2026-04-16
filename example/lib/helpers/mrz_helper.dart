@@ -61,26 +61,25 @@ class MRZHelper {
     final l = lines.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
     if (l.isEmpty) return null;
 
-    // Check for driver's license (starts with D1, D2, or DL)
     final first = l.first;
-    if (first.length >= 2) {
-      final pfx = first.substring(0, 2);
-      if (pfx == 'D1' || pfx == 'D2' || pfx == 'DL') {
-        "Driver's License MRZ detected".logInfo();
-        return [...l];
-      }
+    if (first.length >= 2 && _isDriversLicensePrefix(first.substring(0, 2))) {
+      "Driver's License MRZ detected".logInfo();
+      return [...l];
     }
 
-    // Check for passport/visa/ID (requires at least 2 lines)
     if (l.length < 2) return null;
-
     final len = l.first.length;
     if (!l.every((e) => e.length == len)) return null;
 
-    // Original logic: Check if it starts with P, V, or I
+    return _matchIcaoShape(l, len);
+  }
+
+  static bool _isDriversLicensePrefix(String pfx) =>
+      pfx == 'D1' || pfx == 'D2' || pfx == 'DL';
+
+  static List<String>? _matchIcaoShape(List<String> l, int len) {
     final fChar = l.first[0];
-    final supportedDocTypes = ['P', 'V', 'I'];
-    if (supportedDocTypes.contains(fChar)) {
+    if (fChar == 'P' || fChar == 'V' || fChar == 'I') {
       if (fChar == 'I') {
         'Identity Card MRZ detected'.logInfo();
       } else {
