@@ -3,6 +3,8 @@ package foundation.privacybydesign.vcmrtd.biometrics
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.os.SystemClock
+import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult
 import org.tensorflow.lite.Interpreter
 import java.io.FileInputStream
 import java.nio.ByteBuffer
@@ -10,6 +12,7 @@ import java.nio.ByteOrder
 import java.nio.channels.FileChannel
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.random.Random
 import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.max
@@ -39,6 +42,14 @@ class PassiveLivenessService(
         // Placeholder: thresholds may need adjustment after real-device testing
         // Current behaviour: null scores (no face detected) are treated as pass
         const val ANTISPOOF_MIN_SCORE = 0.65  // TODO: calibrate with real test data
+
+        // ── Per-session passive metric collection ──
+        private const val ANTISPOOF_SAMPLE_RATE = 0.30f  // fraction of frames scored
+        private const val ANTISPOOF_MAX_YAW_DEG = 15f    // skip non-frontal frames
+        private const val RPPG_FRONTAL_MAX_YAW  = 10f    // only collect rPPG when nearly frontal
+        private const val RPPG_MAX_GAP_MS       = 1000L  // reset if gap between frames > 1 s
+        private const val RPPG_MIN_ROI_PIX      = 12     // minimum ROI width in pixels
+        private const val RPPG_ENLARGE_FACTOR   = 1.8f   // enlarge tiny ROIs before sampling
     }
 
     private data class FftData(val re: DoubleArray, val im: DoubleArray)
@@ -51,6 +62,15 @@ class PassiveLivenessService(
         val sampleCount: Int = 0,
         val durationMs: Long = 0L
     )
+
+    // ── Per-session accumulated passive metrics ──
+    // Populated by collectPassiveMetrics() during the active liveness session.
+    // Cleared by reset() between sessions.
+    private val antiSpoofScores  = mutableListOf<Double?>()
+    private var antiSpoofAttempts = 0
+    private var totalFrames       = 0
+    private val rppgSamples      = mutableListOf<FloatArray>()
+    private val rppgSampleTimes  = mutableListOf<Long>()
 
     fun initialize() {
         MiniFASNetService.initialize(context)
@@ -77,7 +97,7 @@ class PassiveLivenessService(
      * is treated as no evidence of spoofing (fail-open for UX).
      * Returns true if there are no valid scores, or if the mean >= ANTISPOOF_MIN_SCORE.
      */
-    fun isAntiSpoofPassed(scores: List<Double?>): Boolean {
+    private fun isAntiSpoofPassed(scores: List<Double?>): Boolean {
         val valid = scores.filterNotNull()
         if (valid.isEmpty()) {
             android.util.Log.w(TAG, "isAntiSpoofPassed: no valid scores, allowing pass (fail-open)")
@@ -87,7 +107,7 @@ class PassiveLivenessService(
         val passed = avg >= ANTISPOOF_MIN_SCORE
         android.util.Log.d(TAG,
             "isAntiSpoofPassed: avg=${"%.3f".format(avg)} threshold=$ANTISPOOF_MIN_SCORE " +
-                    "passed=$passed (${valid.size} van ${scores.size} scores geldig)")
+                    "passed=$passed (${valid.size} of ${scores.size} scores valid)")
         return passed
     }
 
@@ -95,6 +115,147 @@ class PassiveLivenessService(
     fun close() {
         MiniFASNetService.close()
         android.util.Log.d(TAG, "PassiveLivenessService closed")
+    }
+
+    // ═══════════════════════════════════════════
+    //  Per-session state — public API
+    // ═══════════════════════════════════════════
+
+    /** Clears all accumulated passive metrics. Call between sessions. */
+    fun reset() {
+        antiSpoofScores.clear()
+        antiSpoofAttempts = 0
+        totalFrames = 0
+        rppgSamples.clear()
+        rppgSampleTimes.clear()
+    }
+
+    /** Returns the running mean anti-spoof score, or null if no frames scored yet. */
+    fun getAntiSpoofScore(): Double? {
+        val valid = antiSpoofScores.filterNotNull()
+        return if (valid.isEmpty()) null else valid.average()
+    }
+
+    /** Returns whether the accumulated anti-spoof scores pass the liveness threshold. */
+    fun isAntiSpoofPassed(): Boolean = isAntiSpoofPassed(antiSpoofScores)
+
+    fun getAntiSpoofAttempts(): Int = antiSpoofAttempts
+
+    /** Total frames processed via [collectPassiveMetrics] in this session. */
+    fun getTotalFrames(): Int = totalFrames
+
+    /**
+     * Collects passive liveness metrics (anti-spoof + rPPG) from one active-session frame.
+     *
+     * Must be called with an ARGB_8888 [bitmap] and the already-computed MediaPipe [result]
+     * for that frame — reuses the existing detection result to avoid a redundant model call.
+     */
+    fun collectPassiveMetrics(bitmap: Bitmap, result: FaceLandmarkerResult) {
+        totalFrames++
+        val yaw = livenessService.matrixYaw(result)
+
+        // ── Anti-spoof sampling ──
+        if (Random.nextFloat() < ANTISPOOF_SAMPLE_RATE) {
+            antiSpoofAttempts++
+            val isFrontal = yaw == null || abs(yaw) < ANTISPOOF_MAX_YAW_DEG
+            if (isFrontal) {
+                val rois = livenessService.extractRois(result)
+                if (rois != null) {
+                    val score = scoreFrame(bitmap, rois)
+                    antiSpoofScores.add(score)
+                    if (score != null) {
+                        android.util.Log.d(TAG,
+                            "AntiSpoof score=${"%.3f".format(score)} " +
+                            "yaw=${yaw?.let { "%.1f".format(it) } ?: "null"} " +
+                            "samples=${antiSpoofScores.filterNotNull().size}")
+                    }
+                }
+            } else {
+                android.util.Log.d(TAG,
+                    "AntiSpoof: frame skipped (yaw=${"%.1f".format(yaw!!)}° > ${ANTISPOOF_MAX_YAW_DEG}°)")
+            }
+        }
+
+        // ── rPPG sampling ──
+        try {
+            val roisAll = livenessService.extractRois(result)
+            if (roisAll != null) {
+                val now = SystemClock.elapsedRealtime()
+                if (rppgSampleTimes.isNotEmpty() && now - rppgSampleTimes.last() > RPPG_MAX_GAP_MS) {
+                    rppgSamples.clear(); rppgSampleTimes.clear()
+                }
+                val isRppgFrontal = yaw == null || abs(yaw) <= RPPG_FRONTAL_MAX_YAW
+                if (isRppgFrontal) {
+                    val zones = listOf(
+                        LivenessService.RoiZone.FOREHEAD,
+                        LivenessService.RoiZone.LEFT_CHEEK,
+                        LivenessService.RoiZone.RIGHT_CHEEK,
+                        LivenessService.RoiZone.NOSE
+                    )
+                    var sumR = 0f; var sumG = 0f; var sumB = 0f; var cnt = 0
+                    for (z in zones) {
+                        var rroi = roisAll[z] ?: continue
+                        val estPix = (rroi[2] * bitmap.width).toInt()
+                        if (estPix < RPPG_MIN_ROI_PIX) {
+                            rroi = floatArrayOf(rroi[0], rroi[1],
+                                (rroi[2] * RPPG_ENLARGE_FACTOR).coerceAtMost(0.5f))
+                        }
+                        val rgb = livenessService.extractRgbFromRoi(bitmap, rroi)
+                        if (rgb != null) { sumR += rgb[0]; sumG += rgb[1]; sumB += rgb[2]; cnt++ }
+                    }
+                    if (cnt > 0) {
+                        rppgSamples.add(floatArrayOf(sumR / cnt, sumG / cnt, sumB / cnt))
+                        rppgSampleTimes.add(now)
+                        if (rppgSamples.size > 1200) {
+                            rppgSamples.removeAt(0); rppgSampleTimes.removeAt(0)
+                        }
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+    }
+
+    /**
+     * Returns rPPG evaluation computed from accumulated samples, or null if insufficient data.
+     * Uses a sliding window to find the best contiguous frontal segment.
+     */
+    fun getRppgResult(): RppgResult? {
+        val minSamples = 6
+        val times = rppgSampleTimes
+        if (rppgSamples.size < minSamples || times.size < 2) return null
+
+        val durationMs = (times.last() - times.first()).coerceAtLeast(1L)
+        val fps = (((rppgSamples.size - 1) * 1000) / durationMs).coerceAtLeast(1).toInt()
+
+        val effectiveMinDuration = 2500L
+        if (durationMs < effectiveMinDuration) return null
+
+        val requiredSamples = (fps * 3.0).toInt().coerceAtLeast(minSamples)
+        if (rppgSamples.size < requiredSamples) return null
+
+        var bestResult: RppgResult? = null
+        for (start in 0..(rppgSamples.size - requiredSamples)) {
+            val end = start + requiredSamples
+            val windowTimes = times.subList(start, end)
+            var hasLargeGap = false
+            for (i in 1 until windowTimes.size) {
+                if (windowTimes[i] - windowTimes[i - 1] > RPPG_MAX_GAP_MS) {
+                    hasLargeGap = true; break
+                }
+            }
+            if (hasLargeGap) continue
+            val durationWindow = (windowTimes.last() - windowTimes.first()).coerceAtLeast(1L)
+            if (durationWindow < effectiveMinDuration) continue
+            val windowSamples = rppgSamples.subList(start, end)
+            val windowFps = (((windowSamples.size - 1) * 1000) / durationWindow)
+                .coerceAtLeast(1).toInt()
+            try {
+                val res = evaluateRppg(windowSamples, windowFps)
+                if (res.passed) return res
+                if (bestResult == null || res.snr > bestResult.snr) bestResult = res
+            } catch (_: Exception) {}
+        }
+        return bestResult
     }
 
     /**

@@ -137,10 +137,7 @@ GoRouter createRouter() {
           final extra = state.extra as Map<String, dynamic>;
           final nfcImageBytes = extra['nfcImageBytes'] as Uint8List?;
 
-          return FaceVerificationScreen(
-            nfcImageBytes: nfcImageBytes,
-            onBackPressed: context.pop,
-          );
+          return FaceVerificationScreen(nfcImageBytes: nfcImageBytes, onBackPressed: context.pop);
         },
       ),
     ],

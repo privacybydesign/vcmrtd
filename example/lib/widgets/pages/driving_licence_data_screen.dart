@@ -131,7 +131,7 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
       context: context,
       title: 'Success!',
       message:
-      'Your driving licence data has been securely transmitted to the web application. '
+          'Your driving licence data has been securely transmitted to the web application. '
           'You can now close this app or scan another document.',
       onContinue: widget.onBackPressed,
     );
