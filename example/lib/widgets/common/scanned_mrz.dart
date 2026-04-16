@@ -9,6 +9,10 @@ sealed class ScannedMRZ {
   ScannedMRZ({required this.documentNumber, required this.countryCode, required this.documentType});
 }
 
+// =====================
+// PASSPORT / ID CARD SHAPE
+// (mrz_parser v3 returns PassportMrzResult for both passport and ID card parsers)
+// =====================
 class ScannedPassportMRZ extends ScannedMRZ {
   final DateTime dateOfBirth;
   final DateTime dateOfExpiry;
@@ -21,7 +25,7 @@ class ScannedPassportMRZ extends ScannedMRZ {
     super.documentType = DocumentType.passport,
   });
 
-  factory ScannedPassportMRZ.fromMRZResult(MRZResult mrz, {DocumentType documentType = DocumentType.passport}) {
+  factory ScannedPassportMRZ.fromMRZResult(PassportMrzResult mrz, {DocumentType documentType = DocumentType.passport}) {
     return ScannedPassportMRZ(
       documentNumber: mrz.documentNumber,
       countryCode: mrz.countryCode,
@@ -35,7 +39,7 @@ class ScannedPassportMRZ extends ScannedMRZ {
     required String documentNumber,
     required DateTime dateOfBirth,
     required DateTime dateOfExpiry,
-    String countryCode = '', // TODO: Get country code from manual entry screen as well
+    String countryCode = '',
     DocumentType documentType = DocumentType.passport,
   }) {
     return ScannedPassportMRZ(
@@ -48,6 +52,54 @@ class ScannedPassportMRZ extends ScannedMRZ {
   }
 }
 
+// =====================
+// ID CARD (TD1)
+// =====================
+class ScannedIdCardMRZ extends ScannedMRZ {
+  final DateTime dateOfBirth;
+  final DateTime dateOfExpiry;
+
+  ScannedIdCardMRZ({
+    required super.documentNumber,
+    required super.countryCode,
+    required this.dateOfBirth,
+    required this.dateOfExpiry,
+    super.documentType = DocumentType.identityCard,
+  });
+
+  factory ScannedIdCardMRZ.fromMRZResult(
+    PassportMrzResult mrz, {
+    DocumentType documentType = DocumentType.identityCard,
+  }) {
+    return ScannedIdCardMRZ(
+      documentNumber: mrz.documentNumber,
+      countryCode: mrz.countryCode,
+      dateOfBirth: mrz.birthDate,
+      dateOfExpiry: mrz.expiryDate,
+      documentType: documentType,
+    );
+  }
+
+  factory ScannedIdCardMRZ.fromManualEntry({
+    required String documentNumber,
+    required DateTime dateOfBirth,
+    required DateTime dateOfExpiry,
+    String countryCode = '',
+    DocumentType documentType = DocumentType.identityCard,
+  }) {
+    return ScannedIdCardMRZ(
+      documentNumber: documentNumber,
+      countryCode: countryCode,
+      dateOfBirth: dateOfBirth,
+      dateOfExpiry: dateOfExpiry,
+      documentType: documentType,
+    );
+  }
+}
+
+// =====================
+// DRIVING LICENCE
+// =====================
 class ScannedDriverLicenseMRZ extends ScannedMRZ {
   final String version;
   final String randomData;
@@ -59,20 +111,28 @@ class ScannedDriverLicenseMRZ extends ScannedMRZ {
     required this.version,
     required this.randomData,
     required this.configuration,
-  }) : super(documentType: DocumentType.drivingLicence);
+    super.documentType = DocumentType.drivingLicence,
+  });
 
-  factory ScannedDriverLicenseMRZ.fromMRZResult(MRZDriverLicenseResult mrz) {
+  factory ScannedDriverLicenseMRZ.fromMRZResult(
+    DrivingLicenceMrzResult mrz, {
+    DocumentType documentType = DocumentType.drivingLicence,
+  }) {
     return ScannedDriverLicenseMRZ(
       documentNumber: mrz.documentNumber,
       countryCode: mrz.countryCode,
       version: mrz.version,
       randomData: mrz.randomData,
       configuration: mrz.configuration,
+      documentType: documentType,
     );
   }
 
-  factory ScannedDriverLicenseMRZ.fromManualEntry({required String mrzString}) {
-    final parsed = DriverLicenseParser.parse([mrzString]);
-    return ScannedDriverLicenseMRZ.fromMRZResult(parsed);
+  factory ScannedDriverLicenseMRZ.fromManualEntry({
+    required String mrzString,
+    DocumentType documentType = DocumentType.drivingLicence,
+  }) {
+    final parsed = DrivingLicenceMrzParser().parse([mrzString]);
+    return ScannedDriverLicenseMRZ.fromMRZResult(parsed, documentType: documentType);
   }
 }

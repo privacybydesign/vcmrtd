@@ -1,37 +1,38 @@
 package foundation.privacybydesign.vcmrtd
 
 import android.content.Intent
+import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugins.GeneratedPluginRegistrant
-import io.flutter.plugin.common.MethodChannel
-
-import android.content.Context
-import foundation.privacybydesign.vcmrtd.ImageUtil
+import org.opencv.android.OpenCVLoader
+import foundation.privacybydesign.vcmrtd.ocr.TesseractOcrPlugin
+import foundation.privacybydesign.vcmrtd.biometrics.FaceVerificationPlugin
 
 class MainActivity : FlutterActivity() {
+
     private lateinit var deepLinkPlugin: DeepLinkPlugin
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         GeneratedPluginRegistrant.registerWith(flutterEngine)
 
+        // OpenCV initialisatie for Tesseract Zone Detection
+        if (!OpenCVLoader.initLocal()) {
+            Log.e("OpenCV", "OpenCV initialization failed")
+        }
+
         // Initialize deep link plugin
         deepLinkPlugin = DeepLinkPlugin()
         flutterEngine.plugins.add(deepLinkPlugin)
 
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "image_channel")
-            .setMethodCallHandler { call, result ->
-                if (call.method == "decodeImage") {
-                    val jp2ImageData = call.argument<ByteArray?>("jp2ImageData")
-                    if (jp2ImageData != null) {
-                        ImageUtil.decodeImage(applicationContext, jp2ImageData, result)
-                    } else {
-                        result.error("INVALID_ARGUMENT", "jp2ImageData is null", null)
-                    }
-                } else {
-                    result.notImplemented()
-                }
-            }
+        // Register Tesseract OCR plugin
+        flutterEngine.plugins.add(TesseractOcrPlugin())
+
+        // Register Face Verification plugin
+        flutterEngine.plugins.add(FaceVerificationPlugin())
+
+        // Register image_channel for JP2 decoding (used for passport photo)
+        ImageDecodeChannel.register(flutterEngine, applicationContext)
     }
 
     override fun onNewIntent(intent: Intent) {
