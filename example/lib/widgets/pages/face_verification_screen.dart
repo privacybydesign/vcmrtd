@@ -260,10 +260,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> with Wi
       _invalidateFramePipeline();
 
       await _eventSub?.cancel();
-      _eventSub = _eventChannel.receiveBroadcastStream().listen(
-        _onLivenessEvent,
-        onError: _onLivenessStreamError,
-      );
+      _eventSub = _eventChannel.receiveBroadcastStream().listen(_onLivenessEvent, onError: _onLivenessStreamError);
 
       final actions = await _methodChannel.invokeMethod<List<dynamic>>('startActiveLiveness', {'nfcImage': nfcImage});
 
@@ -601,11 +598,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> with Wi
         child: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SizedBox(
-              width: 13,
-              height: 13,
-              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
-            ),
+            SizedBox(width: 13, height: 13, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70)),
             SizedBox(width: 10),
             Text('Hold still — reading your face…', style: TextStyle(color: Colors.white70, fontSize: 15)),
           ],
