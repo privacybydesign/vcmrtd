@@ -1,4 +1,5 @@
 rubyvendor/
+twentyface_flutter/
 
 example/fastlane/.env.default
 example/fastlane/build

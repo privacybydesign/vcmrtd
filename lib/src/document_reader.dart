@@ -227,7 +227,15 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
         await _reconnectionLoop(
           authMethod: method,
           whenConnected: () async {
-            aaSig = await dataGroupReader.activeAuthenticate(stringToUint8List(activeAuthenticationParams.nonce));
+            try {
+              aaSig = await dataGroupReader.activeAuthenticate(stringToUint8List(activeAuthenticationParams.nonce));
+            } on DocumentError catch (e) {
+              if (e.code == StatusWord.invalidInstructionCode) {
+                _addLog("Active Authentication not supported by chip (sw=6D00), skipping");
+                return;
+              }
+              rethrow;
+            }
           },
         );
         if (state is DocumentReaderCancelled) {
@@ -270,15 +278,19 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
 
   Future<void> _retryConnection() async {
     dataGroupReader.reset();
-    if (nfc.isConnected()) {
-      if (Platform.isIOS) {
+    if (Platform.isIOS) {
+      if (nfc.isConnected()) {
         await nfc.reconnect().timeout(Duration(seconds: 2));
       } else {
-        await nfc.disconnect();
-        await nfc.connect().timeout(Duration(seconds: 2));
+        await nfc.connect().timeout(Duration(seconds: 10));
       }
     } else {
-      await nfc.connect().timeout(Duration(seconds: 2));
+      // On Android, always force-finish the plugin session before re-polling.
+      // After a TagLostException the Dart timeout may cancel poll() while the
+      // plugin still holds a stale IsoDep; calling forceCleanup() prevents
+      // subsequent connect/transceive calls from failing with IOException.
+      await nfc.forceCleanup();
+      await nfc.connect().timeout(Duration(seconds: 10));
     }
   }
 

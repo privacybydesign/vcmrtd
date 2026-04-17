@@ -996,31 +996,37 @@ class PACE {
   /// Reads EF.CardSecurity (FID 0x011D) from the chip over secure messaging.
   /// Matching gmrtd pace.go:529-543 (loadCardSecurityFile).
   static Future<Uint8List> _readCardSecurity(ICC icc) async {
-    _log.debug("Reading EF.CardSecurity (FID 0x011D) ...");
-    final efId = Uint8List(2);
-    ByteData.view(efId.buffer).setUint16(0, EfCardSecurity.FID);
-    await icc.selectEF(efId: efId);
+    _log.debug("Reading EF.CardSecurity (SFI 0x${EfCardSecurity.SFI.toRadixString(16).padLeft(2, '0')}) over SM ...");
 
-    // Read initial chunk to determine file length
-    final chunk1 = await icc.readBinary(offset: 0, ne: 256);
+    // Use SFI-based READ BINARY (P1 = 0x80 | SFI) — no SELECT FILE command needed.
+    // German passports reject SELECT FILE for EF.CardSecurity over SM (sw=6A80),
+    // but accept SFI-based READ BINARY which implicitly selects the EF.
+    // This mirrors MrtdApi.readFileBySFI used for EF.CardAccess.
+    final sfiP1 = 0x80 | EfCardSecurity.SFI;
+    _log.debug("_readCardSecurity: reading first chunk via SFI READ BINARY (P1=0x${sfiP1.toRadixString(16)})");
+    final chunk1 = await icc.readBinaryBySFI(sfi: sfiP1, offset: 0, ne: 256);
+    _log.debug("_readCardSecurity: chunk1 status=${chunk1.status} len=${chunk1.data?.length ?? 0}");
     if (chunk1.data == null || chunk1.data!.isEmpty) {
       throw PACEError("PACE-CAM: Failed to read EF.CardSecurity");
     }
 
     final dtl = TLV.decodeTagAndLength(chunk1.data!);
     final totalLen = dtl.encodedLen + dtl.length.value;
+    _log.debug("_readCardSecurity: totalLen=$totalLen (encodedLen=${dtl.encodedLen} + valueLen=${dtl.length.value})");
 
-    // Read remaining chunks
+    // Read remaining chunks — file is now implicitly selected by the SFI read
     var data = Uint8List.fromList(chunk1.data!);
     while (data.length < totalLen) {
       final remaining = totalLen - data.length;
       final nRead = remaining > 256 ? 256 : remaining;
+      _log.debug("_readCardSecurity: reading chunk at offset=${data.length} nRead=$nRead remaining=$remaining");
       final ResponseAPDU chunk;
       if (data.length > 0x7FFF) {
         chunk = await icc.readBinaryExt(offset: data.length, ne: nRead);
       } else {
         chunk = await icc.readBinary(offset: data.length, ne: nRead);
       }
+      _log.debug("_readCardSecurity: chunk status=${chunk.status} len=${chunk.data?.length ?? 0}");
       if (chunk.data == null || chunk.data!.isEmpty) break;
       data = Uint8List.fromList(data + chunk.data!);
     }
@@ -1028,13 +1034,19 @@ class PACE {
     return data;
   }
 
-  /// Extracts the chip's static EC public key (PK_IC) from ChipAuthenticationPublicKeyInfo
-  /// entries, matching the given domain parameter ID.
-  /// Matching gmrtd pace.go:421-443 (icPubKeyECForCAM).
+  /// Extracts the chip's static EC public key (PK_IC) for PACE-CAM from
+  /// ChipAuthenticationPublicKeyInfo entries.
+  ///
+  /// When multiple entries share the same domain parameter, the entry whose
+  /// keyId matches [domainParameterId] is preferred (BSI TR-03110 §4.2.3.3).
+  /// This correctly selects the CAM-specific key on passports that also carry
+  /// a separate GM chip-authentication key (different keyId).
   static ({Uint8List x, Uint8List y}) _extractPkIcForCAM(
     List<ChipAuthenticationPublicKeyInfo> caPubKeyInfos,
     int domainParameterId,
   ) {
+    ({Uint8List x, Uint8List y})? fallback;
+
     for (final info in caPubKeyInfos) {
       // Only evaluate EC keys (protocol == id-PK-ECDH)
       if (info.protocol != '0.4.0.127.0.7.2.2.1.2') continue;
@@ -1081,8 +1093,16 @@ class PACE {
       final coordLen = (keyBytes.length - 1) ~/ 2;
       final x = Uint8List.fromList(keyBytes.sublist(1, 1 + coordLen));
       final y = Uint8List.fromList(keyBytes.sublist(1 + coordLen));
-      return (x: x, y: y);
+      final result = (x: x, y: y);
+
+      // Prefer the entry whose keyId matches the PACE domain parameter ID
+      // (BSI TR-03110 §4.2.3.3: PACE-CAM key has keyId == PACE paramId).
+      if (info.keyId == domainParameterId) return result;
+
+      fallback ??= result;
     }
+
+    if (fallback != null) return fallback!;
     throw PACEError(
       "PACE-CAM: unable to find EC public key for domain parameter $domainParameterId in EF.CardSecurity",
     );
