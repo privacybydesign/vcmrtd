@@ -1102,7 +1102,7 @@ class PACE {
       fallback ??= result;
     }
 
-    if (fallback != null) return fallback!;
+    if (fallback != null) return fallback;
     throw PACEError(
       "PACE-CAM: unable to find EC public key for domain parameter $domainParameterId in EF.CardSecurity",
     );

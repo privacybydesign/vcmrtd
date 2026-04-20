@@ -30,7 +30,10 @@ class PublicKeyPACEeCDH extends PublicKeyPACE {
   final int _coordLen;
 
   PublicKeyPACEeCDH({required BigInt x, required BigInt y, int coordLen = 0})
-    : _x = x, _y = y, _coordLen = coordLen, super(algo: TOKEN_AGREEMENT_ALGO.ECDH);
+    : _x = x,
+      _y = y,
+      _coordLen = coordLen,
+      super(algo: TOKEN_AGREEMENT_ALGO.ECDH);
 
   PublicKeyPACEeCDH.fromECPoint({required ECPoint public})
     : _x = public.x!.toBigInteger()!,
