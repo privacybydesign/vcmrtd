@@ -73,7 +73,10 @@ void main() {
       // valueBytes includes the unused-bits byte (0x00) before the EC point.
       final pointStart = keyBytes[0] == 0x00 ? 1 : 0;
       expect(keyBytes[pointStart], 0x04, reason: 'uncompressed-point marker');
-      final xCoord = keyBytes.sublist(pointStart + 1, pointStart + 33).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+      final xCoord = keyBytes
+          .sublist(pointStart + 1, pointStart + 33)
+          .map((b) => b.toRadixString(16).padLeft(2, '0'))
+          .join();
       expect(xCoord.toLowerCase(), startsWith('614cd88b'), reason: 'X must match gmrtd test vector');
     });
 

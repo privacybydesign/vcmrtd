@@ -146,9 +146,8 @@ void main() {
     test('CAM verification passes with keyId=13 and fails with keyId=72 (DE passport vectors)', () {
       // Session encryption key and ECAD from gmrtd TestDoPace_CAM_ECDH_DE step-4.
       final ksEnc = 'a8e85e938514ec67ae33cda3d43d3c48'.parseHex();
-      final ecad =
-          'b3ae8830311b1d5605777f47cb4ed028346cd00105d32859de127da3d8398865358f26f08ebe410864eaf6e39f33f3f5'
-              .parseHex();
+      final ecad = 'b3ae8830311b1d5605777f47cb4ed028346cd00105d32859de127da3d8398865358f26f08ebe410864eaf6e39f33f3f5'
+          .parseHex();
 
       // PKMap_IC = chip's ephemeral public key from PACE Map Nonce step (tag 82 in gmrtd mock).
       // This is from the Map Nonce response, NOT the Key Agreement response (tag 84).
