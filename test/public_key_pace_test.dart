@@ -18,7 +18,7 @@ void main() {
     test('xBytes is zero-padded when BigInt representation is shorter than coordLen', () {
       // A 256-bit coordinate whose top byte is 0x00 encodes as only 31 bytes
       // when using BigInt.toRadixString. coordLen=32 must restore the full width.
-      final xBigInt = BigInt.parse('00' + 'AB' * 31, radix: 16);
+      final xBigInt = BigInt.parse('00${'AB' * 31}', radix: 16);
       final yBigInt = BigInt.parse('FF' * 32, radix: 16);
 
       final pubKey = PublicKeyPACEeCDH(x: xBigInt, y: yBigInt, coordLen: 32);
@@ -30,7 +30,7 @@ void main() {
 
     test('yBytes is zero-padded when BigInt representation is shorter than coordLen', () {
       final xBigInt = BigInt.parse('FF' * 32, radix: 16);
-      final yBigInt = BigInt.parse('00' + 'CD' * 31, radix: 16);
+      final yBigInt = BigInt.parse('00${'CD' * 31}', radix: 16);
 
       final pubKey = PublicKeyPACEeCDH(x: xBigInt, y: yBigInt, coordLen: 32);
 
@@ -52,7 +52,7 @@ void main() {
     test('coordLen=0 disables padding (backward-compatibility default)', () {
       // When no coordLen is supplied the constructor defaults to 0 and returns
       // the raw BigInt byte representation (no zero-padding).
-      final xBigInt = BigInt.parse('00' + 'AB' * 31, radix: 16);
+      final xBigInt = BigInt.parse('00${'AB' * 31}', radix: 16);
       final yBigInt = BigInt.parse('FF' * 32, radix: 16);
 
       final pubKey = PublicKeyPACEeCDH(x: xBigInt, y: yBigInt);
@@ -91,7 +91,7 @@ void main() {
       // Uncompressed EC point encoding: 04 || X (coordLen bytes) || Y (coordLen bytes)
       // If X has a leading-zero byte that BigInt drops, the encoded point must still
       // start with 04 and have exactly 1 + 2*coordLen bytes total.
-      final xBigInt = BigInt.parse('00' + 'AB' * 31, radix: 16);
+      final xBigInt = BigInt.parse('00${'AB' * 31}', radix: 16);
       final yBigInt = BigInt.parse('CD' * 32, radix: 16);
 
       final pubKey = PublicKeyPACEeCDH(x: xBigInt, y: yBigInt, coordLen: 32);

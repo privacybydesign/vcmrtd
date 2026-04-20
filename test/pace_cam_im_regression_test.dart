@@ -15,33 +15,6 @@ import 'package:vcmrtd/src/proto/iso7816/icc.dart';
 import 'package:vcmrtd/src/proto/pace.dart';
 import 'package:vcmrtd/src/proto/pace_cam.dart';
 
-// Scripted mock: replays fixed APDU responses in insertion order.
-class _ScriptedComProvider extends ComProvider {
-  final List<Uint8List> _responses;
-  int _idx = 0;
-
-  _ScriptedComProvider(List<String> hexResponses)
-    : _responses = hexResponses.map((h) => h.parseHex()).toList(),
-      super(Logger('_ScriptedComProvider'));
-
-  @override
-  Future<void> connect() async {}
-  @override
-  Future<void> disconnect() async {}
-  @override
-  Future<void> reconnect() async {}
-  @override
-  bool isConnected() => true;
-
-  @override
-  Future<Uint8List> transceive(Uint8List data) async {
-    if (_idx >= _responses.length) {
-      return Uint8List.fromList([0x6A, 0x80]);
-    }
-    return _responses[_idx++];
-  }
-}
-
 /// Records every APDU sent during PACE, returns 6A80 for each.
 class _RecordingComProvider extends ComProvider {
   final List<Uint8List> sentApdus = [];
