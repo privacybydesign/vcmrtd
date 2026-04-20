@@ -1,6 +1,7 @@
 // Regression tests for PACE-CAM and PACE-IM bugs.
 // Also tested in gmrtd: pace/pace_test.go, pace/pace.go
 
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:logging/logging.dart';
@@ -10,10 +11,39 @@ import 'package:vcmrtd/extensions.dart';
 import 'package:vcmrtd/src/com/com_provider.dart';
 import 'package:vcmrtd/src/lds/asn1ObjectIdentifiers.dart';
 import 'package:vcmrtd/src/lds/efcard_access.dart';
+import 'package:vcmrtd/src/lds/efcard_security.dart';
 import 'package:vcmrtd/src/proto/dba_key.dart';
 import 'package:vcmrtd/src/proto/iso7816/icc.dart';
 import 'package:vcmrtd/src/proto/pace.dart';
 import 'package:vcmrtd/src/proto/pace_cam.dart';
+
+/// Replays scripted APDU responses in order; also records every sent APDU.
+/// Returns 6A80 after all scripted responses are exhausted.
+class _ScriptedComProvider extends ComProvider {
+  final List<Uint8List> _responses;
+  final List<Uint8List> sentApdus = [];
+  int _idx = 0;
+
+  _ScriptedComProvider(List<String> hexResponses)
+    : _responses = hexResponses.map((h) => h.parseHex()).toList(),
+      super(Logger('_ScriptedComProvider'));
+
+  @override
+  Future<void> connect() async {}
+  @override
+  Future<void> disconnect() async {}
+  @override
+  Future<void> reconnect() async {}
+  @override
+  bool isConnected() => true;
+
+  @override
+  Future<Uint8List> transceive(Uint8List data) async {
+    sentApdus.add(Uint8List.fromList(data));
+    if (_idx >= _responses.length) return Uint8List.fromList([0x6A, 0x80]);
+    return _responses[_idx++];
+  }
+}
 
 /// Records every APDU sent during PACE, returns 6A80 for each.
 class _RecordingComProvider extends ComProvider {
@@ -185,6 +215,105 @@ void main() {
         ),
         throwsA(isA<PaceCamError>()),
       );
+    });
+  });
+
+  // Real German ePassport EF.CardSecurity (same data as efcard_security_test.dart).
+  // Contains TWO ChipAuthenticationPublicKeyInfos:
+  //   keyId=13 (CAM key, X=614CD88B…) and keyId=72 (GM key, X=8488A2DC…).
+  const deCardSecurityHex =
+      '3082074206092A864886F70D010702A08207333082072F020103310F300D0609608648016503040202050030820147060804007F0007030201A08201390482013531820131300D060804007F00070202020201023012060A04007F000702020302020201020201483012060A04007F0007020204020202010202010D3012060A04007F0007020204060202010202010D301C060904007F000702020302300C060704007F0007010202010D0201483062060904007F0007020201023052300C060704007F0007010202010D03420004614CD88B00821A887869D0060B44A9D18789353E8CF7DFBC3F29F79327DE30B97B1B2DDA0BE77F24AD415C327C7B7AB2E9C10B0258F5BCBF90C01825FBDFDEF702010D3062060904007F0007020201023052300C060704007F0007010202010D034200048488A2DC34B6B36D6C01A8DFBD70A874610C53B32893A1DE3B1C4BBF477EEF3761AA51DFD6B52DA43587E95386FC34FFE178D90086A7D646047C82BEBC27DA3E020148A082049730820493308203F8A003020102020204A8300A06082A8648CE3D0403043041310B3009060355040613024445310D300B060355040A0C0462756E64310C300A060355040B0C036273693115301306035504030C0C637363612D6765726D616E79301E170D3233303130343036303434325A170D3333303730343233353935395A305D310B3009060355040613024445311D301B060355040A0C1442756E646573647275636B6572656920476D6248310C300A060355040513033135323121301F06035504030C18446F63756D656E74205369676E65722050617373706F7274308201B53082014D06072A8648CE3D020130820140020101303C06072A8648CE3D01010231008CB91E82A3386D280F5D6F7E50E641DF152F7109ED5456B412B1DA197FB71123ACD3A729901D1A71874700133107EC53306404307BC382C63D8C150C3C72080ACE05AFA0C2BEA28E4FB22787139165EFBA91F90F8AA5814A503AD4EB04A8C7DD22CE2826043004A8C7DD22CE28268B39B55416F0447C2FB77DE107DCD2A62E880EA53EEB62D57CB4390295DBC9943AB78696FA504C110461041D1C64F068CF45FFA2A63A81B7C13F6B8847A3E77EF14FE3DB7FCAFE0CBD10E8E826E03436D646AAEF87B2E247D4AF1E8ABE1D7520F9C2A45CB1EB8E95CFD55262B70B29FEEC5864E19C054FF99129280E4646217791811142820341263C53150231008CB91E82A3386D280F5D6F7E50E641DF152F7109ED5456B31F166E6CAC0425A7CF3AB6AF6B7FC3103B883202E9046565020101036200042CA852CB9A1CAAAA466256D1CFD678BB7E5D8502DFA6F3FDB287293C32AF9FA77AD3A7FA92E56F608110053121354002198B530BC60AC7050AB98D7F6C475FD50706A4A6207D7A6336CB480B966A3AA64894F7F42B8FB4AC4774C9D6892330FBA382016430820160301F0603551D23041830168014A40A5FC380AE3E59AF1B32D6136AEFEEC8CA35E8301D0603551D0E04160414AF9DD5E6565737A8804B5B4C6F45093D809AA865300E0603551D0F0101FF040403020780302B0603551D1004243022800F32303233303130343036303434325A810F32303233303730343233353935395A30160603551D20040F300D300B060904007F000703010101302D0603551D1104263024821262756E646573647275636B657265692E6465A40E300C310A300806035504070C014430510603551D12044A30488118637363612D6765726D616E79406273692E62756E642E6465861C68747470733A2F2F7777772E6273692E62756E642E64652F63736361A40E300C310A300806035504070C01443015060767810801010602040A3008020100310313015030300603551D1F042930273025A023A021861F687474703A2F2F7777772E6273692E62756E642E64652F637363615F63726C300A06082A8648CE3D0403040381880030818402404846F4A03E17896E9094AF7652C38FE31EC964C2C3A906AF813AABEF5FE4F3156D140E2EF991DC11FD860A4A301B225DE9FD4ED39B4F47AC72CDB88CC63B335902405D4E2895875E603CE2863073BF441D1EC53761CF47E5BC2B9B6BECE4F229712E39002D77B555290FA550DF5F40AA22D7D2A1E89FEB3FEF730AE33C937796E8E3318201313082012D02010130473041310B3009060355040613024445310D300B060355040A0C0462756E64310C300A060355040B0C036273693115301306035504030C0C637363612D6765726D616E79020204A8300D06096086480165030402020500A05A301706092A864886F70D010903310A060804007F0007030201303F06092A864886F70D010904313204300FF966AB1283D22A0046338B734FBAE653622C15FE7538392E0987D87BEE0AB009BA77506E45D964B138E688BE8DA60D300C06082A8648CE3D040303050004663064023025FDE09B7F60E9B8F57413427128E6B9ED29C252E396D0F699A84B90247BDBDCA66BDA66A319423EB1D95D206E6BDAE8023016D075859D63301201E925A55ACCC7D3BC1E4C0457A87F5575821C6345FF1C059DEEF935E8125EA948BAAC7A9EF97199';
+
+  // Also tested in gmrtd: pace/pace.go:489 (icPubKeyECForCAM)
+  group('PACE.extractPkIcForCAM key selection (BSI TR-03110 §4.2.3.3)', () {
+    // Verifies the keyId-match path: DE passport has keyId=13 (CAM) and keyId=72 (GM).
+    // When domainParameterId=13, the entry with keyId=13 must be returned.
+    test('prefers entry whose keyId equals the PACE domain parameter ID', () {
+      final si = EfCardSecurity.fromBytes(deCardSecurityHex.parseHex()).securityInfos!;
+      final pkIc = PACE.extractPkIcForCAM(si.chipAuthenticationPublicKeyInfos, 13);
+      final xHex = pkIc.x.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+      expect(xHex, startsWith('614cd88b'), reason: 'must return CAM key (keyId=13), not GM key (keyId=72)');
+    });
+
+    // Verifies the fallback path: single-key passports that have no keyId matching
+    // the domain parameter still get their only EC key returned.
+    // Also tested in gmrtd: pace/pace.go fallback logic.
+    test('falls back to first valid EC key when no keyId matches', () {
+      final si = EfCardSecurity.fromBytes(deCardSecurityHex.parseHex()).securityInfos!;
+      // Use only the keyId=72 (GM) entry — no exact keyId match for domainParam=13.
+      final gmKeyOnly = si.chipAuthenticationPublicKeyInfos.where((k) => k.keyId == 72).toList();
+      final pkIc = PACE.extractPkIcForCAM(gmKeyOnly, 13);
+      final xHex = pkIc.x.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+      expect(xHex, startsWith('8488a2dc'), reason: 'fallback must return the only available EC key');
+    });
+
+    // Verifies that a mismatched domain parameter produces a clear error rather than
+    // silently returning a key for the wrong curve.
+    test('throws PACEError when no entry matches the requested domain parameter', () {
+      final si = EfCardSecurity.fromBytes(deCardSecurityHex.parseHex()).securityInfos!;
+      expect(
+        () => PACE.extractPkIcForCAM(si.chipAuthenticationPublicKeyInfos, 99),
+        throwsA(isA<PACEError>()),
+        reason: 'paramId=99 does not exist in DE CardSecurity',
+      );
+    });
+
+    test('throws PACEError for an empty key list', () {
+      expect(() => PACE.extractPkIcForCAM([], 13), throwsA(isA<PACEError>()));
+    });
+  });
+
+  // Also tested in gmrtd: pace/pace.go:529-543 (loadCardSecurityFile).
+  group('PACE.readCardSecurity SFI-based reading (German passport fix)', () {
+    // Verifies the first READ BINARY uses SFI P1=0x9D instead of a SELECT FILE
+    // followed by offset-0 READ BINARY. German passports reject SELECT FILE for
+    // EF.CardSecurity over secure messaging (sw=6A80).
+    test('first READ BINARY uses SFI P1=0x9D (no SELECT FILE)', () async {
+      // Minimal valid TLV that fits in one 256-byte chunk.
+      final tinyData = Uint8List.fromList([0x30, 0x04, 0x01, 0x02, 0x03, 0x04]);
+      final com = _ScriptedComProvider(['${tinyData.map((b) => b.toRadixString(16).padLeft(2, '0')).join()}9000']);
+      final icc = ICC(com);
+
+      await PACE.readCardSecurity(icc);
+
+      expect(com.sentApdus, isNotEmpty);
+      final firstApdu = com.sentApdus.first;
+      // INS must be READ BINARY (0xB0), not SELECT FILE (0xA4).
+      expect(firstApdu[1], 0xB0, reason: 'INS must be READ BINARY');
+      // P1 must be the SFI selector: 0x80 | EfCardSecurity.SFI (0x1D) = 0x9D.
+      expect(firstApdu[2], 0x80 | EfCardSecurity.SFI, reason: 'P1 must use SFI encoding');
+      // No SELECT FILE (INS=0xA4) may appear before the first READ BINARY.
+      final hasSelectFile = com.sentApdus.any((apdu) => apdu[1] == 0xA4);
+      expect(hasSelectFile, isFalse, reason: 'SELECT FILE must not be sent before SFI READ BINARY');
+    });
+
+    // Verifies that a multi-chunk file is assembled correctly from successive
+    // READ BINARY responses (offset-based reads after the first SFI read).
+    test('reassembles multi-chunk EF.CardSecurity correctly', () async {
+      final deBytes = deCardSecurityHex.parseHex();
+      // Split into 256-byte chunks, each followed by status 9000.
+      final responses = <String>[];
+      for (int offset = 0; offset < deBytes.length; offset += 256) {
+        final end = min(offset + 256, deBytes.length);
+        final chunk = deBytes.sublist(offset, end);
+        responses.add('${chunk.map((b) => b.toRadixString(16).padLeft(2, '0')).join()}9000');
+      }
+
+      final com = _ScriptedComProvider(responses);
+      final icc = ICC(com);
+      final result = await PACE.readCardSecurity(icc);
+
+      expect(result, deBytes, reason: 'reassembled bytes must equal the original DE CardSecurity');
+    });
+
+    // Verifies that an empty (or error) first response produces a clean PACEError
+    // rather than a NullPointerException or ICCError bubbling up to the caller.
+    test('throws PACEError when chip returns empty data for first chunk', () async {
+      // Return 9000 with no data — triggers the "Failed to read EF.CardSecurity" guard.
+      final com = _ScriptedComProvider(['9000']);
+      final icc = ICC(com);
+
+      expect(() => PACE.readCardSecurity(icc), throwsA(isA<PACEError>()));
     });
   });
 }

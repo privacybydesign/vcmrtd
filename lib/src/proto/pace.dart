@@ -2,6 +2,7 @@
 import 'dart:typed_data';
 
 import 'package:collection/collection.dart';
+import 'package:meta/meta.dart';
 import 'package:vcmrtd/extensions.dart';
 import 'package:pointycastle/asn1/primitives/asn1_sequence.dart';
 import 'package:vcmrtd/src/lds/asn1ObjectIdentifiers.dart';
@@ -789,7 +790,7 @@ class PACE {
           }
 
           _log.debug("PACE-CAM: reading EF.CardSecurity over SM ...");
-          final cardSecurityBytes = await _readCardSecurity(icc);
+          final cardSecurityBytes = await readCardSecurity(icc);
           final cardSecurity = EfCardSecurity.fromBytes(cardSecurityBytes);
           final secInfos = cardSecurity.securityInfos;
           if (secInfos == null || secInfos.chipAuthenticationPublicKeyInfos.isEmpty) {
@@ -798,7 +799,7 @@ class PACE {
 
           // Extract PK_IC matching domain parameter ID
           // Matching gmrtd pace.go:421-443 (icPubKeyECForCAM)
-          final pkIc = _extractPkIcForCAM(secInfos.chipAuthenticationPublicKeyInfos, paceDomainParameterId);
+          final pkIc = extractPkIcForCAM(secInfos.chipAuthenticationPublicKeyInfos, paceDomainParameterId);
 
           PaceCam.verifyChipAuthentication(
             encryptedChipAuthData: ecad,
@@ -995,7 +996,8 @@ class PACE {
 
   /// Reads EF.CardSecurity (FID 0x011D) from the chip over secure messaging.
   /// Matching gmrtd pace.go:529-543 (loadCardSecurityFile).
-  static Future<Uint8List> _readCardSecurity(ICC icc) async {
+  @visibleForTesting
+  static Future<Uint8List> readCardSecurity(ICC icc) async {
     _log.debug("Reading EF.CardSecurity (SFI 0x${EfCardSecurity.SFI.toRadixString(16).padLeft(2, '0')}) over SM ...");
 
     // Use SFI-based READ BINARY (P1 = 0x80 | SFI) — no SELECT FILE command needed.
@@ -1041,7 +1043,8 @@ class PACE {
   /// keyId matches [domainParameterId] is preferred (BSI TR-03110 §4.2.3.3).
   /// This correctly selects the CAM-specific key on passports that also carry
   /// a separate GM chip-authentication key (different keyId).
-  static ({Uint8List x, Uint8List y}) _extractPkIcForCAM(
+  @visibleForTesting
+  static ({Uint8List x, Uint8List y}) extractPkIcForCAM(
     List<ChipAuthenticationPublicKeyInfo> caPubKeyInfos,
     int domainParameterId,
   ) {
