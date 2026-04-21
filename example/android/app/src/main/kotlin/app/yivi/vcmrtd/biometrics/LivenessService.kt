@@ -4,7 +4,6 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
 import com.google.mediapipe.framework.image.BitmapImageBuilder
-import com.google.mediapipe.tasks.components.containers.Category
 import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.core.Delegate
 import com.google.mediapipe.tasks.vision.core.RunningMode
@@ -36,7 +35,6 @@ class LivenessService(private val context: Context) {
 
     enum class RoiZone { FOREHEAD, LEFT_CHEEK, RIGHT_CHEEK, NOSE, LIPS }
 
-    @Volatile private var latestResult: FaceLandmarkerResult? = null
     @Volatile private var usingGpu = false
     private val switchingToCpu = AtomicBoolean(false)
 
@@ -77,7 +75,7 @@ class LivenessService(private val context: Context) {
     }
 
     /**
-     * Synchronous detection — blocks until MediaPipe completes.
+     * Synchronous detection blocks until MediaPipe completes.
      * Returns null if no face is found.
      */
     fun detectImage(bitmap: Bitmap): FaceLandmarkerResult? {
@@ -88,14 +86,12 @@ class LivenessService(private val context: Context) {
 
         return try {
             val r = lm.detect(mpImg)
-            latestResult = r
             if (r.faceLandmarks().isEmpty()) null else r
         } catch (e: Exception) {
             if (usingGpu && switchToCpu()) {
                 try {
                     val cpuLm = faceLandmarker ?: return null
                     val r = cpuLm.detect(mpImg)
-                    latestResult = r
                     if (r.faceLandmarks().isNotEmpty()) r else null
                 } catch (e2: Exception) {
                     android.util.Log.e(TAG, "CPU retry failed", e2)
@@ -113,15 +109,6 @@ class LivenessService(private val context: Context) {
         if (!lists.isPresent) return null
         val face = lists.get().firstOrNull() ?: return null
         return face.firstOrNull { it.categoryName() == name }?.score()
-    }
-
-    /**
-     * Detects face and computes ROI zones in a single MediaPipe call.
-     * Use [extractRois] instead when a result is already available.
-     */
-    fun detectRois(bitmap: Bitmap): Map<RoiZone, FloatArray>? {
-        val result = detectImage(bitmap) ?: return null
-        return extractRois(result)
     }
 
     /**
@@ -180,11 +167,9 @@ class LivenessService(private val context: Context) {
         return Math.toDegrees(asin(-m[2].toDouble().coerceIn(-1.0, 1.0))).toFloat()
     }
 
-    fun resetLiveState() { latestResult = null }
-
     fun close() {
         try { faceLandmarker?.close() } catch (e: Exception) { android.util.Log.w(TAG, "close: faceLandmarker close failed", e) }
-        faceLandmarker = null; usingGpu = false; resetLiveState()
+        faceLandmarker = null; usingGpu = false
     }
 
     private fun switchToCpu(): Boolean {
@@ -192,7 +177,7 @@ class LivenessService(private val context: Context) {
         return try {
             try { faceLandmarker?.close() } catch (e: Exception) { android.util.Log.w(TAG, "switchToCpu: close failed", e) }
             faceLandmarker = createFaceLandmarker(Delegate.CPU)
-            usingGpu = false; resetLiveState()
+            usingGpu = false
             android.util.Log.w(TAG, "Switched to CPU after GPU failure")
             true
         } catch (e: Exception) {

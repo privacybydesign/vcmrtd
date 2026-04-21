@@ -235,6 +235,8 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> with Wi
         _cameraController = ctrl;
         _errorMessage = null;
       });
+
+      unawaited(_methodChannel.invokeMethod<void>('initialize').catchError((_) {}));
     } catch (e) {
       if (mounted && !_isDisposed) {
         setState(() => _errorMessage = 'Could not open camera: $e');
@@ -255,7 +257,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> with Wi
       return;
     }
 
-    _startingLiveness = true;
+    setState(() => _startingLiveness = true);
     try {
       _invalidateFramePipeline();
 
@@ -285,7 +287,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> with Wi
         setState(() => _errorMessage = 'Could not start liveness: $e');
       }
     } finally {
-      _startingLiveness = false;
+      if (mounted && !_isDisposed) setState(() => _startingLiveness = false);
     }
   }
 
@@ -558,9 +560,11 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> with Wi
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: ready ? _startActiveLiveness : null,
-                  icon: const Icon(Icons.face),
-                  label: const Text('Start Verification'),
+                  onPressed: (ready && !_startingLiveness) ? _startActiveLiveness : null,
+                  icon: _startingLiveness
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.face),
+                  label: Text(_startingLiveness ? 'Preparing…' : 'Start Verification'),
                 ),
               ),
             ],

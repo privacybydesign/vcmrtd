@@ -15,14 +15,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
-import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.channels.Channel
 
 class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
@@ -53,25 +52,38 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         private const val ERR_ACTIVE_SERVICE   = "ActiveLivenessService unavailable"
         private const val LOG_JOB_CANCEL        = "faceMatchJob cancel failed"
         private const val LOG_SERVICE_RESET     = "activeLivenessService reset failed"
+
+        // ITU-R BT.601 YCbCr→RGB matrix coefficients, pre-multiplied by 1024 so
+        // the entire conversion uses integer arithmetic (no floats in the pixel loop).
+        // The floating-point formula for studio-swing YUV (Y∈[16,235], UV∈[16,240]) is:
+        //   R = 1.164*(Y-16)              + 1.596*(V-128)
+        //   G = 1.164*(Y-16) - 0.813*(V-128) - 0.391*(U-128)
+        //   B = 1.164*(Y-16)              + 2.018*(U-128)
+        // Each intermediate R/G/B value is therefore ~1024× the final 8-bit value.
+        // The output packing divides by 1024 implicitly via bit shifts (see nv21ToArgb).
+        private const val YUV_Y  = 1192  // 1.164 × 1024
+        private const val YUV_VR = 1634  // 1.596 × 1024  (V  → R)
+        private const val YUV_VG = 833   // 0.813 × 1024  (V  → G, subtracted)
+        private const val YUV_UG = 400   // 0.391 × 1024  (U  → G, subtracted)
+        private const val YUV_UB = 2066  // 2.018 × 1024  (U  → B)
     }
 
     private var activeRunId = 0
-    private var sessionFinished = true
-    private var sessionStopping = false
+    @Volatile private var sessionFinished = true
+    @Volatile private var sessionStopping = false
 
     private var pendingActions       = mutableListOf<ActiveLivenessService.LivenessAction>()
     private var completedCount       = 0
     private var currentActionIndex   = 0
     private var extraActionMode      = false
     private var framesSinceLastAction = 0
-    private var nfcImageForMatch: ByteArray? = null
     private var firstFrameDeferred: CompletableDeferred<Bitmap>? = null
-    private var matchScoreResult: Double? = null
+    private var matchScoreDeferred: CompletableDeferred<Double>? = null
     private var faceMatchJob: Job? = null
 
     @Volatile private var isShuttingDown = false
 
-    private val latestFrameData = AtomicReference<ByteArray?>(null)
+    private val frameChannel = Channel<ByteArray>(Channel.CONFLATED)
     private var frameLoopJob: Job? = null
 
     @Volatile private var latestFrameReceivedMs = 0L
@@ -119,6 +131,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
+            "initialize"          -> handleInitialize(result)
             "verifyFace"          -> handleVerifyFace(call, result)
             "startActiveLiveness" -> handleStartActiveLiveness(call, result)
             "processFrame"        -> handleProcessFrame(call, result)
@@ -131,6 +144,19 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     //  Start / Stop
     // ═══════════════════════════════════════════════════════════
 
+    private fun handleInitialize(result: MethodChannel.Result) {
+        scope.launch {
+            try {
+                val ctx = appContext ?: return@launch
+                withContext(Dispatchers.IO) { initServices(ctx) }
+                result.success(null)
+            } catch (e: Exception) {
+                android.util.Log.w(TAG, "pre-warm failed", e)
+                result.success(null)
+            }
+        }
+    }
+
     private fun handleStopActiveLiveness(result: MethodChannel.Result) {
         scope.launch {
             try { stopActiveRun(); result.success(null) }
@@ -140,7 +166,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
     private suspend fun stopActiveRun() {
         frameLoopJob?.cancel(); frameLoopJob = null
-        latestFrameData.set(null)
+        frameChannel.tryReceive()
 
         activeFlowMutex.withLock {
             sessionStopping = true; sessionFinished = true; activeRunId++
@@ -172,19 +198,23 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         scope.launch {
             try {
                 val ctx = appContext ?: throw IllegalStateException("Plugin not attached")
-                withContext(Dispatchers.IO) { initServices(ctx) }
+                val preparedNfc = withContext(Dispatchers.IO) {
+                    initServices(ctx)
+                    prepareNfcImage(nfcImageBytes)
+                }
 
-                val runId = resetActiveLivenessState(nfcImageBytes)
+                val runId = resetActiveLivenessState()
 
-                val currentActions = activeFlowMutex.withLock { pendingActions.toList() }
-                val deferred = activeFlowMutex.withLock { firstFrameDeferred }
-                    ?: throw IllegalStateException("Session not initialized")
-                val nfc = activeFlowMutex.withLock { nfcImageForMatch }
-                    ?: throw IllegalStateException("NFC image failed")
+                val (currentActions, deferred) = activeFlowMutex.withLock {
+                    Pair(
+                        pendingActions.toList(),
+                        firstFrameDeferred ?: throw IllegalStateException("Session not initialized")
+                    )
+                }
                 val localEngine = engine ?: throw IllegalStateException("Engine unavailable")
                 activeLivenessService ?: throw IllegalStateException(ERR_ACTIVE_SERVICE)
 
-                launchFaceMatchJob(runId, deferred, localEngine, nfc)
+                launchFaceMatchJob(runId, deferred, localEngine, preparedNfc)
                 startFrameLoop(runId)
 
                 android.util.Log.d(TAG, "Active liveness started: $currentActions")
@@ -203,12 +233,12 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         nfc: ByteArray
     ) {
         faceMatchJob?.cancel()
-        faceMatchJob = scope.launch(Dispatchers.IO) {
+        faceMatchJob = scope.launch(Dispatchers.Default) {
             var bmp: Bitmap? = null
             try {
                 bmp = deferred.await()
                 if (isShuttingDown) return@launch
-                val score = engine.verify(nfc, bitmapToJpeg(bmp, 95))
+                val score = engine.verify(nfc, bmp)
                 storeMatchScore(runId, score.toDouble())
             } catch (_: CancellationException) { return@launch }
             catch (e: Exception) { storeMatchError(runId, e) }
@@ -220,7 +250,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
     private suspend fun storeMatchScore(runId: Int, score: Double) {
         activeFlowMutex.withLock {
-            if (runId == activeRunId && !isShuttingDown) matchScoreResult = score
+            if (runId == activeRunId && !isShuttingDown) matchScoreDeferred?.complete(score)
         }
     }
 
@@ -228,14 +258,14 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         activeFlowMutex.withLock {
             if (runId == activeRunId && !isShuttingDown) {
                 android.util.Log.e(TAG, "Face match error", e)
-                matchScoreResult = 0.0
+                matchScoreDeferred?.complete(0.0)
             }
         }
     }
 
-    private suspend fun resetActiveLivenessState(nfcImageBytes: ByteArray): Int {
+    private suspend fun resetActiveLivenessState(): Int {
         frameLoopJob?.cancel(); frameLoopJob = null
-        latestFrameData.set(null)
+        frameChannel.tryReceive()
 
         return activeFlowMutex.withLock {
             stopActiveRunInternalLocked()
@@ -248,9 +278,8 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
             completedCount = 0; currentActionIndex = 0
             extraActionMode = false; framesSinceLastAction = 0
-            nfcImageForMatch = prepareNfcImage(nfcImageBytes)
             firstFrameDeferred = CompletableDeferred()
-            matchScoreResult = null
+            matchScoreDeferred = CompletableDeferred()
 
             activeRunId
         }
@@ -267,7 +296,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
     private fun startFrameLoop(runId: Int) {
         frameLoopJob?.cancel()
-        frameLoopJob = scope.launch(Dispatchers.IO) {
+        frameLoopJob = scope.launch(Dispatchers.Default) {
             android.util.Log.d(TAG, "Frame loop started (runId=$runId)")
             while (isActive && !isShuttingDown) {
                 if (!runFrameLoopIteration(runId)) break
@@ -282,8 +311,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         }
         if (!active) return false
 
-        val data = latestFrameData.getAndSet(null)
-        if (data == null) { delay(8); return true }
+        val data = frameChannel.receive()
 
         try {
             processFrameInternal(runId, data)
@@ -303,7 +331,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             result.error("INVALID_ARGS", "frame is required", null); return
         }
         if (!isShuttingDown && !sessionFinished && !sessionStopping) {
-            latestFrameData.set(data)
+            frameChannel.trySend(data)
             latestFrameReceivedMs = SystemClock.elapsedRealtime()
         }
         result.success(null)
@@ -312,10 +340,10 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private suspend fun processFrameInternal(runId: Int, data: ByteArray) {
         if (isShuttingDown) return
 
-        val waitMs    = SystemClock.elapsedRealtime() - latestFrameReceivedMs
+        val waitMs        = SystemClock.elapsedRealtime() - latestFrameReceivedMs
         val decodeStartMs = SystemClock.elapsedRealtime()
-        val bitmap    = decodeNv21Frame(data) ?: return
-        val decodeMs  = SystemClock.elapsedRealtime() - decodeStartMs
+        val bitmap   = decodeNv21Frame(data) ?: return
+        val decodeMs = SystemClock.elapsedRealtime() - decodeStartMs
 
         try {
             activeFlowMutex.withLock {
@@ -343,7 +371,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 completeFirstFrameDeferred(bitmap)
 
                 if (!actionDone) return@withLock
-                handleActionDetectedLocked(runId, service)
+                handleActionDetectedLocked(runId)
             }
         } finally {
             if (!bitmap.isRecycled) bitmap.recycle()
@@ -364,7 +392,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         }
     }
 
-    private suspend fun handleActionDetectedLocked(runId: Int, service: ActiveLivenessService) {
+    private suspend fun handleActionDetectedLocked(runId: Int) {
         val completed = pendingActions[currentActionIndex]
         completedCount++; currentActionIndex++; framesSinceLastAction = 0
 
@@ -372,17 +400,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             "Action $completed done — $completedCount completed, index=$currentActionIndex/${pendingActions.size}")
 
         sendEvent(runId, mapOf("type" to "actionDetected", "action" to completed.name))
-
-        if (currentActionIndex >= pendingActions.size) {
-            if (shouldStartExtra()) { startExtraLocked(runId); return }
-            val passed = if (extraActionMode) completedCount >= ACTIONS_NEEDED_TO_PASS + 1
-            else completedCount >= REQUIRED_ACTIONS
-            finishSessionLocked(runId, passed); return
-        }
-
-        val next = pendingActions[currentActionIndex]
-        service.queueNextAction(next)
-        sendEvent(runId, mapOf("type" to "nextAction", "action" to next.name))
+        advanceToNextActionLocked(runId, useQueue = true)
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -397,16 +415,20 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         sendEvent(runId, mapOf("type" to "timeout", "action" to timedOut?.name))
         currentActionIndex++
 
+        advanceToNextActionLocked(runId, useQueue = false)
+    }
+
+    private suspend fun advanceToNextActionLocked(runId: Int, useQueue: Boolean) {
         if (currentActionIndex >= pendingActions.size) {
             if (shouldStartExtra()) { startExtraLocked(runId); return }
-            val passed = if (extraActionMode) completedCount >= ACTIONS_NEEDED_TO_PASS + 1
-            else completedCount >= REQUIRED_ACTIONS
-            finishSessionLocked(runId, passed); return
+            val passed = completedCount >= if (extraActionMode) ACTIONS_NEEDED_TO_PASS + 1 else REQUIRED_ACTIONS
+            finishSessionLocked(runId, passed)
+            return
         }
-
+        // Only resolve the service when we actually need to start the next action
         val service = activeLivenessService ?: throw IllegalStateException(ERR_ACTIVE_SERVICE)
         val next = pendingActions[currentActionIndex]
-        service.startAction(next)
+        if (useQueue) service.queueNextAction(next) else service.startAction(next)
         sendEvent(runId, mapOf("type" to "nextAction", "action" to next.name))
     }
 
@@ -433,23 +455,19 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         sessionFinished = true
 
         frameLoopJob?.cancel(); frameLoopJob = null
-        latestFrameData.set(null)
+        frameChannel.tryReceive()
 
         sendEvent(runId, mapOf("type" to "processing"))
-        scope.launch(Dispatchers.IO) { collectAndSendResult(runId, passed) }
+        scope.launch(Dispatchers.Default) { collectAndSendResult(runId, passed) }
     }
 
     private suspend fun collectAndSendResult(runId: Int, passed: Boolean) {
-        var score = 0.0
-        try {
-            while (!isShuttingDown) {
-                val s = activeFlowMutex.withLock {
-                    if (runId != activeRunId || sessionStopping) return
-                    matchScoreResult
-                }
-                if (s != null) { score = s; break }
-                delay(50)
+        val score = try {
+            val deferred = activeFlowMutex.withLock {
+                if (runId != activeRunId || sessionStopping) return
+                matchScoreDeferred
             }
+            deferred?.await() ?: 0.0
         } catch (_: CancellationException) { return }
 
         val antiSpoofScore    = passiveLivenessService?.getAntiSpoofScore()
@@ -505,10 +523,11 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
         firstFrameDeferred?.let { if (!it.isCompleted) it.cancel() }
         firstFrameDeferred = null
+        matchScoreDeferred?.let { if (!it.isCompleted) it.cancel() }
+        matchScoreDeferred = null
 
         pendingActions.clear(); completedCount = 0; currentActionIndex = 0
         extraActionMode = false; framesSinceLastAction = 0
-        nfcImageForMatch = null; matchScoreResult = null
 
         try { activeLivenessService?.reset() } catch (e: Exception) { android.util.Log.w(TAG, LOG_SERVICE_RESET, e) }
         sessionStopping = false
@@ -516,7 +535,7 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
     private suspend fun abortActiveRun(runId: Int, message: String) {
         frameLoopJob?.cancel(); frameLoopJob = null
-        latestFrameData.set(null)
+        frameChannel.tryReceive()
 
         val shouldNotify = activeFlowMutex.withLock {
             if (runId != activeRunId || sessionStopping) return@withLock false
@@ -554,26 +573,36 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
     private fun nv21ToArgb(src: ByteArray, off: Int, w: Int, h: Int, out: IntArray) {
         val frameSize = w * h
-        val uvStart   = off + frameSize
-        var yp        = off
+        // NV21 layout: [off .. off+w*h) = Y plane, then interleaved V,U pairs at half resolution
+        val uvStart = off + frameSize
+        var yp      = off
 
         for (j in 0 until h) {
+            // UV rows are 2× subsampled: row j shares UV data with row j+1
             val uvp = uvStart + (j shr 1) * w
             var u = 0; var v = 0
 
             for (i in 0 until w) {
+                // Bias Y into [0..219] studio-swing range; clamp negatives to 0
                 val y = (src[yp].toInt() and 0xFF) - 16
+                // UV pairs are 2× subsampled horizontally; reload every two pixels
                 if ((i and 1) == 0) {
-                    v = (src[uvp + i].toInt()     and 0xFF) - 128
-                    u = (src[uvp + i + 1].toInt() and 0xFF) - 128
+                    v = (src[uvp + i].toInt()     and 0xFF) - 128  // V (Cr) first in NV21
+                    u = (src[uvp + i + 1].toInt() and 0xFF) - 128  // U (Cb) second
                 }
-                val y1192 = 1192 * if (y < 0) 0 else y
-                var r = y1192 + 1634 * v
-                var g = y1192 - 833  * v - 400 * u
-                var b = y1192 + 2066 * u
+                // Apply BT.601 matrix — all values are ×1024 (see YUV_* constants)
+                val y1192 = YUV_Y * if (y < 0) 0 else y
+                var r = y1192 + YUV_VR * v
+                var g = y1192 - YUV_VG * v - YUV_UG * u
+                var b = y1192 + YUV_UB * u
 
+                // Clamp to valid ×1024 range (0..255×1024 = 0..261120; 262143 = 0x3FFFF)
                 r = r.coerceIn(0, 262143); g = g.coerceIn(0, 262143); b = b.coerceIn(0, 262143)
 
+                // Pack into ARGB_8888: divide each channel by 1024 via bit manipulation.
+                // (r shl 6) places bits [17:10] of r at [23:16]; same effect as (r/1024) shl 16.
+                // (g shr 2) places bits [9:2]   of g at [15:8];  same effect as (g/1024) shl 8.
+                // (b shr 10) extracts bits [17:10] of b directly into [7:0].
                 out[j * w + i] = -0x1000000 or
                         ((r shl 6)  and 0x00FF0000) or
                         ((g shr 2)  and 0x0000FF00) or
@@ -628,12 +657,6 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             } catch (e: IllegalStateException) { result.error("NO_FACE", e.message, null) }
             catch (e: Exception) { result.error("ERROR", e.message, null) }
         }
-    }
-
-    private fun bitmapToJpeg(bmp: Bitmap, quality: Int = 95): ByteArray {
-        val baos = ByteArrayOutputStream()
-        bmp.compress(Bitmap.CompressFormat.JPEG, quality, baos)
-        return baos.toByteArray()
     }
 
     private fun prepareNfcImage(bytes: ByteArray): ByteArray {

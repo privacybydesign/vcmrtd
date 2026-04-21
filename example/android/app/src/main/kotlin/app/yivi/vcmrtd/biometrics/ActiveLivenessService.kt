@@ -141,15 +141,8 @@ class ActiveLivenessService(
     private var neutralSmileLift: Float? = null
     private var neutralSmileWidth: Float? = null
 
-    private var baselineYaw = 0
-    private var baselineMouth = 0
-    private var baselineSmile = 0
-
-    private val blYawMatrix = mutableListOf<Float>()
-    private val blYawLandmark = mutableListOf<Float>()
-    private val blMouth = mutableListOf<Float>()
-    private val blSmileLift = mutableListOf<Float>()
-    private val blSmileWidth = mutableListOf<Float>()
+    private val actionAccumulator   = BaselineAccumulator()
+    private var actionBaselineReady = false
 
     private var turnDetectedLatch = false
 
@@ -168,7 +161,6 @@ class ActiveLivenessService(
     // phase to build a baseline for the first action.
     private val alignAccumulator = BaselineAccumulator()
 
-
     fun startAction(action: LivenessAction, baseline: BaselineSnapshot? = null) {
         isAligning = false
         currentAction = action
@@ -181,27 +173,31 @@ class ActiveLivenessService(
         restStableCount = 0
 
         restAccumulator.clear()
+        actionAccumulator.clear()
 
-        blYawMatrix.clear(); blYawLandmark.clear()
-        blMouth.clear(); blSmileLift.clear(); blSmileWidth.clear()
+        neutralYawMatrix = null; neutralYawLandmark = null
+        neutralMouth = null; neutralSmileLift = null; neutralSmileWidth = null
 
         if (baseline != null) {
             // Pre-load the neutral baseline — no in-action warmup needed.
-            neutralYawMatrix   = baseline.yawMatrix
-            neutralYawLandmark = baseline.yawLandmark
-            neutralMouth       = baseline.mouth
-            neutralSmileLift   = baseline.smileLift
-            neutralSmileWidth  = baseline.smileWidth
-            baselineYaw   = BASELINE_FRAMES
-            baselineMouth = BASELINE_FRAMES
-            baselineSmile = BASELINE_FRAMES
+            when (action) {
+                LivenessAction.TURN_LEFT, LivenessAction.TURN_RIGHT -> {
+                    neutralYawMatrix   = baseline.yawMatrix
+                    neutralYawLandmark = baseline.yawLandmark
+                }
+                LivenessAction.MOUTH_OPEN -> neutralMouth = baseline.mouth
+                LivenessAction.SMILE -> {
+                    neutralSmileLift  = baseline.smileLift
+                    neutralSmileWidth = baseline.smileWidth
+                }
+                else -> {}
+            }
+            actionBaselineReady = true
             android.util.Log.d(TAG, "startAction $action with preloaded baseline " +
                 "(yawMatrix=${baseline.yawMatrix}, yawLm=${baseline.yawLandmark}, " +
                 "mouth=${baseline.mouth})")
         } else {
-            neutralYawMatrix = null; neutralYawLandmark = null
-            neutralMouth = null; neutralSmileLift = null; neutralSmileWidth = null
-            baselineYaw = 0; baselineMouth = 0; baselineSmile = 0
+            actionBaselineReady = false
         }
     }
 
@@ -230,17 +226,14 @@ class ActiveLivenessService(
 
         neutralYawMatrix = null; neutralYawLandmark = null
         neutralMouth = null; neutralSmileLift = null; neutralSmileWidth = null
-        baselineYaw = 0; baselineMouth = 0; baselineSmile = 0
-
-        blYawMatrix.clear(); blYawLandmark.clear()
-        blMouth.clear(); blSmileLift.clear(); blSmileWidth.clear()
+        actionBaselineReady = false
 
         restAccumulator.clear()
+        actionAccumulator.clear()
         alignAccumulator.clear()
         isAligning = true
 
         passiveLivenessService.reset()
-        livenessService.resetLiveState()
     }
 
     fun processFrame(bitmap: Bitmap): Boolean {
@@ -415,10 +408,7 @@ class ActiveLivenessService(
         val matYaw = livenessService.matrixYaw(r)
         val lmYaw  = landmarkYaw(lm)
 
-        if (baselineYaw < BASELINE_FRAMES) {
-            collectTurnBaseline(matYaw, lmYaw)
-            return false
-        }
+        if (!actionBaselineReady) { accumulateActionBaseline(lm, r); return false }
 
         val matD = matYaw?.let { it - (neutralYawMatrix ?: 0f) }
         val lmD  = lmYaw - (neutralYawLandmark ?: 0f)
@@ -427,16 +417,6 @@ class ActiveLivenessService(
         android.util.Log.v(TAG,
             "turn: left=$left matD=${fmt(matD)} lmD=${"%.4f".format(lmD)} det=$detected")
         return detected
-    }
-
-    private fun collectTurnBaseline(matYaw: Float?, lmYaw: Float) {
-        if (matYaw != null) blYawMatrix.add(matYaw)
-        blYawLandmark.add(lmYaw)
-        baselineYaw++
-        if (baselineYaw == BASELINE_FRAMES) {
-            neutralYawMatrix   = blYawMatrix.medianOrNull()
-            neutralYawLandmark = blYawLandmark.median()
-        }
     }
 
     private fun isTurnDetected(matYaw: Float?, matD: Float?, lmD: Float, left: Boolean): Boolean {
@@ -476,11 +456,7 @@ class ActiveLivenessService(
         val fH    = dist(lm[10], lm[152]).coerceAtLeast(1e-6f)
         val ratio = gap / fH
 
-        if (baselineMouth < BASELINE_FRAMES) {
-            blMouth.add(ratio); baselineMouth++
-            if (baselineMouth == BASELINE_FRAMES) neutralMouth = blMouth.median()
-            return false
-        }
+        if (!actionBaselineReady) { accumulateActionBaseline(lm, r); return false }
 
         val delta = ratio - (neutralMouth ?: 0f)
         val det   = jawBlend >= JAW_OPEN_BLEND_THRESHOLD || delta >= MOUTH_OPEN_THRESHOLD
@@ -509,14 +485,7 @@ class ActiveLivenessService(
         val lift    = (lm[0].y() - cornerY) / fH
         val width   = dist(lm[61], lm[291]) / fW
 
-        if (baselineSmile < BASELINE_FRAMES) {
-            blSmileLift.add(lift); blSmileWidth.add(width); baselineSmile++
-            if (baselineSmile == BASELINE_FRAMES) {
-                neutralSmileLift  = blSmileLift.median()
-                neutralSmileWidth = blSmileWidth.median()
-            }
-            return false
-        }
+        if (!actionBaselineReady) { accumulateActionBaseline(lm, r); return false }
 
         val liftD  = lift  - (neutralSmileLift  ?: 0f)
         val widthD = width - (neutralSmileWidth ?: 0f)
@@ -574,6 +543,7 @@ class ActiveLivenessService(
                 alignAccumulator.clear(); return false
             }
 
+            passiveLivenessService.collectPassiveMetrics(argb, result)
             alignAccumulator.add(lm, result)
             android.util.Log.d(TAG, "Alignment stable: ${alignAccumulator.size}/$BASELINE_FRAMES")
 
@@ -592,6 +562,26 @@ class ActiveLivenessService(
     // ═══════════════════════════════════════════
     //  Utils
     // ═══════════════════════════════════════════
+
+    private fun accumulateActionBaseline(lm: List<NormalizedLandmark>, r: FaceLandmarkerResult) {
+        actionAccumulator.add(lm, r)
+        if (actionAccumulator.size >= BASELINE_FRAMES) {
+            val snap = actionAccumulator.computeSnapshot()
+            when (currentAction) {
+                LivenessAction.TURN_LEFT, LivenessAction.TURN_RIGHT -> {
+                    neutralYawMatrix   = snap.yawMatrix
+                    neutralYawLandmark = snap.yawLandmark
+                }
+                LivenessAction.MOUTH_OPEN -> neutralMouth = snap.mouth
+                LivenessAction.SMILE -> {
+                    neutralSmileLift  = snap.smileLift
+                    neutralSmileWidth = snap.smileWidth
+                }
+                else -> {}
+            }
+            actionBaselineReady = true
+        }
+    }
 
     private fun List<Float>.median(): Float {
         val s = sorted(); val m = s.size / 2

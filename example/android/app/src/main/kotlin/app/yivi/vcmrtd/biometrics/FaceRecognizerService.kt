@@ -20,6 +20,10 @@ class FaceRecognizerService(private val context: Context) {
         private const val EMBEDDING_SIZE = 512
     }
 
+    private val preprocessInput  = Array(1) { Array(INPUT_SIZE) { Array(INPUT_SIZE) { FloatArray(3) } } }
+    private val preprocessPixels = IntArray(INPUT_SIZE * INPUT_SIZE)
+    private val outputScratch    = Array(1) { FloatArray(EMBEDDING_SIZE) }
+
     fun initialize() {
         val model   = loadModelFile()
         val options = Interpreter.Options().apply { numThreads = 4 }
@@ -28,15 +32,14 @@ class FaceRecognizerService(private val context: Context) {
 
     fun generateEmbedding(face: Bitmap): FloatArray {
         android.util.Log.d(TAG, "Generating embedding for face")
-        val input  = preprocessFace(face)
-        val output = Array(1) { FloatArray(EMBEDDING_SIZE) }
-        interpreter?.run(input, output)
+        preprocessFace(face)
+        interpreter?.run(preprocessInput, outputScratch)
         android.util.Log.d(TAG, "Normalize embedding")
-        return normalize(output[0])
+        return normalize(outputScratch[0])
     }
 
     private fun normalize(embedding: FloatArray): FloatArray {
-        val norm = sqrt(embedding.sumOf { (it * it).toDouble() }.toFloat())
+        val norm = sqrt(embedding.sumOf { it * it.toDouble() }).toFloat()
         return if (norm > 0) FloatArray(embedding.size) { embedding[it] / norm } else embedding
     }
 
@@ -52,25 +55,24 @@ class FaceRecognizerService(private val context: Context) {
         return dot.coerceIn(0f, 1f)
     }
 
-    private fun preprocessFace(bitmap: Bitmap): Array<Array<Array<FloatArray>>> {
-        val input = Array(1) { Array(INPUT_SIZE) { Array(INPUT_SIZE) { FloatArray(3) } } }
+    private fun preprocessFace(bitmap: Bitmap) {
+        bitmap.getPixels(preprocessPixels, 0, INPUT_SIZE, 0, 0, INPUT_SIZE, INPUT_SIZE)
         for (y in 0 until INPUT_SIZE) {
             for (x in 0 until INPUT_SIZE) {
-                val pixel = bitmap.getPixel(x, y)
-                input[0][y][x][0] = (Color.red(pixel)   - 127.5f) / 127.5f
-                input[0][y][x][1] = (Color.green(pixel) - 127.5f) / 127.5f
-                input[0][y][x][2] = (Color.blue(pixel)  - 127.5f) / 127.5f
+                val pixel = preprocessPixels[y * INPUT_SIZE + x]
+                preprocessInput[0][y][x][0] = (Color.red(pixel)   - 127.5f) / 127.5f
+                preprocessInput[0][y][x][1] = (Color.green(pixel) - 127.5f) / 127.5f
+                preprocessInput[0][y][x][2] = (Color.blue(pixel)  - 127.5f) / 127.5f
             }
         }
-        return input
     }
 
-    private fun loadModelFile(): MappedByteBuffer {
-        val afd     = context.assets.openFd(MODEL_FILE)
-        val fis     = FileInputStream(afd.fileDescriptor)
-        val channel = fis.channel
-        return channel.map(FileChannel.MapMode.READ_ONLY, afd.startOffset, afd.declaredLength)
-    }
+    private fun loadModelFile(): MappedByteBuffer =
+        context.assets.openFd(MODEL_FILE).use { afd ->
+            FileInputStream(afd.fileDescriptor).use { fis ->
+                fis.channel.map(FileChannel.MapMode.READ_ONLY, afd.startOffset, afd.declaredLength)
+            }
+        }
 
     fun close() {
         interpreter?.close()
