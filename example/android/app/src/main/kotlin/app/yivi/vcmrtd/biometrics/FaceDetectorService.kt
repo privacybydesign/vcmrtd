@@ -59,19 +59,42 @@ class FaceDetectorService(private val context: Context) {
     }
 
     /**
-     * Detects face, applies 5-point similarity transform and returns 112x112 bitmap.
+     * Detects face from a live camera bitmap (already ARGB_8888, no EXIF rotation needed).
+     * Applies 5-point similarity transform and returns 112x112 bitmap.
+     */
+    fun detectAndCrop(bitmap: Bitmap): Bitmap? {
+        val argb = bitmap.toArgb8888()
+        return try {
+            val result = faceLandmarker?.detect(BitmapImageBuilder(argb).build())
+            if (result == null || result.faceLandmarks().isEmpty()) null
+            else similarityWarp(argb, result)
+        } finally {
+            if (argb !== bitmap && !argb.isRecycled) argb.recycle()
+        }
+    }
+
+    /**
+     * Detects face from image bytes (JPEG/PNG with EXIF), applies 5-point similarity transform
+     * and returns 112x112 bitmap.
      */
     fun detectAndCrop(imageBytes: ByteArray): Bitmap? {
-        val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)?.toArgb8888()
-            ?: return null
+        val decoded = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size) ?: return null
+        val bitmap = decoded.toArgb8888()
+        if (bitmap !== decoded) decoded.recycle()
 
-        val corrected = correctRotation(bitmap, imageBytes)
-        val mpImage = BitmapImageBuilder(corrected).build()
-        val result = faceLandmarker?.detect(mpImage)
-
-        if (result == null || result.faceLandmarks().isEmpty()) return null
-
-        return similarityWarp(corrected, result)
+        try {
+            val corrected = correctRotation(bitmap, imageBytes)
+            try {
+                val mpImage = BitmapImageBuilder(corrected).build()
+                val result = faceLandmarker?.detect(mpImage)
+                if (result == null || result.faceLandmarks().isEmpty()) return null
+                return similarityWarp(corrected, result)
+            } finally {
+                if (corrected !== bitmap && !corrected.isRecycled) corrected.recycle()
+            }
+        } finally {
+            if (!bitmap.isRecycled) bitmap.recycle()
+        }
     }
 
     /**

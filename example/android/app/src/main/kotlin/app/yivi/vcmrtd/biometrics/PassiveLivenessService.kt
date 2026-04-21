@@ -30,15 +30,12 @@ class PassiveLivenessService(
         private const val MINIFASNET_V1SE = "minifasnet_v1se.tflite"
         private const val MINIFASNET_V2 = "minifasnet_v2.tflite"
         private const val MIN_SNR = 2.0
-        private const val VALID_HR_MIN = 45.0
+        private const val VALID_HR_MIN = 45.0 
         private const val VALID_HR_MAX = 110.0
         private const val MAX_HARMONIC_RATIO = 0.8
         private const val MIN_FUNDAMENTAL = 2.0
         private const val POS_WINDOW_SECONDS = 3.0
         private const val RPPG_ALLOW_HARMONICS_FALLBACK = true
-        private const val MIN_ANTISPOOF = 0.95
-        private const val MIN_LIVE_RATIO = 0.95
-
         // Placeholder: thresholds may need adjustment after real-device testing
         // Current behaviour: null scores (no face detected) are treated as pass
         const val ANTISPOOF_MIN_SCORE = 0.65
@@ -46,10 +43,8 @@ class PassiveLivenessService(
         // ── Per-session passive metric collection ──
         private const val ANTISPOOF_SAMPLE_RATE = 0.30f  // fraction of frames scored
         private const val ANTISPOOF_MAX_YAW_DEG = 15f    // skip non-frontal frames
-        private const val RPPG_FRONTAL_MAX_YAW  = 10f    // only collect rPPG when nearly frontal
-        private const val RPPG_MAX_GAP_MS       = 1000L  // reset if gap between frames > 1 s
-        private const val RPPG_MIN_ROI_PIX      = 12     // minimum ROI width in pixels
-        private const val RPPG_ENLARGE_FACTOR   = 1.8f   // enlarge tiny ROIs before sampling
+        private const val RPPG_FRONTAL_MAX_YAW  = 15f    // only collect rPPG when nearly frontal
+        private const val RPPG_MAX_GAP_MS       = 1000L  // max inter-frame gap within a window
     }
 
     private data class FftData(val re: DoubleArray, val im: DoubleArray)
@@ -69,8 +64,8 @@ class PassiveLivenessService(
     private val antiSpoofScores  = mutableListOf<Double?>()
     private var antiSpoofAttempts = 0
     private var totalFrames       = 0
-    private val rppgSamples      = mutableListOf<FloatArray>()
-    private val rppgSampleTimes  = mutableListOf<Long>()
+    private val rppgSamples      = ArrayDeque<FloatArray>()
+    private val rppgSampleTimes  = ArrayDeque<Long>()
 
     fun initialize() {
         MiniFASNetService.initialize(context)
@@ -86,10 +81,8 @@ class PassiveLivenessService(
      * already computed from the active liveness MediaPipe result to avoid
      * redundant processing.
      */
-    fun scoreFrame(bitmap: Bitmap, rois: Map<LivenessService.RoiZone, FloatArray>): Double? {
-        val result = MiniFASNetService.score(listOf(bitmap), listOf(rois))
-        return if (result.usedFrames == 0) null else result.avgLiveScore
-    }
+    fun scoreFrame(bitmap: Bitmap, rois: Map<LivenessService.RoiZone, FloatArray>): Double? =
+        MiniFASNetService.score(bitmap, rois)
 
     /**
      * Determine whether the average MiniFASNet score passes the threshold.
@@ -118,7 +111,7 @@ class PassiveLivenessService(
     }
 
     // ═══════════════════════════════════════════
-    //  Per-session state — public API
+    //  Per session state and metric collection for passive liveness evaluation during an active session.
     // ═══════════════════════════════════════════
 
     /** Clears all accumulated passive metrics. Call between sessions. */
@@ -180,12 +173,9 @@ class PassiveLivenessService(
     }
 
     private fun sampleRppg(bitmap: Bitmap, result: FaceLandmarkerResult, yaw: Float?) {
+        if (yaw != null && abs(yaw) > RPPG_FRONTAL_MAX_YAW) return
         val roisAll = livenessService.extractRois(result) ?: return
         val now = SystemClock.elapsedRealtime()
-        if (rppgSampleTimes.isNotEmpty() && now - rppgSampleTimes.last() > RPPG_MAX_GAP_MS) {
-            rppgSamples.clear(); rppgSampleTimes.clear()
-        }
-        if (yaw != null && abs(yaw) > RPPG_FRONTAL_MAX_YAW) return
         val zones = listOf(
             LivenessService.RoiZone.FOREHEAD,
             LivenessService.RoiZone.LEFT_CHEEK,
@@ -194,18 +184,15 @@ class PassiveLivenessService(
         )
         var sumR = 0f; var sumG = 0f; var sumB = 0f; var cnt = 0
         for (z in zones) {
-            var rroi = roisAll[z] ?: continue
-            if ((rroi[2] * bitmap.width).toInt() < RPPG_MIN_ROI_PIX) {
-                rroi = floatArrayOf(rroi[0], rroi[1], (rroi[2] * RPPG_ENLARGE_FACTOR).coerceAtMost(0.5f))
-            }
+            val rroi = roisAll[z] ?: continue
             val rgb = livenessService.extractRgbFromRoi(bitmap, rroi)
             if (rgb != null) { sumR += rgb[0]; sumG += rgb[1]; sumB += rgb[2]; cnt++ }
         }
         if (cnt > 0) {
-            rppgSamples.add(floatArrayOf(sumR / cnt, sumG / cnt, sumB / cnt))
-            rppgSampleTimes.add(now)
+            rppgSamples.addLast(floatArrayOf(sumR / cnt, sumG / cnt, sumB / cnt))
+            rppgSampleTimes.addLast(now)
             if (rppgSamples.size > 1200) {
-                rppgSamples.removeAt(0); rppgSampleTimes.removeAt(0)
+                rppgSamples.removeFirst(); rppgSampleTimes.removeFirst()
             }
         }
     }
@@ -221,10 +208,10 @@ class PassiveLivenessService(
 
         val durationMs = (times.last() - times.first()).coerceAtLeast(1L)
         val fps = (((rppgSamples.size - 1) * 1000) / durationMs).coerceAtLeast(1).toInt()
-        val effectiveMinDuration = 2500L
+        val effectiveMinDuration = 2000L
         if (durationMs < effectiveMinDuration) return null
 
-        val requiredSamples = (fps * 3.0).toInt().coerceAtLeast(minSamples)
+        val requiredSamples = (fps * 2.0).toInt().coerceAtLeast(minSamples)
         if (rppgSamples.size < requiredSamples) return null
 
         var bestResult: RppgResult? = null
@@ -262,7 +249,6 @@ class PassiveLivenessService(
     fun evaluateRppg(samples: List<FloatArray>, fps: Int): RppgResult {
         if (samples.isEmpty() || fps <= 0) return RppgResult(null, 0.0, false, false)
 
-
         val raw = posAlgorithmWindowed(samples, fps)
         val filtered = bandpassFilter(raw, 0.7, 4.0, fps.toDouble())
         val fftData = fft(filtered)
@@ -285,7 +271,6 @@ class PassiveLivenessService(
             "rPPG eval — HR=${hr?.let { "%.1f".format(it) } ?: "null"} SNR=${"%.2f".format(snr)} " +
                     "harmonics=$harmonics fallback=$fallbackUsed validHr=$validHr passed=$passed")
 
-
         // approximate sample/duration metadata (caller may override with exact values)
         val sampleCount = samples.size
         val durationMs = if (fps > 0) (((sampleCount - 1) * 1000) / fps).toLong() else 0L
@@ -295,65 +280,40 @@ class PassiveLivenessService(
 
     private object MiniFASNetService {
         private const val INPUT_SIZE = 80
-        internal const val SAMPLE_INTERVAL = 5
         private const val LIVE_CLASS_IDX = 1
         private const val SCALE_V2 = 2.7f
 
         private var interpreterV1se: Interpreter? = null
         private var interpreterV2: Interpreter? = null
 
-        data class AntiSpoofResult(
-            val avgLiveScore: Double,
-            val liveRatio: Double,
-            val usedFrames: Int
-        )
+        // Cached at initialize() — model layout never changes at runtime
+        private var isNchwV1 = false
+        private var isNchwV2 = false
+
+        private val inputBufV1 = ByteBuffer.allocateDirect(3 * INPUT_SIZE * INPUT_SIZE * 4).order(ByteOrder.nativeOrder())
+        private val inputBufV2 = ByteBuffer.allocateDirect(3 * INPUT_SIZE * INPUT_SIZE * 4).order(ByteOrder.nativeOrder())
+        private val pixelScratch = IntArray(INPUT_SIZE * INPUT_SIZE)
+        private val outV1Scratch = Array(1) { FloatArray(3) }
+        private val outV2Scratch = Array(1) { FloatArray(3) }
 
         fun initialize(context: Context) {
-            if (interpreterV1se == null) interpreterV1se = loadInterpreter(context, MINIFASNET_V1SE)
-            if (interpreterV2 == null) interpreterV2 = loadInterpreter(context, MINIFASNET_V2)
+            if (interpreterV1se == null) {
+                interpreterV1se = loadInterpreter(context, MINIFASNET_V1SE)
+                isNchwV1 = interpreterV1se?.getInputTensor(0)?.shape()?.let { it.size == 4 && it[1] == 3 } ?: false
+            }
+            if (interpreterV2 == null) {
+                interpreterV2 = loadInterpreter(context, MINIFASNET_V2)
+                isNchwV2 = interpreterV2?.getInputTensor(0)?.shape()?.let { it.size == 4 && it[1] == 3 } ?: false
+            }
             android.util.Log.d(TAG,
                 "MiniFASNet ready: v1se=${interpreterV1se != null} v2=${interpreterV2 != null}")
         }
 
-        fun score(
-            frames: List<Bitmap>,
-            faceRois: List<Map<LivenessService.RoiZone, FloatArray>?>
-        ): AntiSpoofResult {
-            val v1 = interpreterV1se ?: return AntiSpoofResult(0.0, 0.0, 0)
-            val v2 = interpreterV2 ?: return AntiSpoofResult(0.0, 0.0, 0)
-            if (frames.isEmpty() || faceRois.isEmpty()) return AntiSpoofResult(0.0, 0.0, 0)
+        /** Returns a live-confidence score in [0.0, 1.0], or null if the frame cannot be scored. */
+        fun score(frame: Bitmap, rois: Map<LivenessService.RoiZone, FloatArray>): Double? {
+            val v1 = interpreterV1se ?: return null
+            val v2 = interpreterV2 ?: return null
 
-            val isNchwV1 = v1.getInputTensor(0).shape().let { it.size == 4 && it[1] == 3 }
-            val isNchwV2 = v2.getInputTensor(0).shape().let { it.size == 4 && it[1] == 3 }
-
-            val frameScores = mutableListOf<Double>()
-            var liveFrames = 0
-            var totalUsed = 0
-
-            frames.forEachIndexed { idx, frame ->
-                val rois = faceRois.getOrNull(idx) ?: return@forEachIndexed
-                val scored = scoreFrame(frame, rois, v1, v2, isNchwV1, isNchwV2, idx) ?: return@forEachIndexed
-                totalUsed++
-                if (scored.first == LIVE_CLASS_IDX) liveFrames++
-                frameScores.add(scored.second)
-            }
-
-            if (totalUsed == 0) return AntiSpoofResult(0.0, 0.0, 0)
-            return AntiSpoofResult(
-                avgLiveScore = frameScores.average(),
-                liveRatio    = liveFrames.toDouble() / totalUsed,
-                usedFrames   = totalUsed
-            )
-        }
-
-        // Returns (label, liveConf) or null if the frame cannot be scored.
-        private fun scoreFrame(
-            frame: Bitmap,
-            rois: Map<LivenessService.RoiZone, FloatArray>,
-            v1: Interpreter, v2: Interpreter,
-            isNchwV1: Boolean, isNchwV2: Boolean,
-            idx: Int
-        ): Pair<Int, Double>? {
             val cropV1 = cropWithScale(frame, intArrayOf(0, 0, frame.width, frame.height), null)
                 ?: return null
             val bbox = faceBoxPixels(rois, frame.width, frame.height) ?: run {
@@ -363,20 +323,19 @@ class PassiveLivenessService(
                 if (!cropV1.isRecycled) cropV1.recycle(); return null
             }
             try {
-                val inV1 = if (isNchwV1) preprocessNchw(cropV1) else preprocessNhwc(cropV1)
-                val inV2 = if (isNchwV2) preprocessNchw(cropV2) else preprocessNhwc(cropV2)
-                val outV1 = Array(1) { FloatArray(3) }; val outV2 = Array(1) { FloatArray(3) }
-                v1.run(inV1, outV1); v2.run(inV2, outV2)
-                val smV1 = softmax(outV1[0]); val smV2 = softmax(outV2[0])
+                val inV1 = if (isNchwV1) preprocessNchw(cropV1, inputBufV1) else preprocessNhwc(cropV1, inputBufV1)
+                val inV2 = if (isNchwV2) preprocessNchw(cropV2, inputBufV2) else preprocessNhwc(cropV2, inputBufV2)
+                v1.run(inV1, outV1Scratch); v2.run(inV2, outV2Scratch)
+                val smV1 = softmax(outV1Scratch[0]); val smV2 = softmax(outV2Scratch[0])
                 val combined = FloatArray(3) { i -> smV1[i] + smV2[i] }
                 var label = 0; var best = Float.NEGATIVE_INFINITY
                 combined.forEachIndexed { i, v -> if (v > best) { best = v; label = i } }
                 val liveConf = (combined[LIVE_CLASS_IDX] / 2f).toDouble()
                 android.util.Log.d(TAG,
-                    "MiniFASNet frame $idx: label=$label liveConf=${"%.3f".format(liveConf)} " +
+                    "MiniFASNet: label=$label liveConf=${"%.3f".format(liveConf)} " +
                     "v1=[${smV1.joinToString { "%.3f".format(it) }}] " +
                     "v2=[${smV2.joinToString { "%.3f".format(it) }}]")
-                return Pair(label, if (label == LIVE_CLASS_IDX) liveConf else 0.0)
+                return if (label == LIVE_CLASS_IDX) liveConf else 0.0
             } finally {
                 if (!cropV1.isRecycled) cropV1.recycle()
                 if (!cropV2.isRecycled) cropV2.recycle()
@@ -453,25 +412,19 @@ class PassiveLivenessService(
             }
         }
 
-        private fun preprocessNchw(bmp: Bitmap): ByteBuffer {
-            val px = IntArray(INPUT_SIZE * INPUT_SIZE).also {
-                bmp.getPixels(it, 0, INPUT_SIZE, 0, 0, INPUT_SIZE, INPUT_SIZE)
-            }
-            val buf = ByteBuffer.allocateDirect(1 * 3 * INPUT_SIZE * INPUT_SIZE * 4)
-                .order(ByteOrder.nativeOrder())
-            for (p in px) buf.putFloat(Color.blue(p).toFloat())
-            for (p in px) buf.putFloat(Color.green(p).toFloat())
-            for (p in px) buf.putFloat(Color.red(p).toFloat())
+        private fun preprocessNchw(bmp: Bitmap, buf: ByteBuffer): ByteBuffer {
+            bmp.getPixels(pixelScratch, 0, INPUT_SIZE, 0, 0, INPUT_SIZE, INPUT_SIZE)
+            buf.clear()
+            for (p in pixelScratch) buf.putFloat(Color.blue(p).toFloat())
+            for (p in pixelScratch) buf.putFloat(Color.green(p).toFloat())
+            for (p in pixelScratch) buf.putFloat(Color.red(p).toFloat())
             return buf.apply { rewind() }
         }
 
-        private fun preprocessNhwc(bmp: Bitmap): ByteBuffer {
-            val px = IntArray(INPUT_SIZE * INPUT_SIZE).also {
-                bmp.getPixels(it, 0, INPUT_SIZE, 0, 0, INPUT_SIZE, INPUT_SIZE)
-            }
-            val buf = ByteBuffer.allocateDirect(1 * INPUT_SIZE * INPUT_SIZE * 3 * 4)
-                .order(ByteOrder.nativeOrder())
-            for (p in px) {
+        private fun preprocessNhwc(bmp: Bitmap, buf: ByteBuffer): ByteBuffer {
+            bmp.getPixels(pixelScratch, 0, INPUT_SIZE, 0, 0, INPUT_SIZE, INPUT_SIZE)
+            buf.clear()
+            for (p in pixelScratch) {
                 buf.putFloat(Color.blue(p).toFloat())
                 buf.putFloat(Color.green(p).toFloat())
                 buf.putFloat(Color.red(p).toFloat())
@@ -590,13 +543,18 @@ class PassiveLivenessService(
 
     private fun nextPow2(n: Int): Int { var p = 1; while (p < n) p = p shl 1; return p }
 
+    private fun computePowerSpectrum(fft: FftData): DoubleArray {
+        val n = fft.re.size; val half = n / 2
+        return DoubleArray(half) { k -> (fft.re[k].pow(2) + fft.im[k].pow(2)) / n }
+    }
+
     private fun calculateSnrFromFft(fft: FftData, fs: Double): Double {
         val n = fft.re.size; val half = n / 2
+        val power = computePowerSpectrum(fft)
         var sig = 0.0; var total = 0.0
         for (k in 0 until half) {
             val freq = k * fs / n
-            val power = (fft.re[k].pow(2) + fft.im[k].pow(2)) / n
-            total += power; if (freq in 0.7..4.0) sig += power
+            total += power[k]; if (freq in 0.7..4.0) sig += power[k]
         }
         val noise = total - sig
         return if (noise > 0) sig / noise else 0.0
@@ -605,7 +563,7 @@ class PassiveLivenessService(
     private fun checkHarmonicStructureFromFft(fft: FftData, fs: Double): Boolean {
         val n = fft.re.size; val half = n / 2
         val freqs = DoubleArray(half) { k -> k * fs / n }
-        val power = DoubleArray(half) { k -> (fft.re[k].pow(2) + fft.im[k].pow(2)) / n }
+        val power = computePowerSpectrum(fft)
         var f0Idx = -1; var f0Power = 0.0
         freqs.indices.forEach { k -> if (freqs[k] in 0.7..4.0 && power[k] > f0Power) { f0Power = power[k]; f0Idx = k } }
         if (f0Idx < 0) return false
