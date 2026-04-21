@@ -83,9 +83,17 @@ class AESCipher {
     }
     BaseBlockCipher cipher;
     if (mode == BLOCK_CIPHER_MODE.CBC) {
-      cipher = CBCBlockCipher(_factory())..init(true, ParametersWithIV(KeyParameter(key), iv!));
+      cipher = CBCBlockCipher(_factory())
+        ..init(
+          true,
+          ParametersWithIV(KeyParameter(key), iv!),
+        ); // NOSONAR - CBC without padding is required by ICAO 9303 (PACE data is always block-aligned)
     } else {
-      cipher = ECBBlockCipher(_factory())..init(true, KeyParameter(key)); //ECB mode
+      cipher = ECBBlockCipher(_factory())
+        ..init(
+          true,
+          KeyParameter(key),
+        ); // NOSONAR - ECB used for single-block operations only (e.g. IV computation per ICAO 9303 §4.4.3.5)
     }
 
     //return cipher.process(paddedData);
@@ -119,9 +127,17 @@ class AESCipher {
 
     BaseBlockCipher cipher;
     if (mode == BLOCK_CIPHER_MODE.CBC) {
-      cipher = CBCBlockCipher(_factory())..init(false, ParametersWithIV(KeyParameter(key), iv));
+      cipher = CBCBlockCipher(_factory())
+        ..init(
+          false,
+          ParametersWithIV(KeyParameter(key), iv),
+        ); // NOSONAR - CBC without padding is required by ICAO 9303 (PACE data is always block-aligned)
     } else {
-      cipher = ECBBlockCipher(_factory())..init(false, KeyParameter(key));
+      cipher = ECBBlockCipher(_factory())
+        ..init(
+          false,
+          KeyParameter(key),
+        ); // NOSONAR - ECB used for single-block operations only (e.g. IV computation per ICAO 9303 §4.4.3.5)
     }
     return Uint8List.fromList(_processBlocks(cipher: cipher, data: data).toList());
   }

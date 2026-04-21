@@ -240,7 +240,8 @@ class ECDHPace {
       _log.error("Public key has no parameters (as BigInteger). Something went wrong in PC library.");
       throw ECDHPaceError("Public key has no parameters(as BigInteger). Something went wrong in PC library.");
     }
-    return PublicKeyPACEeCDH(x: x, y: y);
+    final coordLen = (selectedDomainParameter.size + 7) ~/ 8;
+    return PublicKeyPACEeCDH(x: x, y: y, coordLen: coordLen);
   }
 
   PublicKeyPACEeCDH getPubKeyEphemeral() {
@@ -259,7 +260,8 @@ class ECDHPace {
       _log.error("Public ephemeral key has no parameters (as BigInteger). Something went wrong in PC library.");
       throw ECDHPaceError("Public ephemeral key has no parameters(as BigInteger). Something went wrong in PC library.");
     }
-    return PublicKeyPACEeCDH(x: x, y: y);
+    final coordLen = (selectedDomainParameter.size + 7) ~/ 8;
+    return PublicKeyPACEeCDH(x: x, y: y, coordLen: coordLen);
   }
 
   ECPoint getSharedSecret({required ECPublicKey otherPubKey}) {

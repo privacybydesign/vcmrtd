@@ -43,6 +43,58 @@ void main() {
       }
     });
 
+    // Verifies the keyId field is correctly parsed for both entries.
+    // Per BSI TR-03110 §4.2.3.3, the CAM key has keyId == PACE domainParameterId.
+    // For this DE passport the PACE domain parameter is 13 (BrainpoolP256r1),
+    // so the CAM key must have keyId=13 and the GM key must have keyId=72.
+    // This was the root cause of the PACE-CAM bug: the wrong key (keyId=72) was
+    // selected because the code ignored keyId.
+    test('chipAuthPublicKeyInfos carry correct keyIds (13 for CAM, 72 for GM)', () {
+      final ef = EfCardSecurity.fromBytes(deCardSecurityHex.parseHex());
+      final si = ef.securityInfos!;
+
+      final keyIds = si.chipAuthenticationPublicKeyInfos.map((k) => k.keyId).toSet();
+      expect(keyIds, containsAll([13, 72]), reason: 'DE passport must have keyId=13 (CAM) and keyId=72 (GM)');
+    });
+
+    // Verifies that the key with keyId=13 carries the expected CAM public key.
+    // X coordinate starts 614CD88B… (from gmrtd TestNewCardSecurityDE).
+    test('key with keyId=13 (CAM) has expected public key X coordinate', () {
+      final ef = EfCardSecurity.fromBytes(deCardSecurityHex.parseHex());
+      final si = ef.securityInfos!;
+
+      final camKey = si.chipAuthenticationPublicKeyInfos.firstWhere((k) => k.keyId == 13);
+
+      // SubjectPublicKeyInfo → BIT STRING → 04 ‖ X (32 bytes) ‖ Y (32 bytes)
+      // valueBytes on the BIT STRING element skips the tag+length, leaving the raw bit-string value.
+      // The first byte of the value is the "unused bits" count (always 0 for keys), then 04‖X‖Y.
+      final keyElement = camKey.chipAuthenticationPublicKey.elements![1];
+      final keyBytes = keyElement.valueBytes!;
+      // valueBytes includes the unused-bits byte (0x00) before the EC point.
+      final pointStart = keyBytes[0] == 0x00 ? 1 : 0;
+      expect(keyBytes[pointStart], 0x04, reason: 'uncompressed-point marker');
+      final xCoord = keyBytes
+          .sublist(pointStart + 1, pointStart + 33)
+          .map((b) => b.toRadixString(16).padLeft(2, '0'))
+          .join();
+      expect(xCoord.toLowerCase(), startsWith('614cd88b'), reason: 'X must match gmrtd test vector');
+    });
+
+    // Verifies that the key with keyId=72 carries a different public key than keyId=13,
+    // confirming that selecting the wrong key would produce an incorrect result.
+    test('key with keyId=72 (GM) has a different public key than keyId=13', () {
+      final ef = EfCardSecurity.fromBytes(deCardSecurityHex.parseHex());
+      final si = ef.securityInfos!;
+
+      final camKey = si.chipAuthenticationPublicKeyInfos.firstWhere((k) => k.keyId == 13);
+      final gmKey = si.chipAuthenticationPublicKeyInfos.firstWhere((k) => k.keyId == 72);
+
+      final camBits = camKey.chipAuthenticationPublicKey.elements![1].valueBytes!;
+      final gmBits = gmKey.chipAuthenticationPublicKey.elements![1].valueBytes!;
+
+      expect(camBits, isNot(equals(gmBits)), reason: 'CAM and GM keys must be distinct');
+    });
+
     // Verifies that malformed input (not a CMS SignedData) does not crash;
     // parse returns silently with securityInfos == null.
     test('returns null securityInfos for malformed input', () {

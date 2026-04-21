@@ -92,6 +92,16 @@ class NfcProvider extends ComProvider {
     }
   }
 
+  /// Clears internal tag state and forces the plugin to finish any active or
+  /// partially-initialised NFC session. Safe to call even when not connected
+  /// (e.g. after a Dart timeout cancelled a poll future).
+  Future<void> forceCleanup() async {
+    _tag = null;
+    try {
+      await FlutterNfcKit.finish();
+    } catch (_) {}
+  }
+
   @override
   bool isConnected() {
     return _tag != null;
