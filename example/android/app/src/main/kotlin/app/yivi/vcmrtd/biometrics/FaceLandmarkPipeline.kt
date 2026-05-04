@@ -383,28 +383,33 @@ class FaceLandmarkPipeline(private val context: Context) {
      * Keypoints improve vertical centering on document photos (NFC/test) while keeping
      * selfie behavior stable; box size avoids oversized/unstable crops.
      */
-    private fun keypointBlendedCenter(box: FloatArray, boxCx: Float, boxCy: Float): FloatArray? {
-        if (box.size < 17) return null
-
+    private fun collectKeypointBounds(box: FloatArray): FloatArray? {
         var minKx = Float.MAX_VALUE; var minKy = Float.MAX_VALUE
         var maxKx = -Float.MAX_VALUE; var maxKy = -Float.MAX_VALUE
         var count = 0
         for (k in 0 until DETECTOR_KEYPOINTS) {
             val x = box[5 + k * 2]; val y = box[6 + k * 2]
             if (x.isFinite() && y.isFinite() && x in 0f..1f && y in 0f..1f) {
-                if (x < minKx) minKx = x; if (y < minKy) minKy = y
-                if (x > maxKx) maxKx = x; if (y > maxKy) maxKy = y
+                if (x < minKx) minKx = x
+                if (y < minKy) minKy = y
+                if (x > maxKx) maxKx = x
+                if (y > maxKy) maxKy = y
                 count++
             }
         }
-        if (count < 4) return null
+        return if (count >= 4) floatArrayOf(minKx, minKy, maxKx, maxKy) else null
+    }
 
-        val kpW = max(maxKx - minKx, 1e-6f)
-        val kpH = max(maxKy - minKy, 1e-6f)
+    private fun keypointBlendedCenter(box: FloatArray, boxCx: Float, boxCy: Float): FloatArray? {
+        if (box.size < 17) return null
+
+        val bounds = collectKeypointBounds(box) ?: return null
+        val kpW = max(bounds[2] - bounds[0], 1e-6f)
+        val kpH = max(bounds[3] - bounds[1], 1e-6f)
         if (kpW <= 0.05f || kpH <= 0.03f) return null
 
-        val kpCx = (minKx + maxKx) * 0.5f
-        val kpCy = (minKy + maxKy) * 0.5f
+        val kpCx = (bounds[0] + bounds[2]) * 0.5f
+        val kpCy = (bounds[1] + bounds[3]) * 0.5f
         return floatArrayOf(
             (kpCx * 0.7f + boxCx * 0.3f).coerceIn(0f, 1f),
             (kpCy * 0.7f + boxCy * 0.3f).coerceIn(0f, 1f)
