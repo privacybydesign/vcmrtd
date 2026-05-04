@@ -85,9 +85,14 @@ Uint8List? _packNv21Isolate(CameraImage image) {
 class FaceVerificationScreen extends StatefulWidget {
   final Uint8List? nfcImageBytes;
   final VoidCallback onBackPressed;
-  static const double matchThreshold = 0.6;
+  final DateTime? photoIssueDate;
 
-  const FaceVerificationScreen({super.key, required this.nfcImageBytes, required this.onBackPressed});
+  const FaceVerificationScreen({
+    super.key,
+    required this.nfcImageBytes,
+    required this.onBackPressed,
+    this.photoIssueDate,
+  });
 
   @override
   State<FaceVerificationScreen> createState() => _FaceVerificationScreenState();
@@ -96,8 +101,15 @@ class FaceVerificationScreen extends StatefulWidget {
 class _FaceVerificationScreenState extends State<FaceVerificationScreen> with WidgetsBindingObserver {
   static const _methodChannel = MethodChannel('foundation.privacybydesign.vcmrtd/face_verification');
   static const _eventChannel = EventChannel('foundation.privacybydesign.vcmrtd/liveness_events');
+  static const _orientations = <DeviceOrientation, int>{
+    DeviceOrientation.portraitUp: 0,
+    DeviceOrientation.landscapeLeft: 90,
+    DeviceOrientation.portraitDown: 180,
+    DeviceOrientation.landscapeRight: 270,
+  };
 
   CameraController? _cameraController;
+  CameraDescription? _activeCamera;
   StreamSubscription<dynamic>? _eventSub;
 
   VerificationResult? _result;
@@ -233,10 +245,18 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> with Wi
 
       setState(() {
         _cameraController = ctrl;
+        _activeCamera = front;
         _errorMessage = null;
       });
 
-      unawaited(_methodChannel.invokeMethod<void>('initialize').catchError((_) {}));
+      unawaited(
+        _methodChannel
+            .invokeMethod<void>('initialize', {
+              'sensorOrientation': front.sensorOrientation,
+              'isFrontCamera': front.lensDirection == CameraLensDirection.front,
+            })
+            .catchError((_) {}),
+      );
     } catch (e) {
       if (mounted && !_isDisposed) {
         setState(() => _errorMessage = 'Could not open camera: $e');
@@ -339,8 +359,11 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> with Wi
           continue;
         }
 
+        final rotation = _cameraFrameRotation();
+        if (rotation == null) continue;
+
         // Send to Kotlin (stored in AtomicReference, returns immediately).
-        await _methodChannel.invokeMethod<void>('processFrame', {'frame': data});
+        await _methodChannel.invokeMethod<void>('processFrame', {'frame': data, 'rotation': rotation});
 
         // Check whether a newer frame arrived while we were sending.
         // If yes: loop and pick it up.
@@ -366,6 +389,20 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> with Wi
         }
       }
     }
+  }
+
+  int? _cameraFrameRotation() {
+    final ctrl = _cameraController;
+    final camera = _activeCamera ?? ctrl?.description;
+    if (ctrl == null || camera == null) return null;
+
+    final rotationComp = _orientations[ctrl.value.deviceOrientation];
+    if (rotationComp == null) return null;
+
+    if (camera.lensDirection == CameraLensDirection.front) {
+      return (camera.sensorOrientation + rotationComp) % 360;
+    }
+    return (camera.sensorOrientation - rotationComp + 360) % 360;
   }
 
   void _onLivenessEvent(dynamic event) {
@@ -686,9 +723,22 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> with Wi
     ),
   );
 
+  // Threshold scales down for older passport photos, which naturally score lower.
+  // < 3 years old → 0.65, 3–7 years → 0.60, > 7 years → 0.55, unknown → 0.60
+  // problem with people we change a lot in
+  double _matchThreshold() {
+    final issueDate = widget.photoIssueDate;
+    if (issueDate == null) return 0.60;
+    final ageYears = DateTime.now().difference(issueDate).inDays / 365.25;
+    if (ageYears <= 3) return 0.65;
+    if (ageYears <= 7) return 0.60;
+    return 0.55;
+  }
+
   Widget _buildResult() {
     final r = _result!;
-    final passed = r.matchScore > FaceVerificationScreen.matchThreshold && r.isLive;
+    final threshold = _matchThreshold();
+    final passed = r.matchScore > threshold && r.isLive;
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(

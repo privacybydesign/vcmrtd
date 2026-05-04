@@ -7,55 +7,39 @@ import android.graphics.Canvas
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.media.ExifInterface
-import com.google.mediapipe.framework.image.BitmapImageBuilder
-import com.google.mediapipe.tasks.core.BaseOptions
-import com.google.mediapipe.tasks.vision.core.RunningMode
-import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarker
-import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult
+import kotlin.math.cos
+import kotlin.math.sin
 import kotlin.math.sqrt
 
 class FaceDetectorService(private val context: Context) {
 
-    private var faceLandmarker: FaceLandmarker? = null
+    private var pipeline: FaceLandmarkPipeline? = null
 
     companion object {
-        private const val TAG = "FaceDetector"
-        private const val MODEL_FILE = "face_landmarker.task"
         private const val TARGET_SIZE = 112
 
-        // ArcFace 5-point reference positions for 112x112
+        // ArcFace 5-point reference positions for 112×112, observer's perspective.
+        // "left" = observer's left (low x), "right" = observer's right (high x).
         private val DST_POINTS = floatArrayOf(
-            38.2946f, 51.6963f,  // left eye
-            73.5318f, 51.5014f,  // right eye
-            56.0252f, 71.7366f,  // nose
-            41.5493f, 92.3655f,  // left mouth
-            70.7299f, 92.2041f   // right mouth
+            38.2946f, 51.6963f,  // observer's left eye  (= subject's right)
+            73.5318f, 51.5014f,  // observer's right eye (= subject's left)
+            56.0252f, 71.7366f,  // nose tip
+            41.5493f, 92.3655f,  // observer's left mouth corner  (= subject's right)
+            70.7299f, 92.2041f   // observer's right mouth corner (= subject's left)
         )
 
-        // MediaPipe landmark indices for the 5 points
-        private const val IDX_LEFT_EYE   = 468
-        private const val IDX_RIGHT_EYE  = 473
-        private const val IDX_NOSE       = 1
-        private const val IDX_MOUTH_L    = 61
-        private const val IDX_MOUTH_R    = 291
+        // Original ArcFace 5-point source landmarks from MediaPipe FaceMesh.
+        // Keep these to match previous working behavior as closely as possible.
+        private const val IDX_LEFT_EYE  = 468
+        private const val IDX_RIGHT_EYE = 473
+        private const val IDX_NOSE      = 1
+        private const val IDX_MOUTH_L   = 61
+        private const val IDX_MOUTH_R   = 291
     }
 
     fun initialize() {
-        if (faceLandmarker != null) return
-
-        val baseOptions = BaseOptions.builder()
-            .setModelAssetPath(MODEL_FILE)
-            .build()
-
-        val options = FaceLandmarker.FaceLandmarkerOptions.builder()
-            .setBaseOptions(baseOptions)
-            .setMinFaceDetectionConfidence(0.5f)
-            .setMinFacePresenceConfidence(0.5f)
-            .setNumFaces(1)
-            .setRunningMode(RunningMode.IMAGE)
-            .build()
-
-        faceLandmarker = FaceLandmarker.createFromOptions(context, options)
+        if (pipeline != null) return
+        pipeline = FaceLandmarkPipeline(context).also { it.initialize() }
     }
 
     /**
@@ -65,7 +49,7 @@ class FaceDetectorService(private val context: Context) {
     fun detectAndCrop(bitmap: Bitmap): Bitmap? {
         val argb = bitmap.toArgb8888()
         return try {
-            val result = faceLandmarker?.detect(BitmapImageBuilder(argb).build())
+            val result = pipeline?.detect(argb, runBlendshapes = false)
             if (result == null || result.faceLandmarks().isEmpty()) null
             else similarityWarp(argb, result)
         } finally {
@@ -85,8 +69,7 @@ class FaceDetectorService(private val context: Context) {
         try {
             val corrected = correctRotation(bitmap, imageBytes)
             try {
-                val mpImage = BitmapImageBuilder(corrected).build()
-                val result = faceLandmarker?.detect(mpImage)
+                val result = pipeline?.detect(corrected, runBlendshapes = false)
                 if (result == null || result.faceLandmarks().isEmpty()) return null
                 return similarityWarp(corrected, result)
             } finally {
@@ -100,19 +83,57 @@ class FaceDetectorService(private val context: Context) {
     /**
      * Applies a similarity transform (rotation + scale + translation) based on
      * 5 facial landmarks, mapping them to ArcFace reference positions in 112x112.
-     * Uses inverse warp so every output pixel is filled — no black areas.
      */
     private fun similarityWarp(bitmap: Bitmap, result: FaceLandmarkerResult): Bitmap {
         val landmarks = result.faceLandmarks()[0]
         val w = bitmap.width.toFloat()
         val h = bitmap.height.toFloat()
 
+        val eyeAX = landmarks[IDX_LEFT_EYE].x() * w
+        val eyeAY = landmarks[IDX_LEFT_EYE].y() * h
+        val eyeBX = landmarks[IDX_RIGHT_EYE].x() * w
+        val eyeBY = landmarks[IDX_RIGHT_EYE].y() * h
+
+        val noseX = landmarks[IDX_NOSE].x() * w
+        val noseY = landmarks[IDX_NOSE].y() * h
+
+        val mouthAX = landmarks[IDX_MOUTH_L].x() * w
+        val mouthAY = landmarks[IDX_MOUTH_L].y() * h
+        val mouthBX = landmarks[IDX_MOUTH_R].x() * w
+        val mouthBY = landmarks[IDX_MOUTH_R].y() * h
+
+        // Runtime handedness guard (works for mirrored/non-mirrored feeds):
+        // map lower-x to observer-left target point and higher-x to observer-right.
+        val leftEyeX: Float
+        val leftEyeY: Float
+        val rightEyeX: Float
+        val rightEyeY: Float
+        if (eyeAX <= eyeBX) {
+            leftEyeX = eyeAX; leftEyeY = eyeAY
+            rightEyeX = eyeBX; rightEyeY = eyeBY
+        } else {
+            leftEyeX = eyeBX; leftEyeY = eyeBY
+            rightEyeX = eyeAX; rightEyeY = eyeAY
+        }
+
+        val leftMouthX: Float
+        val leftMouthY: Float
+        val rightMouthX: Float
+        val rightMouthY: Float
+        if (mouthAX <= mouthBX) {
+            leftMouthX = mouthAX; leftMouthY = mouthAY
+            rightMouthX = mouthBX; rightMouthY = mouthBY
+        } else {
+            leftMouthX = mouthBX; leftMouthY = mouthBY
+            rightMouthX = mouthAX; rightMouthY = mouthAY
+        }
+
         val src = floatArrayOf(
-            landmarks[IDX_LEFT_EYE].x()  * w, landmarks[IDX_LEFT_EYE].y()  * h,
-            landmarks[IDX_RIGHT_EYE].x() * w, landmarks[IDX_RIGHT_EYE].y() * h,
-            landmarks[IDX_NOSE].x()      * w, landmarks[IDX_NOSE].y()      * h,
-            landmarks[IDX_MOUTH_L].x()   * w, landmarks[IDX_MOUTH_L].y()   * h,
-            landmarks[IDX_MOUTH_R].x()   * w, landmarks[IDX_MOUTH_R].y()   * h
+            leftEyeX, leftEyeY,
+            rightEyeX, rightEyeY,
+            noseX, noseY,
+            leftMouthX, leftMouthY,
+            rightMouthX, rightMouthY
         )
 
         val matrix = estimateSimilarityTransform(src, DST_POINTS)
@@ -123,9 +144,7 @@ class FaceDetectorService(private val context: Context) {
 
     /**
      * Estimates a similarity transform matrix (rotation + uniform scale + translation)
-     * that maps src points to dst points using least squares.
-     *
-     * Based on Umeyama algorithm same as scikit-image SimilarityTransform.estimate() 
+     * that maps src points to dst points using least squares (Umeyama algorithm).
      */
     private fun estimateSimilarityTransform(src: FloatArray, dst: FloatArray): Matrix {
         val n = src.size / 2
@@ -164,9 +183,6 @@ class FaceDetectorService(private val context: Context) {
         return matrix
     }
 
-    /**
-     * Corrects bitmap rotation based on EXIF orientation data.
-     */
     private fun correctRotation(bitmap: Bitmap, imageBytes: ByteArray): Bitmap {
         val exif = ExifInterface(imageBytes.inputStream())
         val orientation = exif.getAttributeInt(
@@ -188,7 +204,7 @@ class FaceDetectorService(private val context: Context) {
     }
 
     fun close() {
-        faceLandmarker?.close()
-        faceLandmarker = null
+        pipeline?.close()
+        pipeline = null
     }
 }

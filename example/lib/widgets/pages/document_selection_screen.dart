@@ -8,13 +8,8 @@ import 'package:vcmrtdapp/theme/text_styles.dart';
 
 class DocumentTypeSelectionScreen extends StatelessWidget {
   final Function(DocumentType) onDocumentTypeSelected;
-  final Future<void> Function() onTestFaceVerification;
 
-  const DocumentTypeSelectionScreen({
-    super.key,
-    required this.onDocumentTypeSelected,
-    required this.onTestFaceVerification,
-  });
+  const DocumentTypeSelectionScreen({super.key, required this.onDocumentTypeSelected});
 
   @override
   Widget build(BuildContext context) {
@@ -65,17 +60,6 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
                     icon: Icons.directions_car,
                     accentColor: const Color(0xFF2196F3),
                     onTap: () => onDocumentTypeSelected(DocumentType.drivingLicence),
-                  ),
-                  const SizedBox(height: 24),
-                  _OptionCard(
-                    context: context,
-                    title: 'Test Face Verification',
-                    subtitle: 'Test face verification with a photo from assets (debug only)',
-                    icon: Icons.face,
-                    accentColor: const Color(0xFFFF9800),
-                    onTap: onTestFaceVerification,
-                    showBadge: true,
-                    badgeText: 'Debug',
                   ),
                 ],
               ),

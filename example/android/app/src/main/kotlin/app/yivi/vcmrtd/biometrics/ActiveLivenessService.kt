@@ -2,8 +2,6 @@ package foundation.privacybydesign.vcmrtd.biometrics
 
 import android.graphics.Bitmap
 import android.os.SystemClock
-import com.google.mediapipe.tasks.components.containers.NormalizedLandmark
-import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult
 import kotlin.math.abs
 import kotlin.math.sqrt
 
@@ -13,8 +11,6 @@ class ActiveLivenessService(
 ) {
 
     companion object {
-        private const val TAG = "ActiveLivenessService"
-
         // ── Confirmation ──
         private const val CONFIRM_THRESHOLD = 4
         private const val CONFIRM_INCREMENT = 2
@@ -27,7 +23,8 @@ class ActiveLivenessService(
         // Number of frames the face must remain neutral/stable before the
         // next action is allowed to start (prevents false-positive rapid actions)
         private const val REST_STABLE_FRAMES = 4
-        private const val REST_MAX_YAW_DEG   = 10f   // head within 10° of forward
+        private const val REST_MAX_YAW_DEG   = 12f   // head within 12° of forward
+        private const val REST_GRACE_MS      = 700L  // grace period after action before rest check starts
         private const val REST_MAX_EAR       = 0.15f  // eyes not closed (no squint)
         private const val REST_MAX_MOUTH     = 0.05f  // mouth closed (gap / faceHeight ratio)
         private const val REST_MAX_SMILE     = 0.25f  // no pronounced smile
@@ -43,14 +40,14 @@ class ActiveLivenessService(
 
         // ── Mouth open ──
         private const val MOUTH_OPEN_THRESHOLD = 0.028f
-        private const val JAW_OPEN_BLEND_THRESHOLD = 0.14f
-        private const val SMILE_SUPPRESSES_MOUTH_BLEND = 0.35f
+        private const val JAW_OPEN_BLEND_THRESHOLD = 0.10f
+        private const val SMILE_SUPPRESSES_MOUTH_BLEND = 0.45f
 
         // ── Smile ──
         private const val SMILE_WIDTH_THRESHOLD = 0.018f
         private const val SMILE_LIFT_THRESHOLD = 0.010f
         private const val SMILE_BLEND_THRESHOLD = 0.32f
-        private const val MOUTH_SUPPRESSES_SMILE_BLEND = 0.18f
+        private const val MOUTH_SUPPRESSES_SMILE_BLEND = 0.25f
 
         // ── Turn ──
         private const val YAW_THRESHOLD_DEG = 28f
@@ -130,6 +127,9 @@ class ActiveLivenessService(
     var isAligning: Boolean = true
         private set
 
+    /** True if the most recent processFrame() call found a face; false if detectImage returned null. */
+    var lastFacePresent: Boolean = false
+
     private var currentAction: LivenessAction? = null
     private var confirmCount = 0
     private var blinkPhase = BlinkPhase.OPEN
@@ -153,6 +153,7 @@ class ActiveLivenessService(
     private var waitingForRest = false
     private var nextActionQueued: LivenessAction? = null
     private var restStableCount = 0
+    private var restGraceUntilMs = 0L
 
     // Accumulates stable-frame measurements during the rest phase so the next
     // action can start with a pre-loaded baseline (no in-action warmup delay).
@@ -193,9 +194,6 @@ class ActiveLivenessService(
                 else -> {}
             }
             actionBaselineReady = true
-            android.util.Log.d(TAG, "startAction $action with preloaded baseline " +
-                "(yawMatrix=${baseline.yawMatrix}, yawLm=${baseline.yawLandmark}, " +
-                "mouth=${baseline.mouth})")
         } else {
             actionBaselineReady = false
         }
@@ -211,7 +209,7 @@ class ActiveLivenessService(
         nextActionQueued = action
         restStableCount = 0
         restAccumulator.clear()
-        android.util.Log.d(TAG, "Waiting for rest face before starting $action")
+        restGraceUntilMs = SystemClock.elapsedRealtime() + REST_GRACE_MS
     }
 
     fun reset() {
@@ -239,14 +237,14 @@ class ActiveLivenessService(
     fun processFrame(bitmap: Bitmap): Boolean {
         val action = currentAction ?: return false
 
-        val t0 = SystemClock.elapsedRealtime()
         val argb = bitmap.toArgb8888()
-        val convertMs = SystemClock.elapsedRealtime() - t0
 
         try {
-            val t1 = SystemClock.elapsedRealtime()
-            val result = livenessService.detectImage(argb) ?: return false
-            val mediapipeMs = SystemClock.elapsedRealtime() - t1
+            // isFaceAtRest() always needs smile blendshapes, so request them whenever
+            // we might be in the rest phase — regardless of which action is active.
+            val result = livenessService.detectImage(argb, needsBlendshapes(action) || waitingForRest)
+            lastFacePresent = result != null
+            if (result == null) return false
 
             val lm = result.faceLandmarks()[0]
 
@@ -259,11 +257,11 @@ class ActiveLivenessService(
             // While stable, also collect baseline measurements so the next
             // action can start with a pre-loaded baseline (no warmup delay).
             if (waitingForRest) {
+                if (SystemClock.elapsedRealtime() < restGraceUntilMs) return false
                 val isRest = isFaceAtRest(lm, result)
                 if (isRest) {
                     restStableCount++
                     restAccumulator.add(lm, result)
-                    android.util.Log.d(TAG, "Rest face stable: $restStableCount/$REST_STABLE_FRAMES")
                 } else {
                     restStableCount = 0
                     restAccumulator.clear()
@@ -272,7 +270,6 @@ class ActiveLivenessService(
                 if (restStableCount >= REST_STABLE_FRAMES) {
                     val next = nextActionQueued
                     if (next != null) {
-                        android.util.Log.d(TAG, "Rest detected, starting $next with fresh baseline")
                         startAction(next, restAccumulator.computeSnapshot())
                     }
                 }
@@ -280,7 +277,6 @@ class ActiveLivenessService(
             }
 
             // ── Normal action detection ──
-            val t2 = SystemClock.elapsedRealtime()
             val detected = when (action) {
                 LivenessAction.BLINK      -> detectBlink(lm, result)
                 LivenessAction.TURN_LEFT  -> detectTurn(lm, result, left = true)
@@ -288,7 +284,6 @@ class ActiveLivenessService(
                 LivenessAction.MOUTH_OPEN -> detectMouthOpen(lm, result)
                 LivenessAction.SMILE      -> detectSmile(lm, result)
             }
-            val logicMs = SystemClock.elapsedRealtime() - t2
 
             if (detected) {
                 confirmCount = (confirmCount + CONFIRM_INCREMENT)
@@ -297,13 +292,7 @@ class ActiveLivenessService(
                 confirmCount = (confirmCount - CONFIRM_DECAY).coerceAtLeast(0)
             }
 
-            val done = confirmCount >= CONFIRM_THRESHOLD
-
-            android.util.Log.d(TAG,
-                "⏱ convert=${convertMs}ms mediapipe=${mediapipeMs}ms logic=${logicMs}ms | " +
-                        "$action det=$detected confirm=$confirmCount/$CONFIRM_THRESHOLD done=$done")
-
-            return done
+            return confirmCount >= CONFIRM_THRESHOLD
         } finally {
             if (argb !== bitmap && !argb.isRecycled) argb.recycle()
         }
@@ -318,33 +307,21 @@ class ActiveLivenessService(
     private fun isFaceAtRest(lm: List<NormalizedLandmark>, r: FaceLandmarkerResult): Boolean {
         // Head facing forward (yaw close to zero)
         val yaw = livenessService.matrixYaw(r)
-        if (yaw != null && abs(yaw) > REST_MAX_YAW_DEG) {
-            android.util.Log.v(TAG, "rest: yaw=$yaw exceeds limit")
-            return false
-        }
+        if (yaw != null && abs(yaw) > REST_MAX_YAW_DEG) return false
 
         // Eyes open
         val avgEar = (ear(lm, true) + ear(lm, false)) / 2f
-        if (avgEar < REST_MAX_EAR) {
-            android.util.Log.v(TAG, "rest: eyes too closed (ear=$avgEar)")
-            return false
-        }
+        if (avgEar < REST_MAX_EAR) return false
 
         // Mouth closed
         val gap = dist(lm[13], lm[14])
         val fH  = dist(lm[10], lm[152]).coerceAtLeast(1e-6f)
-        if (gap / fH > REST_MAX_MOUTH) {
-            android.util.Log.v(TAG, "rest: mouth too open (${gap/fH})")
-            return false
-        }
+        if (gap / fH > REST_MAX_MOUTH) return false
 
         // No smile
         val sL = livenessService.getBlendshapeScore("mouthSmileLeft", r) ?: 0f
         val sR = livenessService.getBlendshapeScore("mouthSmileRight", r) ?: 0f
-        if ((sL + sR) / 2f > REST_MAX_SMILE) {
-            android.util.Log.v(TAG, "rest: still smiling")
-            return false
-        }
+        if ((sL + sR) / 2f > REST_MAX_SMILE) return false
 
         return true
     }
@@ -385,9 +362,6 @@ class ActiveLivenessService(
             BlinkPhase.DETECTED -> BlinkPhase.DETECTED
         }
 
-        android.util.Log.v(TAG,
-            "blink: ear=${"%.3f".format(avgEar)} blend=${"%.3f".format(blend)} " +
-                    "fused=${"%.3f".format(fused)} phase=$blinkPhase")
         return blinkPhase == BlinkPhase.DETECTED
     }
 
@@ -412,20 +386,15 @@ class ActiveLivenessService(
 
         val matD = matYaw?.let { it - (neutralYawMatrix ?: 0f) }
         val lmD  = lmYaw - (neutralYawLandmark ?: 0f)
-        val detected = isTurnDetected(matYaw, matD, lmD, left)
-
-        android.util.Log.v(TAG,
-            "turn: left=$left matD=${fmt(matD)} lmD=${"%.4f".format(lmD)} det=$detected")
-        return detected
+        return isTurnDetected(matYaw, matD, lmD, left)
     }
 
     private fun isTurnDetected(matYaw: Float?, matD: Float?, lmD: Float, left: Boolean): Boolean {
         return if (!turnDetectedLatch) {
             val matOk = matD?.let {
-                if (left) it >= YAW_THRESHOLD_DEG else it <= -YAW_THRESHOLD_DEG
+                if (left) it <= -YAW_THRESHOLD_DEG else it >= YAW_THRESHOLD_DEG
             } ?: false
             val lmOk = matYaw == null && if (left) lmD <= -LANDMARK_TURN_THRESHOLD else lmD >= LANDMARK_TURN_THRESHOLD
-            android.util.Log.v(TAG, "turn detail: matOk=$matOk lmOk=$lmOk")
             val hit = matOk || lmOk
             if (hit) turnDetectedLatch = true
             hit
@@ -459,11 +428,7 @@ class ActiveLivenessService(
         if (!actionBaselineReady) { accumulateActionBaseline(lm, r); return false }
 
         val delta = ratio - (neutralMouth ?: 0f)
-        val det   = jawBlend >= JAW_OPEN_BLEND_THRESHOLD || delta >= MOUTH_OPEN_THRESHOLD
-
-        android.util.Log.v(TAG,
-            "mouth: delta=${"%.3f".format(delta)} jaw=${"%.3f".format(jawBlend)} det=$det")
-        return det
+        return jawBlend >= JAW_OPEN_BLEND_THRESHOLD || delta >= MOUTH_OPEN_THRESHOLD
     }
 
     // ═══════════════════════════════════════════
@@ -490,13 +455,8 @@ class ActiveLivenessService(
         val liftD  = lift  - (neutralSmileLift  ?: 0f)
         val widthD = width - (neutralSmileWidth ?: 0f)
 
-        val det = sBlend >= SMILE_BLEND_THRESHOLD ||
+        return sBlend >= SMILE_BLEND_THRESHOLD ||
                 (widthD >= SMILE_WIDTH_THRESHOLD && liftD >= SMILE_LIFT_THRESHOLD)
-
-        android.util.Log.v(TAG,
-            "smile: blend=${"%.3f".format(sBlend)} liftD=${"%.3f".format(liftD)} " +
-                    "widthD=${"%.3f".format(widthD)} det=$det")
-        return det
     }
 
     // ═══════════════════════════════════════════
@@ -523,9 +483,6 @@ class ActiveLivenessService(
         if (!isAligning) return false
 
         if (timedOut) {
-            android.util.Log.w(TAG,
-                "Alignment timed out after ${alignAccumulator.size} stable frames, " +
-                "starting $action without preloaded baseline")
             alignAccumulator.clear()
             startAction(action)   // sets isAligning = false
             return true
@@ -533,7 +490,7 @@ class ActiveLivenessService(
 
         val argb = bitmap.toArgb8888()
         try {
-            val result = livenessService.detectImage(argb)
+            val result = livenessService.detectImage(argb, runBlendshapes = true)
             if (result == null || result.faceLandmarks().isEmpty()) {
                 alignAccumulator.clear(); return false
             }
@@ -545,7 +502,6 @@ class ActiveLivenessService(
 
             passiveLivenessService.collectPassiveMetrics(argb, result)
             alignAccumulator.add(lm, result)
-            android.util.Log.d(TAG, "Alignment stable: ${alignAccumulator.size}/$BASELINE_FRAMES")
 
             if (alignAccumulator.size >= BASELINE_FRAMES) {
                 val snapshot = alignAccumulator.computeSnapshot()
@@ -557,6 +513,94 @@ class ActiveLivenessService(
         } finally {
             if (argb !== bitmap && !argb.isRecycled) argb.recycle()
         }
+    }
+
+    // ═══════════════════════════════════════════
+    //  Pipelined variants (pre-computed result)
+    //  Called from the landmark loop after FaceLandmarkPipeline.runLandmarkStage()
+    //  has already produced a FaceLandmarkerResult outside the session mutex.
+    // ═══════════════════════════════════════════
+
+    /**
+     * Processes one frame's worth of action detection given a pre-computed [result].
+     * Equivalent to [processFrame] but skips the internal detectImage() call.
+     */
+    fun processFrameWithResult(result: FaceLandmarkerResult): Boolean {
+        val action = currentAction ?: return false
+        lastFacePresent = true
+        val lm = result.faceLandmarks()[0]
+
+        if (waitingForRest) {
+            val isRest = isFaceAtRest(lm, result)
+            if (isRest) {
+                restStableCount++
+                restAccumulator.add(lm, result)
+            } else {
+                restStableCount = 0
+                restAccumulator.clear()
+            }
+            if (restStableCount >= REST_STABLE_FRAMES) {
+                val next = nextActionQueued
+                if (next != null) {
+                    startAction(next, restAccumulator.computeSnapshot())
+                }
+            }
+            return false
+        }
+
+        val detected = when (action) {
+            LivenessAction.BLINK      -> detectBlink(lm, result)
+            LivenessAction.TURN_LEFT  -> detectTurn(lm, result, left = true)
+            LivenessAction.TURN_RIGHT -> detectTurn(lm, result, left = false)
+            LivenessAction.MOUTH_OPEN -> detectMouthOpen(lm, result)
+            LivenessAction.SMILE      -> detectSmile(lm, result)
+        }
+
+        if (detected) confirmCount = (confirmCount + CONFIRM_INCREMENT).coerceAtMost(CONFIRM_THRESHOLD + 2)
+        else if (confirmCount > 0) confirmCount = (confirmCount - CONFIRM_DECAY).coerceAtLeast(0)
+
+        return confirmCount >= CONFIRM_THRESHOLD
+    }
+
+    /**
+     * Alignment-phase variant: accepts a pre-computed [result] (may be null when no face).
+     * Equivalent to [processAlignmentFrame] but skips the internal detectImage() call.
+     * Blendshapes are always available here (landmark stage always runs them), so the
+     * smile check inside [isFaceAtRest] works correctly during alignment.
+     */
+    fun processAlignmentFrameWithResult(
+        result: FaceLandmarkerResult?,
+        action: LivenessAction,
+        timedOut: Boolean
+    ): Boolean {
+        if (!isAligning) return false
+
+        if (timedOut) {
+            alignAccumulator.clear()
+            startAction(action)
+            return true
+        }
+
+        if (result == null || result.faceLandmarks().isEmpty()) {
+            alignAccumulator.clear()
+            return false
+        }
+
+        val lm = result.faceLandmarks()[0]
+        if (!isFaceAtRest(lm, result)) {
+            alignAccumulator.clear()
+            return false
+        }
+
+        alignAccumulator.add(lm, result)
+
+        if (alignAccumulator.size >= BASELINE_FRAMES) {
+            val snapshot = alignAccumulator.computeSnapshot()
+            alignAccumulator.clear()
+            startAction(action, snapshot)
+            return true
+        }
+        return false
     }
 
     // ═══════════════════════════════════════════
@@ -588,7 +632,11 @@ class ActiveLivenessService(
         return if (s.size % 2 == 0) (s[m-1] + s[m]) / 2f else s[m]
     }
     private fun List<Float>.medianOrNull(): Float? = if (isEmpty()) null else median()
-    private fun fmt(v: Float?): String = v?.let { "%.3f".format(it) } ?: "null"
+
+    private fun needsBlendshapes(action: LivenessAction): Boolean = when (action) {
+        LivenessAction.TURN_LEFT, LivenessAction.TURN_RIGHT -> false
+        else -> true
+    }
 
     private fun dist(a: NormalizedLandmark, b: NormalizedLandmark): Float {
         val dx = a.x()-b.x(); val dy = a.y()-b.y(); return sqrt(dx*dx+dy*dy)

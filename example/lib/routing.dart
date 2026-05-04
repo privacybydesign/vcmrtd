@@ -1,5 +1,5 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtdapp/widgets/pages/document_selection_screen.dart';
@@ -28,13 +28,8 @@ extension CustomRouteExtensions on BuildContext {
     push(path.toString());
   }
 
-  void pushFaceVerificationScreen(Uint8List nfcImageBytes) {
-    push(_faceVerificationPath, extra: {'nfcImageBytes': nfcImageBytes});
-  }
-
-  Future<void> pushFaceVerificationScreenTest() async {
-    final bytes = await rootBundle.load('assets/test/test_face.jpg');
-    push(_faceVerificationPath, extra: {'nfcImageBytes': bytes.buffer.asUint8List()});
+  void pushFaceVerificationScreen(Uint8List nfcImageBytes, {DateTime? issueDate}) {
+    push(_faceVerificationPath, extra: {'nfcImageBytes': nfcImageBytes, 'issueDate': issueDate});
   }
 }
 
@@ -52,7 +47,6 @@ GoRouter createRouter() {
             onDocumentTypeSelected: (docType) {
               context.pushMrzReaderScreen(MrzReaderRouteParams(documentType: docType));
             },
-            onTestFaceVerification: () => context.pushFaceVerificationScreenTest(),
           );
         },
       ),
@@ -119,13 +113,15 @@ GoRouter createRouter() {
               passportDataResult: result,
               documentType: ty,
               onBackPressed: () => context.go('/select_doc_type'),
-              onFaceVerification: (nfcImageBytes) => context.pushFaceVerificationScreen(nfcImageBytes),
+              onFaceVerification: (nfcImageBytes, issueDate) =>
+                  context.pushFaceVerificationScreen(nfcImageBytes, issueDate: issueDate),
             ),
             DocumentType.drivingLicence => DrivingLicenceDataScreen(
               drivingLicence: s['document'] as DrivingLicenceData,
               drivingLicenceDataResult: result,
               onBackPressed: () => context.go('/select_doc_type'),
-              onFaceVerification: (nfcImageBytes) => context.pushFaceVerificationScreen(nfcImageBytes),
+              onFaceVerification: (nfcImageBytes, issueDate) =>
+                  context.pushFaceVerificationScreen(nfcImageBytes, issueDate: issueDate),
             ),
           };
         },
@@ -135,8 +131,13 @@ GoRouter createRouter() {
         builder: (context, state) {
           final extra = state.extra as Map<String, dynamic>;
           final nfcImageBytes = extra['nfcImageBytes'] as Uint8List?;
+          final issueDate = extra['issueDate'] as DateTime?;
 
-          return FaceVerificationScreen(nfcImageBytes: nfcImageBytes, onBackPressed: context.pop);
+          return FaceVerificationScreen(
+            nfcImageBytes: nfcImageBytes,
+            onBackPressed: context.pop,
+            photoIssueDate: issueDate,
+          );
         },
       ),
     ],
