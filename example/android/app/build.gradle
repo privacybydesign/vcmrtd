@@ -92,4 +92,8 @@ dependencies {
     // Gemalto JP2 Decoder
     // https://mvnrepository.com/artifact/com.gemalto.jp2/jp2-android
     implementation 'com.gemalto.jp2:jp2-android:1.0.3'
+    implementation 'cz.adaptech.tesseract4android:tesseract4android:4.9.0'
+    implementation 'org.opencv:opencv:4.9.0'
+    implementation 'org.tensorflow:tensorflow-lite:2.16.1'
+    implementation 'org.tensorflow:tensorflow-lite-select-tf-ops:2.16.1'
 }
