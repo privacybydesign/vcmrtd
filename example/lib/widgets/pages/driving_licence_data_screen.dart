@@ -15,7 +15,7 @@ class DrivingLicenceDataScreen extends ConsumerStatefulWidget {
   final DrivingLicenceData drivingLicence;
   final RawDocumentData drivingLicenceDataResult;
   final VoidCallback onBackPressed;
-  final Function(Uint8List) onFaceVerification;
+  final void Function(Uint8List, DateTime?) onFaceVerification;
 
   const DrivingLicenceDataScreen({
     super.key,
@@ -71,7 +71,10 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
               ],
               const SizedBox(height: 20),
               ElevatedButton.icon(
-                onPressed: () => widget.onFaceVerification(widget.drivingLicence.photoImageData),
+                onPressed: () => widget.onFaceVerification(
+                  widget.drivingLicence.photoImageData,
+                  _parseDrivingLicenceDate(widget.drivingLicence.dateOfIssue),
+                ),
                 icon: const Icon(Icons.face),
                 label: const Text('Start Face Verification'),
               ),
@@ -264,5 +267,14 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
     final month = date.substring(2, 4);
     final year = date.substring(4, 8);
     return '$day/$month/$year';
+  }
+
+  DateTime? _parseDrivingLicenceDate(String date) {
+    if (date.length != 8) return null;
+    final day = int.tryParse(date.substring(0, 2));
+    final month = int.tryParse(date.substring(2, 4));
+    final year = int.tryParse(date.substring(4, 8));
+    if (day == null || month == null || year == null) return null;
+    return DateTime(year, month, day);
   }
 }

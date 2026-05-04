@@ -19,7 +19,7 @@ class PassportDataScreen extends ConsumerStatefulWidget {
   final RawDocumentData passportDataResult;
   final VoidCallback onBackPressed;
   final DocumentType documentType;
-  final Function(Uint8List) onFaceVerification;
+  final void Function(Uint8List, DateTime?) onFaceVerification;
 
   const PassportDataScreen({
     super.key,
@@ -58,8 +58,8 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
               const SizedBox(height: 20),
               ElevatedButton.icon(
                 onPressed: () {
-                  final photo = (widget.document as PassportData).photoImageData;
-                  widget.onFaceVerification(photo);
+                  final passport = widget.document as PassportData;
+                  widget.onFaceVerification(passport.photoImageData, passport.dateOfIssue);
                 },
                 icon: const Icon(Icons.face),
                 label: const Text('Start Face Verification'),

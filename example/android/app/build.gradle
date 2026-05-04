@@ -96,5 +96,4 @@ dependencies {
     implementation 'org.opencv:opencv:4.9.0'
     implementation 'org.tensorflow:tensorflow-lite:2.16.1'
     implementation 'org.tensorflow:tensorflow-lite-select-tf-ops:2.16.1'
-    implementation 'com.google.mediapipe:tasks-vision:0.10.32'
 }

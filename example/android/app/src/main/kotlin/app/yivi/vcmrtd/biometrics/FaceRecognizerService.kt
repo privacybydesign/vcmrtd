@@ -14,8 +14,7 @@ class FaceRecognizerService(private val context: Context) {
     private var interpreter: Interpreter? = null
 
     companion object {
-        private const val TAG            = "FaceRecognizer"
-        private const val MODEL_FILE     = "GhostFaceNet.tflite"
+        private const val MODEL_FILE     = "GhostFaceNet-float16.tflite"
         private const val INPUT_SIZE     = 112
         private const val EMBEDDING_SIZE = 512
     }
@@ -31,10 +30,8 @@ class FaceRecognizerService(private val context: Context) {
     }
 
     fun generateEmbedding(face: Bitmap): FloatArray {
-        android.util.Log.d(TAG, "Generating embedding for face")
         preprocessFace(face)
         interpreter?.run(preprocessInput, outputScratch)
-        android.util.Log.d(TAG, "Normalize embedding")
         return normalize(outputScratch[0])
     }
 
