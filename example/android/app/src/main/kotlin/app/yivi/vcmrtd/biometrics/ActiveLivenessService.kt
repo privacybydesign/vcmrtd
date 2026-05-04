@@ -236,63 +236,19 @@ class ActiveLivenessService(
 
     fun processFrame(bitmap: Bitmap): Boolean {
         val action = currentAction ?: return false
-
         val argb = bitmap.toArgb8888()
-
         try {
-            // isFaceAtRest() always needs smile blendshapes, so request them whenever
-            // we might be in the rest phase — regardless of which action is active.
             val result = livenessService.detectImage(argb, needsBlendshapes(action) || waitingForRest)
             lastFacePresent = result != null
             if (result == null) return false
-
             val lm = result.faceLandmarks()[0]
-
-            // Delegate passive liveness metrics (anti-spoof + rPPG) to PassiveLivenessService.
             passiveLivenessService.collectPassiveMetrics(argb, result)
-
-            // ── Rest face check ──
-            // If we're waiting for a neutral face before the next action,
-            // check rest state and start the queued action once stable.
-            // While stable, also collect baseline measurements so the next
-            // action can start with a pre-loaded baseline (no warmup delay).
             if (waitingForRest) {
                 if (SystemClock.elapsedRealtime() < restGraceUntilMs) return false
-                val isRest = isFaceAtRest(lm, result)
-                if (isRest) {
-                    restStableCount++
-                    restAccumulator.add(lm, result)
-                } else {
-                    restStableCount = 0
-                    restAccumulator.clear()
-                }
-
-                if (restStableCount >= REST_STABLE_FRAMES) {
-                    val next = nextActionQueued
-                    if (next != null) {
-                        startAction(next, restAccumulator.computeSnapshot())
-                    }
-                }
-                return false  // no new action completed yet
+                handleRestPhaseCore(lm, result)
+                return false
             }
-
-            // ── Normal action detection ──
-            val detected = when (action) {
-                LivenessAction.BLINK      -> detectBlink(lm, result)
-                LivenessAction.TURN_LEFT  -> detectTurn(lm, result, left = true)
-                LivenessAction.TURN_RIGHT -> detectTurn(lm, result, left = false)
-                LivenessAction.MOUTH_OPEN -> detectMouthOpen(lm, result)
-                LivenessAction.SMILE      -> detectSmile(lm, result)
-            }
-
-            if (detected) {
-                confirmCount = (confirmCount + CONFIRM_INCREMENT)
-                    .coerceAtMost(CONFIRM_THRESHOLD + 2)
-            } else if (confirmCount > 0) {
-                confirmCount = (confirmCount - CONFIRM_DECAY).coerceAtLeast(0)
-            }
-
-            return confirmCount >= CONFIRM_THRESHOLD
+            return detectActionResult(action, lm, result)
         } finally {
             if (argb !== bitmap && !argb.isRecycled) argb.recycle()
         }
@@ -481,35 +437,14 @@ class ActiveLivenessService(
         timedOut: Boolean
     ): Boolean {
         if (!isAligning) return false
-
-        if (timedOut) {
-            alignAccumulator.clear()
-            startAction(action)   // sets isAligning = false
-            return true
-        }
-
+        if (timedOut) { alignAccumulator.clear(); startAction(action); return true }
         val argb = bitmap.toArgb8888()
         try {
             val result = livenessService.detectImage(argb, runBlendshapes = true)
-            if (result == null || result.faceLandmarks().isEmpty()) {
-                alignAccumulator.clear(); return false
-            }
+            if (result == null || result.faceLandmarks().isEmpty()) { alignAccumulator.clear(); return false }
             val lm = result.faceLandmarks()[0]
-
-            if (!isFaceAtRest(lm, result)) {
-                alignAccumulator.clear(); return false
-            }
-
             passiveLivenessService.collectPassiveMetrics(argb, result)
-            alignAccumulator.add(lm, result)
-
-            if (alignAccumulator.size >= BASELINE_FRAMES) {
-                val snapshot = alignAccumulator.computeSnapshot()
-                alignAccumulator.clear()
-                startAction(action, snapshot)   // sets isAligning = false
-                return true
-            }
-            return false
+            return processAlignmentResult(lm, result, action)
         } finally {
             if (argb !== bitmap && !argb.isRecycled) argb.recycle()
         }
@@ -529,37 +464,8 @@ class ActiveLivenessService(
         val action = currentAction ?: return false
         lastFacePresent = true
         val lm = result.faceLandmarks()[0]
-
-        if (waitingForRest) {
-            val isRest = isFaceAtRest(lm, result)
-            if (isRest) {
-                restStableCount++
-                restAccumulator.add(lm, result)
-            } else {
-                restStableCount = 0
-                restAccumulator.clear()
-            }
-            if (restStableCount >= REST_STABLE_FRAMES) {
-                val next = nextActionQueued
-                if (next != null) {
-                    startAction(next, restAccumulator.computeSnapshot())
-                }
-            }
-            return false
-        }
-
-        val detected = when (action) {
-            LivenessAction.BLINK      -> detectBlink(lm, result)
-            LivenessAction.TURN_LEFT  -> detectTurn(lm, result, left = true)
-            LivenessAction.TURN_RIGHT -> detectTurn(lm, result, left = false)
-            LivenessAction.MOUTH_OPEN -> detectMouthOpen(lm, result)
-            LivenessAction.SMILE      -> detectSmile(lm, result)
-        }
-
-        if (detected) confirmCount = (confirmCount + CONFIRM_INCREMENT).coerceAtMost(CONFIRM_THRESHOLD + 2)
-        else if (confirmCount > 0) confirmCount = (confirmCount - CONFIRM_DECAY).coerceAtLeast(0)
-
-        return confirmCount >= CONFIRM_THRESHOLD
+        if (waitingForRest) { handleRestPhaseCore(lm, result); return false }
+        return detectActionResult(action, lm, result)
     }
 
     /**
@@ -574,26 +480,47 @@ class ActiveLivenessService(
         timedOut: Boolean
     ): Boolean {
         if (!isAligning) return false
-
-        if (timedOut) {
-            alignAccumulator.clear()
-            startAction(action)
-            return true
-        }
-
-        if (result == null || result.faceLandmarks().isEmpty()) {
-            alignAccumulator.clear()
-            return false
-        }
-
+        if (timedOut) { alignAccumulator.clear(); startAction(action); return true }
+        if (result == null || result.faceLandmarks().isEmpty()) { alignAccumulator.clear(); return false }
         val lm = result.faceLandmarks()[0]
-        if (!isFaceAtRest(lm, result)) {
-            alignAccumulator.clear()
-            return false
+        return processAlignmentResult(lm, result, action)
+    }
+
+    // ═══════════════════════════════════════════
+    //  Utils
+    // ═══════════════════════════════════════════
+
+    private fun handleRestPhaseCore(lm: List<NormalizedLandmark>, result: FaceLandmarkerResult) {
+        val isRest = isFaceAtRest(lm, result)
+        if (isRest) {
+            restStableCount++
+            restAccumulator.add(lm, result)
+        } else {
+            restStableCount = 0
+            restAccumulator.clear()
         }
+        if (restStableCount >= REST_STABLE_FRAMES) {
+            val next = nextActionQueued
+            if (next != null) startAction(next, restAccumulator.computeSnapshot())
+        }
+    }
 
+    private fun detectActionResult(action: LivenessAction, lm: List<NormalizedLandmark>, result: FaceLandmarkerResult): Boolean {
+        val detected = when (action) {
+            LivenessAction.BLINK      -> detectBlink(lm, result)
+            LivenessAction.TURN_LEFT  -> detectTurn(lm, result, left = true)
+            LivenessAction.TURN_RIGHT -> detectTurn(lm, result, left = false)
+            LivenessAction.MOUTH_OPEN -> detectMouthOpen(lm, result)
+            LivenessAction.SMILE      -> detectSmile(lm, result)
+        }
+        if (detected) confirmCount = (confirmCount + CONFIRM_INCREMENT).coerceAtMost(CONFIRM_THRESHOLD + 2)
+        else if (confirmCount > 0) confirmCount = (confirmCount - CONFIRM_DECAY).coerceAtLeast(0)
+        return confirmCount >= CONFIRM_THRESHOLD
+    }
+
+    private fun processAlignmentResult(lm: List<NormalizedLandmark>, result: FaceLandmarkerResult, action: LivenessAction): Boolean {
+        if (!isFaceAtRest(lm, result)) { alignAccumulator.clear(); return false }
         alignAccumulator.add(lm, result)
-
         if (alignAccumulator.size >= BASELINE_FRAMES) {
             val snapshot = alignAccumulator.computeSnapshot()
             alignAccumulator.clear()
@@ -602,10 +529,6 @@ class ActiveLivenessService(
         }
         return false
     }
-
-    // ═══════════════════════════════════════════
-    //  Utils
-    // ═══════════════════════════════════════════
 
     private fun accumulateActionBaseline(lm: List<NormalizedLandmark>, r: FaceLandmarkerResult) {
         actionAccumulator.add(lm, r)

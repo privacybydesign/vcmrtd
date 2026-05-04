@@ -212,6 +212,17 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> with Wi
     _frameToken++;
   }
 
+  bool get _isFrameLoopActive => !_isDisposed && _state == _VerificationState.activeLiveness;
+
+  void _finalizeSendCycle(int token) {
+    if (token != _frameToken) return;
+    _isSending = false;
+    if (_pendingImage != null && _isFrameLoopActive) {
+      _isSending = true;
+      unawaited(_sendLatestFrame(token));
+    }
+  }
+
   Future<void> _openCamera() async {
     if (_isDisposed || _cameraOpening || _cameraClosing) return;
     if (_cameraController?.value.isInitialized == true) return;
@@ -341,33 +352,21 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> with Wi
     }
   }
 
-  /// Picks up the latest frame, sends it to Kotlin, then checks whether
-  /// a newer frame arrived in the meantime.
   Future<void> _sendLatestFrame(int token) async {
     try {
-      while (!_isDisposed && token == _frameToken && _state == _VerificationState.activeLiveness) {
+      while (_isFrameLoopActive && token == _frameToken) {
         final image = _pendingImage;
-        if (image == null) break; // no new frame, stop loop
+        if (image == null) break;
 
-        // Clear so we can detect if a newer frame arrives during packing.
         _pendingImage = null;
-
-        // Pack NV21 in isolate
         final data = await compute(_packNv21Isolate, image);
 
-        if (_isDisposed || token != _frameToken || _state != _VerificationState.activeLiveness || data == null) {
-          continue;
-        }
+        if (!_isFrameLoopActive || token != _frameToken || data == null) continue;
 
         final rotation = _cameraFrameRotation();
         if (rotation == null) continue;
 
-        // Send to Kotlin (stored in AtomicReference, returns immediately).
         await _methodChannel.invokeMethod<void>('processFrame', {'frame': data, 'rotation': rotation});
-
-        // Check whether a newer frame arrived while we were sending.
-        // If yes: loop and pick it up.
-        // If no: break and wait for the next _onCameraFrame callback.
       }
     } catch (e) {
       if (!_isDisposed && mounted) {
@@ -379,15 +378,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen> with Wi
         });
       }
     } finally {
-      if (token == _frameToken) {
-        _isSending = false;
-
-        // Check if a pending frame arrived that we missed.
-        if (_pendingImage != null && !_isDisposed && _state == _VerificationState.activeLiveness) {
-          _isSending = true;
-          unawaited(_sendLatestFrame(token));
-        }
-      }
+      _finalizeSendCycle(token);
     }
   }
 

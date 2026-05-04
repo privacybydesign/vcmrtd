@@ -309,49 +309,49 @@ fun close() {
         return RppgResult(hr, validHr, samples.size, durationMs)
     }
 
-    private fun startBigSmallLoop() {
-    if (bigSmallJob != null) return
-
-    bigSmallJob = scope.launch {
-        while (isActive) {
-            val batch = try {
-                bigSmallChannel.receive()
-            } catch (_: CancellationException) {
-                break
+    private fun processBigSmallBatch(batch: BigSmallBatch) {
+        val bvp = BigSmallService.runInference(batch.frames) ?: return
+        synchronized(metricsLock) {
+            if (batch.sessionId != rppgSessionId) return@synchronized
+            val sampleCount = min(bvp.size, batch.frames.size - 1)
+            for (i in 0 until sampleCount) {
+                bvpSamples.addLast(bvp[i])
+                val t0 = batch.frames[i].timestampMs
+                val t1 = batch.frames[i + 1].timestampMs
+                bvpSampleTimes.addLast(t0 + (t1 - t0) / 2L)
             }
-
-            try {
-                val bvp = BigSmallService.runInference(batch.frames)
-                if (bvp != null) {
-                    synchronized(metricsLock) {
-                        if (batch.sessionId == rppgSessionId) {
-                            val sampleCount = min(bvp.size, batch.frames.size - 1)
-                            for (i in 0 until sampleCount) {
-                                bvpSamples.addLast(bvp[i])
-                                val t0 = batch.frames[i].timestampMs
-                                val t1 = batch.frames[i + 1].timestampMs
-                                bvpSampleTimes.addLast(t0 + (t1 - t0) / 2L)
-                            }
-
-                            while (bvpSamples.size > 900) {
-                                bvpSamples.removeFirst()
-                                bvpSampleTimes.removeFirst()
-                            }
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "BigSmall inference failed", e)
-            } finally {
-                batch.frames.forEach { frame ->
-                    if (!frame.appearance.isRecycled) frame.appearance.recycle()
-                    if (!frame.motion.isRecycled) frame.motion.recycle()
-                }
-                markBigSmallBatchDone()
+            while (bvpSamples.size > 900) {
+                bvpSamples.removeFirst()
+                bvpSampleTimes.removeFirst()
             }
         }
     }
-}
+
+    private fun startBigSmallLoop() {
+        if (bigSmallJob != null) return
+
+        bigSmallJob = scope.launch {
+            while (isActive) {
+                val batch = try {
+                    bigSmallChannel.receive()
+                } catch (_: CancellationException) {
+                    break
+                }
+
+                try {
+                    processBigSmallBatch(batch)
+                } catch (e: Exception) {
+                    Log.w(TAG, "BigSmall inference failed", e)
+                } finally {
+                    batch.frames.forEach { frame ->
+                        if (!frame.appearance.isRecycled) frame.appearance.recycle()
+                        if (!frame.motion.isRecycled) frame.motion.recycle()
+                    }
+                    markBigSmallBatchDone()
+                }
+            }
+        }
+    }
 
     // ═══════════════════════════════════════════
     //  MiniFASNet anti-spoof service
@@ -543,11 +543,7 @@ fun close() {
             }
         }
 
-        fun runInference(frames: List<RppgFrame>): FloatArray? {
-            if (frames.size != BUFFER_FRAMES) return null
-            if (interpreters.none { it != null }) return null
-
-            // Appearance ("big") pathway: frames[1..3], raw face crops normalised to [0,1]
+        private fun fillAppearanceBuf(frames: List<RppgFrame>) {
             appearanceBuf.clear()
             for (fi in 1..FRAMES) {
                 frames[fi].appearance.getPixels(pixelScratch, 0, APPEARANCE_SIZE, 0, 0, APPEARANCE_SIZE, APPEARANCE_SIZE)
@@ -555,9 +551,9 @@ fun close() {
                 for (px in pixelScratch) appearanceBuf.putFloat(Color.green(px) / 255f)
                 for (px in pixelScratch) appearanceBuf.putFloat(Color.blue(px)  / 255f)
             }
+        }
 
-            // Motion ("small") pathway: DiffNormalized temporal differences at 9×9
-            // DiffNorm[t] = (frame[t+1] - frame[t]) / (frame[t+1] + frame[t] + ε), range (-1, 1)
+        private fun fillMotionBuf(frames: List<RppgFrame>) {
             motionBuf.clear()
             val eps = 1e-7f
             for (fi in 0 until FRAMES) {
@@ -579,9 +575,16 @@ fun close() {
                     motionBuf.putFloat((next - curr) / (next + curr + eps))
                 }
             }
+        }
+
+        fun runInference(frames: List<RppgFrame>): FloatArray? {
+            if (frames.size != BUFFER_FRAMES) return null
+            if (interpreters.none { it != null }) return null
+
+            fillAppearanceBuf(frames)
+            fillMotionBuf(frames)
             val inputs = arrayOf<Any>(appearanceBuf, motionBuf)
 
-            // Run each model and average the BVP outputs
             val sum = FloatArray(FRAMES)
             var count = 0
             interpreters.forEachIndexed { i, interp ->
