@@ -22,6 +22,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
@@ -105,10 +106,7 @@ fun close() {
 
     var pending = bigSmallChannel.tryReceive()
     while (pending.isSuccess) {
-        pending.getOrNull()?.frames?.forEach { frame ->
-            if (!frame.appearance.isRecycled) frame.appearance.recycle()
-            if (!frame.motion.isRecycled) frame.motion.recycle()
-        }
+        pending.getOrNull()?.frames?.let { recycleRppgFrames(it) }
         markBigSmallBatchDone()
         pending = bigSmallChannel.tryReceive()
     }
@@ -135,10 +133,7 @@ fun close() {
 
         var pending = bigSmallChannel.tryReceive()
         while (pending.isSuccess) {
-            pending.getOrNull()?.frames?.forEach { frame ->
-                if (!frame.appearance.isRecycled) frame.appearance.recycle()
-                if (!frame.motion.isRecycled) frame.motion.recycle()
-            }
+            pending.getOrNull()?.frames?.let { recycleRppgFrames(it) }
             markBigSmallBatchDone()
             pending = bigSmallChannel.tryReceive()
         }
@@ -227,10 +222,7 @@ fun close() {
 
         val sent = bigSmallChannel.trySend(BigSmallBatch(batchSessionId, batch)).isSuccess
         if (!sent) {
-            batch.forEach { frame ->
-                if (!frame.appearance.isRecycled) frame.appearance.recycle()
-                if (!frame.motion.isRecycled) frame.motion.recycle()
-            }
+            recycleRppgFrames(batch)
             markBigSmallBatchDone()
         }
     }
@@ -238,6 +230,13 @@ fun close() {
     private fun markBigSmallBatchDone() {
         synchronized(metricsLock) {
             if (pendingBigSmallBatches > 0) pendingBigSmallBatches--
+        }
+    }
+
+    private fun recycleRppgFrames(frames: List<RppgFrame>) {
+        frames.forEach { frame ->
+            if (!frame.appearance.isRecycled) frame.appearance.recycle()
+            if (!frame.motion.isRecycled) frame.motion.recycle()
         }
     }
 
@@ -327,30 +326,31 @@ fun close() {
         }
     }
 
-    private fun startBigSmallLoop() {
-        if (bigSmallJob != null) return
+    private suspend fun runBigSmallLoop() {
+        while (currentCoroutineContext().isActive) {
+            val batch = try {
+                bigSmallChannel.receive()
+            } catch (_: CancellationException) {
+                break
+            }
 
-        bigSmallJob = scope.launch {
-            while (isActive) {
-                val batch = try {
-                    bigSmallChannel.receive()
-                } catch (_: CancellationException) {
-                    break
+            try {
+                processBigSmallBatch(batch)
+            } catch (e: Exception) {
+                Log.w(TAG, "BigSmall inference failed", e)
+            } finally {
+                batch.frames.forEach { frame ->
+                    if (!frame.appearance.isRecycled) frame.appearance.recycle()
+                    if (!frame.motion.isRecycled) frame.motion.recycle()
                 }
-
-                try {
-                    processBigSmallBatch(batch)
-                } catch (e: Exception) {
-                    Log.w(TAG, "BigSmall inference failed", e)
-                } finally {
-                    batch.frames.forEach { frame ->
-                        if (!frame.appearance.isRecycled) frame.appearance.recycle()
-                        if (!frame.motion.isRecycled) frame.motion.recycle()
-                    }
-                    markBigSmallBatchDone()
-                }
+                markBigSmallBatchDone()
             }
         }
+    }
+
+    private fun startBigSmallLoop() {
+        if (bigSmallJob != null) return
+        bigSmallJob = scope.launch { runBigSmallLoop() }
     }
 
     // ═══════════════════════════════════════════
@@ -405,8 +405,7 @@ fun close() {
                 v1.run(inV1, outV1Scratch); v2.run(inV2, outV2Scratch)
                 val smV1 = softmax(outV1Scratch[0]); val smV2 = softmax(outV2Scratch[0])
                 val combined = FloatArray(3) { i -> smV1[i] + smV2[i] }
-                var label = 0; var best = Float.NEGATIVE_INFINITY
-                combined.forEachIndexed { i, v -> if (v > best) { best = v; label = i } }
+                val label = combined.indices.maxByOrNull { combined[it] } ?: 0
                 val liveConf = (combined[LIVE_CLASS_IDX] / 2f).toDouble()
                 return if (label == LIVE_CLASS_IDX) liveConf else 0.0
             } finally {

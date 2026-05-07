@@ -218,7 +218,7 @@ class FaceLandmarkPipeline(private val context: Context) {
         landmarkBmp.recycle()
     }
 
-    //  Single-call API
+    //  Public entry point
 
     fun detect(bitmap: Bitmap, runBlendshapes: Boolean = true): FaceLandmarkerResult? {
         detectorInterp ?: return null
@@ -377,7 +377,7 @@ class FaceLandmarkPipeline(private val context: Context) {
     // ═══════════════════════════════════════════
 
     /**
-     * Returns the keypoint-blended center [cx, cy] when the keypoint cloud is usable,
+     * Returns the keypoint blended center [cx, cy] when the keypoint cluster is usable,
      * or null to fall back to the box center. Size is always taken from the box.
      *
      * Keypoints improve vertical centering on document photos (NFC/test) while keeping
@@ -390,10 +390,8 @@ class FaceLandmarkPipeline(private val context: Context) {
         for (k in 0 until DETECTOR_KEYPOINTS) {
             val x = box[5 + k * 2]; val y = box[6 + k * 2]
             if (x.isFinite() && y.isFinite() && x in 0f..1f && y in 0f..1f) {
-                if (x < minKx) minKx = x
-                if (y < minKy) minKy = y
-                if (x > maxKx) maxKx = x
-                if (y > maxKy) maxKy = y
+                minKx = minOf(minKx, x); minKy = minOf(minKy, y)
+                maxKx = maxOf(maxKx, x); maxKy = maxOf(maxKy, y)
                 count++
             }
         }

@@ -2,13 +2,13 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtdapp/features/face_verification/face_verification_entry_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/document_selection_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/driving_licence_data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/manual_entry_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_reading_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/passport_data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/scanner_wrapper.dart';
-import 'package:vcmrtdapp/widgets/pages/face_verification_screen.dart';
 
 const _faceVerificationPath = '/face_verification';
 
@@ -133,7 +133,7 @@ GoRouter createRouter() {
           final nfcImageBytes = extra['nfcImageBytes'] as Uint8List?;
           final issueDate = extra['issueDate'] as DateTime?;
 
-          return FaceVerificationScreen(
+          return FaceVerificationEntryScreen(
             nfcImageBytes: nfcImageBytes,
             onBackPressed: context.pop,
             photoIssueDate: issueDate,

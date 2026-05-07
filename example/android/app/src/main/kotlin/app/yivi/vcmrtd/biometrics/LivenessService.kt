@@ -10,7 +10,7 @@ import kotlin.math.asin
  * Synchronous face landmark detector backed by [FaceLandmarkPipeline] (TFLite direct).
  *
  * Drop-in replacement for the previous MediaPipe-based implementation.
- * Public API is unchanged: initialize / detectImage / getBlendshapeScore /
+ * Public interface is unchanged: initialize / detectImage / getBlendshapeScore /
  * extractRois / extractRgbFromRoi / matrixYaw / close.
  */
 class LivenessService(private val context: Context) {

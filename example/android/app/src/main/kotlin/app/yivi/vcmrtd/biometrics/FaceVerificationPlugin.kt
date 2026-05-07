@@ -17,6 +17,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -388,32 +389,36 @@ class FaceVerificationPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         }
     }
 
+    private suspend fun runDetectorLoop(runId: Int) {
+        while (currentCoroutineContext().isActive && !isShuttingDown) {
+            if (!runDetectorIteration(runId)) break
+        }
+    }
+
+    private suspend fun runLandmarkLoop() {
+        while (currentCoroutineContext().isActive && !isShuttingDown) {
+            val frame = try { detectorOutputChannel.receive() }
+            catch (_: CancellationException) { break }
+            processLandmarkFrame(frame)
+        }
+    }
+
+    private suspend fun runPassiveMetricsLoop() {
+        while (currentCoroutineContext().isActive && !isShuttingDown) {
+            val passive = try { passiveChannel.receive() }
+            catch (_: CancellationException) { break }
+            runPassiveIteration(passive)
+        }
+    }
+
     private fun startFrameLoop(runId: Int) {
         detectorJob?.cancel()
         landmarkJob?.cancel()
         passiveMetricsJob?.cancel()
 
-        detectorJob = scope.launch(Dispatchers.Default) {
-            while (isActive && !isShuttingDown) {
-                if (!runDetectorIteration(runId)) break
-            }
-        }
-
-        landmarkJob = scope.launch(Dispatchers.Default) {
-            while (isActive && !isShuttingDown) {
-                val frame = try { detectorOutputChannel.receive() }
-                catch (_: CancellationException) { break }
-                processLandmarkFrame(frame)
-            }
-        }
-
-        passiveMetricsJob = scope.launch(Dispatchers.Default) {
-            while (isActive && !isShuttingDown) {
-                val passive = try { passiveChannel.receive() }
-                catch (_: CancellationException) { break }
-                runPassiveIteration(passive)
-            }
-        }
+        detectorJob      = scope.launch(Dispatchers.Default) { runDetectorLoop(runId) }
+        landmarkJob      = scope.launch(Dispatchers.Default) { runLandmarkLoop() }
+        passiveMetricsJob = scope.launch(Dispatchers.Default) { runPassiveMetricsLoop() }
     }
 
     private suspend fun isActiveRun(runId: Int): Boolean = activeFlowMutex.withLock {
