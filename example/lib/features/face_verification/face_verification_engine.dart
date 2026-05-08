@@ -4,12 +4,10 @@ import 'dart:math' as math;
 import 'package:camera/camera.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
-import 'package:vcmrtdapp/features/face_verification/camera/camera_frame_mapper.dart';
 import 'package:vcmrtdapp/features/face_verification/detection/face_detector.dart';
 import 'package:vcmrtdapp/features/face_verification/face_verification_tuning.dart';
 import 'package:vcmrtdapp/features/face_verification/face_verification_worker.dart';
 import 'package:vcmrtdapp/features/face_verification/liveness/liveness_service.dart';
-import 'package:vcmrtdapp/features/face_verification/recognition/face_recognizer.dart';
 
 class FaceVerificationEngine {
   static const int _requiredActions = FaceVerificationTuning.requiredActions;
@@ -17,7 +15,6 @@ class FaceVerificationEngine {
   static const int _actionTimeoutFrames = FaceVerificationTuning.actionTimeoutFrames;
 
   final FaceVerificationWorker _worker = FaceVerificationWorker();
-  final FaceRecognizer _recognizer = FaceRecognizer();
   final ActiveLivenessService _active = ActiveLivenessService();
   final StreamController<Map<String, dynamic>> _events = StreamController<Map<String, dynamic>>.broadcast();
   final math.Random _random = math.Random();
@@ -27,10 +24,11 @@ class FaceVerificationEngine {
   Stream<Map<String, dynamic>> get events => _events.stream;
 
   bool _running = false;
-  bool _frameBusy = false;
   bool _processing = false;
   bool _sessionFinished = true;
   bool _sessionStopping = false;
+  StreamSubscription<WorkerFrameResult>? _workerFrameSub;
+  Future<void> _workerFrameChain = Future<void>.value();
 
   final List<LivenessAction> _pendingActions = <LivenessAction>[];
   int _completedCount = 0;
@@ -38,19 +36,49 @@ class FaceVerificationEngine {
   bool _extraActionMode = false;
   int _framesSinceLastAction = 0;
 
-  List<double>? _nfcEmbedding;
+  bool _nfcFacePrepared = false;
+  Future<void>? _nfcPrepareFuture;
   img.Image? _firstSelfie;
   img.Image? _bestSelfie;
   double _bestSelfieQuality = -1.0;
 
   Future<void> initialize() async {
     await _worker.initialize();
-    await _recognizer.initialize();
+    _workerFrameSub = _worker.frames.listen(
+      (WorkerFrameResult result) {
+        _workerFrameChain = _workerFrameChain.then((_) => _handleWorkerFrame(result));
+      },
+      onError: (Object error) {
+        _sendEvent({'type': 'error', 'message': error.toString()});
+        _running = false;
+      },
+    );
+  }
+
+  /// Call this right after [initialize] to decode + detect + embed the NFC face
+  /// in the background, so it's ready before the user taps Start.
+  Future<void> prepareNfcFaceEagerly(Uint8List nfcImageBytes) {
+    _nfcPrepareFuture ??= _doNfcPrep(nfcImageBytes);
+    return _nfcPrepareFuture!;
+  }
+
+  Future<void> _doNfcPrep(Uint8List nfcImageBytes) async {
+    try {
+      final nfcImage = await _decodeNfcImage(nfcImageBytes);
+      if (nfcImage == null) throw StateError('Could not decode NFC image');
+      final encodedNfc = Uint8List.fromList(img.encodePng(nfcImage));
+      final nfcFace = await _worker.detectAndCropEncoded(encodedNfc);
+      if (nfcFace == null) throw StateError('No face found in NFC photo');
+      await _worker.prepareNfcFace(nfcFace);
+      _nfcFacePrepared = true;
+    } catch (_) {
+      _nfcPrepareFuture = null; // allow retry on next Start tap
+      rethrow;
+    }
   }
 
   Future<List<String>> start(Uint8List nfcImageBytes) async {
     _running = true;
-    _frameBusy = false;
     _processing = false;
     _sessionFinished = false;
     _sessionStopping = false;
@@ -69,30 +97,23 @@ class FaceVerificationEngine {
     _active.reset();
     await _worker.startSession();
 
-    final nfcImage = await _decodeNfcImage(nfcImageBytes);
-    if (nfcImage == null) {
-      throw StateError('Could not decode NFC image');
+    // Reuse eager prep if already done; otherwise prepare now (first tap or after error).
+    if (!_nfcFacePrepared) {
+      await (_nfcPrepareFuture ?? _doNfcPrep(nfcImageBytes));
     }
-    final encodedNfc = Uint8List.fromList(img.encodePng(nfcImage));
-    final nfcFace = await _worker.detectAndCropEncoded(encodedNfc);
-    if (nfcFace == null) {
-      throw StateError('No face found in NFC photo');
-    }
-    _nfcEmbedding = _recognizer.generateEmbedding(nfcFace);
 
     return _pendingActions.map((LivenessAction a) => a.wireName).toList(growable: false);
   }
 
   Future<void> processFrame(CameraImage cameraImage, int rotationDegrees) async {
-    if (!_running || _processing || _frameBusy || _sessionFinished || _sessionStopping) return;
-    _frameBusy = true;
-    try {
-      final mapped = CameraFrameMapper.map(cameraImage);
-      if (mapped == null) return;
-      final frame = CameraFrameMapper.rotateToUpright(mapped.rgbImage, rotationDegrees);
+    if (!_running || _processing || _sessionFinished || _sessionStopping) return;
+    await _worker.processCameraFrame(cameraImage, rotationDegrees);
+  }
 
+  Future<void> _handleWorkerFrame(WorkerFrameResult frameResult) async {
+    if (!_running || _processing || _sessionFinished || _sessionStopping) return;
+    try {
       _framesSinceLastAction++;
-      final frameResult = await _worker.processFrame(frame);
       final face = frameResult.face;
       if (face == null) {
         _active.lastFacePresent = false;
@@ -156,8 +177,6 @@ class FaceVerificationEngine {
     } catch (e) {
       _sendEvent({'type': 'error', 'message': e.toString()});
       _running = false;
-    } finally {
-      _frameBusy = false;
     }
   }
 
@@ -170,8 +189,8 @@ class FaceVerificationEngine {
 
   Future<void> dispose() async {
     await stop();
+    await _workerFrameSub?.cancel();
     await _worker.dispose();
-    await _recognizer.dispose();
     await _events.close();
   }
 
@@ -271,12 +290,10 @@ class FaceVerificationEngine {
   }
 
   Future<double> _computeMatchScore() async {
-    final nfc = _nfcEmbedding;
-    if (nfc == null) return 0.0;
+    if (!_nfcFacePrepared) return 0.0;
     final selfie = _bestSelfie ?? _firstSelfie;
     if (selfie == null) return 0.0;
-    final emb = _recognizer.generateEmbedding(selfie);
-    return _recognizer.cosineSimilarity(nfc, emb);
+    return _worker.matchSelfie(selfie);
   }
 
   void _captureSelfie(FaceObservation face) {

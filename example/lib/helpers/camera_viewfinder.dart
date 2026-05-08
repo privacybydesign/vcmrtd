@@ -1,7 +1,7 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -9,25 +9,129 @@ import 'camera_overlay.dart';
 import '../routing.dart';
 
 class OcrFrame {
-  final Uint8List bytes;
-  final int width;
-  final int height;
-  final int rotation;
-  final double roiLeft;
-  final double roiTop;
-  final double roiWidth;
-  final double roiHeight;
-
   OcrFrame({
     required this.bytes,
     required this.width,
     required this.height,
+    required this.bytesPerRow,
     required this.rotation,
     required this.roiLeft,
     required this.roiTop,
     required this.roiWidth,
     required this.roiHeight,
+    required this.isNv21,
   });
+
+  final Uint8List bytes;
+  final int width;
+  final int height;
+  // Actual row stride — may include padding on iOS BGRA.
+  final int bytesPerRow;
+  final int rotation;
+  final double roiLeft;
+  final double roiTop;
+  final double roiWidth;
+  final double roiHeight;
+  // true = tightly-packed NV21 (Android), false = BGRA8888 (iOS).
+  final bool isNv21;
+
+  /// Returns a copy of this frame with bytes cropped to the overlay ROI.
+  OcrFrame cropToRoi() {
+    final roi = _roiRect();
+    if (isNv21) {
+      final (cropped, w, h) = _cropNv21(roi.x, roi.y, roi.w, roi.h);
+      return _withCrop(cropped, w, h, w);
+    } else {
+      final (cropped, w, h, bpr) = _cropBgra(roi.x, roi.y, roi.w, roi.h);
+      return _withCrop(cropped, w, h, bpr);
+    }
+  }
+
+  OcrFrame _withCrop(Uint8List b, int w, int h, int bpr) => OcrFrame(
+        bytes: b,
+        width: w,
+        height: h,
+        bytesPerRow: bpr,
+        rotation: rotation,
+        roiLeft: 0,
+        roiTop: 0,
+        roiWidth: 1,
+        roiHeight: 1,
+        isNv21: isNv21,
+      );
+
+  // Converts screen-space ROI fractions to sensor-space pixel rect,
+  // matching the rotation transform in TesseractOcrEngine.kt.
+  ({int x, int y, int w, int h}) _roiRect() => switch (rotation) {
+        90 => (
+          x: (roiTop * width).toInt(),
+          y: ((1.0 - roiLeft - roiWidth) * height).toInt(),
+          w: (roiHeight * width).toInt(),
+          h: (roiWidth * height).toInt(),
+        ),
+        270 => (
+          x: ((1.0 - roiTop - roiHeight) * width).toInt(),
+          y: (roiLeft * height).toInt(),
+          w: (roiHeight * width).toInt(),
+          h: (roiWidth * height).toInt(),
+        ),
+        180 => (
+          x: ((1.0 - roiLeft - roiWidth) * width).toInt(),
+          y: ((1.0 - roiTop - roiHeight) * height).toInt(),
+          w: (roiWidth * width).toInt(),
+          h: (roiHeight * height).toInt(),
+        ),
+        _ => (
+          x: (roiLeft * width).toInt(),
+          y: (roiTop * height).toInt(),
+          w: (roiWidth * width).toInt(),
+          h: (roiHeight * height).toInt(),
+        ),
+      };
+
+  // Crops tightly-packed NV21. x/width rounded to even for UV-pair alignment.
+  (Uint8List, int, int) _cropNv21(int x, int y, int w, int h) {
+    final int cx = x.clamp(0, width - 2) & ~1;
+    final int cy = y.clamp(0, height - 1);
+    final int cw = ((w + 1) & ~1).clamp(2, width - cx);
+    final int ch = (h & ~1).clamp(2, height - cy);
+    if (cw < 2 || ch < 2) return (bytes, width, height);
+
+    final int uvRows = ch ~/ 2;
+    final dst = Uint8List(cw * ch + uvRows * cw);
+
+    for (int r = 0; r < ch; r++) {
+      final srcOff = (cy + r) * width + cx;
+      dst.setRange(r * cw, r * cw + cw, bytes, srcOff);
+    }
+
+    // UV plane: starts at width*height, stride = width, col offset = cx.
+    final int srcUvBase = width * height;
+    final int dstUvBase = cw * ch;
+    final int uvSrcRow = cy ~/ 2;
+    for (int r = 0; r < uvRows; r++) {
+      final srcOff = srcUvBase + (uvSrcRow + r) * width + cx;
+      dst.setRange(dstUvBase + r * cw, dstUvBase + r * cw + cw, bytes, srcOff);
+    }
+
+    return (dst, cw, ch);
+  }
+
+  // Crops BGRA8888. Handles row padding via bytesPerRow.
+  (Uint8List, int, int, int) _cropBgra(int x, int y, int w, int h) {
+    final int cx = x.clamp(0, width - 1);
+    final int cy = y.clamp(0, height - 1);
+    final int cw = w.clamp(1, width - cx);
+    final int ch = h.clamp(1, height - cy);
+    final int dstBpr = cw * 4;
+
+    final dst = Uint8List(ch * dstBpr);
+    for (int r = 0; r < ch; r++) {
+      final srcOff = (cy + r) * bytesPerRow + cx * 4;
+      dst.setRange(r * dstBpr, r * dstBpr + dstBpr, bytes, srcOff);
+    }
+    return (dst, cw, ch, dstBpr);
+  }
 }
 
 class MRZCameraView extends StatefulWidget {
@@ -97,9 +201,7 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
   void didPopNext() async {
     try {
       await _startLiveFeed();
-    } catch (e) {
-      debugPrint('error while starting live feed: $e');
-    }
+    } catch (_) {}
   }
 
   @override
@@ -119,9 +221,7 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
         _cameraIndex = _cameras.indexWhere((c) => c.lensDirection == widget.initialDirection);
       }
       if (_cameraIndex == -1) _cameraIndex = 0;
-    } catch (e) {
-      if (kDebugMode) print(e);
-    }
+    } catch (_) {}
 
     await _startLiveFeed();
   }
@@ -182,13 +282,13 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
   }
 
   Future<void> _processCameraImage(CameraImage image) async {
-    if (!Platform.isAndroid) return;
     if (_controller == null || _viewSize == null) return;
-    if (image.planes.length < 3) return;
+    // Android: 3-plane YUV420. iOS: 1-plane BGRA8888.
+    if (Platform.isAndroid && image.planes.length < 3) return;
+    if (!Platform.isAndroid && image.planes.isEmpty) return;
 
     final camera = _cameras[_cameraIndex];
-    final rotationComp = _orientations[_controller!.value.deviceOrientation];
-    if (rotationComp == null) return;
+    final rotationComp = _orientations[_controller!.value.deviceOrientation] ?? 0;
 
     final int rotation;
     if (camera.lensDirection == CameraLensDirection.front) {
@@ -200,20 +300,35 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
     final size = _viewSize!;
     final preview = _previewRect(size);
     final overlay = _overlayRect(size);
-
     final roiScreen = overlay.intersect(preview);
     final safeRoi = roiScreen.isEmpty ? preview : roiScreen;
 
+    final Uint8List bytes;
+    final int bytesPerRow;
+    final bool isNv21;
+
+    if (Platform.isAndroid) {
+      bytes = _yuv420ToNv21(image);
+      bytesPerRow = image.width;
+      isNv21 = true;
+    } else {
+      bytes = image.planes[0].bytes;
+      bytesPerRow = image.planes[0].bytesPerRow;
+      isNv21 = false;
+    }
+
     widget.onImage(
       OcrFrame(
-        bytes: _yuv420ToNv21(image),
+        bytes: bytes,
         width: image.width,
         height: image.height,
+        bytesPerRow: bytesPerRow,
         rotation: rotation,
         roiLeft: ((safeRoi.left - preview.left) / preview.width).clamp(0.0, 1.0),
         roiTop: ((safeRoi.top - preview.top) / preview.height).clamp(0.0, 1.0),
         roiWidth: (safeRoi.width / preview.width).clamp(0.0, 1.0),
         roiHeight: (safeRoi.height / preview.height).clamp(0.0, 1.0),
+        isNv21: isNv21,
       ),
     );
   }

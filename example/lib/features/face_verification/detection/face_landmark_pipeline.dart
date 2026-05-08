@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:flutter_litert/flutter_litert.dart';
 import 'package:image/image.dart' as img;
@@ -251,24 +252,65 @@ class FaceLandmarkPipeline {
   dynamic _blendshapeRaw;
   List<int> _blendshapeInputShape = <int>[];
 
+  // Pre-allocated per-call buffers — avoids large heap churn on every frame.
+  Float32List? _detectorInputBuf;
+  Float32List? _landmarkInputBuf;
+  Float32List? _blendshapeInputBuf;
+  img.Image? _letterboxCanvas;
+
   DetectorStageOutput? _lastCrop;
-  double presenceThreshold = _presenceThreshold;
+  static const double _presenceThresholdValue = _presenceThreshold;
 
   Future<void> initialize() async {
     if (_detectorInterp != null) return;
     final numThreads = (Platform.numberOfProcessors ~/ 2).clamp(1, 4);
-    final options = InterpreterOptions()..threads = numThreads;
 
-    _detectorInterp = await Interpreter.fromAsset('assets/face_verification/face_detector.tflite', options: options);
+    _detectorInterp = await Interpreter.fromAsset(
+      'assets/face_verification/face_detector.tflite',
+      options: _makeInterpOptions(numThreads),
+    );
     _landmarkInterp = await Interpreter.fromAsset(
       'assets/face_verification/face_landmarks_detector.tflite',
-      options: options,
+      options: _makeInterpOptions(numThreads),
     );
     _blendshapeInterp = await Interpreter.fromAsset(
       'assets/face_verification/face_blendshapes.tflite',
-      options: options,
+      options: _makeInterpOptions(numThreads),
     );
 
+    _finishInit();
+  }
+
+  void initializeFromBuffers({
+    required Uint8List detector,
+    required Uint8List landmarks,
+    required Uint8List blendshapes,
+  }) {
+    if (_detectorInterp != null) return;
+    final numThreads = (Platform.numberOfProcessors ~/ 2).clamp(1, 4);
+
+    _detectorInterp = Interpreter.fromBuffer(detector, options: _makeInterpOptions(numThreads));
+    _landmarkInterp = Interpreter.fromBuffer(landmarks, options: _makeInterpOptions(numThreads));
+    _blendshapeInterp = Interpreter.fromBuffer(blendshapes, options: _makeInterpOptions(numThreads));
+
+    _finishInit();
+  }
+
+  InterpreterOptions _makeInterpOptions(int threads) {
+    final opts = InterpreterOptions()..threads = threads;
+    if (Platform.isAndroid) {
+      try {
+        opts.addDelegate(GpuDelegateV2());
+      } catch (_) {}
+    } else if (Platform.isIOS) {
+      try {
+        opts.addDelegate(CoreMlDelegate());
+      } catch (_) {}
+    }
+    return opts;
+  }
+
+  void _finishInit() {
     final det0 = _detectorInterp!.getOutputTensor(0).shape;
     final det1 = _detectorInterp!.getOutputTensor(1).shape;
     _detRegressors = _makeTensor(det0);
@@ -287,6 +329,12 @@ class FaceLandmarkPipeline {
     _blendshapeInputShape = bsInShape;
     _blendshapeRaw = _makeTensor(bsOutShape);
 
+    // Pre-allocate per-frame buffers once to avoid repeated large heap allocations.
+    _detectorInputBuf = Float32List(_detectorSize * _detectorSize * 3);
+    _landmarkInputBuf = Float32List(_landmarkSize * _landmarkSize * 3);
+    _blendshapeInputBuf = Float32List(bsInShape.fold<int>(1, (p, v) => p * v));
+    _letterboxCanvas = img.Image(width: _detectorSize, height: _detectorSize);
+
     _runWarmUp();
   }
 
@@ -304,30 +352,22 @@ class FaceLandmarkPipeline {
 
   void _warmUpDetector() {
     if (_detectorInterp == null) return;
-    final zero = List.generate(
-      _detectorSize,
-      (_) => List.generate(_detectorSize, (_) => <double>[0.0, 0.0, 0.0], growable: false),
-      growable: false,
-    );
-    _detectorInterp!.runForMultipleInputs(<Object>[zero], <int, Object>{0: _detRegressors, 1: _detScores});
+    final buf = Float32List(_detectorSize * _detectorSize * 3);
+    _detectorInterp!.runForMultipleInputs(<Object>[buf.buffer], <int, Object>{0: _detRegressors, 1: _detScores});
   }
 
   void _warmUpLandmarker() {
     if (_landmarkInterp == null || _lmAllOutputs.isEmpty) return;
-    final zero = List.generate(
-      _landmarkSize,
-      (_) => List.generate(_landmarkSize, (_) => <double>[0.0, 0.0, 0.0], growable: false),
-      growable: false,
-    );
+    final buf = Float32List(_landmarkSize * _landmarkSize * 3);
     final out = <int, Object>{for (var i = 0; i < _lmAllOutputs.length; i++) i: _lmAllOutputs[i]};
-    _landmarkInterp!.runForMultipleInputs(<Object>[zero], out);
+    _landmarkInterp!.runForMultipleInputs(<Object>[buf.buffer], out);
   }
 
   void _warmUpBlendshapes() {
     if (_blendshapeInterp == null || _blendshapeInputShape.isEmpty) return;
     final total = _blendshapeInputShape.fold<int>(1, (p, v) => p * v);
-    final zeroInput = _reshapeToShape(List<double>.filled(total, 0.0), _blendshapeInputShape);
-    _blendshapeInterp!.run(zeroInput, _blendshapeRaw);
+    final buf = Float32List(total);
+    _blendshapeInterp!.run(buf.buffer, _blendshapeRaw);
   }
 
   void close() {
@@ -338,21 +378,24 @@ class FaceLandmarkPipeline {
     _detectorInterp = null;
     _landmarkInterp = null;
     _blendshapeInterp = null;
+    _detRegressors = null;
+    _detScores = null;
+    _lmOutRaw = null;
+    _presenceOutRaw = null;
+    _lmAllOutputs = <dynamic>[];
+    _blendshapeRaw = null;
+    _detectorInputBuf = null;
+    _landmarkInputBuf = null;
+    _blendshapeInputBuf = null;
+    _letterboxCanvas = null;
   }
 
   void resetTracking() {
     _lastCrop = null;
   }
 
-  FaceLandmarkerResult? detect(img.Image bitmap, {bool runBlendshapes = true}) {
-    final box = _detectFace(bitmap);
-    if (box == null) return null;
-    final crop = _cropRegion(box, bitmap.width, bitmap.height);
-    return runLandmarkStage(
-      bitmap,
-      DetectorStageOutput(cropX1: crop[0], cropY1: crop[1], cropW: crop[2], cropH: crop[3], angle: crop[4]),
-      runBlendshapes: runBlendshapes,
-    );
+  void setTrackingCrop(DetectorStageOutput? crop) {
+    _lastCrop = crop;
   }
 
   DetectorStageOutput? runDetectorStage(img.Image bitmap) {
@@ -376,7 +419,7 @@ class FaceLandmarkPipeline {
     final rawPresence = _flatFloatArray(_presenceOutRaw);
     if (rawPresence.isEmpty) return null;
     final presence = _sigmoid(rawPresence.first);
-    if (presence < presenceThreshold) return null;
+    if (presence < _presenceThresholdValue) return null;
 
     final raw = _flatFloatArray(_lmOutRaw);
     if (raw.length < _numLandmarks * 3) return null;
@@ -394,9 +437,13 @@ class FaceLandmarkPipeline {
   }
 
   void updateTrackingCrop(FaceLandmarkerResult result, int imgW, int imgH) {
-    if (result.landmarks.isEmpty) return;
+    _lastCrop = computeTrackingCrop(result, imgW, imgH);
+  }
+
+  DetectorStageOutput? computeTrackingCrop(FaceLandmarkerResult result, int imgW, int imgH) {
+    if (result.landmarks.isEmpty) return null;
     final lms = result.landmarks.first;
-    if (lms.length < _numLandmarks) return;
+    if (lms.length < _numLandmarks) return null;
 
     var minX = double.infinity;
     var maxX = -double.infinity;
@@ -415,62 +462,65 @@ class FaceLandmarkPipeline {
     final h = (maxY - minY).clamp(1e-6, 1.0);
     final angle = _computeRotation(lms[33].x, lms[33].y, lms[263].x, lms[263].y, imgW: imgW, imgH: imgH);
     final crop = _buildSquareCrop(cx, cy, w, h, angle, imgW, imgH);
-    _lastCrop = DetectorStageOutput(cropX1: crop[0], cropY1: crop[1], cropW: crop[2], cropH: crop[3], angle: crop[4]);
+    return DetectorStageOutput(cropX1: crop[0], cropY1: crop[1], cropW: crop[2], cropH: crop[3], angle: crop[4]);
   }
 
-  List<dynamic> _buildDetectorInput(img.Image bitmap) {
+  ByteBuffer _buildDetectorInput(img.Image bitmap) {
     final letterboxed = _drawDetectorLetterboxed(bitmap);
-    return <dynamic>[
-      List.generate(_detectorSize, (int y) {
-        return List.generate(_detectorSize, (int x) {
-          final p = letterboxed.getPixel(x, y);
-          return <double>[(p.r - 127.5) / 127.5, (p.g - 127.5) / 127.5, (p.b - 127.5) / 127.5];
-        }, growable: false);
-      }, growable: false),
-    ];
+    final rawBytes = letterboxed.getBytes(order: img.ChannelOrder.rgb);
+    final total = _detectorSize * _detectorSize;
+    final buf = _detectorInputBuf!;
+    for (var i = 0; i < total; i++) {
+      buf[i * 3] = (rawBytes[i * 3] - 127.5) / 127.5;
+      buf[i * 3 + 1] = (rawBytes[i * 3 + 1] - 127.5) / 127.5;
+      buf[i * 3 + 2] = (rawBytes[i * 3 + 2] - 127.5) / 127.5;
+    }
+    return buf.buffer;
   }
 
-  List<dynamic> _buildLandmarkInput(img.Image bitmap, DetectorStageOutput crop) {
+  ByteBuffer _buildLandmarkInput(img.Image bitmap, DetectorStageOutput crop) {
     final imgW = bitmap.width.toDouble();
     final imgH = bitmap.height.toDouble();
-
-    // Equivalent of Kotlin's fillLandmarkBitmap:
-    //   matrix.setTranslate(-srcCx, -srcCy)
-    //   matrix.postRotate(-toDegrees(angle))
-    //   matrix.postScale(256/cropW, 256/cropH)
-    // Implemented as copyCrop → optional copyRotate → copyResize to avoid
-    // the previous 65 536-pixel per-frame inverse-warp loop with cos/sin.
     final cropCx = (crop.cropX1 + crop.cropW * 0.5) * imgW;
     final cropCy = (crop.cropY1 + crop.cropH * 0.5) * imgH;
-    final halfW = (crop.cropW * imgW * 0.5).clamp(1.0, imgW / 2);
-    final halfH = (crop.cropH * imgH * 0.5).clamp(1.0, imgH / 2);
+    final scaleX = crop.cropW * imgW / _landmarkSize;
+    final scaleY = crop.cropH * imgH / _landmarkSize;
+    final cosA = math.cos(crop.angle);
+    final sinA = math.sin(crop.angle);
+    final half = _landmarkSize * 0.5;
+    final rawBytes = bitmap.getBytes(order: img.ChannelOrder.rgb);
+    final bitmapW = bitmap.width;
+    final bitmapH = bitmap.height;
+    final buf = _landmarkInputBuf!;
+    buf.fillRange(0, buf.length, 0.0); // zero padding pixels from previous frame
 
-    final x1 = (cropCx - halfW).round().clamp(0, bitmap.width - 1);
-    final y1 = (cropCy - halfH).round().clamp(0, bitmap.height - 1);
-    final x2 = (cropCx + halfW).round().clamp(x1 + 1, bitmap.width);
-    final y2 = (cropCy + halfH).round().clamp(y1 + 1, bitmap.height);
+    for (var row = 0; row < _landmarkSize; row++) {
+      for (var col = 0; col < _landmarkSize; col++) {
+        final dx = (col - half) * scaleX;
+        final dy = (row - half) * scaleY;
+        final sx = cropCx + cosA * dx - sinA * dy;
+        final sy = cropCy + sinA * dx + cosA * dy;
+        final di = (row * _landmarkSize + col) * 3;
+        if (sx < 0 || sy < 0 || sx >= imgW || sy >= imgH) continue;
 
-    var patch = img.copyCrop(bitmap, x: x1, y: y1, width: x2 - x1, height: y2 - y1);
-    if (crop.angle.abs() > 0.01) {
-      patch = img.copyRotate(patch, angle: -(crop.angle * 180.0 / math.pi));
+        final x0 = sx.floor();
+        final y0 = sy.floor();
+        final fx = sx - x0;
+        final fy = sy - y0;
+        final x1 = (x0 + 1).clamp(0, bitmapW - 1);
+        final y1 = (y0 + 1).clamp(0, bitmapH - 1);
+        final i00 = (y0 * bitmapW + x0) * 3;
+        final i01 = (y0 * bitmapW + x1) * 3;
+        final i10 = (y1 * bitmapW + x0) * 3;
+        final i11 = (y1 * bitmapW + x1) * 3;
+        for (var c = 0; c < 3; c++) {
+          final top = rawBytes[i00 + c] * (1 - fx) + rawBytes[i01 + c] * fx;
+          final bot = rawBytes[i10 + c] * (1 - fx) + rawBytes[i11 + c] * fx;
+          buf[di + c] = (top * (1 - fy) + bot * fy) / 255.0;
+        }
+      }
     }
-    final resized = img.copyResize(
-      patch,
-      width: _landmarkSize,
-      height: _landmarkSize,
-      interpolation: img.Interpolation.linear,
-    );
-
-    return <dynamic>[
-      List<dynamic>.generate(
-        _landmarkSize,
-        (int row) => List<dynamic>.generate(_landmarkSize, (int col) {
-          final p = resized.getPixel(col, row);
-          return <double>[p.r / 255.0, p.g / 255.0, p.b / 255.0];
-        }, growable: false),
-        growable: false,
-      ),
-    ];
+    return buf.buffer;
   }
 
   List<double>? _detectFace(img.Image bitmap) {
@@ -571,7 +621,7 @@ class FaceLandmarkPipeline {
   }
 
   img.Image _drawDetectorLetterboxed(img.Image bitmap) {
-    final canvas = img.Image(width: _detectorSize, height: _detectorSize);
+    final canvas = _letterboxCanvas!;
     img.fill(canvas, color: img.ColorRgb8(0, 0, 0));
 
     final srcW = bitmap.width.toDouble();
@@ -670,14 +720,16 @@ class FaceLandmarkPipeline {
   List<Category>? _runBlendshapes(List<NormalizedLandmark> landmarks, int imgW, int imgH) {
     final interp = _blendshapeInterp;
     if (interp == null || _blendshapeInputShape.isEmpty) return null;
-    final inputFlat = <double>[];
-    for (final idx in _blendshapeLandmarkIndices) {
-      final lm = landmarks[idx];
-      inputFlat.add(lm.x * imgW);
-      inputFlat.add(lm.y * imgH);
+    final buf = _blendshapeInputBuf!;
+    final total = buf.length;
+    var idx = 0;
+    for (final lmIdx in _blendshapeLandmarkIndices) {
+      if (idx + 1 >= total) break;
+      final lm = landmarks[lmIdx];
+      buf[idx++] = lm.x * imgW;
+      buf[idx++] = lm.y * imgH;
     }
-    final input = _reshapeToShape(inputFlat, _blendshapeInputShape);
-    interp.run(input, _blendshapeRaw);
+    interp.run(buf.buffer, _blendshapeRaw);
     final raw = _flatFloatArray(_blendshapeRaw);
     return List<Category>.generate(raw.length, (int i) {
       final name = i < _blendshapeNames.length ? _blendshapeNames[i] : 'blend_$i';
@@ -780,27 +832,5 @@ class FaceLandmarkPipeline {
       return out;
     }
     return <double>[];
-  }
-
-  dynamic _reshapeToShape(List<double> values, List<int> shape) {
-    final total = shape.fold<int>(1, (int p, int v) => p * v);
-    if (values.length < total) {
-      values = <double>[...values, ...List<double>.filled(total - values.length, 0.0)];
-    } else if (values.length > total) {
-      values = values.sublist(0, total);
-    }
-    var idx = 0;
-    dynamic build(int dim) {
-      if (dim == shape.length - 1) {
-        final out = List<double>.filled(shape[dim], 0.0, growable: false);
-        for (var i = 0; i < out.length; i++) {
-          out[i] = values[idx++];
-        }
-        return out;
-      }
-      return List<dynamic>.generate(shape[dim], (_) => build(dim + 1), growable: false);
-    }
-
-    return build(0);
   }
 }

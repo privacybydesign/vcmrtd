@@ -267,7 +267,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
         ),
         border: Border.all(color: Color(0xFFB48DA3), width: 1.2),
         borderRadius: BorderRadius.circular(8),
-        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.15), blurRadius: 3, offset: const Offset(2, 2))],
+        boxShadow: [BoxShadow(color: Colors.grey.withValues(alpha: 0.15), blurRadius: 3, offset: const Offset(2, 2))],
       ),
       child: Padding(
         padding: const EdgeInsets.all(6),

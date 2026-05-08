@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -29,9 +31,11 @@ class MRZScanner extends ConsumerStatefulWidget {
 }
 
 class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
-  // --- Common OCR State ---
   static const MethodChannel _ocrChannel = MethodChannel('tesseract_ocr');
-  final TextRecognizer _textRecognizer = TextRecognizer();
+
+  // Lazily instantiated — ML Kit model is not loaded until actually needed.
+  TextRecognizer? _textRecognizerInstance;
+  TextRecognizer get _textRecognizer => _textRecognizerInstance ??= TextRecognizer();
 
   bool _canProcess = true;
   bool _isBusy = false;
@@ -49,7 +53,7 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
   void dispose() {
     routeObserver.unsubscribe(this);
     _canProcess = false;
-    _textRecognizer.close();
+    _textRecognizerInstance?.close();
     super.dispose();
   }
 
@@ -70,13 +74,12 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
     );
   }
 
-  /// Main dispatcher that chooses the engine based on UI selection
+  // Tesseract is Android-only; iOS always uses ML Kit.
   Future<void> _processFrame(OcrFrame frame, OcrEngine engine) async {
     if (!_canProcess || _isBusy) return;
-
     _isBusy = true;
     try {
-      if (engine == OcrEngine.tesseract4android) {
+      if (engine == OcrEngine.tesseract4android && Platform.isAndroid) {
         await _processTesseractFrame(frame);
       } else {
         await _runGoogleMlKitOcr(frame);
@@ -87,59 +90,48 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
   }
 
   // ===========================================================================
-  // --- GOOGLE ML KIT OCR ENGINE ---
+  // GOOGLE ML KIT OCR ENGINE
   // ===========================================================================
 
   Future<void> _runGoogleMlKitOcr(OcrFrame frame) async {
     try {
+      final cropped = frame.cropToRoi();
+
       final inputImage = InputImage.fromBytes(
-        bytes: frame.bytes,
+        bytes: cropped.bytes,
         metadata: InputImageMetadata(
-          size: Size(frame.width.toDouble(), frame.height.toDouble()),
-          rotation: InputImageRotationValue.fromRawValue(frame.rotation) ?? InputImageRotation.rotation0deg,
-          format: InputImageFormat.nv21,
-          bytesPerRow: frame.width,
+          size: Size(cropped.width.toDouble(), cropped.height.toDouble()),
+          rotation: InputImageRotationValue.fromRawValue(frame.rotation) ??
+              InputImageRotation.rotation0deg,
+          format: frame.isNv21 ? InputImageFormat.nv21 : InputImageFormat.bgra8888,
+          bytesPerRow: cropped.bytesPerRow,
         ),
       );
 
       final recognizedText = await _textRecognizer.processImage(inputImage);
-      String fullText = recognizedText.text;
 
-      String trimmedText = fullText.replaceAll(' ', '');
-      List allText = trimmedText.split('\n');
+      final lines = recognizedText.text
+          .replaceAll(' ', '')
+          .split('\n')
+          .map(MRZHelper.testTextLine)
+          .where((s) => s.isNotEmpty)
+          .toList();
 
-      List<String> ableToScanText = [];
-      for (var e in allText) {
-        final normalized = MRZHelper.testTextLine(e.toString());
-        if (normalized.isNotEmpty) {
-          ableToScanText.add(normalized);
-        }
-      }
-
-      final finalLines = MRZHelper.getFinalListToParse(ableToScanText);
-
-      if (finalLines != null) {
-        if (_tryParseAndNotify(finalLines)) return;
-      }
-    } catch (e) {
-      debugPrint('ML Kit OCR error: $e');
-    }
+      final finalLines = MRZHelper.getFinalListToParse(lines);
+      if (finalLines != null) _tryParseAndNotify(finalLines);
+    } catch (_) {}
   }
 
   // ===========================================================================
-  // --- TESSERACT 4 ANDROID OCR ENGINE ---
+  // TESSERACT OCR ENGINE (Android only)
   // ===========================================================================
 
-  /// Single call to native — MrzZoneDetector runs automatically in the native
-  /// layer, no need for multiple ROI attempts or useZoneDetector flag.
   Future<void> _processTesseractFrame(OcrFrame frame) async {
     if (!_canProcess) return;
 
     try {
-      final plane = frame.bytes;
-
       final String? res = await _ocrChannel.invokeMethod<String>('processImage', {
-        'bytes': plane,
+        'bytes': frame.bytes,
         'width': frame.width,
         'height': frame.height,
         'stride': frame.width,
@@ -165,14 +157,12 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
       final finalLines = MRZHelper.getFinalListToParse(lines);
       if (finalLines == null) return;
 
-      if (_tryParseAndNotify(finalLines)) return;
-    } catch (e) {
-      debugPrint('Tesseract OCR error: $e');
-    }
+      _tryParseAndNotify(finalLines);
+    } catch (_) {}
   }
 
   // ===========================================================================
-  // --- SHARED PARSING LOGIC ---
+  // SHARED PARSING LOGIC
   // ===========================================================================
 
   bool _tryParseAndNotify(List<String> lines) {
@@ -204,7 +194,7 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
         case DocumentType.drivingLicence:
           return DrivingLicenceMrzParser().parse(lines);
       }
-    } catch (e) {
+    } catch (_) {
       return null;
     }
   }

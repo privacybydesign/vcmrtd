@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:flutter_litert/flutter_litert.dart';
 import 'package:image/image.dart' as img;
@@ -15,9 +16,27 @@ class FaceRecognizer {
     if (_interpreter != null) return;
 
     final options = InterpreterOptions()..threads = 4;
-    options.addDelegate(await FlexDelegate.create());
+    try {
+      options.addDelegate(await FlexDelegate.create());
+    } catch (_) {}
 
     _interpreter = await Interpreter.fromAsset(_modelAsset, options: options);
+    _readShapes();
+  }
+
+  Future<void> initializeFromBuffer(Uint8List modelBytes) async {
+    if (_interpreter != null) return;
+
+    final options = InterpreterOptions()..threads = 4;
+    try {
+      options.addDelegate(await FlexDelegate.create());
+    } catch (_) {}
+
+    _interpreter = Interpreter.fromBuffer(modelBytes, options: options);
+    _readShapes();
+  }
+
+  void _readShapes() {
     final inputShape = _interpreter!.getInputTensor(0).shape;
     final outputShape = _interpreter!.getOutputTensor(0).shape;
     if (inputShape.length == 4) {
@@ -36,21 +55,16 @@ class FaceRecognizer {
     }
 
     final resized = img.copyResize(face, width: _inputW, height: _inputH, interpolation: img.Interpolation.linear);
-    final input = List.generate(
-      1,
-      (_) => List.generate(
-        _inputH,
-        (y) => List.generate(_inputW, (x) {
-          final p = resized.getPixel(x, y);
-          final r = (p.r - 127.5) / 127.5;
-          final g = (p.g - 127.5) / 127.5;
-          final b = (p.b - 127.5) / 127.5;
-          return [r, g, b];
-        }),
-      ),
-    );
+    final bytes = resized.getBytes(order: img.ChannelOrder.rgb);
+    final total = _inputH * _inputW;
+    final buf = Float32List(total * 3);
+    for (var i = 0; i < total; i++) {
+      buf[i * 3] = (bytes[i * 3] - 127.5) / 127.5;
+      buf[i * 3 + 1] = (bytes[i * 3 + 1] - 127.5) / 127.5;
+      buf[i * 3 + 2] = (bytes[i * 3 + 2] - 127.5) / 127.5;
+    }
     final output = List.generate(1, (_) => List<double>.filled(_embeddingSize, 0.0));
-    interpreter.run(input, output);
+    interpreter.run(buf.buffer, output);
     return _normalize(output.first);
   }
 

@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:flutter_litert/flutter_litert.dart';
 import 'package:image/image.dart' as img;
@@ -35,14 +37,14 @@ class BaselineSnapshot {
 }
 
 class ActiveLivenessService {
-  static const int confirmThreshold = 4;
+  static const int confirmThreshold = 2;
   static const int confirmIncrement = 2;
-  static const int confirmDecay = 1;
-  static const int baselineFrames = 6;
+  static const int confirmDecay = 0;
+  static const int baselineFrames = 3;
 
-  static const int restStableFrames = 4;
+  static const int restStableFrames = 2;
   static const double restMaxYawDeg = 12.0;
-  static const int restGraceMs = 700;
+  static const int restGraceMs = 300;
   static const double restMaxEar = 0.15;
   static const double restMaxMouth = 0.05;
   static const double restMaxSmile = 0.25;
@@ -71,6 +73,7 @@ class ActiveLivenessService {
 
   bool isAligning = true;
   bool lastFacePresent = false;
+  bool get isWaitingForRest => _waitingForRest;
 
   LivenessAction? _currentAction;
   int _confirmCount = 0;
@@ -513,17 +516,26 @@ class PassiveLivenessService {
   int _lastFrameBufferedMs = 0;
 
   Future<void> initialize() async {
-    final options = InterpreterOptions()..threads = 1;
+    _v1 = await Interpreter.fromAsset('assets/face_verification/minifasnet_v1se.tflite', options: _cpuOptions(2));
+    _v2 = await Interpreter.fromAsset('assets/face_verification/minifasnet_v2.tflite', options: _cpuOptions(2));
 
-    _v1 = await Interpreter.fromAsset('assets/face_verification/minifasnet_v1se.tflite', options: options);
-    _v2 = await Interpreter.fromAsset('assets/face_verification/minifasnet_v2.tflite', options: options);
+    _readAntiSpoofShapes();
+    await _bigSmall.initialize();
+  }
 
+  void initializeFromBuffers({required Uint8List v1, required Uint8List v2, required List<Uint8List> bigSmall}) {
+    _v1 = Interpreter.fromBuffer(v1, options: _cpuOptions(2));
+    _v2 = Interpreter.fromBuffer(v2, options: _cpuOptions(2));
+
+    _readAntiSpoofShapes();
+    _bigSmall.initializeFromBuffers(bigSmall);
+  }
+
+  void _readAntiSpoofShapes() {
     final s1 = _v1!.getInputTensor(0).shape;
     final s2 = _v2!.getInputTensor(0).shape;
     _v1Nchw = s1.length == 4 && s1[1] == 3;
     _v2Nchw = s2.length == 4 && s2[1] == 3;
-
-    await _bigSmall.initialize();
   }
 
   void reset() {
@@ -555,10 +567,6 @@ class PassiveLivenessService {
     return avg >= antiSpoofMinScore;
   }
 
-  int getAntiSpoofAttempts() => _attempts;
-
-  int getTotalFrames() => _totalFrames;
-
   RppgResult? getRppgResult() {
     if (_bvpSamples.length < _minBvpSamples || _bvpSampleTimes.length < 2) return null;
     final durationMs = (_bvpSampleTimes.last - _bvpSampleTimes.first).clamp(1, 1 << 30);
@@ -566,8 +574,6 @@ class PassiveLivenessService {
     final fps = (((_bvpSamples.length - 1) * 1000) / durationMs).clamp(1, 1000).toInt();
     return _evaluateBvp(_bvpSamples, fps);
   }
-
-  Future<void> awaitRppgIdle() async {}
 
   void _sampleAntiSpoof(img.Image frame, FaceObservation face) {
     if (_random.nextDouble() >= _antiSpoofSampleRate) return;
@@ -725,36 +731,24 @@ class PassiveLivenessService {
     return img.copyCrop(source, x: x1, y: y1, width: x2 - x1, height: y2 - y1);
   }
 
-  Object _preprocess(img.Image image, {required bool nchw}) {
+  ByteBuffer _preprocess(img.Image image, {required bool nchw}) {
+    final rawBytes = image.getBytes(order: img.ChannelOrder.rgb);
+    final planeSize = _inputSize * _inputSize;
+    final buf = Float32List(planeSize * 3);
     if (nchw) {
-      final ch0 = List<double>.filled(_inputSize * _inputSize, 0.0);
-      final ch1 = List<double>.filled(_inputSize * _inputSize, 0.0);
-      final ch2 = List<double>.filled(_inputSize * _inputSize, 0.0);
-      var i = 0;
-      for (var y = 0; y < _inputSize; y++) {
-        for (var x = 0; x < _inputSize; x++) {
-          final px = image.getPixel(x, y);
-          ch0[i] = px.b.toDouble();
-          ch1[i] = px.g.toDouble();
-          ch2[i] = px.r.toDouble();
-          i++;
-        }
+      for (var i = 0; i < planeSize; i++) {
+        buf[i] = rawBytes[i * 3 + 2].toDouble(); // B
+        buf[planeSize + i] = rawBytes[i * 3 + 1].toDouble(); // G
+        buf[2 * planeSize + i] = rawBytes[i * 3].toDouble(); // R
       }
-      return <List<List<double>>>[
-        <List<double>>[ch0, ch1, ch2],
-      ];
+    } else {
+      for (var i = 0; i < planeSize; i++) {
+        buf[i * 3] = rawBytes[i * 3 + 2].toDouble(); // B
+        buf[i * 3 + 1] = rawBytes[i * 3 + 1].toDouble(); // G
+        buf[i * 3 + 2] = rawBytes[i * 3].toDouble(); // R
+      }
     }
-
-    return <dynamic>[
-      List<dynamic>.generate(
-        _inputSize,
-        (int y) => List<dynamic>.generate(_inputSize, (int x) {
-          final px = image.getPixel(x, y);
-          return <double>[px.b.toDouble(), px.g.toDouble(), px.r.toDouble()];
-        }, growable: false),
-        growable: false,
-      ),
-    ];
+    return buf.buffer;
   }
 
   List<double> _softmax(List<double> logits) {
@@ -869,35 +863,42 @@ class _BigSmallService {
   Future<void> initialize() async {
     for (var i = 0; i < _modelFiles.length; i++) {
       if (_interpreters[i] != null) continue;
-      final options = InterpreterOptions()..threads = 2;
-      _interpreters[i] = await Interpreter.fromAsset(_modelFiles[i], options: options);
-      _appearanceShapes[i] = _interpreters[i]!.getInputTensor(0).shape;
-      _motionShapes[i] = _interpreters[i]!.getInputTensor(1).shape;
-      _outputShapes[i] = _interpreters[i]!.getOutputTensor(0).shape;
+      _interpreters[i] = await Interpreter.fromAsset(_modelFiles[i], options: _makeInterpOptions(2));
+      _loadShapes(i);
     }
+  }
+
+  void initializeFromBuffers(List<Uint8List> modelBuffers) {
+    for (var i = 0; i < modelBuffers.length; i++) {
+      if (_interpreters[i] != null) continue;
+      _interpreters[i] = Interpreter.fromBuffer(modelBuffers[i], options: _makeInterpOptions(2));
+      _loadShapes(i);
+    }
+  }
+
+  void _loadShapes(int i) {
+    _appearanceShapes[i] = _interpreters[i]!.getInputTensor(0).shape;
+    _motionShapes[i] = _interpreters[i]!.getInputTensor(1).shape;
+    _outputShapes[i] = _interpreters[i]!.getOutputTensor(0).shape;
   }
 
   List<double>? runInference(List<_RppgFrame> framesBatch) {
     if (framesBatch.length != bufferFrames) return null;
     if (_interpreters.every((Interpreter? i) => i == null)) return null;
 
-    final appearanceFlat = _buildAppearanceFlat(framesBatch);
-    final motionFlat = _buildMotionFlat(framesBatch);
+    final appearanceBuf = _buildAppearanceBuf(framesBatch);
+    final motionBuf = _buildMotionBuf(framesBatch);
 
     final sum = List<double>.filled(frames, 0.0);
     var count = 0;
 
     for (var i = 0; i < _interpreters.length; i++) {
       final interp = _interpreters[i];
-      final aShape = _appearanceShapes[i];
-      final mShape = _motionShapes[i];
       final oShape = _outputShapes[i];
-      if (interp == null || aShape == null || mShape == null || oShape == null) continue;
+      if (interp == null || oShape == null) continue;
 
-      final appearanceInput = _reshapeToShape(appearanceFlat, aShape);
-      final motionInput = _reshapeToShape(motionFlat, mShape);
       final outTensor = _makeTensor(oShape);
-      interp.runForMultipleInputs(<Object>[appearanceInput, motionInput], <int, Object>{0: outTensor});
+      interp.runForMultipleInputs(<Object>[appearanceBuf.buffer, motionBuf.buffer], <int, Object>{0: outTensor});
       final out = _flatFloatArray(outTensor);
       if (out.isEmpty) continue;
       final take = math.min(frames, out.length);
@@ -918,58 +919,39 @@ class _BigSmallService {
     }
   }
 
-  List<double> _buildAppearanceFlat(List<_RppgFrame> batch) {
-    final out = <double>[];
+  Float32List _buildAppearanceBuf(List<_RppgFrame> batch) {
+    final planeSize = appearanceSize * appearanceSize;
+    final buf = Float32List(frames * 3 * planeSize);
+    var offset = 0;
     for (var fi = 1; fi <= frames; fi++) {
-      final frame = batch[fi].appearance;
-      for (var y = 0; y < appearanceSize; y++) {
-        for (var x = 0; x < appearanceSize; x++) {
-          out.add(frame.getPixel(x, y).r / 255.0);
-        }
-      }
-      for (var y = 0; y < appearanceSize; y++) {
-        for (var x = 0; x < appearanceSize; x++) {
-          out.add(frame.getPixel(x, y).g / 255.0);
-        }
-      }
-      for (var y = 0; y < appearanceSize; y++) {
-        for (var x = 0; x < appearanceSize; x++) {
-          out.add(frame.getPixel(x, y).b / 255.0);
-        }
-      }
+      final rawBytes = batch[fi].appearance.getBytes(order: img.ChannelOrder.rgb);
+      for (var i = 0; i < planeSize; i++) buf[offset + i] = rawBytes[i * 3] / 255.0;
+      offset += planeSize;
+      for (var i = 0; i < planeSize; i++) buf[offset + i] = rawBytes[i * 3 + 1] / 255.0;
+      offset += planeSize;
+      for (var i = 0; i < planeSize; i++) buf[offset + i] = rawBytes[i * 3 + 2] / 255.0;
+      offset += planeSize;
     }
-    return out;
+    return buf;
   }
 
-  List<double> _buildMotionFlat(List<_RppgFrame> batch) {
-    final out = <double>[];
+  Float32List _buildMotionBuf(List<_RppgFrame> batch) {
+    final planeSize = motionSize * motionSize;
     const eps = 1e-7;
+    final buf = Float32List(frames * 3 * planeSize);
+    var offset = 0;
     for (var fi = 0; fi < frames; fi++) {
-      final curr = batch[fi].motion;
-      final next = batch[fi + 1].motion;
-      for (var y = 0; y < motionSize; y++) {
-        for (var x = 0; x < motionSize; x++) {
-          final c = curr.getPixel(x, y).r.toDouble();
-          final n = next.getPixel(x, y).r.toDouble();
-          out.add((n - c) / (n + c + eps));
-        }
-      }
-      for (var y = 0; y < motionSize; y++) {
-        for (var x = 0; x < motionSize; x++) {
-          final c = curr.getPixel(x, y).g.toDouble();
-          final n = next.getPixel(x, y).g.toDouble();
-          out.add((n - c) / (n + c + eps));
-        }
-      }
-      for (var y = 0; y < motionSize; y++) {
-        for (var x = 0; x < motionSize; x++) {
-          final c = curr.getPixel(x, y).b.toDouble();
-          final n = next.getPixel(x, y).b.toDouble();
-          out.add((n - c) / (n + c + eps));
+      final currBytes = batch[fi].motion.getBytes(order: img.ChannelOrder.rgb);
+      final nextBytes = batch[fi + 1].motion.getBytes(order: img.ChannelOrder.rgb);
+      for (var c = 0; c < 3; c++) {
+        for (var i = 0; i < planeSize; i++) {
+          final cv = currBytes[i * 3 + c].toDouble();
+          final nv = nextBytes[i * 3 + c].toDouble();
+          buf[offset++] = (nv - cv) / (nv + cv + eps);
         }
       }
     }
-    return out;
+    return buf;
   }
 
   dynamic _makeTensor(List<int> shape) {
@@ -996,27 +978,22 @@ class _BigSmallService {
     }
     return <double>[];
   }
-
-  dynamic _reshapeToShape(List<double> values, List<int> shape) {
-    final total = shape.fold<int>(1, (int p, int v) => p * v);
-    List<double> normalized = values;
-    if (normalized.length < total) {
-      normalized = <double>[...normalized, ...List<double>.filled(total - normalized.length, 0.0)];
-    } else if (normalized.length > total) {
-      normalized = normalized.sublist(0, total);
-    }
-    var idx = 0;
-    dynamic build(int dim) {
-      if (dim == shape.length - 1) {
-        final out = List<double>.filled(shape[dim], 0.0, growable: false);
-        for (var i = 0; i < out.length; i++) {
-          out[i] = normalized[idx++];
-        }
-        return out;
-      }
-      return List<dynamic>.generate(shape[dim], (_) => build(dim + 1), growable: false);
-    }
-
-    return build(0);
-  }
 }
+
+InterpreterOptions _makeInterpOptions(int threads) {
+  final opts = InterpreterOptions()..threads = threads;
+  if (Platform.isAndroid) {
+    try {
+      opts.addDelegate(GpuDelegateV2());
+    } catch (_) {}
+  } else if (Platform.isIOS) {
+    try {
+      opts.addDelegate(CoreMlDelegate());
+    } catch (_) {}
+  }
+  return opts;
+}
+
+// MiniFASNet models have TRANSPOSE ops for NCHW input — GPU delegate produces
+// incorrect outputs for NCHW layouts, so these models must run on CPU only.
+InterpreterOptions _cpuOptions(int threads) => InterpreterOptions()..threads = threads;

@@ -1,9 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:vcmrtdapp/features/face_verification/face_verification_feature_flags.dart';
 import 'package:vcmrtdapp/features/face_verification/face_verification_screen.dart';
-import 'package:vcmrtdapp/widgets/pages/face_verification_screen.dart' as legacy;
 
 class FaceVerificationEntryScreen extends StatelessWidget {
   final Uint8List? nfcImageBytes;
@@ -19,14 +17,6 @@ class FaceVerificationEntryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (kUseLegacyFaceVerification) {
-      return legacy.FaceVerificationScreen(
-        nfcImageBytes: nfcImageBytes,
-        onBackPressed: onBackPressed,
-        photoIssueDate: photoIssueDate,
-      );
-    }
-
     return FlutterFaceVerificationScreen(
       nfcImageBytes: nfcImageBytes,
       onBackPressed: onBackPressed,

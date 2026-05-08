@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:image/image.dart' as img;
@@ -51,8 +52,36 @@ class FaceDetectorService {
     await _pipeline.initialize();
   }
 
+  void initializeFromBuffers({
+    required Uint8List detector,
+    required Uint8List landmarks,
+    required Uint8List blendshapes,
+  }) {
+    _pipeline.initializeFromBuffers(detector: detector, landmarks: landmarks, blendshapes: blendshapes);
+  }
+
   void resetTracking() {
     _pipeline.resetTracking();
+  }
+
+  void setTrackingCrop(DetectorStageOutput? crop) {
+    _pipeline.setTrackingCrop(crop);
+  }
+
+  DetectorStageOutput? runDetectorStage(img.Image image) {
+    return _pipeline.runDetectorStage(image);
+  }
+
+  FaceObservation? runLandmarkStage(img.Image image, DetectorStageOutput crop, {bool runBlendshapes = true}) {
+    final result = _pipeline.runLandmarkStage(image, crop, runBlendshapes: runBlendshapes);
+    if (result == null || result.landmarks.isEmpty) {
+      return null;
+    }
+    return buildObservation(image, result);
+  }
+
+  DetectorStageOutput? computeTrackingCrop(FaceLandmarkerResult result, int imgW, int imgH) {
+    return _pipeline.computeTrackingCrop(result, imgW, imgH);
   }
 
   FaceObservation? detectPrimaryFace(img.Image image, {bool runBlendshapes = true}) {
@@ -90,6 +119,28 @@ class FaceDetectorService {
   img.Image? detectAndCrop(img.Image image) {
     final result = detectPrimaryFace(image, runBlendshapes: false);
     return result?.alignedFace112;
+  }
+
+  FaceObservation buildObservation(img.Image image, FaceLandmarkerResult result) {
+    final landmarks = result.landmarks.first;
+    if (landmarks.length <= _idxRightEye) {
+      throw StateError('Face landmark result is missing required alignment landmarks');
+    }
+
+    final box = _boundsFromLandmarks(landmarks, image.width, image.height);
+    final mouthRatio = _mouthOpenRatioFromLandmarks(landmarks);
+    final yaw = matrixYaw(result);
+    final blendshapeScores = _blendshapeMap(result);
+    final aligned = _similarityWarp(image, result);
+
+    return FaceObservation(
+      result: result,
+      boundingBox: box,
+      mouthRatio: mouthRatio,
+      yawDegrees: yaw,
+      blendshapeScores: blendshapeScores,
+      alignedFace112: aligned,
+    );
   }
 
   double? matrixYaw(FaceLandmarkerResult result) {
@@ -228,13 +279,14 @@ class FaceDetectorService {
   }
 
   img.Image _warpAffine(img.Image source, _SimilarityTransform t) {
-    final out = img.Image(width: _targetSize, height: _targetSize);
-    img.fill(out, color: img.ColorRgb8(0, 0, 0));
-
     final det = t.m00 * t.m11 - t.m01 * t.m10;
     if (det.abs() < 1e-9) {
-      return out;
+      return img.Image(width: _targetSize, height: _targetSize);
     }
+
+    final srcW = source.width, srcH = source.height;
+    final srcBytes = source.getBytes(order: img.ChannelOrder.rgb);
+    final outBytes = Uint8List(_targetSize * _targetSize * 3);
 
     for (var y = 0; y < _targetSize; y++) {
       for (var x = 0; x < _targetSize; x++) {
@@ -242,14 +294,25 @@ class FaceDetectorService {
         final dy = y - t.ty;
         final sx = (t.m11 * dx - t.m01 * dy) / det;
         final sy = (-t.m10 * dx + t.m00 * dy) / det;
-        if (sx < 0 || sy < 0 || sx >= source.width || sy >= source.height) {
-          continue;
+        if (sx < 0 || sy < 0 || sx >= srcW || sy >= srcH) continue;
+
+        final x0 = sx.floor(), y0 = sy.floor();
+        final fx = sx - x0, fy = sy - y0;
+        final x1 = (x0 + 1).clamp(0, srcW - 1);
+        final y1 = (y0 + 1).clamp(0, srcH - 1);
+        final i00 = (y0 * srcW + x0) * 3;
+        final i01 = (y0 * srcW + x1) * 3;
+        final i10 = (y1 * srcW + x0) * 3;
+        final i11 = (y1 * srcW + x1) * 3;
+        final di = (y * _targetSize + x) * 3;
+        for (var c = 0; c < 3; c++) {
+          final top = srcBytes[i00 + c] * (1 - fx) + srcBytes[i01 + c] * fx;
+          final bot = srcBytes[i10 + c] * (1 - fx) + srcBytes[i11 + c] * fx;
+          outBytes[di + c] = (top * (1 - fy) + bot * fy).round().clamp(0, 255);
         }
-        final p = source.getPixel(sx.floor(), sy.floor());
-        out.setPixelRgb(x, y, p.r.toInt(), p.g.toInt(), p.b.toInt());
       }
     }
-    return out;
+    return img.Image.fromBytes(width: _targetSize, height: _targetSize, bytes: outBytes.buffer, numChannels: 3);
   }
 
   Future<void> close() async {

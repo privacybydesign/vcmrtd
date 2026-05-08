@@ -9,13 +9,16 @@ import UIKit
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
         GeneratedPluginRegistrant.register(with: self)
-        
+
         // Register deep link plugin
         guard let controller = window?.rootViewController as? FlutterViewController else {
             fatalError("Root controller is not FlutterViewController")
         }
-        
+
         DeepLinkPlugin.register(with: registrar(forPlugin: "DeepLinkPlugin")!)
+
+        // Register image_channel for JP2 passport photo decoding (UIImage handles JPEG 2000 natively)
+        ImageDecodeChannel.register(with: registrar(forPlugin: "ImageDecodeChannel")!)
         
         return super.application(application, didFinishLaunchingWithOptions: launchOptions)
     }

@@ -11,7 +11,20 @@ enum _VerificationState { idle, activeLiveness, processing, result }
 class VerificationResult {
   final double matchScore;
   final bool isLive;
-  const VerificationResult({required this.matchScore, required this.isLive});
+  final double? antiSpoofScore;
+  final bool antiSpoofPassed;
+  final double? rppgHr;
+  final bool rppgPassed;
+  final int rppgSampleCount;
+  const VerificationResult({
+    required this.matchScore,
+    required this.isLive,
+    this.antiSpoofScore,
+    this.antiSpoofPassed = false,
+    this.rppgHr,
+    this.rppgPassed = false,
+    this.rppgSampleCount = 0,
+  });
 }
 
 String _actionLabel(String action) => switch (action) {
@@ -78,7 +91,9 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
   bool _activeLivenessStopping = false;
   bool _startingLiveness = false;
   bool _engineReady = false;
-  bool _frameInFlight = false;
+  CameraImage? _pendingImage;
+  bool _isSending = false;
+  int _frameToken = 0;
 
   @override
   void initState() {
@@ -89,11 +104,22 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
 
   Future<void> _bootstrap() async {
     try {
-      await _engine.initialize();
-      _eventSub = _engine.events.listen(_onLivenessEvent);
+      // Engine init and camera opening are independent — run in parallel.
+      await Future.wait(<Future<void>>[_engine.initialize(), _openCamera()]);
       if (!mounted) return;
-      _engineReady = true;
-      await _openCamera();
+      _eventSub = _engine.events.listen(_onLivenessEvent);
+      setState(() => _engineReady = true);
+
+      // Start NFC decode + detection + embedding in background so it's ready
+      // before the user taps Start — eliminates the delay on first tap.
+      final nfcImage = widget.nfcImageBytes;
+      if (nfcImage != null && nfcImage.isNotEmpty) {
+        unawaited(
+          _engine.prepareNfcFaceEagerly(nfcImage).catchError((_) {
+            // Silently swallowed — start() will retry when the user taps.
+          }),
+        );
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _errorMessage = 'Could not initialize Flutter face engine: $e');
@@ -134,7 +160,7 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
     _activeLivenessStopping = true;
 
     try {
-      _frameInFlight = false;
+      _invalidateFramePipeline();
       await _engine.stop();
 
       final ctrl = _cameraController;
@@ -143,6 +169,23 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
       }
     } finally {
       _activeLivenessStopping = false;
+    }
+  }
+
+  void _invalidateFramePipeline() {
+    _pendingImage = null;
+    _isSending = false;
+    _frameToken++;
+  }
+
+  bool get _isFrameLoopActive => !_isDisposed && _state == _VerificationState.activeLiveness;
+
+  void _finalizeSendCycle(int token) {
+    if (token != _frameToken) return;
+    _isSending = false;
+    if (_pendingImage != null && _isFrameLoopActive) {
+      _isSending = true;
+      unawaited(_sendLatestFrame(token));
     }
   }
 
@@ -251,30 +294,40 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
     if (_isDisposed) return;
     if (_state != _VerificationState.activeLiveness) return;
     if (_cameraClosing || _activeLivenessStopping) return;
-    if (_frameInFlight) return;
 
-    _frameInFlight = true;
-    final rotation = _cameraFrameRotation();
-    if (rotation == null) {
-      _frameInFlight = false;
-      return;
+    _pendingImage = image;
+
+    if (!_isSending) {
+      _isSending = true;
+      final token = _frameToken;
+      unawaited(_sendLatestFrame(token));
     }
+  }
 
-    unawaited(() async {
-      try {
+  Future<void> _sendLatestFrame(int token) async {
+    try {
+      while (_isFrameLoopActive && token == _frameToken) {
+        final image = _pendingImage;
+        if (image == null) break;
+
+        _pendingImage = null;
+        final rotation = _cameraFrameRotation();
+        if (rotation == null) continue;
+
         await _engine.processFrame(image, rotation);
-      } catch (e) {
-        if (!_isDisposed && mounted) {
-          setState(() {
-            _state = _VerificationState.idle;
-            _currentAction = null;
-            _errorMessage = 'Frame processing error: $e';
-          });
-        }
-      } finally {
-        _frameInFlight = false;
       }
-    }());
+    } catch (e) {
+      if (!_isDisposed && mounted) {
+        _invalidateFramePipeline();
+        setState(() {
+          _state = _VerificationState.idle;
+          _currentAction = null;
+          _errorMessage = 'Frame processing error: $e';
+        });
+      }
+    } finally {
+      _finalizeSendCycle(token);
+    }
   }
 
   int? _cameraFrameRotation() {
@@ -342,10 +395,25 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
       case 'complete':
         final passed = map['passed'] as bool;
         final matchScore = (map['matchScore'] as num?)?.toDouble() ?? 0.0;
-        _onComplete(passed: passed, matchScore: matchScore);
+        final antiSpoofScore = (map['antiSpoofScore'] as num?)?.toDouble();
+        final antiSpoofPassed = (map['antiSpoofPassed'] as bool?) ?? false;
+        final rppg = map['rppg'] as Map<String, dynamic>?;
+        final rppgHr = (rppg?['hr'] as num?)?.toDouble();
+        final rppgPassed = (rppg?['passed'] as bool?) ?? false;
+        final rppgSampleCount = (rppg?['sampleCount'] as num?)?.toInt() ?? 0;
+        _onComplete(
+          passed: passed,
+          matchScore: matchScore,
+          antiSpoofScore: antiSpoofScore,
+          antiSpoofPassed: antiSpoofPassed,
+          rppgHr: rppgHr,
+          rppgPassed: rppgPassed,
+          rppgSampleCount: rppgSampleCount,
+        );
 
       case 'error':
         final message = map['message']?.toString() ?? 'Unknown Flutter pipeline error';
+        _invalidateFramePipeline();
         setState(() {
           _state = _VerificationState.idle;
           _currentAction = null;
@@ -354,11 +422,28 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
     }
   }
 
-  void _onComplete({required bool passed, required double matchScore}) {
+  void _onComplete({
+    required bool passed,
+    required double matchScore,
+    double? antiSpoofScore,
+    bool antiSpoofPassed = false,
+    double? rppgHr,
+    bool rppgPassed = false,
+    int rppgSampleCount = 0,
+  }) {
     if (!mounted || _isDisposed) return;
+    _invalidateFramePipeline();
     setState(() {
       _state = _VerificationState.result;
-      _result = VerificationResult(matchScore: matchScore, isLive: passed);
+      _result = VerificationResult(
+        matchScore: matchScore,
+        isLive: passed,
+        antiSpoofScore: antiSpoofScore,
+        antiSpoofPassed: antiSpoofPassed,
+        rppgHr: rppgHr,
+        rppgPassed: rppgPassed,
+        rppgSampleCount: rppgSampleCount,
+      );
     });
     unawaited(_stopActiveFlow(disposeCamera: false));
   }
@@ -612,7 +697,26 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
   Widget _buildResult() {
     final r = _result!;
     final threshold = _matchThreshold();
-    final passed = r.matchScore > threshold && r.isLive;
+    final matchPassed = r.matchScore > threshold;
+    final passed = matchPassed && r.isLive;
+
+    Widget scoreRow(String label, String value, bool ok) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.grey)),
+          Row(
+            children: [
+              Text(value, style: TextStyle(color: ok ? Colors.green : Colors.red)),
+              const SizedBox(width: 6),
+              Icon(ok ? Icons.check : Icons.close, size: 16, color: ok ? Colors.green : Colors.red),
+            ],
+          ),
+        ],
+      ),
+    );
+
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -626,13 +730,24 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: passed ? Colors.green : Colors.red),
           ),
-          const SizedBox(height: 16),
-          Text(
-            'Match score: ${(r.matchScore * 100).toStringAsFixed(1)}%',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.grey),
+          const SizedBox(height: 20),
+          scoreRow(
+            'Match (≥${(threshold * 100).toStringAsFixed(0)}%)',
+            '${(r.matchScore * 100).toStringAsFixed(1)}%',
+            matchPassed,
           ),
-          const SizedBox(height: 40),
+          scoreRow(
+            'Anti-spoof',
+            r.antiSpoofScore != null ? '${(r.antiSpoofScore! * 100).toStringAsFixed(1)}%' : 'n/a',
+            r.antiSpoofPassed,
+          ),
+          scoreRow(
+            'rPPG (${r.rppgSampleCount} samples)',
+            r.rppgHr != null ? '${r.rppgHr!.toStringAsFixed(0)} bpm' : 'n/a',
+            r.rppgPassed,
+          ),
+          scoreRow('Liveness actions', r.isLive ? 'passed' : 'failed', r.isLive),
+          const SizedBox(height: 32),
           OutlinedButton(onPressed: _retry, child: const Text('Try Again')),
         ],
       ),
