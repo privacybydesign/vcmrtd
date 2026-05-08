@@ -31,6 +31,7 @@ class FaceLandmarkPipeline {
   static const double _scoreThreshold = 0.5;
   static const double _iouThreshold = 0.3;
   static const double _fixedCropMargin = 2.0;
+  // Shifts the crop window upward so the top of the head is included rather than cropped off.
   static const double _fixedCropShiftY = -0.10;
   static const double _presenceThreshold = 0.5;
 
@@ -478,6 +479,9 @@ class FaceLandmarkPipeline {
     return buf.buffer;
   }
 
+  // Rotated affine sampling: maps each output pixel back to its source coordinate using the
+  // crop's rotation angle, so the landmark model always receives an upright face patch without
+  // an explicit crop-then-rotate step.
   ByteBuffer _buildLandmarkInput(img.Image bitmap, DetectorStageOutput crop) {
     final imgW = bitmap.width.toDouble();
     final imgH = bitmap.height.toDouble();
@@ -578,6 +582,8 @@ class FaceLandmarkPipeline {
     return box;
   }
 
+  // Score-weighted box merging (soft NMS): overlapping detections are blended rather than
+  // suppressed, reducing missed faces when two detections share the same true face.
   List<double>? _softNms(List<List<double>> sorted, int boxSize) {
     final suppressed = List<bool>.filled(sorted.length, false);
     for (var i = 0; i < sorted.length; i++) {
@@ -687,6 +693,8 @@ class FaceLandmarkPipeline {
     return <double>[shiftedCx - normW / 2.0, shiftedCy - normH / 2.0, normW, normH, angle];
   }
 
+  // Denormalizes landmark coordinates from the model's [0, landmarkSize] space back to
+  // the original image frame, un-rotating by the crop angle.
   List<NormalizedLandmark> _remapLandmarks(
     List<double> raw,
     double cropX1,
@@ -737,6 +745,8 @@ class FaceLandmarkPipeline {
     }, growable: false);
   }
 
+  // Builds a 4×4 rotation matrix via Gram-Schmidt: right axis from ear-to-ear landmarks,
+  // up axis orthogonalized against right, normal = right × up (all unit vectors).
   List<double>? _computePoseMatrix(List<NormalizedLandmark> lm) {
     if (lm.length < 455) return null;
     var rX = lm[454].x - lm[234].x;

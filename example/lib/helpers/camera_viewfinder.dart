@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
@@ -48,46 +47,46 @@ class OcrFrame {
   }
 
   OcrFrame _withCrop(Uint8List b, int w, int h, int bpr) => OcrFrame(
-        bytes: b,
-        width: w,
-        height: h,
-        bytesPerRow: bpr,
-        rotation: rotation,
-        roiLeft: 0,
-        roiTop: 0,
-        roiWidth: 1,
-        roiHeight: 1,
-        isNv21: isNv21,
-      );
+    bytes: b,
+    width: w,
+    height: h,
+    bytesPerRow: bpr,
+    rotation: rotation,
+    roiLeft: 0,
+    roiTop: 0,
+    roiWidth: 1,
+    roiHeight: 1,
+    isNv21: isNv21,
+  );
 
   // Converts screen-space ROI fractions to sensor-space pixel rect,
   // matching the rotation transform in TesseractOcrEngine.kt.
   ({int x, int y, int w, int h}) _roiRect() => switch (rotation) {
-        90 => (
-          x: (roiTop * width).toInt(),
-          y: ((1.0 - roiLeft - roiWidth) * height).toInt(),
-          w: (roiHeight * width).toInt(),
-          h: (roiWidth * height).toInt(),
-        ),
-        270 => (
-          x: ((1.0 - roiTop - roiHeight) * width).toInt(),
-          y: (roiLeft * height).toInt(),
-          w: (roiHeight * width).toInt(),
-          h: (roiWidth * height).toInt(),
-        ),
-        180 => (
-          x: ((1.0 - roiLeft - roiWidth) * width).toInt(),
-          y: ((1.0 - roiTop - roiHeight) * height).toInt(),
-          w: (roiWidth * width).toInt(),
-          h: (roiHeight * height).toInt(),
-        ),
-        _ => (
-          x: (roiLeft * width).toInt(),
-          y: (roiTop * height).toInt(),
-          w: (roiWidth * width).toInt(),
-          h: (roiHeight * height).toInt(),
-        ),
-      };
+    90 => (
+      x: (roiTop * width).toInt(),
+      y: ((1.0 - roiLeft - roiWidth) * height).toInt(),
+      w: (roiHeight * width).toInt(),
+      h: (roiWidth * height).toInt(),
+    ),
+    270 => (
+      x: ((1.0 - roiTop - roiHeight) * width).toInt(),
+      y: (roiLeft * height).toInt(),
+      w: (roiHeight * width).toInt(),
+      h: (roiWidth * height).toInt(),
+    ),
+    180 => (
+      x: ((1.0 - roiLeft - roiWidth) * width).toInt(),
+      y: ((1.0 - roiTop - roiHeight) * height).toInt(),
+      w: (roiWidth * width).toInt(),
+      h: (roiHeight * height).toInt(),
+    ),
+    _ => (
+      x: (roiLeft * width).toInt(),
+      y: (roiTop * height).toInt(),
+      w: (roiWidth * width).toInt(),
+      h: (roiHeight * height).toInt(),
+    ),
+  };
 
   // Crops tightly-packed NV21. x/width rounded to even for UV-pair alignment.
   (Uint8List, int, int) _cropNv21(int x, int y, int w, int h) {

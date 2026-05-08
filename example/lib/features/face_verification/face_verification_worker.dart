@@ -207,6 +207,9 @@ class FaceVerificationWorker {
     });
   }
 
+  // Back-pressure: only the latest camera frame is queued. If the isolate is still busy
+  // with the previous frame, the intermediate frames are silently dropped so the pipeline
+  // never accumulates unbounded lag.
   void _enqueuePipelineFrame(Map<String, dynamic> payload) {
     if (_pipelineBusy) {
       _queuedPipelinePayload = payload;
@@ -318,6 +321,8 @@ class FaceVerificationWorker {
     _completePassiveIdle();
   }
 
+  // Must drain the passive queue before reading results: the last buffered frames may still
+  // be in-flight in the isolate when getPassiveResult() is called after the session ends.
   Future<void> _waitPassiveIdle() {
     if (!_passiveBusy && _queuedPassivePayload == null) return Future<void>.value();
     return (_passiveIdle ??= Completer<void>()).future;
@@ -626,57 +631,38 @@ img.Image _rotateToUpright(img.Image image, int rotationDegrees) {
   return img.Image.fromBytes(width: rotated.width, height: rotated.height, bytes: rgb.buffer, numChannels: 3);
 }
 
-// 90° CW: output[dstY=x][dstX=srcH-1-y] = src[y][x], output size = srcH × srcW
-img.Image _rotate90CW(img.Image src) {
+img.Image _transposePixels(img.Image src, int dstW, int dstH, int Function(int x, int y) dstIdx) {
   final srcW = src.width, srcH = src.height;
-  final dstW = srcH, dstH = srcW;
   final s = src.getBytes(order: img.ChannelOrder.rgb);
   final d = Uint8List(dstW * dstH * 3);
   for (var y = 0; y < srcH; y++) {
     for (var x = 0; x < srcW; x++) {
       final si = (y * srcW + x) * 3;
-      final di = (x * dstW + (dstW - 1 - y)) * 3;
+      final di = dstIdx(x, y) * 3;
       d[di] = s[si];
       d[di + 1] = s[si + 1];
       d[di + 2] = s[si + 2];
     }
   }
   return img.Image.fromBytes(width: dstW, height: dstH, bytes: d.buffer, numChannels: 3);
+}
+
+// 90° CW: output[dstY=x][dstX=srcH-1-y] = src[y][x], output size = srcH × srcW
+img.Image _rotate90CW(img.Image src) {
+  final dstW = src.height, dstH = src.width;
+  return _transposePixels(src, dstW, dstH, (x, y) => x * dstW + (dstW - 1 - y));
 }
 
 // 270° CW (= 90° CCW): output[dstY=srcW-1-x][dstX=y] = src[y][x]
 img.Image _rotate270CW(img.Image src) {
-  final srcW = src.width, srcH = src.height;
-  final dstW = srcH, dstH = srcW;
-  final s = src.getBytes(order: img.ChannelOrder.rgb);
-  final d = Uint8List(dstW * dstH * 3);
-  for (var y = 0; y < srcH; y++) {
-    for (var x = 0; x < srcW; x++) {
-      final si = (y * srcW + x) * 3;
-      final di = ((dstH - 1 - x) * dstW + y) * 3;
-      d[di] = s[si];
-      d[di + 1] = s[si + 1];
-      d[di + 2] = s[si + 2];
-    }
-  }
-  return img.Image.fromBytes(width: dstW, height: dstH, bytes: d.buffer, numChannels: 3);
+  final dstW = src.height, dstH = src.width;
+  return _transposePixels(src, dstW, dstH, (x, y) => (dstH - 1 - x) * dstW + y);
 }
 
 // 180°: output[srcH-1-y][srcW-1-x] = src[y][x]
 img.Image _rotate180(img.Image src) {
-  final srcW = src.width, srcH = src.height;
-  final s = src.getBytes(order: img.ChannelOrder.rgb);
-  final d = Uint8List(srcW * srcH * 3);
-  for (var y = 0; y < srcH; y++) {
-    for (var x = 0; x < srcW; x++) {
-      final si = (y * srcW + x) * 3;
-      final di = ((srcH - 1 - y) * srcW + (srcW - 1 - x)) * 3;
-      d[di] = s[si];
-      d[di + 1] = s[si + 1];
-      d[di + 2] = s[si + 2];
-    }
-  }
-  return img.Image.fromBytes(width: srcW, height: srcH, bytes: d.buffer, numChannels: 3);
+  final w = src.width, h = src.height;
+  return _transposePixels(src, w, h, (x, y) => (h - 1 - y) * w + (w - 1 - x));
 }
 
 Map<String, dynamic> _imagePayload(img.Image image) {

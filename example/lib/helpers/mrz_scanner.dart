@@ -101,8 +101,7 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
         bytes: cropped.bytes,
         metadata: InputImageMetadata(
           size: Size(cropped.width.toDouble(), cropped.height.toDouble()),
-          rotation: InputImageRotationValue.fromRawValue(frame.rotation) ??
-              InputImageRotation.rotation0deg,
+          rotation: InputImageRotationValue.fromRawValue(frame.rotation) ?? InputImageRotation.rotation0deg,
           format: frame.isNv21 ? InputImageFormat.nv21 : InputImageFormat.bgra8888,
           bytesPerRow: cropped.bytesPerRow,
         ),

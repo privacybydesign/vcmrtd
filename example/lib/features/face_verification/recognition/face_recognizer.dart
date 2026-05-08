@@ -12,27 +12,23 @@ class FaceRecognizer {
   int _inputW = 112;
   int _embeddingSize = 512;
 
-  Future<void> initialize() async {
-    if (_interpreter != null) return;
-
+  Future<InterpreterOptions> _buildOptions() async {
     final options = InterpreterOptions()..threads = 4;
     try {
       options.addDelegate(await FlexDelegate.create());
     } catch (_) {}
+    return options;
+  }
 
-    _interpreter = await Interpreter.fromAsset(_modelAsset, options: options);
+  Future<void> initialize() async {
+    if (_interpreter != null) return;
+    _interpreter = await Interpreter.fromAsset(_modelAsset, options: await _buildOptions());
     _readShapes();
   }
 
   Future<void> initializeFromBuffer(Uint8List modelBytes) async {
     if (_interpreter != null) return;
-
-    final options = InterpreterOptions()..threads = 4;
-    try {
-      options.addDelegate(await FlexDelegate.create());
-    } catch (_) {}
-
-    _interpreter = Interpreter.fromBuffer(modelBytes, options: options);
+    _interpreter = Interpreter.fromBuffer(modelBytes, options: await _buildOptions());
     _readShapes();
   }
 

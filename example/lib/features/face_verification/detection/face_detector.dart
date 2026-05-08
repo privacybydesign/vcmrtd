@@ -33,6 +33,8 @@ class FaceDetectorService {
   static const int _idxMouthL = 61;
   static const int _idxMouthR = 291;
 
+  // ArcFace canonical 5-point alignment targets for a 112×112 crop:
+  // left eye, right eye, nose tip, left mouth corner, right mouth corner.
   static const List<double> _dstPoints = <double>[
     38.2946,
     51.6963,
@@ -96,24 +98,8 @@ class FaceDetectorService {
       return null;
     }
     _pipeline.updateTrackingCrop(result, image.width, image.height);
-
-    final landmarks = result.landmarks.first;
-    if (landmarks.length <= _idxRightEye) return null;
-
-    final box = _boundsFromLandmarks(landmarks, image.width, image.height);
-    final mouthRatio = _mouthOpenRatioFromLandmarks(landmarks);
-    final yaw = matrixYaw(result);
-    final blendshapeScores = _blendshapeMap(result);
-    final aligned = _similarityWarp(image, result);
-
-    return FaceObservation(
-      result: result,
-      boundingBox: box,
-      mouthRatio: mouthRatio,
-      yawDegrees: yaw,
-      blendshapeScores: blendshapeScores,
-      alignedFace112: aligned,
-    );
+    if (result.landmarks.first.length <= _idxRightEye) return null;
+    return buildObservation(image, result);
   }
 
   img.Image? detectAndCrop(img.Image image) {
@@ -236,6 +222,8 @@ class FaceDetectorService {
     return _warpAffine(bitmap, t);
   }
 
+  // Closed-form Umeyama algorithm: finds the least-squares similarity transform
+  // (uniform scale + rotation + translation) mapping src to dst landmark pairs.
   _SimilarityTransform _estimateSimilarityTransform(List<double> src, List<double> dst) {
     final n = src.length ~/ 2;
     var srcMx = 0.0;
@@ -278,6 +266,8 @@ class FaceDetectorService {
     return _SimilarityTransform(m00: m00, m01: m01, m10: m10, m11: m11, tx: tx, ty: ty);
   }
 
+  // Inverse warp: for each destination pixel compute its source coordinate and bilinearly sample.
+  // Forward mapping would scatter source pixels and leave unfilled holes in the output.
   img.Image _warpAffine(img.Image source, _SimilarityTransform t) {
     final det = t.m00 * t.m11 - t.m01 * t.m10;
     if (det.abs() < 1e-9) {

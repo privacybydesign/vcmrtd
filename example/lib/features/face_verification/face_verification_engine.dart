@@ -115,69 +115,69 @@ class FaceVerificationEngine {
     try {
       _framesSinceLastAction++;
       final face = frameResult.face;
-      if (face == null) {
-        _active.lastFacePresent = false;
-      } else {
-        _captureSelfie(face);
-        if (FaceVerificationTuning.emitDebugEvents) {
-          _sendEvent({
-            'type': 'debug',
-            'stage': _active.isAligning ? 'aligning' : 'action',
-            'action': (_currentActionIndex < _pendingActions.length)
-                ? _pendingActions[_currentActionIndex].wireName
-                : null,
-            'yaw': face.yawDegrees,
-            'smile':
-                ((face.blendshapeScores['mouthSmileLeft'] ?? 0.0) + (face.blendshapeScores['mouthSmileRight'] ?? 0.0)) /
-                2.0,
-            'leftEyeOpen': null,
-            'rightEyeOpen': null,
-            'mouthRatio': face.mouthRatio,
-            'framesSinceLastAction': _framesSinceLastAction,
-          });
-        }
-      }
+      _updateFaceState(face);
 
       if (_currentActionIndex >= _pendingActions.length) return;
       final currentAction = _pendingActions[_currentActionIndex];
 
       if (_active.isAligning) {
-        final timedOut = _framesSinceLastAction > _actionTimeoutFrames;
-        if (timedOut) {
-          _active.startAction(currentAction);
-          _framesSinceLastAction = 0;
-          _sendEvent({'type': 'nextAction', 'action': currentAction.wireName});
-          return;
-        }
-        if (face == null) return;
-        final alignDone = _active.processAlignmentFrame(face: face, action: currentAction, timedOut: false);
-        if (alignDone) {
-          _framesSinceLastAction = 0;
-          _sendEvent({'type': 'nextAction', 'action': currentAction.wireName});
-        }
+        _processAligningFrame(face, currentAction);
         return;
       }
 
       if (face == null) {
-        if (_framesSinceLastAction > _actionTimeoutFrames) {
-          await _handleTimeout();
-        }
+        if (_framesSinceLastAction > _actionTimeoutFrames) await _handleTimeout();
         return;
       }
 
-      final actionDone = _active.processFrame(face: face);
-      if (!actionDone) {
-        if (_framesSinceLastAction > _actionTimeoutFrames) {
-          await _handleTimeout();
-        }
-        return;
-      }
-
-      await _handleActionDetected();
+      await _processActionFrame(face);
     } catch (e) {
       _sendEvent({'type': 'error', 'message': e.toString()});
       _running = false;
     }
+  }
+
+  void _updateFaceState(FaceObservation? face) {
+    if (face == null) {
+      _active.lastFacePresent = false;
+      return;
+    }
+    _captureSelfie(face);
+    if (!FaceVerificationTuning.emitDebugEvents) return;
+    _sendEvent({
+      'type': 'debug',
+      'stage': _active.isAligning ? 'aligning' : 'action',
+      'action': (_currentActionIndex < _pendingActions.length) ? _pendingActions[_currentActionIndex].wireName : null,
+      'yaw': face.yawDegrees,
+      'smile':
+          ((face.blendshapeScores['mouthSmileLeft'] ?? 0.0) + (face.blendshapeScores['mouthSmileRight'] ?? 0.0)) / 2.0,
+      'leftEyeOpen': null,
+      'rightEyeOpen': null,
+      'mouthRatio': face.mouthRatio,
+      'framesSinceLastAction': _framesSinceLastAction,
+    });
+  }
+
+  void _processAligningFrame(FaceObservation? face, LivenessAction action) {
+    if (_framesSinceLastAction > _actionTimeoutFrames) {
+      _active.startAction(action);
+      _framesSinceLastAction = 0;
+      _sendEvent({'type': 'nextAction', 'action': action.wireName});
+      return;
+    }
+    if (face == null) return;
+    if (_active.processAlignmentFrame(face: face, action: action, timedOut: false)) {
+      _framesSinceLastAction = 0;
+      _sendEvent({'type': 'nextAction', 'action': action.wireName});
+    }
+  }
+
+  Future<void> _processActionFrame(FaceObservation face) async {
+    if (!_active.processFrame(face: face)) {
+      if (_framesSinceLastAction > _actionTimeoutFrames) await _handleTimeout();
+      return;
+    }
+    await _handleActionDetected();
   }
 
   Future<void> stop() async {
@@ -231,6 +231,8 @@ class FaceVerificationEngine {
     _sendEvent({'type': 'nextAction', 'action': next.wireName});
   }
 
+  // If the user completed exactly the borderline number of actions (neither clearly passed
+  // nor clearly failed), add one extra challenge as a tiebreaker rather than deciding on the edge.
   bool _shouldStartExtra() {
     return !_extraActionMode &&
         _pendingActions.length == _requiredActions &&

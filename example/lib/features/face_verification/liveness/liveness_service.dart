@@ -253,6 +253,8 @@ class ActiveLivenessService {
     return true;
   }
 
+  // Fuses geometric EAR with blendshape confidence: EAR alone fails under reflections/glasses,
+  // blendshape alone fires on squinting. The weighted combination is more robust than either alone.
   bool _detectBlink(FaceObservation face, List<NormalizedLandmark> lm) {
     final avgEar = (_ear(lm, true) + _ear(lm, false)) / 2.0;
     final bL = _blend(face, 'eyeBlinkLeft').clamp(0.0, 1.0);
@@ -290,6 +292,8 @@ class ActiveLivenessService {
     return _blinkPhase == _BlinkPhase.detected;
   }
 
+  // Latch pattern: once the yaw threshold is crossed, hold "detected" until the face returns
+  // near neutral. Without this, a slow turn would fire and immediately un-fire on the same frame.
   bool _detectTurn(FaceObservation face, List<NormalizedLandmark> lm, {required bool left}) {
     if (!_actionBaselineReady) {
       _accumulateActionBaseline(face, lm);
@@ -335,11 +339,11 @@ class ActiveLivenessService {
     if (jaw >= mouthSuppressesSmileBlend) return false;
     final sBlend = (_blend(face, 'mouthSmileLeft') + _blend(face, 'mouthSmileRight')) / 2.0;
 
-    final fH = _dist(lm[10], lm[152]).clamp(1e-6, 1e6);
-    final fW = _dist(lm[234], lm[454]).clamp(1e-6, 1e6);
+    final fH = _landmarkDist(lm[10], lm[152]).clamp(1e-6, 1e6);
+    final fW = _landmarkDist(lm[234], lm[454]).clamp(1e-6, 1e6);
     final cornerY = (lm[61].y + lm[291].y) / 2.0;
     final lift = (lm[0].y - cornerY) / fH;
-    final width = _dist(lm[61], lm[291]) / fW;
+    final width = _landmarkDist(lm[61], lm[291]) / fW;
 
     if (!_actionBaselineReady) {
       _accumulateActionBaseline(face, lm);
@@ -350,6 +354,9 @@ class ActiveLivenessService {
     return sBlend >= smileBlendThreshold || (widthD >= smileWidthThreshold && liftD >= smileLiftThreshold);
   }
 
+  // Collects a short neutral baseline before relative gesture detection begins.
+  // Absolute thresholds would fail for faces that naturally rest off-center or with a
+  // slightly open mouth, so gestures are measured as deltas from this personal baseline.
   void _accumulateActionBaseline(FaceObservation face, List<NormalizedLandmark> lm) {
     _actionAccumulator.add(lm, face.yawDegrees);
     if (_actionAccumulator.size < baselineFrames) return;
@@ -381,10 +388,12 @@ class ActiveLivenessService {
   double _blend(FaceObservation face, String name) => face.blendshapeScores[name] ?? 0.0;
 
   double _mouthRatio(List<NormalizedLandmark> lm) {
-    final fH = _dist(lm[10], lm[152]).clamp(1e-6, 1e6);
-    return _dist(lm[13], lm[14]) / fH;
+    final fH = _landmarkDist(lm[10], lm[152]).clamp(1e-6, 1e6);
+    return _landmarkDist(lm[13], lm[14]) / fH;
   }
 
+  // Eye Aspect Ratio: (vertical openness) / (horizontal span), using MediaPipe face mesh indices.
+  // Values near 0 = closed, ~0.3 = open. Left/right use mirrored contour landmark sets.
   double _ear(List<NormalizedLandmark> lm, bool left) {
     late final int p1;
     late final int p2;
@@ -407,17 +416,17 @@ class ActiveLivenessService {
       p5 = 153;
       p6 = 144;
     }
-    final a = _dist(lm[p2], lm[p6]);
-    final b = _dist(lm[p3], lm[p5]);
-    final c = _dist(lm[p1], lm[p4]);
+    final a = _landmarkDist(lm[p2], lm[p6]);
+    final b = _landmarkDist(lm[p3], lm[p5]);
+    final c = _landmarkDist(lm[p1], lm[p4]);
     return (a + b) / ((2.0 * c) + 1e-6);
   }
+}
 
-  double _dist(NormalizedLandmark a, NormalizedLandmark b) {
-    final dx = a.x - b.x;
-    final dy = a.y - b.y;
-    return math.sqrt(dx * dx + dy * dy);
-  }
+double _landmarkDist(NormalizedLandmark a, NormalizedLandmark b) {
+  final dx = a.x - b.x;
+  final dy = a.y - b.y;
+  return math.sqrt(dx * dx + dy * dy);
 }
 
 enum _BlinkPhase { open, closing, closed, detected }
@@ -440,14 +449,14 @@ class _BaselineAccumulator {
   }
 
   void add(List<NormalizedLandmark> lm, double? matrixYaw) {
-    final fH = _dist(lm[10], lm[152]).clamp(1e-6, 1e6);
-    final fW = _dist(lm[234], lm[454]).clamp(1e-6, 1e6);
+    final fH = _landmarkDist(lm[10], lm[152]).clamp(1e-6, 1e6);
+    final fW = _landmarkDist(lm[234], lm[454]).clamp(1e-6, 1e6);
     final cornerY = (lm[61].y + lm[291].y) / 2.0;
     if (matrixYaw != null) _yawMatrix.add(matrixYaw);
     _yawLandmark.add((lm[1].x - ((lm[234].x + lm[454].x) / 2.0)) / (lm[454].x - lm[234].x).abs().clamp(1e-6, 1e6));
-    _mouth.add(_dist(lm[13], lm[14]) / fH);
+    _mouth.add(_landmarkDist(lm[13], lm[14]) / fH);
     _smileLift.add((lm[0].y - cornerY) / fH);
-    _smileWidth.add(_dist(lm[61], lm[291]) / fW);
+    _smileWidth.add(_landmarkDist(lm[61], lm[291]) / fW);
   }
 
   BaselineSnapshot computeSnapshot() {
@@ -466,12 +475,6 @@ class _BaselineAccumulator {
     if (sorted.length.isOdd) return sorted[m];
     return (sorted[m - 1] + sorted[m]) / 2.0;
   }
-
-  double _dist(NormalizedLandmark a, NormalizedLandmark b) {
-    final dx = a.x - b.x;
-    final dy = a.y - b.y;
-    return math.sqrt(dx * dx + dy * dy);
-  }
 }
 
 class RppgResult {
@@ -487,7 +490,7 @@ class PassiveLivenessService {
   static final double antiSpoofMinScore = FaceVerificationTuning.antiSpoofMinScore;
 
   static const int _inputSize = 80;
-  static const int _liveClassIdx = 1;
+  static const int _liveClassIdx = 1; // MiniFASNet softmax output: 0 = spoof (depth), 1 = live, 2 = spoof (clip)
   static const double _scaleV2 = 2.7;
   static const int _minAntiSpoofSamples = FaceVerificationTuning.antiSpoofMinSamples;
   static const double _antiSpoofSampleRate = 0.70;
@@ -506,7 +509,9 @@ class PassiveLivenessService {
 
   final List<double> _scores = <double>[];
   final List<int> _scoreTimes = <int>[];
+  // ignore: unused_field
   int _attempts = 0;
+  // ignore: unused_field
   int _totalFrames = 0;
 
   final _BigSmallService _bigSmall = _BigSmallService();
@@ -731,6 +736,8 @@ class PassiveLivenessService {
     return img.copyCrop(source, x: x1, y: y1, width: x2 - x1, height: y2 - y1);
   }
 
+  // MiniFASNet was trained on OpenCV BGR images, so channels are written in reverse order
+  // relative to the RGB bytes returned by the image library.
   ByteBuffer _preprocess(img.Image image, {required bool nchw}) {
     final rawBytes = image.getBytes(order: img.ChannelOrder.rgb);
     final planeSize = _inputSize * _inputSize;
@@ -919,22 +926,32 @@ class _BigSmallService {
     }
   }
 
+  // Packs frames as planar channels (all R pixels, then G, then B) as required by the
+  // BigSmall model's appearance stream input layout.
   Float32List _buildAppearanceBuf(List<_RppgFrame> batch) {
     final planeSize = appearanceSize * appearanceSize;
     final buf = Float32List(frames * 3 * planeSize);
     var offset = 0;
     for (var fi = 1; fi <= frames; fi++) {
       final rawBytes = batch[fi].appearance.getBytes(order: img.ChannelOrder.rgb);
-      for (var i = 0; i < planeSize; i++) buf[offset + i] = rawBytes[i * 3] / 255.0;
+      for (var i = 0; i < planeSize; i++) {
+        buf[offset + i] = rawBytes[i * 3] / 255.0;
+      }
       offset += planeSize;
-      for (var i = 0; i < planeSize; i++) buf[offset + i] = rawBytes[i * 3 + 1] / 255.0;
+      for (var i = 0; i < planeSize; i++) {
+        buf[offset + i] = rawBytes[i * 3 + 1] / 255.0;
+      }
       offset += planeSize;
-      for (var i = 0; i < planeSize; i++) buf[offset + i] = rawBytes[i * 3 + 2] / 255.0;
+      for (var i = 0; i < planeSize; i++) {
+        buf[offset + i] = rawBytes[i * 3 + 2] / 255.0;
+      }
       offset += planeSize;
     }
     return buf;
   }
 
+  // Normalized frame-to-frame pixel difference (nv - cv) / (nv + cv + ε) as a proxy for
+  // optical flow. This is the "motion" stream expected by the BigSmall rPPG model.
   Float32List _buildMotionBuf(List<_RppgFrame> batch) {
     final planeSize = motionSize * motionSize;
     const eps = 1e-7;
