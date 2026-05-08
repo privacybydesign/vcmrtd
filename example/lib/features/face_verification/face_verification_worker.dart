@@ -377,29 +377,7 @@ Future<void> _pipelineWorkerLoop(SendPort mainSendPort) async {
         if (cropped == null) return <String, dynamic>{'ok': false};
         return <String, dynamic>{'ok': true, 'png': Uint8List.fromList(img.encodePng(cropped))};
       case 'process_frame':
-        final frame = _decodeCameraPayload(payload);
-        if (frame == null) {
-          detector.resetTracking();
-          return <String, dynamic>{'face': null};
-        }
-        final crop = detector.runDetectorStage(frame);
-        if (crop == null) {
-          detector.resetTracking();
-          return <String, dynamic>{'face': null};
-        }
-        final face = detector.runLandmarkStage(frame, crop, runBlendshapes: true);
-        if (face == null) {
-          detector.resetTracking();
-          return <String, dynamic>{'face': null};
-        }
-        detector.setTrackingCrop(detector.computeTrackingCrop(face.result, frame.width, frame.height));
-        // Include decoded frame so passive can skip its own YUV decode.
-        return <String, dynamic>{
-          'face': _serializeFace(face),
-          'frameRgb': frame.getBytes(order: img.ChannelOrder.rgb),
-          'frameW': frame.width,
-          'frameH': frame.height,
-        };
+        return _handleProcessFrame(detector, payload);
       case 'stop':
         return <String, dynamic>{'ok': true};
       case 'dispose':
@@ -411,6 +389,32 @@ Future<void> _pipelineWorkerLoop(SendPort mainSendPort) async {
   }
 
   await _serve(commandPort, mainSendPort, handle);
+}
+
+Map<String, dynamic> _handleProcessFrame(FaceDetectorService detector, Map<String, dynamic> payload) {
+  final frame = _decodeCameraPayload(payload);
+  if (frame == null) {
+    detector.resetTracking();
+    return <String, dynamic>{'face': null};
+  }
+  final crop = detector.runDetectorStage(frame);
+  if (crop == null) {
+    detector.resetTracking();
+    return <String, dynamic>{'face': null};
+  }
+  final face = detector.runLandmarkStage(frame, crop, runBlendshapes: true);
+  if (face == null) {
+    detector.resetTracking();
+    return <String, dynamic>{'face': null};
+  }
+  detector.setTrackingCrop(detector.computeTrackingCrop(face.result, frame.width, frame.height));
+  // Include decoded frame so passive can skip its own YUV decode.
+  return <String, dynamic>{
+    'face': _serializeFace(face),
+    'frameRgb': frame.getBytes(order: img.ChannelOrder.rgb),
+    'frameW': frame.width,
+    'frameH': frame.height,
+  };
 }
 
 void _passiveWorkerMain(List<Object?> args) {

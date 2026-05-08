@@ -305,19 +305,26 @@ class ActiveLivenessService {
     final lmD = lmYaw - (_neutralYawLandmark ?? 0.0);
 
     if (!_turnDetectedLatch) {
-      final matOk = matD == null ? false : (left ? matD <= -yawThresholdDeg : matD >= yawThresholdDeg);
-      final lmOk = matYaw == null && (left ? lmD <= -landmarkTurnThreshold : lmD >= landmarkTurnThreshold);
-      final hit = matOk || lmOk;
+      final hit = _yawThresholdCrossed(matD, left) ||
+          (matYaw == null && (left ? lmD <= -landmarkTurnThreshold : lmD >= landmarkTurnThreshold));
       if (hit) _turnDetectedLatch = true;
       return hit;
     }
 
-    final back = ((matD == null) || matD.abs() < yawReleaseDeg) && lmD.abs() < landmarkTurnRelease;
-    if (back) {
+    if (_isTurnReleased(matD, lmD)) {
       _turnDetectedLatch = false;
       return false;
     }
     return true;
+  }
+
+  bool _yawThresholdCrossed(double? matD, bool left) {
+    if (matD == null) return false;
+    return left ? matD <= -yawThresholdDeg : matD >= yawThresholdDeg;
+  }
+
+  bool _isTurnReleased(double? matD, double lmD) {
+    return (matD == null || matD.abs() < yawReleaseDeg) && lmD.abs() < landmarkTurnRelease;
   }
 
   bool _detectMouthOpen(FaceObservation face, List<NormalizedLandmark> lm) {
@@ -740,7 +747,7 @@ class PassiveLivenessService {
   // relative to the RGB bytes returned by the image library.
   ByteBuffer _preprocess(img.Image image, {required bool nchw}) {
     final rawBytes = image.getBytes(order: img.ChannelOrder.rgb);
-    final planeSize = _inputSize * _inputSize;
+    const planeSize = _inputSize * _inputSize;
     final buf = Float32List(planeSize * 3);
     if (nchw) {
       for (var i = 0; i < planeSize; i++) {
@@ -929,7 +936,7 @@ class _BigSmallService {
   // Packs frames as planar channels (all R pixels, then G, then B) as required by the
   // BigSmall model's appearance stream input layout.
   Float32List _buildAppearanceBuf(List<_RppgFrame> batch) {
-    final planeSize = appearanceSize * appearanceSize;
+    const planeSize = appearanceSize * appearanceSize;
     final buf = Float32List(frames * 3 * planeSize);
     var offset = 0;
     for (var fi = 1; fi <= frames; fi++) {
@@ -953,7 +960,7 @@ class _BigSmallService {
   // Normalized frame-to-frame pixel difference (nv - cv) / (nv + cv + ε) as a proxy for
   // optical flow. This is the "motion" stream expected by the BigSmall rPPG model.
   Float32List _buildMotionBuf(List<_RppgFrame> batch) {
-    final planeSize = motionSize * motionSize;
+    const planeSize = motionSize * motionSize;
     const eps = 1e-7;
     final buf = Float32List(frames * 3 * planeSize);
     var offset = 0;

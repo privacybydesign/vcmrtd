@@ -469,7 +469,7 @@ class FaceLandmarkPipeline {
   ByteBuffer _buildDetectorInput(img.Image bitmap) {
     final letterboxed = _drawDetectorLetterboxed(bitmap);
     final rawBytes = letterboxed.getBytes(order: img.ChannelOrder.rgb);
-    final total = _detectorSize * _detectorSize;
+    const total = _detectorSize * _detectorSize;
     final buf = _detectorInputBuf!;
     for (var i = 0; i < total; i++) {
       buf[i * 3] = (rawBytes[i * 3] - 127.5) / 127.5;
@@ -491,7 +491,7 @@ class FaceLandmarkPipeline {
     final scaleY = crop.cropH * imgH / _landmarkSize;
     final cosA = math.cos(crop.angle);
     final sinA = math.sin(crop.angle);
-    final half = _landmarkSize * 0.5;
+    const half = _landmarkSize * 0.5;
     final rawBytes = bitmap.getBytes(order: img.ChannelOrder.rgb);
     final bitmapW = bitmap.width;
     final bitmapH = bitmap.height;
@@ -536,8 +536,8 @@ class FaceLandmarkPipeline {
   }
 
   List<double>? _decodeAndNms() {
-    final scale = _detectorSize.toDouble();
-    final boxSize = 5 + _detectorKeypoints * 2;
+    const scale = _detectorSize * 1.0;
+    const boxSize = 5 + _detectorKeypoints * 2;
     final boxes = <List<double>>[];
     for (var i = 0; i < _numAnchors; i++) {
       final box = _decodeBox(i, scale, boxSize);
@@ -596,22 +596,22 @@ class FaceLandmarkPipeline {
           suppressed[j] = true;
         }
       }
-      final totalScore = group.fold<double>(0.0, (double p, List<double> b) => p + b[4]);
-      if (totalScore <= 1e-6) return base;
-      final merged = List<double>.filled(boxSize, 0.0);
-      for (final box in group) {
-        final w = box[4] / totalScore;
-        for (var j = 0; j < 4; j++) {
-          merged[j] += box[j] * w;
-        }
-        for (var j = 5; j < boxSize; j++) {
-          merged[j] += box[j] * w;
-        }
-      }
-      merged[4] = group.first[4];
-      return merged;
+      return _mergeBoxGroup(group, boxSize);
     }
     return null;
+  }
+
+  List<double> _mergeBoxGroup(List<List<double>> group, int boxSize) {
+    final totalScore = group.fold<double>(0.0, (double p, List<double> b) => p + b[4]);
+    if (totalScore <= 1e-6) return group.first;
+    final merged = List<double>.filled(boxSize, 0.0);
+    for (final box in group) {
+      final w = box[4] / totalScore;
+      for (var j = 0; j < 4; j++) { merged[j] += box[j] * w; }
+      for (var j = 5; j < boxSize; j++) { merged[j] += box[j] * w; }
+    }
+    merged[4] = group.first[4];
+    return merged;
   }
 
   double _iou(List<double> a, List<double> b) {
@@ -810,7 +810,7 @@ class FaceLandmarkPipeline {
   }
 
   double _normalizeAngle(double angle) {
-    final twoPi = 2.0 * math.pi;
+    const twoPi = 2.0 * math.pi;
     var a = angle % twoPi;
     if (a > math.pi) a -= twoPi;
     if (a < -math.pi) a += twoPi;
