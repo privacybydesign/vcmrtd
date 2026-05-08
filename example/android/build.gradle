@@ -10,6 +10,9 @@ allprojects {
 rootProject.buildDir = "../build"
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
+    dependencyLocking {
+        lockAllConfigurations()
+    }
 }
 subprojects {
     project.evaluationDependsOn(":app")
