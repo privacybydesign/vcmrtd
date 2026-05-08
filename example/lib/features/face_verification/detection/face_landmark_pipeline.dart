@@ -607,8 +607,12 @@ class FaceLandmarkPipeline {
     final merged = List<double>.filled(boxSize, 0.0);
     for (final box in group) {
       final w = box[4] / totalScore;
-      for (var j = 0; j < 4; j++) { merged[j] += box[j] * w; }
-      for (var j = 5; j < boxSize; j++) { merged[j] += box[j] * w; }
+      for (var j = 0; j < 4; j++) {
+        merged[j] += box[j] * w;
+      }
+      for (var j = 5; j < boxSize; j++) {
+        merged[j] += box[j] * w;
+      }
     }
     merged[4] = group.first[4];
     return merged;

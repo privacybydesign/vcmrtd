@@ -29,7 +29,6 @@ double faceMatchThreshold(DateTime? photoIssueDate) {
   return 0.55;
 }
 
-
 Widget buildFaceOvalOverlay() => const Center(
   child: AspectRatio(
     aspectRatio: 3 / 4,
@@ -169,49 +168,48 @@ Widget buildFaceActionChecklist({
   required List<String> actions,
   required Set<String> completedActions,
   required bool extraActionMode,
-}) =>
-    Positioned(
-      top: 16,
-      left: 16,
-      right: 16,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(16)),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: actions.asMap().entries.map((e) {
-            final done = completedActions.contains(e.value);
-            final current = e.value == currentAction;
-            final iconWhenNotDone = current ? Icons.radio_button_checked : Icons.radio_button_unchecked;
-            final itemIcon = done ? Icons.check_circle : iconWhenNotDone;
-            final colorWhenNotDone = current ? Colors.white : Colors.white38;
-            final itemColor = done ? Colors.green : colorWhenNotDone;
-            final itemWeight = current ? FontWeight.bold : FontWeight.normal;
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3),
-              child: Row(
-                children: [
-                  Icon(itemIcon, color: itemColor, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      faceActionLabel(e.value),
-                      style: TextStyle(color: itemColor, fontWeight: itemWeight),
-                    ),
-                  ),
-                  if (extraActionMode && e.key == actions.length - 1)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(8)),
-                      child: const Text('extra', style: TextStyle(color: Colors.white, fontSize: 10)),
-                    ),
-                ],
+}) => Positioned(
+  top: 16,
+  left: 16,
+  right: 16,
+  child: Container(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(16)),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: actions.asMap().entries.map((e) {
+        final done = completedActions.contains(e.value);
+        final current = e.value == currentAction;
+        final iconWhenNotDone = current ? Icons.radio_button_checked : Icons.radio_button_unchecked;
+        final itemIcon = done ? Icons.check_circle : iconWhenNotDone;
+        final colorWhenNotDone = current ? Colors.white : Colors.white38;
+        final itemColor = done ? Colors.green : colorWhenNotDone;
+        final itemWeight = current ? FontWeight.bold : FontWeight.normal;
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          child: Row(
+            children: [
+              Icon(itemIcon, color: itemColor, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  faceActionLabel(e.value),
+                  style: TextStyle(color: itemColor, fontWeight: itemWeight),
+                ),
               ),
-            );
-          }).toList(),
-        ),
-      ),
-    );
+              if (extraActionMode && e.key == actions.length - 1)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(8)),
+                  child: const Text('extra', style: TextStyle(color: Colors.white, fontSize: 10)),
+                ),
+            ],
+          ),
+        );
+      }).toList(),
+    ),
+  ),
+);
 
 Widget buildFaceActionInstruction(String action) => Positioned(
   bottom: 40,
@@ -249,24 +247,23 @@ Widget buildFaceErrorScreen({
   required String errorMessage,
   required VoidCallback onBack,
   required VoidCallback onRetry,
-}) =>
-    Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 48, color: Colors.red),
-            const SizedBox(height: 16),
-            Text(errorMessage, textAlign: TextAlign.center),
-            const SizedBox(height: 24),
-            ElevatedButton(onPressed: onBack, child: const Text('Go Back')),
-            const SizedBox(height: 12),
-            OutlinedButton(onPressed: onRetry, child: const Text('Try Again')),
-          ],
-        ),
-      ),
-    );
+}) => Center(
+  child: Padding(
+    padding: const EdgeInsets.all(24),
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(Icons.error_outline, size: 48, color: Colors.red),
+        const SizedBox(height: 16),
+        Text(errorMessage, textAlign: TextAlign.center),
+        const SizedBox(height: 24),
+        ElevatedButton(onPressed: onBack, child: const Text('Go Back')),
+        const SizedBox(height: 12),
+        OutlinedButton(onPressed: onRetry, child: const Text('Try Again')),
+      ],
+    ),
+  ),
+);
 
 class FaceStepRow extends StatelessWidget {
   final String number;

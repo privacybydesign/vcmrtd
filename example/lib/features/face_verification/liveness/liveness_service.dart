@@ -305,7 +305,8 @@ class ActiveLivenessService {
     final lmD = lmYaw - (_neutralYawLandmark ?? 0.0);
 
     if (!_turnDetectedLatch) {
-      final hit = _yawThresholdCrossed(matD, left) ||
+      final hit =
+          _yawThresholdCrossed(matD, left) ||
           (matYaw == null && (left ? lmD <= -landmarkTurnThreshold : lmD >= landmarkTurnThreshold));
       if (hit) _turnDetectedLatch = true;
       return hit;

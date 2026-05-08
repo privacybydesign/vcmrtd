@@ -45,8 +45,7 @@ class FlutterFaceVerificationScreen extends StatefulWidget {
   State<FlutterFaceVerificationScreen> createState() => _FlutterFaceVerificationScreenState();
 }
 
-class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationScreen>
-    with WidgetsBindingObserver {
+class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationScreen> with WidgetsBindingObserver {
   static const Map<DeviceOrientation, int> _orientations = <DeviceOrientation, int>{
     DeviceOrientation.portraitUp: 0,
     DeviceOrientation.landscapeLeft: 90,
@@ -468,19 +467,19 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
             ? buildFaceErrorScreen(errorMessage: _errorMessage!, onBack: _handleBack, onRetry: _retry)
             : switch (_state) {
                 VerificationState.idle => buildFaceIdleScreen(
-                    cameraController: _cameraController,
-                    ready: _cameraController?.value.isInitialized == true && _engineReady,
-                    startingLiveness: _startingLiveness,
-                    onStart: _startActiveLiveness,
-                  ),
+                  cameraController: _cameraController,
+                  ready: _cameraController?.value.isInitialized == true && _engineReady,
+                  startingLiveness: _startingLiveness,
+                  onStart: _startActiveLiveness,
+                ),
                 VerificationState.activeLiveness => buildFaceActiveLivenessScreen(
-                    cameraController: _cameraController,
-                    currentAction: _currentAction,
-                    actionFlash: _actionFlash,
-                    actions: _actions,
-                    completedActions: _completedActions,
-                    extraActionMode: _extraActionMode,
-                  ),
+                  cameraController: _cameraController,
+                  currentAction: _currentAction,
+                  actionFlash: _actionFlash,
+                  actions: _actions,
+                  completedActions: _completedActions,
+                  extraActionMode: _extraActionMode,
+                ),
                 VerificationState.processing => buildFaceProcessingScreen(),
                 VerificationState.result => _buildResult(),
               },
