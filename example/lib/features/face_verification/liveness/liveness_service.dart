@@ -1011,10 +1011,6 @@ InterpreterOptions _makeInterpOptions(int threads) {
     try {
       opts.addDelegate(GpuDelegateV2());
     } catch (_) {}
-  } else if (Platform.isIOS) {
-    try {
-      opts.addDelegate(CoreMlDelegate());
-    } catch (_) {}
   }
   return opts;
 }

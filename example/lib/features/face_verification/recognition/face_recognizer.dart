@@ -5,7 +5,7 @@ import 'package:flutter_litert/flutter_litert.dart';
 import 'package:image/image.dart' as img;
 
 class FaceRecognizer {
-  static const _modelAsset = 'assets/face_verification/GhostFaceNet-float16.tflite';
+  static const _modelAsset = 'assets/face_verification/GhostFaceNet.tflite';
 
   Interpreter? _interpreter;
   int _inputH = 112;
