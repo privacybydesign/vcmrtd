@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
 
+import '../../routing.dart';
 import 'scan_screen.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
@@ -43,8 +44,24 @@ class ScannerWrapper extends StatefulWidget {
   State<ScannerWrapper> createState() => _ScannerWrapperState();
 }
 
-class _ScannerWrapperState extends State<ScannerWrapper> {
+class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
   bool _hasNavigated = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) routeObserver.subscribe(this, route);
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPopNext() => _hasNavigated = false;
 
   @override
   Widget build(BuildContext context) {

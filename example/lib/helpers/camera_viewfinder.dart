@@ -155,7 +155,6 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
   List<CameraDescription> _cameras = [];
   Size? _viewSize;
   double _previewScale = 1.0;
-
   final _orientations = const {
     DeviceOrientation.portraitUp: 0,
     DeviceOrientation.landscapeLeft: 90,
@@ -227,6 +226,7 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
 
   Future<void> _startLiveFeed() async {
     if (_cameras.isEmpty) return;
+    if (_controller != null) await _stopLiveFeed();
 
     _controller = CameraController(
       _cameras[_cameraIndex],
@@ -243,9 +243,11 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
   }
 
   Future<void> _stopLiveFeed() async {
-    await _controller?.stopImageStream();
-    await _controller?.dispose();
+    final controller = _controller;
     _controller = null;
+    if (mounted) setState(() {});
+    await controller?.stopImageStream();
+    await controller?.dispose();
   }
 
   @override
@@ -338,7 +340,15 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
     final int ySize = width * height;
     final Uint8List nv21 = Uint8List(ySize + width * height ~/ 2);
 
-    nv21.setRange(0, ySize, img.planes[0].bytes);
+    final yPlane = img.planes[0];
+    final int yRowStride = yPlane.bytesPerRow;
+    if (yRowStride == width) {
+      nv21.setRange(0, ySize, yPlane.bytes);
+    } else {
+      for (int row = 0; row < height; row++) {
+        nv21.setRange(row * width, row * width + width, yPlane.bytes, row * yRowStride);
+      }
+    }
 
     final u = img.planes[1];
     final v = img.planes[2];

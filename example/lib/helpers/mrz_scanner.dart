@@ -95,15 +95,13 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
 
   Future<void> _runGoogleMlKitOcr(OcrFrame frame) async {
     try {
-      final cropped = frame.cropToRoi();
-
       final inputImage = InputImage.fromBytes(
-        bytes: cropped.bytes,
+        bytes: frame.bytes,
         metadata: InputImageMetadata(
-          size: Size(cropped.width.toDouble(), cropped.height.toDouble()),
+          size: Size(frame.width.toDouble(), frame.height.toDouble()),
           rotation: InputImageRotationValue.fromRawValue(frame.rotation) ?? InputImageRotation.rotation0deg,
           format: frame.isNv21 ? InputImageFormat.nv21 : InputImageFormat.bgra8888,
-          bytesPerRow: cropped.bytesPerRow,
+          bytesPerRow: frame.bytesPerRow,
         ),
       );
 

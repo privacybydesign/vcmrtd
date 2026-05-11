@@ -101,7 +101,7 @@ class _Header extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Perform active authentication', style: Theme.of(context).defaultTextStyles.hint),
+                Flexible(child: Text('Perform active authentication', style: Theme.of(context).defaultTextStyles.hint)),
                 Switch(
                   value: ref.watch(activeAuthenticationProvider),
                   onChanged: (value) {

@@ -55,7 +55,9 @@ class MRZHelper {
   }
 
   /// Returns the lines if they match a supported MRZ "shape".
-  /// Merged version of original and advanced helper logic.
+  /// Groups candidates by line length and uses a sliding window + scoring
+  /// to find the best ICAO block, so mixed-length output from ML Kit
+  /// (e.g. both 30-char and 44-char lines) doesn't drop valid TD1 results.
   static List<String>? getFinalListToParse(List<String> lines) {
     if (lines.isEmpty) return null;
     final l = lines.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
@@ -68,10 +70,21 @@ class MRZHelper {
     }
 
     if (l.length < 2) return null;
-    final len = l.first.length;
-    if (!l.every((e) => e.length == len)) return null;
 
-    return _matchIcaoShape(l, len);
+    for (final entry in const [(30, 3), (36, 2), (44, 2)]) {
+      final targetLen = entry.$1;
+      final windowSize = entry.$2;
+      final group = l.where((e) => e.length == targetLen).toList();
+      if (group.length < windowSize) continue;
+
+      for (int i = 0; i <= group.length - windowSize; i++) {
+        final window = group.sublist(i, i + windowSize);
+        final candidate = _matchIcaoShape(window, targetLen);
+        if (candidate != null) return candidate;
+      }
+    }
+
+    return null;
   }
 
   static bool _isDriversLicensePrefix(String pfx) => pfx == 'D1' || pfx == 'D2' || pfx == 'DL';
@@ -93,57 +106,6 @@ class MRZHelper {
     if (l.length == 2 && len == 44) return [...l]; // TD3
 
     return null;
-  }
-
-  // ---------- SCORING (for best-window selection) ----------
-
-  /// Score a single MRZ line: higher = more MRZ-like.
-  static int scoreLine(String line) {
-    if (!_allowedLineLen.contains(line.length)) return -999;
-
-    int score = 0;
-
-    // MRZ typically contains many '<'
-    final lt = '<'.allMatches(line).length;
-    score += (lt * 2);
-
-    // Penalize if too few '<' (often means not MRZ)
-    if (lt < (line.length * 0.15)) score -= 20;
-
-    // Reward if line starts with typical doc code for ICAO docs
-    if (line.startsWith('P<') ||
-        line.startsWith('V<') ||
-        line.startsWith('I<') ||
-        line.startsWith('A<') ||
-        line.startsWith('C<')) {
-      score += 40;
-    }
-
-    // Reward if looks like a name line
-    if (line.contains('<<')) score += 25;
-
-    // Slight reward if contains a plausible 3-letter code token
-    if (RegExp(r'[A-Z]{3}').hasMatch(line)) score += 5;
-
-    return score;
-  }
-
-  /// Score a whole MRZ block (2 or 3 lines), preferring exact ICAO shapes.
-  static int scoreBlock(List<String> block) {
-    if (block.isEmpty) return -999;
-
-    int score = 0;
-    final len = block.first.length;
-
-    if (block.length == 3 && len == 30) score += 200; // TD1
-    if (block.length == 2 && len == 36) score += 200; // TD2
-    if (block.length == 2 && len == 44) score += 200; // TD3
-
-    for (final l in block) {
-      score += scoreLine(l);
-    }
-
-    return score;
   }
 
   // ---------- FIXER ----------
