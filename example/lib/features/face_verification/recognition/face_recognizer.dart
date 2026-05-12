@@ -48,13 +48,13 @@ class FaceRecognizer {
     );
   }
 
-  List<double> generateEmbedding(img.Image face) {
+  List<double> generateEmbedding(img.Image face, {String label = 'embedding'}) {
     final interpreter = _interpreter;
     if (interpreter == null) {
       throw StateError('FaceRecognizer is not initialized');
     }
 
-    final resized = img.copyResize(face, width: _inputW, height: _inputH, interpolation: img.Interpolation.linear);
+    final resized = _modelInputImage(face);
     final bytes = resized.getBytes(order: img.ChannelOrder.rgb);
     final total = _inputH * _inputW;
     final buf = Float32List(total * 3);
@@ -64,18 +64,37 @@ class FaceRecognizer {
       buf[i * 3 + 2] = (bytes[i * 3 + 2] - 127.5) / 127.5;
     }
     final output = _makeTensor(_outputShape);
-    _timeInference(_modelAsset, () => interpreter.run(buf.buffer, output));
+    interpreter.run(buf.buffer, output);
     final embedding = _flatFloatArray(output);
-    return _normalize(embedding.length > _embeddingSize ? embedding.sublist(0, _embeddingSize) : embedding);
+    final normalized = _normalize(embedding.length > _embeddingSize ? embedding.sublist(0, _embeddingSize) : embedding);
+    _logEmbeddingStats(label, normalized);
+    return normalized;
+  }
+
+  Uint8List modelInputPng(img.Image face) {
+    return Uint8List.fromList(img.encodePng(_modelInputImage(face)));
   }
 
   double cosineSimilarity(List<double> a, List<double> b) {
     final len = math.min(a.length, b.length);
     var dot = 0.0;
+    var normA = 0.0;
+    var normB = 0.0;
     for (var i = 0; i < len; i++) {
       dot += a[i] * b[i];
+      normA += a[i] * a[i];
+      normB += b[i] * b[i];
     }
-    return dot.clamp(0.0, 1.0);
+    normA = math.sqrt(normA);
+    normB = math.sqrt(normB);
+    final rawCosine = normA > 1e-9 && normB > 1e-9 ? dot / (normA * normB) : double.nan;
+    final score = rawCosine.isNaN ? 0.0 : rawCosine.clamp(0.0, 1.0).toDouble();
+    debugPrint(
+      '[FaceVerification] Embedding compare: dot=${dot.toStringAsFixed(6)} '
+      'normA=${normA.toStringAsFixed(6)} normB=${normB.toStringAsFixed(6)} '
+      'rawCosine=${rawCosine.toStringAsFixed(6)} score=${score.toStringAsFixed(6)}',
+    );
+    return score;
   }
 
   List<double> _normalize(List<double> embedding) {
@@ -86,6 +105,10 @@ class FaceRecognizer {
     final norm = math.sqrt(sq);
     if (norm <= 1e-9) return embedding;
     return embedding.map((v) => v / norm).toList(growable: false);
+  }
+
+  img.Image _modelInputImage(img.Image face) {
+    return img.copyResize(face, width: _inputW, height: _inputH, interpolation: img.Interpolation.linear);
   }
 
   dynamic _makeTensor(List<int> shape) {
@@ -114,11 +137,37 @@ class FaceRecognizer {
     return <double>[];
   }
 
-  void _timeInference(String modelName, void Function() run) {
-    final sw = Stopwatch()..start();
-    run();
-    sw.stop();
-    debugPrint('[FaceVerification] Inference: $modelName ${sw.elapsedMilliseconds} ms');
+  void _logEmbeddingStats(String label, List<double> embedding) {
+    if (embedding.isEmpty) {
+      debugPrint('[FaceVerification] $label embedding stats: len=0');
+      return;
+    }
+
+    var sq = 0.0;
+    var sum = 0.0;
+    var minVal = double.infinity;
+    var maxVal = -double.infinity;
+    var hasNaN = false;
+    var hasInf = false;
+
+    for (final v in embedding) {
+      if (v.isNaN) hasNaN = true;
+      if (v.isInfinite) hasInf = true;
+      if (v < minVal) minVal = v;
+      if (v > maxVal) maxVal = v;
+      sum += v;
+      sq += v * v;
+    }
+
+    final norm = math.sqrt(sq);
+    final mean = sum / embedding.length;
+    final first16 = embedding.take(16).map((double v) => v.isFinite ? v.toStringAsFixed(5) : v.toString()).join(', ');
+    debugPrint(
+      '[FaceVerification] $label embedding stats: len=${embedding.length} '
+      'norm=${norm.toStringAsFixed(6)} min=${minVal.toStringAsFixed(6)} '
+      'max=${maxVal.toStringAsFixed(6)} mean=${mean.toStringAsFixed(6)} '
+      'hasNaN=$hasNaN hasInf=$hasInf first16=[$first16]',
+    );
   }
 
   Future<void> dispose() async {

@@ -46,6 +46,8 @@ class VerificationResult {
   final double? rppgHr;
   final bool rppgPassed;
   final int rppgSampleCount;
+  final Uint8List? debugNfcInputPng;
+  final Uint8List? debugSelfieInputPng;
   const VerificationResult({
     required this.matchScore,
     required this.isLive,
@@ -54,6 +56,8 @@ class VerificationResult {
     this.rppgHr,
     this.rppgPassed = false,
     this.rppgSampleCount = 0,
+    this.debugNfcInputPng,
+    this.debugSelfieInputPng,
   });
 }
 
@@ -351,6 +355,8 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
     final rppgHr = (rppg?['hr'] as num?)?.toDouble();
     final rppgPassed = (rppg?['passed'] as bool?) ?? false;
     final rppgSampleCount = (rppg?['sampleCount'] as num?)?.toInt() ?? 0;
+    final debugNfcInputPng = map['debugNfcInputPng'] as Uint8List?;
+    final debugSelfieInputPng = map['debugSelfieInputPng'] as Uint8List?;
     _onComplete(
       passed: passed,
       matchScore: matchScore,
@@ -359,6 +365,8 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
       rppgHr: rppgHr,
       rppgPassed: rppgPassed,
       rppgSampleCount: rppgSampleCount,
+      debugNfcInputPng: debugNfcInputPng,
+      debugSelfieInputPng: debugSelfieInputPng,
     );
   }
 
@@ -435,6 +443,8 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
     double? rppgHr,
     bool rppgPassed = false,
     int rppgSampleCount = 0,
+    Uint8List? debugNfcInputPng,
+    Uint8List? debugSelfieInputPng,
   }) {
     if (!mounted || _isDisposed) return;
     _invalidateFramePipeline();
@@ -448,6 +458,8 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
         rppgHr: rppgHr,
         rppgPassed: rppgPassed,
         rppgSampleCount: rppgSampleCount,
+        debugNfcInputPng: debugNfcInputPng,
+        debugSelfieInputPng: debugSelfieInputPng,
       );
     });
     unawaited(_stopActiveFlow(disposeCamera: false));
@@ -733,6 +745,26 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
       ),
     );
 
+    Widget debugModelInput(String label, Uint8List? bytes) => Expanded(
+      child: Column(
+        children: [
+          Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          const SizedBox(height: 6),
+          Container(
+            width: 112,
+            height: 112,
+            decoration: BoxDecoration(border: Border.all(color: Colors.black12)),
+            clipBehavior: Clip.antiAlias,
+            child: bytes == null || bytes.isEmpty
+                ? const Center(
+                    child: Text('n/a', style: TextStyle(color: Colors.grey)),
+                  )
+                : Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true),
+          ),
+        ],
+      ),
+    );
+
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -745,6 +777,14 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
             passed ? 'Identity Verified' : 'Verification Failed',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: passed ? Colors.green : Colors.red),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              debugModelInput('NFC input', r.debugNfcInputPng),
+              const SizedBox(width: 12),
+              debugModelInput('Selfie input', r.debugSelfieInputPng),
+            ],
           ),
           const SizedBox(height: 20),
           scoreRow(

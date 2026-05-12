@@ -633,8 +633,8 @@ class PassiveLivenessService {
 
     final out1 = <List<double>>[List<double>.filled(3, 0.0)];
     final out2 = <List<double>>[List<double>.filled(3, 0.0)];
-    _timeInference('minifasnet_v1se.tflite', () => v1.run(in1, out1));
-    _timeInference('minifasnet_v2.tflite', () => v2.run(in2, out2));
+    v1.run(in1, out1);
+    v2.run(in2, out2);
 
     final sm1 = _softmax(out1.first);
     final sm2 = _softmax(out2.first);
@@ -856,13 +856,6 @@ class PassiveLivenessService {
     _v2 = null;
     _bigSmall.close();
   }
-
-  void _timeInference(String modelName, void Function() run) {
-    final sw = Stopwatch()..start();
-    run();
-    sw.stop();
-    debugPrint('[FaceVerification] Inference: $modelName ${sw.elapsedMilliseconds} ms');
-  }
 }
 
 class _RppgFrame {
@@ -943,11 +936,7 @@ class _BigSmallService {
       if (interp == null || oShape == null) continue;
 
       final outTensor = _makeTensor(oShape);
-      _timeInference(
-        _modelFiles[i],
-        () =>
-            interp.runForMultipleInputs(<Object>[appearanceBuf.buffer, motionBuf.buffer], <int, Object>{0: outTensor}),
-      );
+      interp.runForMultipleInputs(<Object>[appearanceBuf.buffer, motionBuf.buffer], <int, Object>{0: outTensor});
       final out = _flatFloatArray(outTensor);
       if (out.isEmpty) continue;
       final take = math.min(frames, out.length);
@@ -1036,13 +1025,6 @@ class _BigSmallService {
       return out;
     }
     return <double>[];
-  }
-
-  void _timeInference(String modelName, void Function() run) {
-    final sw = Stopwatch()..start();
-    run();
-    sw.stop();
-    debugPrint('[FaceVerification] Inference: $modelName ${sw.elapsedMilliseconds} ms');
   }
 }
 

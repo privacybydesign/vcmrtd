@@ -42,6 +42,8 @@ class FaceVerificationEngine {
   img.Image? _firstSelfie;
   img.Image? _bestSelfie;
   double _bestSelfieQuality = -1.0;
+  Uint8List? _debugNfcMatchInputPng;
+  Uint8List? _debugSelfieMatchInputPng;
 
   Future<void> initialize() async {
     await _worker.initialize();
@@ -105,6 +107,8 @@ class FaceVerificationEngine {
     _firstSelfie = null;
     _bestSelfie = null;
     _bestSelfieQuality = -1.0;
+    _debugNfcMatchInputPng = null;
+    _debugSelfieMatchInputPng = null;
     _active.reset();
     await _worker.startSession();
 
@@ -285,6 +289,8 @@ class FaceVerificationEngine {
         'matchScore': score,
         'antiSpoofScore': antiSpoofScore,
         'antiSpoofPassed': antiSpoofPassed,
+        'debugNfcInputPng': _debugNfcMatchInputPng,
+        'debugSelfieInputPng': _debugSelfieMatchInputPng,
         'rppg': {
           'hr': passive.rppgHr,
           'passed': passive.rppgPassed,
@@ -313,7 +319,10 @@ class FaceVerificationEngine {
       return 0.0;
     }
     debugPrint('[FaceVerification] Match started: selfie=${selfie.width}x${selfie.height}');
-    final score = await _worker.matchSelfie(selfie);
+    final match = await _worker.matchSelfie(selfie);
+    _debugNfcMatchInputPng = match.nfcInputPng;
+    _debugSelfieMatchInputPng = match.selfieInputPng;
+    final score = match.score;
     debugPrint('[FaceVerification] Match finished: score=${(score * 100).toStringAsFixed(2)}%');
     return score;
   }

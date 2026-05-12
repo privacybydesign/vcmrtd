@@ -35,6 +35,14 @@ class WorkerPassiveResult {
   final int rppgDurationMs;
 }
 
+class WorkerMatchResult {
+  const WorkerMatchResult({required this.score, this.nfcInputPng, this.selfieInputPng});
+
+  final double score;
+  final Uint8List? nfcInputPng;
+  final Uint8List? selfieInputPng;
+}
+
 class _IsolateClient {
   _IsolateClient(this.entryPoint);
 
@@ -211,9 +219,13 @@ class FaceVerificationWorker {
     await _match.request('prepare_nfc_face', payload: _imagePayload(face));
   }
 
-  Future<double> matchSelfie(img.Image selfie) async {
+  Future<WorkerMatchResult> matchSelfie(img.Image selfie) async {
     final res = await _match.request('match_selfie', payload: _imagePayload(selfie));
-    return (res['score'] as num?)?.toDouble() ?? 0.0;
+    return WorkerMatchResult(
+      score: (res['score'] as num?)?.toDouble() ?? 0.0,
+      nfcInputPng: res['nfcInputPng'] as Uint8List?,
+      selfieInputPng: res['selfieInputPng'] as Uint8List?,
+    );
   }
 
   Future<void> processCameraFrame(CameraImage cameraImage, int rotationDegrees) async {
@@ -526,6 +538,8 @@ Future<void> _matchWorkerLoop(SendPort mainSendPort) async {
 
   final recognizer = FaceRecognizer();
   List<double>? nfcEmbedding;
+  Uint8List? nfcInputPng;
+  Uint8List? selfieInputPng;
 
   Future<Map<String, dynamic>> handle(String cmd, Map<String, dynamic> payload) async {
     switch (cmd) {
@@ -542,7 +556,9 @@ Future<void> _matchWorkerLoop(SendPort mainSendPort) async {
         debugPrint(
           '[FaceVerification] Match worker: preparing NFC embedding from ${payload['width']}x${payload['height']} crop',
         );
-        nfcEmbedding = recognizer.generateEmbedding(_imageFromPayload(payload));
+        final nfcFace = _imageFromPayload(payload);
+        nfcInputPng = recognizer.modelInputPng(nfcFace);
+        nfcEmbedding = recognizer.generateEmbedding(nfcFace, label: 'NFC');
         debugPrint('[FaceVerification] Match worker: NFC embedding ready, length=${nfcEmbedding?.length ?? 0}');
         return <String, dynamic>{'ok': true};
       case 'match_selfie':
@@ -554,10 +570,12 @@ Future<void> _matchWorkerLoop(SendPort mainSendPort) async {
         debugPrint(
           '[FaceVerification] Match worker: generating selfie embedding from ${payload['width']}x${payload['height']} crop',
         );
-        final emb = recognizer.generateEmbedding(_imageFromPayload(payload));
+        final selfieFace = _imageFromPayload(payload);
+        selfieInputPng = recognizer.modelInputPng(selfieFace);
+        final emb = recognizer.generateEmbedding(selfieFace, label: 'selfie');
         final score = recognizer.cosineSimilarity(nfc, emb);
         debugPrint('[FaceVerification] Match worker: comparison done, score=${(score * 100).toStringAsFixed(2)}%');
-        return <String, dynamic>{'score': score};
+        return <String, dynamic>{'score': score, 'nfcInputPng': nfcInputPng, 'selfieInputPng': selfieInputPng};
       case 'stop':
         return <String, dynamic>{'ok': true};
       case 'dispose':
