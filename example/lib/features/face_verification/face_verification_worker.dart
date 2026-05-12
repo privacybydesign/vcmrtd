@@ -135,7 +135,7 @@ class FaceVerificationWorker {
       rootBundle.load('assets/face_verification/bigsmall_1.tflite'),
       rootBundle.load('assets/face_verification/bigsmall_2.tflite'),
       rootBundle.load('assets/face_verification/bigsmall_3.tflite'),
-      rootBundle.load('assets/face_verification/GhostFaceNet.tflite'),
+      rootBundle.load('assets/face_verification/GhostFaceNet_fp32.tflite'),
     ]);
     final detectorBytes = results[0].buffer.asUint8List();
     final landmarksBytes = results[1].buffer.asUint8List();
