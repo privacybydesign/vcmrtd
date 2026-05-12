@@ -118,6 +118,7 @@ class FaceVerificationWorker {
   Map<String, dynamic>? _queuedPassivePayload;
   bool _pipelineBusy = false;
   bool _passiveBusy = false;
+  Completer<void>? _pipelineIdle;
   Completer<void>? _passiveIdle;
   int _sessionId = 0;
 
@@ -125,8 +126,18 @@ class FaceVerificationWorker {
 
   Future<void> initialize() async {
     // Spawn all 3 isolates in parallel.
+    debugPrint('[FaceVerification] Worker: starting pipeline/passive/match isolates');
     await Future.wait(<Future<void>>[_pipeline.start(), _passive.start(), _match.start()]);
 
+    debugPrint('[FaceVerification] Worker: loading face_detector.tflite');
+    debugPrint('[FaceVerification] Worker: loading face_landmarks_detector.tflite');
+    debugPrint('[FaceVerification] Worker: loading face_blendshapes.tflite');
+    debugPrint('[FaceVerification] Worker: loading minifasnet_v1se.tflite');
+    debugPrint('[FaceVerification] Worker: loading minifasnet_v2.tflite');
+    debugPrint('[FaceVerification] Worker: loading bigsmall_1.tflite');
+    debugPrint('[FaceVerification] Worker: loading bigsmall_2.tflite');
+    debugPrint('[FaceVerification] Worker: loading bigsmall_3.tflite');
+    debugPrint('[FaceVerification] Worker: loading GhostFaceNet_fp32_V2.tflite');
     final results = await Future.wait([
       rootBundle.load('assets/face_verification/face_detector.tflite'),
       rootBundle.load('assets/face_verification/face_landmarks_detector.tflite'),
@@ -138,6 +149,7 @@ class FaceVerificationWorker {
       rootBundle.load('assets/face_verification/bigsmall_3.tflite'),
       rootBundle.load('assets/face_verification/GhostFaceNet_fp32_V2.tflite'),
     ]);
+    debugPrint('[FaceVerification] Worker: all model assets loaded');
     final detectorBytes = results[0].buffer.asUint8List();
     final landmarksBytes = results[1].buffer.asUint8List();
     final blendshapesBytes = results[2].buffer.asUint8List();
@@ -149,6 +161,7 @@ class FaceVerificationWorker {
     final recognizerBytes = results[8].buffer.asUint8List();
 
     // Initialize all 3 isolates in parallel — each loads its own TFLite interpreters.
+    debugPrint('[FaceVerification] Worker: initializing pipeline/passive/match interpreters');
     await Future.wait(<Future<Map<String, dynamic>>>[
       _pipeline.request(
         'init',
@@ -168,6 +181,7 @@ class FaceVerificationWorker {
       ),
       _match.request('init', payload: <String, dynamic>{'model': recognizerBytes}),
     ]);
+    debugPrint('[FaceVerification] Worker: all interpreters initialized');
   }
 
   Future<void> startSession() async {
@@ -181,6 +195,7 @@ class FaceVerificationWorker {
     _queuedPassivePayload = null;
     _pipelineBusy = false;
     _passiveBusy = false;
+    _completePipelineIdle();
     _completePassiveIdle();
   }
 
@@ -214,9 +229,11 @@ class FaceVerificationWorker {
   void _enqueuePipelineFrame(Map<String, dynamic> payload) {
     if (_pipelineBusy) {
       _queuedPipelinePayload = payload;
+      _pipelineIdle ??= Completer<void>();
       return;
     }
     _pipelineBusy = true;
+    _pipelineIdle ??= Completer<void>();
     unawaited(_runPipelinePayload(payload));
   }
 
@@ -248,6 +265,7 @@ class FaceVerificationWorker {
       unawaited(_runPipelinePayload(next));
     } else {
       _pipelineBusy = false;
+      _completePipelineIdle();
     }
   }
 
@@ -260,6 +278,7 @@ class FaceVerificationWorker {
   }
 
   Future<WorkerPassiveResult> getPassiveResult() async {
+    await _waitPipelineIdle();
     await _waitPassiveIdle();
     final res = await _passive.request('passive_result');
     final rppg = res['rppg'] as Map<String, dynamic>?;
@@ -277,6 +296,7 @@ class FaceVerificationWorker {
     _sessionId++;
     _queuedPipelinePayload = null;
     _queuedPassivePayload = null;
+    await _waitPipelineIdle();
     await _waitPassiveIdle();
     await _pipeline.request('stop');
     await _passive.request('stop');
@@ -292,6 +312,7 @@ class FaceVerificationWorker {
     _queuedPassivePayload = null;
     _pipelineBusy = false;
     _passiveBusy = false;
+    _completePipelineIdle();
     _completePassiveIdle();
   }
 
@@ -329,6 +350,17 @@ class FaceVerificationWorker {
     return (_passiveIdle ??= Completer<void>()).future;
   }
 
+  Future<void> _waitPipelineIdle() {
+    if (!_pipelineBusy && _queuedPipelinePayload == null) return Future<void>.value();
+    return (_pipelineIdle ??= Completer<void>()).future;
+  }
+
+  void _completePipelineIdle() {
+    final idle = _pipelineIdle;
+    if (idle != null && !idle.isCompleted) idle.complete();
+    _pipelineIdle = null;
+  }
+
   void _completePassiveIdle() {
     final idle = _passiveIdle;
     if (idle != null && !idle.isCompleted) idle.complete();
@@ -360,11 +392,13 @@ Future<void> _pipelineWorkerLoop(SendPort mainSendPort) async {
   Future<Map<String, dynamic>> handle(String cmd, Map<String, dynamic> payload) async {
     switch (cmd) {
       case 'init':
+        debugPrint('[FaceVerification] Pipeline worker: initializing detector/landmarks/blendshapes');
         detector.initializeFromBuffers(
           detector: payload['detector'] as Uint8List,
           landmarks: payload['landmarks'] as Uint8List,
           blendshapes: payload['blendshapes'] as Uint8List,
         );
+        debugPrint('[FaceVerification] Pipeline worker: detector/landmarks/blendshapes initialized');
         return <String, dynamic>{'ok': true};
       case 'start_session':
         detector.resetTracking();
@@ -432,11 +466,13 @@ Future<void> _passiveWorkerLoop(SendPort mainSendPort) async {
   Future<Map<String, dynamic>> handle(String cmd, Map<String, dynamic> payload) async {
     switch (cmd) {
       case 'init':
+        debugPrint('[FaceVerification] Passive worker: initializing MiniFASNet and BigSmall models');
         passive.initializeFromBuffers(
           v1: payload['v1'] as Uint8List,
           v2: payload['v2'] as Uint8List,
           bigSmall: (payload['bigSmall'] as List).cast<Uint8List>(),
         );
+        debugPrint('[FaceVerification] Passive worker: MiniFASNet and BigSmall models initialized');
         return <String, dynamic>{'ok': true};
       case 'start_session':
         passive.reset();
@@ -494,7 +530,9 @@ Future<void> _matchWorkerLoop(SendPort mainSendPort) async {
   Future<Map<String, dynamic>> handle(String cmd, Map<String, dynamic> payload) async {
     switch (cmd) {
       case 'init':
+        debugPrint('[FaceVerification] Match worker: initializing GhostFaceNet_fp32_V2.tflite');
         await recognizer.initializeFromBuffer(payload['model'] as Uint8List);
+        debugPrint('[FaceVerification] Match worker: GhostFaceNet initialized');
         return <String, dynamic>{'ok': true};
       case 'start_session':
         // nfcEmbedding is preserved across sessions — the NFC image doesn't change

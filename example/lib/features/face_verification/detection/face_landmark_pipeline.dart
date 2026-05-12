@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_litert/flutter_litert.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtdapp/features/face_verification/detection/face_landmarker_types.dart';
@@ -377,21 +378,28 @@ class FaceLandmarkPipeline {
   void _warmUpDetector() {
     if (_detectorInterp == null) return;
     final buf = Float32List(_detectorSize * _detectorSize * 3);
-    _detectorInterp!.runForMultipleInputs(<Object>[buf.buffer], <int, Object>{0: _detRegressors, 1: _detScores});
+    _timeInference(
+      'face_detector.tflite warmup',
+      () =>
+          _detectorInterp!.runForMultipleInputs(<Object>[buf.buffer], <int, Object>{0: _detRegressors, 1: _detScores}),
+    );
   }
 
   void _warmUpLandmarker() {
     if (_landmarkInterp == null || _lmAllOutputs.isEmpty) return;
     final buf = Float32List(_landmarkSize * _landmarkSize * 3);
     final out = <int, Object>{for (var i = 0; i < _lmAllOutputs.length; i++) i: _lmAllOutputs[i]};
-    _landmarkInterp!.runForMultipleInputs(<Object>[buf.buffer], out);
+    _timeInference(
+      'face_landmarks_detector.tflite warmup',
+      () => _landmarkInterp!.runForMultipleInputs(<Object>[buf.buffer], out),
+    );
   }
 
   void _warmUpBlendshapes() {
     if (_blendshapeInterp == null || _blendshapeInputShape.isEmpty) return;
     final total = _blendshapeInputShape.fold<int>(1, (p, v) => p * v);
     final buf = Float32List(total);
-    _blendshapeInterp!.run(buf.buffer, _blendshapeRaw);
+    _timeInference('face_blendshapes.tflite warmup', () => _blendshapeInterp!.run(buf.buffer, _blendshapeRaw));
   }
 
   void close() {
@@ -438,7 +446,10 @@ class FaceLandmarkPipeline {
     if (_landmarkInterp == null) return null;
     final landmarkInput = _buildLandmarkInput(bitmap, crop);
     final out = <int, Object>{for (var i = 0; i < _lmAllOutputs.length; i++) i: _lmAllOutputs[i]};
-    _landmarkInterp!.runForMultipleInputs(<Object>[landmarkInput], out);
+    _timeInference(
+      'face_landmarks_detector.tflite',
+      () => _landmarkInterp!.runForMultipleInputs(<Object>[landmarkInput], out),
+    );
 
     final rawPresence = _flatFloatArray(_presenceOutRaw);
     if (rawPresence.isEmpty) return null;
@@ -554,7 +565,7 @@ class FaceLandmarkPipeline {
     if (_detectorInterp == null) return null;
     final input = _buildDetectorInput(bitmap);
     final out = <int, Object>{0: _detRegressors, 1: _detScores};
-    _detectorInterp!.runForMultipleInputs(<Object>[input], out);
+    _timeInference('face_detector.tflite', () => _detectorInterp!.runForMultipleInputs(<Object>[input], out));
     return _decodeAndNms();
   }
 
@@ -764,7 +775,7 @@ class FaceLandmarkPipeline {
       buf[idx++] = lm.x * imgW;
       buf[idx++] = lm.y * imgH;
     }
-    interp.run(buf.buffer, _blendshapeRaw);
+    _timeInference('face_blendshapes.tflite', () => interp.run(buf.buffer, _blendshapeRaw));
     final raw = _flatFloatArray(_blendshapeRaw);
     return List<Category>.generate(raw.length, (int i) {
       final name = i < _blendshapeNames.length ? _blendshapeNames[i] : 'blend_$i';
@@ -869,5 +880,12 @@ class FaceLandmarkPipeline {
       return out;
     }
     return <double>[];
+  }
+
+  void _timeInference(String modelName, void Function() run) {
+    final sw = Stopwatch()..start();
+    run();
+    sw.stop();
+    debugPrint('[FaceVerification] Inference: $modelName ${sw.elapsedMilliseconds} ms');
   }
 }

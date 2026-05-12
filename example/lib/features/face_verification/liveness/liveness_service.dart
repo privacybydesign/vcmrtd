@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_litert/flutter_litert.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtdapp/features/face_verification/detection/face_detector.dart';
@@ -529,7 +530,9 @@ class PassiveLivenessService {
   int _lastFrameBufferedMs = 0;
 
   Future<void> initialize() async {
+    debugPrint('[FaceVerification] Passive service: loading minifasnet_v1se.tflite interpreter');
     _v1 = await Interpreter.fromAsset('assets/face_verification/minifasnet_v1se.tflite', options: _cpuOptions(2));
+    debugPrint('[FaceVerification] Passive service: loading minifasnet_v2.tflite interpreter');
     _v2 = await Interpreter.fromAsset('assets/face_verification/minifasnet_v2.tflite', options: _cpuOptions(2));
 
     _readAntiSpoofShapes();
@@ -537,7 +540,9 @@ class PassiveLivenessService {
   }
 
   void initializeFromBuffers({required Uint8List v1, required Uint8List v2, required List<Uint8List> bigSmall}) {
+    debugPrint('[FaceVerification] Passive service: initializing minifasnet_v1se.tflite from buffer');
     _v1 = Interpreter.fromBuffer(v1, options: _cpuOptions(2));
+    debugPrint('[FaceVerification] Passive service: initializing minifasnet_v2.tflite from buffer');
     _v2 = Interpreter.fromBuffer(v2, options: _cpuOptions(2));
 
     _readAntiSpoofShapes();
@@ -549,6 +554,8 @@ class PassiveLivenessService {
     final s2 = _v2!.getInputTensor(0).shape;
     _v1Nchw = s1.length == 4 && s1[1] == 3;
     _v2Nchw = s2.length == 4 && s2[1] == 3;
+    debugPrint('[FaceVerification] Passive service: MiniFASNet v1 input shape=$s1');
+    debugPrint('[FaceVerification] Passive service: MiniFASNet v2 input shape=$s2');
   }
 
   void reset() {
@@ -626,8 +633,8 @@ class PassiveLivenessService {
 
     final out1 = <List<double>>[List<double>.filled(3, 0.0)];
     final out2 = <List<double>>[List<double>.filled(3, 0.0)];
-    v1.run(in1, out1);
-    v2.run(in2, out2);
+    _timeInference('minifasnet_v1se.tflite', () => v1.run(in1, out1));
+    _timeInference('minifasnet_v2.tflite', () => v2.run(in2, out2));
 
     final sm1 = _softmax(out1.first);
     final sm2 = _softmax(out2.first);
@@ -849,6 +856,13 @@ class PassiveLivenessService {
     _v2 = null;
     _bigSmall.close();
   }
+
+  void _timeInference(String modelName, void Function() run) {
+    final sw = Stopwatch()..start();
+    run();
+    sw.stop();
+    debugPrint('[FaceVerification] Inference: $modelName ${sw.elapsedMilliseconds} ms');
+  }
 }
 
 class _RppgFrame {
@@ -878,6 +892,7 @@ class _BigSmallService {
   Future<void> initialize() async {
     for (var i = 0; i < _modelFiles.length; i++) {
       if (_interpreters[i] != null) continue;
+      debugPrint('[FaceVerification] BigSmall service: loading ${_modelFiles[i]} interpreter');
       try {
         _interpreters[i] = await Interpreter.fromAsset(_modelFiles[i], options: _makeInterpOptions(2, useGpu: true));
       } catch (_) {
@@ -891,6 +906,7 @@ class _BigSmallService {
   void initializeFromBuffers(List<Uint8List> modelBuffers) {
     for (var i = 0; i < modelBuffers.length; i++) {
       if (_interpreters[i] != null) continue;
+      debugPrint('[FaceVerification] BigSmall service: initializing ${_modelFiles[i]} from buffer');
       try {
         _interpreters[i] = Interpreter.fromBuffer(modelBuffers[i], options: _makeInterpOptions(2, useGpu: true));
       } catch (_) {
@@ -905,6 +921,10 @@ class _BigSmallService {
     _appearanceShapes[i] = _interpreters[i]!.getInputTensor(0).shape;
     _motionShapes[i] = _interpreters[i]!.getInputTensor(1).shape;
     _outputShapes[i] = _interpreters[i]!.getOutputTensor(0).shape;
+    debugPrint(
+      '[FaceVerification] BigSmall service: ${_modelFiles[i]} shapes '
+      'appearance=${_appearanceShapes[i]} motion=${_motionShapes[i]} output=${_outputShapes[i]}',
+    );
   }
 
   List<double>? runInference(List<_RppgFrame> framesBatch) {
@@ -923,7 +943,11 @@ class _BigSmallService {
       if (interp == null || oShape == null) continue;
 
       final outTensor = _makeTensor(oShape);
-      interp.runForMultipleInputs(<Object>[appearanceBuf.buffer, motionBuf.buffer], <int, Object>{0: outTensor});
+      _timeInference(
+        _modelFiles[i],
+        () =>
+            interp.runForMultipleInputs(<Object>[appearanceBuf.buffer, motionBuf.buffer], <int, Object>{0: outTensor}),
+      );
       final out = _flatFloatArray(outTensor);
       if (out.isEmpty) continue;
       final take = math.min(frames, out.length);
@@ -1012,6 +1036,13 @@ class _BigSmallService {
       return out;
     }
     return <double>[];
+  }
+
+  void _timeInference(String modelName, void Function() run) {
+    final sw = Stopwatch()..start();
+    run();
+    sw.stop();
+    debugPrint('[FaceVerification] Inference: $modelName ${sw.elapsedMilliseconds} ms');
   }
 }
 

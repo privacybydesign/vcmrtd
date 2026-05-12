@@ -46,7 +46,6 @@ dependencies:
   google_mlkit_text_recognition: ^0.15.0
   camera_platform_interface: ^2.2.2
   flutter_litert: ^2.5.1
-  flutter_litert_flex: ^0.0.5
   image: ^4.5.4
   path_provider: ^2.1.5
   intl: ^0.20.2

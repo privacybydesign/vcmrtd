@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_litert/flutter_litert.dart';
 import 'package:image/image.dart' as img;
 
@@ -14,21 +15,19 @@ class FaceRecognizer {
   List<int> _outputShape = const <int>[1, 512];
 
   Future<InterpreterOptions> _buildOptions() async {
-    final options = InterpreterOptions()..threads = 4;
-    try {
-      options.addDelegate(await FlexDelegate.create());
-    } catch (_) {}
-    return options;
+    return InterpreterOptions()..threads = 4;
   }
 
   Future<void> initialize() async {
     if (_interpreter != null) return;
+    debugPrint('[FaceVerification] FaceRecognizer: loading $_modelAsset from assets');
     _interpreter = await Interpreter.fromAsset(_modelAsset, options: await _buildOptions());
     _readShapes();
   }
 
   Future<void> initializeFromBuffer(Uint8List modelBytes) async {
     if (_interpreter != null) return;
+    debugPrint('[FaceVerification] FaceRecognizer: initializing $_modelAsset from buffer, bytes=${modelBytes.length}');
     _interpreter = Interpreter.fromBuffer(modelBytes, options: await _buildOptions());
     _readShapes();
   }
@@ -44,6 +43,9 @@ class FaceRecognizer {
     if (outputShape.length >= 2) {
       _embeddingSize = outputShape.last;
     }
+    debugPrint(
+      '[FaceVerification] FaceRecognizer: input shape=$inputShape, output shape=$outputShape, embedding=$_embeddingSize',
+    );
   }
 
   List<double> generateEmbedding(img.Image face) {
@@ -62,7 +64,7 @@ class FaceRecognizer {
       buf[i * 3 + 2] = (bytes[i * 3 + 2] - 127.5) / 127.5;
     }
     final output = _makeTensor(_outputShape);
-    interpreter.run(buf.buffer, output);
+    _timeInference(_modelAsset, () => interpreter.run(buf.buffer, output));
     final embedding = _flatFloatArray(output);
     return _normalize(embedding.length > _embeddingSize ? embedding.sublist(0, _embeddingSize) : embedding);
   }
@@ -110,6 +112,13 @@ class FaceRecognizer {
       return out;
     }
     return <double>[];
+  }
+
+  void _timeInference(String modelName, void Function() run) {
+    final sw = Stopwatch()..start();
+    run();
+    sw.stop();
+    debugPrint('[FaceVerification] Inference: $modelName ${sw.elapsedMilliseconds} ms');
   }
 
   Future<void> dispose() async {
