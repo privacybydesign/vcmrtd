@@ -3,6 +3,7 @@ import 'dart:isolate';
 import 'dart:ui';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtdapp/features/face_verification/detection/face_detector.dart';
@@ -135,7 +136,7 @@ class FaceVerificationWorker {
       rootBundle.load('assets/face_verification/bigsmall_1.tflite'),
       rootBundle.load('assets/face_verification/bigsmall_2.tflite'),
       rootBundle.load('assets/face_verification/bigsmall_3.tflite'),
-      rootBundle.load('assets/face_verification/GhostFaceNet_fp32.tflite'),
+      rootBundle.load('assets/face_verification/GhostFaceNet_fp32_V2.tflite'),
     ]);
     final detectorBytes = results[0].buffer.asUint8List();
     final landmarksBytes = results[1].buffer.asUint8List();
@@ -500,13 +501,25 @@ Future<void> _matchWorkerLoop(SendPort mainSendPort) async {
         // within a widget lifetime, so re-embedding is wasteful.
         return <String, dynamic>{'ok': true};
       case 'prepare_nfc_face':
+        debugPrint(
+          '[FaceVerification] Match worker: preparing NFC embedding from ${payload['width']}x${payload['height']} crop',
+        );
         nfcEmbedding = recognizer.generateEmbedding(_imageFromPayload(payload));
+        debugPrint('[FaceVerification] Match worker: NFC embedding ready, length=${nfcEmbedding?.length ?? 0}');
         return <String, dynamic>{'ok': true};
       case 'match_selfie':
         final nfc = nfcEmbedding;
-        if (nfc == null) return <String, dynamic>{'score': 0.0};
+        if (nfc == null) {
+          debugPrint('[FaceVerification] Match worker: cannot match selfie, NFC embedding is null');
+          return <String, dynamic>{'score': 0.0};
+        }
+        debugPrint(
+          '[FaceVerification] Match worker: generating selfie embedding from ${payload['width']}x${payload['height']} crop',
+        );
         final emb = recognizer.generateEmbedding(_imageFromPayload(payload));
-        return <String, dynamic>{'score': recognizer.cosineSimilarity(nfc, emb)};
+        final score = recognizer.cosineSimilarity(nfc, emb);
+        debugPrint('[FaceVerification] Match worker: comparison done, score=${(score * 100).toStringAsFixed(2)}%');
+        return <String, dynamic>{'score': score};
       case 'stop':
         return <String, dynamic>{'ok': true};
       case 'dispose':

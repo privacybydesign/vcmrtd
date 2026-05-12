@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtdapp/features/face_verification/detection/face_detector.dart';
@@ -64,13 +65,23 @@ class FaceVerificationEngine {
 
   Future<void> _doNfcPrep(Uint8List nfcImageBytes) async {
     try {
+      debugPrint('[FaceVerification] NFC prep started: bytes=${nfcImageBytes.length}');
       final nfcImage = await _decodeNfcImage(nfcImageBytes);
-      if (nfcImage == null) throw StateError('Could not decode NFC image');
+      if (nfcImage == null) {
+        debugPrint('[FaceVerification] NFC prep failed: could not decode image');
+        throw StateError('Could not decode NFC image');
+      }
+      debugPrint('[FaceVerification] NFC image decoded: ${nfcImage.width}x${nfcImage.height}');
       final encodedNfc = Uint8List.fromList(img.encodePng(nfcImage));
       final nfcFace = await _worker.detectAndCropEncoded(encodedNfc);
-      if (nfcFace == null) throw StateError('No face found in NFC photo');
+      if (nfcFace == null) {
+        debugPrint('[FaceVerification] NFC prep failed: no face found in NFC photo');
+        throw StateError('No face found in NFC photo');
+      }
+      debugPrint('[FaceVerification] NFC face crop ready: ${nfcFace.width}x${nfcFace.height}');
       await _worker.prepareNfcFace(nfcFace);
       _nfcFacePrepared = true;
+      debugPrint('[FaceVerification] NFC embedding prepared');
     } catch (_) {
       _nfcPrepareFuture = null; // allow retry on next Start tap
       rethrow;
@@ -292,16 +303,28 @@ class FaceVerificationEngine {
   }
 
   Future<double> _computeMatchScore() async {
-    if (!_nfcFacePrepared) return 0.0;
+    if (!_nfcFacePrepared) {
+      debugPrint('[FaceVerification] Match skipped: NFC embedding is not prepared');
+      return 0.0;
+    }
     final selfie = _bestSelfie ?? _firstSelfie;
-    if (selfie == null) return 0.0;
-    return _worker.matchSelfie(selfie);
+    if (selfie == null) {
+      debugPrint('[FaceVerification] Match skipped: no selfie face crop captured');
+      return 0.0;
+    }
+    debugPrint('[FaceVerification] Match started: selfie=${selfie.width}x${selfie.height}');
+    final score = await _worker.matchSelfie(selfie);
+    debugPrint('[FaceVerification] Match finished: score=${(score * 100).toStringAsFixed(2)}%');
+    return score;
   }
 
   void _captureSelfie(FaceObservation face) {
     final yaw = (face.yawDegrees ?? 0.0).abs();
     final quality = face.boundingBox.width * face.boundingBox.height * (1.0 / (1.0 + yaw));
-    _firstSelfie ??= face.alignedFace112;
+    if (_firstSelfie == null) {
+      _firstSelfie = face.alignedFace112;
+      debugPrint('[FaceVerification] First selfie face crop captured: ${_firstSelfie!.width}x${_firstSelfie!.height}');
+    }
     if (quality > _bestSelfieQuality) {
       _bestSelfie = face.alignedFace112;
       _bestSelfieQuality = quality;

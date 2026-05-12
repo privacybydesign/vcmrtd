@@ -5,12 +5,13 @@ import 'package:flutter_litert/flutter_litert.dart';
 import 'package:image/image.dart' as img;
 
 class FaceRecognizer {
-  static const _modelAsset = 'assets/face_verification/GhostFaceNet_fp32.tflite';
+  static const _modelAsset = 'assets/face_verification/GhostFaceNet_fp32_V2.tflite';
 
   Interpreter? _interpreter;
   int _inputH = 112;
   int _inputW = 112;
   int _embeddingSize = 512;
+  List<int> _outputShape = const <int>[1, 512];
 
   Future<InterpreterOptions> _buildOptions() async {
     final options = InterpreterOptions()..threads = 4;
@@ -35,6 +36,7 @@ class FaceRecognizer {
   void _readShapes() {
     final inputShape = _interpreter!.getInputTensor(0).shape;
     final outputShape = _interpreter!.getOutputTensor(0).shape;
+    _outputShape = outputShape;
     if (inputShape.length == 4) {
       _inputH = inputShape[1];
       _inputW = inputShape[2];
@@ -59,9 +61,10 @@ class FaceRecognizer {
       buf[i * 3 + 1] = (bytes[i * 3 + 1] - 127.5) / 127.5;
       buf[i * 3 + 2] = (bytes[i * 3 + 2] - 127.5) / 127.5;
     }
-    final output = List.generate(1, (_) => List<double>.filled(_embeddingSize, 0.0));
+    final output = _makeTensor(_outputShape);
     interpreter.run(buf.buffer, output);
-    return _normalize(output.first);
+    final embedding = _flatFloatArray(output);
+    return _normalize(embedding.length > _embeddingSize ? embedding.sublist(0, _embeddingSize) : embedding);
   }
 
   double cosineSimilarity(List<double> a, List<double> b) {
@@ -81,6 +84,32 @@ class FaceRecognizer {
     final norm = math.sqrt(sq);
     if (norm <= 1e-9) return embedding;
     return embedding.map((v) => v / norm).toList(growable: false);
+  }
+
+  dynamic _makeTensor(List<int> shape) {
+    if (shape.isEmpty) return 0.0;
+
+    dynamic build(int dim) {
+      final size = shape[dim];
+      if (dim == shape.length - 1) {
+        return List<double>.filled(size, 0.0, growable: false);
+      }
+      return List<dynamic>.generate(size, (_) => build(dim + 1), growable: false);
+    }
+
+    return build(0);
+  }
+
+  List<double> _flatFloatArray(dynamic arr) {
+    if (arr is num) return <double>[arr.toDouble()];
+    if (arr is List) {
+      final out = <double>[];
+      for (final item in arr) {
+        out.addAll(_flatFloatArray(item));
+      }
+      return out;
+    }
+    return <double>[];
   }
 
   Future<void> dispose() async {
