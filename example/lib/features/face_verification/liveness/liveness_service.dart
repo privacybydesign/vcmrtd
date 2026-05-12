@@ -878,7 +878,12 @@ class _BigSmallService {
   Future<void> initialize() async {
     for (var i = 0; i < _modelFiles.length; i++) {
       if (_interpreters[i] != null) continue;
-      _interpreters[i] = await Interpreter.fromAsset(_modelFiles[i], options: _makeInterpOptions(2));
+      try {
+        _interpreters[i] = await Interpreter.fromAsset(_modelFiles[i], options: _makeInterpOptions(2, useGpu: true));
+      } catch (_) {
+        _interpreters[i]?.close();
+        _interpreters[i] = await Interpreter.fromAsset(_modelFiles[i], options: _makeInterpOptions(2, useGpu: false));
+      }
       _loadShapes(i);
     }
   }
@@ -886,7 +891,12 @@ class _BigSmallService {
   void initializeFromBuffers(List<Uint8List> modelBuffers) {
     for (var i = 0; i < modelBuffers.length; i++) {
       if (_interpreters[i] != null) continue;
-      _interpreters[i] = Interpreter.fromBuffer(modelBuffers[i], options: _makeInterpOptions(2));
+      try {
+        _interpreters[i] = Interpreter.fromBuffer(modelBuffers[i], options: _makeInterpOptions(2, useGpu: true));
+      } catch (_) {
+        _interpreters[i]?.close();
+        _interpreters[i] = Interpreter.fromBuffer(modelBuffers[i], options: _makeInterpOptions(2, useGpu: false));
+      }
       _loadShapes(i);
     }
   }
@@ -1005,11 +1015,15 @@ class _BigSmallService {
   }
 }
 
-InterpreterOptions _makeInterpOptions(int threads) {
+InterpreterOptions _makeInterpOptions(int threads, {required bool useGpu}) {
   final opts = InterpreterOptions()..threads = threads;
-  if (Platform.isAndroid) {
+  if (useGpu && Platform.isAndroid) {
     try {
       opts.addDelegate(GpuDelegateV2());
+    } catch (_) {}
+  } else if (useGpu && Platform.isIOS) {
+    try {
+      opts.addDelegate(GpuDelegate());
     } catch (_) {}
   }
   return opts;

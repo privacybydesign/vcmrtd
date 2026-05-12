@@ -266,18 +266,34 @@ class FaceLandmarkPipeline {
     if (_detectorInterp != null) return;
     final numThreads = (Platform.numberOfProcessors ~/ 2).clamp(1, 4);
 
-    _detectorInterp = await Interpreter.fromAsset(
-      'assets/face_verification/face_detector.tflite',
-      options: _makeInterpOptions(numThreads),
-    );
-    _landmarkInterp = await Interpreter.fromAsset(
-      'assets/face_verification/face_landmarks_detector.tflite',
-      options: _makeInterpOptions(numThreads),
-    );
-    _blendshapeInterp = await Interpreter.fromAsset(
-      'assets/face_verification/face_blendshapes.tflite',
-      options: _makeInterpOptions(numThreads),
-    );
+    try {
+      _detectorInterp = await Interpreter.fromAsset(
+        'assets/face_verification/face_detector.tflite',
+        options: _makeInterpOptions(numThreads, useGpu: true),
+      );
+      _landmarkInterp = await Interpreter.fromAsset(
+        'assets/face_verification/face_landmarks_detector.tflite',
+        options: _makeInterpOptions(numThreads, useGpu: true),
+      );
+      _blendshapeInterp = await Interpreter.fromAsset(
+        'assets/face_verification/face_blendshapes.tflite',
+        options: _makeInterpOptions(numThreads, useGpu: true),
+      );
+    } catch (_) {
+      close();
+      _detectorInterp = await Interpreter.fromAsset(
+        'assets/face_verification/face_detector.tflite',
+        options: _makeInterpOptions(numThreads, useGpu: false),
+      );
+      _landmarkInterp = await Interpreter.fromAsset(
+        'assets/face_verification/face_landmarks_detector.tflite',
+        options: _makeInterpOptions(numThreads, useGpu: false),
+      );
+      _blendshapeInterp = await Interpreter.fromAsset(
+        'assets/face_verification/face_blendshapes.tflite',
+        options: _makeInterpOptions(numThreads, useGpu: false),
+      );
+    }
 
     _finishInit();
   }
@@ -290,18 +306,29 @@ class FaceLandmarkPipeline {
     if (_detectorInterp != null) return;
     final numThreads = (Platform.numberOfProcessors ~/ 2).clamp(1, 4);
 
-    _detectorInterp = Interpreter.fromBuffer(detector, options: _makeInterpOptions(numThreads));
-    _landmarkInterp = Interpreter.fromBuffer(landmarks, options: _makeInterpOptions(numThreads));
-    _blendshapeInterp = Interpreter.fromBuffer(blendshapes, options: _makeInterpOptions(numThreads));
+    try {
+      _detectorInterp = Interpreter.fromBuffer(detector, options: _makeInterpOptions(numThreads, useGpu: true));
+      _landmarkInterp = Interpreter.fromBuffer(landmarks, options: _makeInterpOptions(numThreads, useGpu: true));
+      _blendshapeInterp = Interpreter.fromBuffer(blendshapes, options: _makeInterpOptions(numThreads, useGpu: true));
+    } catch (_) {
+      close();
+      _detectorInterp = Interpreter.fromBuffer(detector, options: _makeInterpOptions(numThreads, useGpu: false));
+      _landmarkInterp = Interpreter.fromBuffer(landmarks, options: _makeInterpOptions(numThreads, useGpu: false));
+      _blendshapeInterp = Interpreter.fromBuffer(blendshapes, options: _makeInterpOptions(numThreads, useGpu: false));
+    }
 
     _finishInit();
   }
 
-  InterpreterOptions _makeInterpOptions(int threads) {
+  InterpreterOptions _makeInterpOptions(int threads, {required bool useGpu}) {
     final opts = InterpreterOptions()..threads = threads;
-    if (Platform.isAndroid) {
+    if (useGpu && Platform.isAndroid) {
       try {
         opts.addDelegate(GpuDelegateV2());
+      } catch (_) {}
+    } else if (useGpu && Platform.isIOS) {
+      try {
+        opts.addDelegate(GpuDelegate());
       } catch (_) {}
     }
     return opts;
