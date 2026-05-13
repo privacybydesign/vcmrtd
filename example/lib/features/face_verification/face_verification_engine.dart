@@ -40,8 +40,6 @@ class FaceVerificationEngine {
   bool _nfcFacePrepared = false;
   Future<void>? _nfcPrepareFuture;
   img.Image? _firstSelfie;
-  img.Image? _bestSelfie;
-  double _bestSelfieQuality = -1.0;
   Uint8List? _debugNfcMatchInputPng;
   Uint8List? _debugSelfieMatchInputPng;
 
@@ -105,8 +103,6 @@ class FaceVerificationEngine {
     _framesSinceLastAction = 0;
 
     _firstSelfie = null;
-    _bestSelfie = null;
-    _bestSelfieQuality = -1.0;
     _debugNfcMatchInputPng = null;
     _debugSelfieMatchInputPng = null;
     _active.reset();
@@ -157,7 +153,7 @@ class FaceVerificationEngine {
       _active.lastFacePresent = false;
       return;
     }
-    _captureSelfie(face);
+    _captureInitialNeutralSelfie(face);
     if (!FaceVerificationTuning.emitDebugEvents) return;
     _sendEvent({
       'type': 'debug',
@@ -313,9 +309,9 @@ class FaceVerificationEngine {
       debugPrint('[FaceVerification] Match skipped: NFC embedding is not prepared');
       return 0.0;
     }
-    final selfie = _bestSelfie ?? _firstSelfie;
+    final selfie = _firstSelfie;
     if (selfie == null) {
-      debugPrint('[FaceVerification] Match skipped: no selfie face crop captured');
+      debugPrint('[FaceVerification] Match skipped: no initial neutral selfie face crop captured');
       return 0.0;
     }
     debugPrint('[FaceVerification] Match started: selfie=${selfie.width}x${selfie.height}');
@@ -327,17 +323,20 @@ class FaceVerificationEngine {
     return score;
   }
 
-  void _captureSelfie(FaceObservation face) {
+  void _captureInitialNeutralSelfie(FaceObservation face) {
+    if (_firstSelfie != null || !_active.isAligning || _currentActionIndex != 0) return;
+    if (!_isNeutralSelfieFace(face)) return;
+    _firstSelfie = face.alignedFace112;
+    debugPrint(
+      '[FaceVerification] Initial neutral selfie face crop captured: ${_firstSelfie!.width}x${_firstSelfie!.height}',
+    );
+  }
+
+  bool _isNeutralSelfieFace(FaceObservation face) {
     final yaw = (face.yawDegrees ?? 0.0).abs();
-    final quality = face.boundingBox.width * face.boundingBox.height * (1.0 / (1.0 + yaw));
-    if (_firstSelfie == null) {
-      _firstSelfie = face.alignedFace112;
-      debugPrint('[FaceVerification] First selfie face crop captured: ${_firstSelfie!.width}x${_firstSelfie!.height}');
-    }
-    if (quality > _bestSelfieQuality) {
-      _bestSelfie = face.alignedFace112;
-      _bestSelfieQuality = quality;
-    }
+    final smile =
+        ((face.blendshapeScores['mouthSmileLeft'] ?? 0.0) + (face.blendshapeScores['mouthSmileRight'] ?? 0.0)) / 2.0;
+    return yaw <= 12.0 && face.mouthRatio <= 0.34 && smile <= 0.25;
   }
 
   void _sendEvent(Map<String, dynamic> event) {

@@ -168,6 +168,19 @@ class FaceRecognizer {
       'max=${maxVal.toStringAsFixed(6)} mean=${mean.toStringAsFixed(6)} '
       'hasNaN=$hasNaN hasInf=$hasInf first16=[$first16]',
     );
+    _logEmbeddingValues(label, embedding);
+  }
+
+  void _logEmbeddingValues(String label, List<double> embedding) {
+    const chunkSize = 64;
+    for (var start = 0; start < embedding.length; start += chunkSize) {
+      final end = math.min(start + chunkSize, embedding.length);
+      final values = embedding
+          .sublist(start, end)
+          .map((double v) => v.isFinite ? v.toStringAsFixed(8) : v.toString())
+          .join(', ');
+      debugPrint('[FaceVerification] $label embedding values[$start..${end - 1}]=[$values]');
+    }
   }
 
   Future<void> dispose() async {
