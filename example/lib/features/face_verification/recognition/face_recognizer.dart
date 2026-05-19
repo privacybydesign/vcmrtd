@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_litert/flutter_litert.dart';
 import 'package:image/image.dart' as img;
+import 'package:vcmrtdapp/features/face_verification/tflite_tensor_utils.dart';
 
 class FaceRecognizer {
   static const _modelAsset = 'assets/face_verification/GhostFaceNet_fp32_V2.tflite';
@@ -70,9 +71,9 @@ class FaceRecognizer {
       buf[i * 3 + 1] = (bytes[i * 3 + 1] - 127.5) / 127.5;
       buf[i * 3 + 2] = (bytes[i * 3 + 2] - 127.5) / 127.5;
     }
-    final output = _makeTensor(_outputShape);
+    final output = tfliteMakeTensor(_outputShape);
     interpreter.run(buf.buffer, output);
-    final embedding = _flatFloatArray(output);
+    final embedding = tfliteFlatFloatArray(output);
     final normalized = _normalize(embedding.length > _embeddingSize ? embedding.sublist(0, _embeddingSize) : embedding);
     _logEmbeddingStats(label, normalized);
     return normalized;
@@ -116,32 +117,6 @@ class FaceRecognizer {
 
   img.Image _modelInputImage(img.Image face) {
     return img.copyResize(face, width: _inputW, height: _inputH, interpolation: img.Interpolation.linear);
-  }
-
-  dynamic _makeTensor(List<int> shape) {
-    if (shape.isEmpty) return 0.0;
-
-    dynamic build(int dim) {
-      final size = shape[dim];
-      if (dim == shape.length - 1) {
-        return List<double>.filled(size, 0.0, growable: false);
-      }
-      return List<dynamic>.generate(size, (_) => build(dim + 1), growable: false);
-    }
-
-    return build(0);
-  }
-
-  List<double> _flatFloatArray(dynamic arr) {
-    if (arr is num) return <double>[arr.toDouble()];
-    if (arr is List) {
-      final out = <double>[];
-      for (final item in arr) {
-        out.addAll(_flatFloatArray(item));
-      }
-      return out;
-    }
-    return <double>[];
   }
 
   void _logEmbeddingStats(String label, List<double> embedding) {

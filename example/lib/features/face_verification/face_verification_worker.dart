@@ -431,7 +431,9 @@ class FaceVerificationWorker {
   void _disposeCamPool() {
     if (_camPoolDisposed) return;
     _camPoolDisposed = true;
-    for (final buf in _camPool) buf.dispose();
+    for (final buf in _camPool) {
+      buf.dispose();
+    }
   }
 
   Future<void> dispose() async {

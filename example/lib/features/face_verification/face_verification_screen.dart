@@ -411,16 +411,24 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
     final debugNfcInputPng = map['debugNfcInputPng'] as Uint8List?;
     final debugSelfieInputPng = map['debugSelfieInputPng'] as Uint8List?;
     _onComplete(
-      passed: passed,
-      matchScore: matchScore,
-      antiSpoofScore: antiSpoofScore,
-      antiSpoofPassed: antiSpoofPassed,
-      rppgHr: rppgHr,
-      rppgPassed: rppgPassed,
-      rppgSampleCount: rppgSampleCount,
-      debugNfcInputPng: debugNfcInputPng,
-      debugSelfieInputPng: debugSelfieInputPng,
+      VerificationResult(
+        matchScore: matchScore,
+        isLive: passed,
+        antiSpoofScore: antiSpoofScore,
+        antiSpoofPassed: antiSpoofPassed,
+        rppgHr: rppgHr,
+        rppgPassed: rppgPassed,
+        rppgSampleCount: rppgSampleCount,
+        debugNfcInputPng: debugNfcInputPng,
+        debugSelfieInputPng: debugSelfieInputPng,
+      ),
     );
+  }
+
+  void _scheduleActionFlashClear() {
+    Future<void>.delayed(const Duration(milliseconds: 400), () {
+      if (mounted && !_isDisposed) setState(() => _actionFlash = false);
+    });
   }
 
   bool _handleCommonLivenessEvent(Map<String, dynamic> map) {
@@ -438,9 +446,7 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
           _completedActions.add(action);
           _actionFlash = true;
         });
-        Future<void>.delayed(const Duration(milliseconds: 400), () {
-          if (mounted && !_isDisposed) setState(() => _actionFlash = false);
-        });
+        _scheduleActionFlashClear();
         return true;
 
       case 'nextAction':
@@ -492,32 +498,12 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
     return false;
   }
 
-  void _onComplete({
-    required bool passed,
-    required double matchScore,
-    double? antiSpoofScore,
-    bool antiSpoofPassed = false,
-    double? rppgHr,
-    bool rppgPassed = false,
-    int rppgSampleCount = 0,
-    Uint8List? debugNfcInputPng,
-    Uint8List? debugSelfieInputPng,
-  }) {
+  void _onComplete(VerificationResult result) {
     if (!mounted || _isDisposed) return;
     _invalidateFramePipeline();
     setState(() {
       _state = VerificationState.result;
-      _result = VerificationResult(
-        matchScore: matchScore,
-        isLive: passed,
-        antiSpoofScore: antiSpoofScore,
-        antiSpoofPassed: antiSpoofPassed,
-        rppgHr: rppgHr,
-        rppgPassed: rppgPassed,
-        rppgSampleCount: rppgSampleCount,
-        debugNfcInputPng: debugNfcInputPng,
-        debugSelfieInputPng: debugSelfieInputPng,
-      );
+      _result = result;
     });
     unawaited(_stopActiveFlow(disposeCamera: false));
   }
@@ -785,43 +771,6 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
     final matchPassed = r.matchScore > threshold;
     final passed = matchPassed && r.isLive;
 
-    Widget scoreRow(String label, String value, bool ok) => Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: Colors.grey)),
-          Row(
-            children: [
-              Text(value, style: TextStyle(color: ok ? Colors.green : Colors.red)),
-              const SizedBox(width: 6),
-              Icon(ok ? Icons.check : Icons.close, size: 16, color: ok ? Colors.green : Colors.red),
-            ],
-          ),
-        ],
-      ),
-    );
-
-    Widget debugModelInput(String label, Uint8List? bytes) => Expanded(
-      child: Column(
-        children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-          const SizedBox(height: 6),
-          Container(
-            width: 112,
-            height: 112,
-            decoration: BoxDecoration(border: Border.all(color: Colors.black12)),
-            clipBehavior: Clip.antiAlias,
-            child: bytes == null || bytes.isEmpty
-                ? const Center(
-                    child: Text('n/a', style: TextStyle(color: Colors.grey)),
-                  )
-                : Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true),
-          ),
-        ],
-      ),
-    );
-
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -838,34 +787,71 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
           const SizedBox(height: 16),
           Row(
             children: [
-              debugModelInput('NFC input', r.debugNfcInputPng),
+              _debugModelInput('NFC input', r.debugNfcInputPng),
               const SizedBox(width: 12),
-              debugModelInput('Selfie input', r.debugSelfieInputPng),
+              _debugModelInput('Selfie input', r.debugSelfieInputPng),
             ],
           ),
           const SizedBox(height: 20),
-          scoreRow(
+          _scoreRow(
             'Match (≥${(threshold * 100).toStringAsFixed(0)}%)',
             '${(r.matchScore * 100).toStringAsFixed(1)}%',
             matchPassed,
           ),
-          scoreRow(
+          _scoreRow(
             'Anti-spoof',
             r.antiSpoofScore != null ? '${(r.antiSpoofScore! * 100).toStringAsFixed(1)}%' : 'n/a',
             r.antiSpoofPassed,
           ),
-          scoreRow(
+          _scoreRow(
             'rPPG (${r.rppgSampleCount} samples)',
             r.rppgHr != null ? '${r.rppgHr!.toStringAsFixed(0)} bpm' : 'n/a',
             r.rppgPassed,
           ),
-          scoreRow('Liveness actions', r.isLive ? 'passed' : 'failed', r.isLive),
+          _scoreRow('Liveness actions', r.isLive ? 'passed' : 'failed', r.isLive),
           const SizedBox(height: 32),
           OutlinedButton(onPressed: _retry, child: const Text('Try Again')),
         ],
       ),
     );
   }
+
+  static Widget _scoreRow(String label, String value, bool ok) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 3),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(color: Colors.grey)),
+        Row(
+          children: [
+            Text(value, style: TextStyle(color: ok ? Colors.green : Colors.red)),
+            const SizedBox(width: 6),
+            Icon(ok ? Icons.check : Icons.close, size: 16, color: ok ? Colors.green : Colors.red),
+          ],
+        ),
+      ],
+    ),
+  );
+
+  static Widget _debugModelInput(String label, Uint8List? bytes) => Expanded(
+    child: Column(
+      children: [
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        const SizedBox(height: 6),
+        Container(
+          width: 112,
+          height: 112,
+          decoration: BoxDecoration(border: Border.all(color: Colors.black12)),
+          clipBehavior: Clip.antiAlias,
+          child: bytes == null || bytes.isEmpty
+              ? const Center(
+                  child: Text('n/a', style: TextStyle(color: Colors.grey)),
+                )
+              : Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true),
+        ),
+      ],
+    ),
+  );
 }
 
 // ── Supporting widgets ─────────────────────────────────────────────────────

@@ -9,6 +9,7 @@ import 'package:image/image.dart' as img;
 import 'package:vcmrtdapp/features/face_verification/detection/face_detector.dart';
 import 'package:vcmrtdapp/features/face_verification/detection/face_landmarker_types.dart';
 import 'package:vcmrtdapp/features/face_verification/face_verification_tuning.dart';
+import 'package:vcmrtdapp/features/face_verification/tflite_tensor_utils.dart';
 
 enum LivenessAction { blink, turnLeft, turnRight, mouthOpen, smile }
 
@@ -1047,9 +1048,9 @@ class _BigSmallService {
       final oShape = _outputShapes[i];
       if (interp == null || oShape == null) continue;
 
-      final outTensor = _makeTensor(oShape);
+      final outTensor = tfliteMakeTensor(oShape);
       interp.runForMultipleInputs(<Object>[appearanceBuf.buffer, motionBuf.buffer], <int, Object>{0: outTensor});
-      final out = _flatFloatArray(outTensor);
+      final out = tfliteFlatFloatArray(outTensor);
       if (out.isEmpty) continue;
       final take = math.min(frames, out.length);
       for (var f = 0; f < take; f++) {
@@ -1112,31 +1113,6 @@ class _BigSmallService {
       }
     }
     return buf;
-  }
-
-  dynamic _makeTensor(List<int> shape) {
-    if (shape.isEmpty) return 0.0;
-    dynamic build(int dim) {
-      final size = shape[dim];
-      if (dim == shape.length - 1) {
-        return List<double>.filled(size, 0.0, growable: false);
-      }
-      return List<dynamic>.generate(size, (_) => build(dim + 1), growable: false);
-    }
-
-    return build(0);
-  }
-
-  List<double> _flatFloatArray(dynamic arr) {
-    if (arr is num) return <double>[arr.toDouble()];
-    if (arr is List) {
-      final out = <double>[];
-      for (final item in arr) {
-        out.addAll(_flatFloatArray(item));
-      }
-      return out;
-    }
-    return <double>[];
   }
 }
 
