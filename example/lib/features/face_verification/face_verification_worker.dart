@@ -198,11 +198,25 @@ class FaceVerificationWorker {
 
     final totalStart = DateTime.now();
     debugPrint('[FaceVerification] Worker: loading + initializing 9 models in pipeline');
+
+    // GhostFaceNet (index 0) is CPU-only: pass its bytes directly to the match
+    // worker as a TransferableTypedData so the worker isolate owns the buffer for
+    // its entire lifetime. Using a temp-isolate address would leave TFLite holding
+    // a non-owning pointer into freed Dart heap memory after the temp isolate exits.
+    TransferableTypedData? ghostFaceNetTtd;
+
     final addresses = await Future.wait(
       List.generate(9, (i) async {
         final t0 = DateTime.now();
         final bd = await rootBundle.load(modelPaths[i]);
         final ttd = TransferableTypedData.fromList([Uint8List.sublistView(bd)]);
+        if (i == 0) {
+          ghostFaceNetTtd = ttd;
+          debugPrint(
+            '[FaceVerification] Worker: ${modelNames[0]} loaded in ${DateTime.now().difference(t0).inMilliseconds}ms (initializing in match worker)',
+          );
+          return 0; // placeholder — not used
+        }
         final addr = await _spawnTempModelIsolate(
           ttd,
           tryGpuFlags[i],
@@ -241,7 +255,7 @@ class FaceVerificationWorker {
           'camBufCap': _camBufCap,
         },
       ),
-      _match.request('init', payload: <String, dynamic>{'modelAddr': addresses[0]}),
+      _match.request('init', payload: <String, dynamic>{'modelTtd': ghostFaceNetTtd!}),
     ]);
     debugPrint('[FaceVerification] Worker: all interpreters initialized');
   }
@@ -774,6 +788,9 @@ Future<void> _matchWorkerLoop(SendPort mainSendPort) async {
   mainSendPort.send(commandPort.sendPort);
 
   final recognizer = FaceRecognizer();
+  // Holds the model bytes so the TFLite interpreter's non-owning pointer remains
+  // valid for the lifetime of this isolate.
+  Uint8List? matchModelBytes;
   List<double>? nfcEmbedding;
   Uint8List? nfcInputPng;
   Uint8List? selfieInputPng;
@@ -781,8 +798,9 @@ Future<void> _matchWorkerLoop(SendPort mainSendPort) async {
   Future<Map<String, dynamic>> handle(String cmd, Map<String, dynamic> payload) async {
     switch (cmd) {
       case 'init':
-        debugPrint('[FaceVerification] Match worker: adopting GhostFaceNet from address');
-        recognizer.initializeFromAddress(payload['modelAddr'] as int);
+        debugPrint('[FaceVerification] Match worker: initializing GhostFaceNet from buffer');
+        matchModelBytes = (payload['modelTtd'] as TransferableTypedData).materialize().asUint8List();
+        await recognizer.initializeFromBuffer(matchModelBytes!);
         debugPrint('[FaceVerification] Match worker: GhostFaceNet initialized');
         return <String, dynamic>{'ok': true};
       case 'start_session':
