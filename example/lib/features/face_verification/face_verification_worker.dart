@@ -1,13 +1,20 @@
 import 'dart:async';
+import 'dart:collection';
+import 'dart:ffi';
+import 'dart:io' show Platform;
 import 'dart:isolate';
 import 'dart:ui';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/services.dart';
+import 'package:flutter_litert/flutter_litert.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtdapp/features/face_verification/detection/face_detector.dart';
 import 'package:vcmrtdapp/features/face_verification/detection/face_landmarker_types.dart';
+import 'package:vcmrtdapp/features/face_verification/face_verification_diagnostics.dart';
+import 'package:vcmrtdapp/features/face_verification/ffi/face_frame_buffer.dart';
 import 'package:vcmrtdapp/features/face_verification/liveness/liveness_service.dart';
 import 'package:vcmrtdapp/features/face_verification/recognition/face_recognizer.dart';
 
@@ -120,87 +127,136 @@ class FaceVerificationWorker {
   final _passive = _IsolateClient(_passiveWorkerMain);
   final _match = _IsolateClient(_matchWorkerMain);
 
+  // Pool of native camera frame buffers — main writes raw camera bytes once,
+  // pipeline and passive each decode independently from the same native memory.
+  // At most PIL_READING(1) + PASS_READY(queued,1) + PASS_READING(1) = 3 occupied at once.
+  static const int _camPoolSize = 10;
+  static const int _camBufCap = 12 * 1024 * 1024; // 12 MB — covers 1080p BGRA with headroom
+  late final List<FaceFrameBuffer> _camPool;
+
   final StreamController<WorkerFrameResult> _frames = StreamController<WorkerFrameResult>.broadcast();
 
-  Map<String, dynamic>? _queuedPipelinePayload;
-  Map<String, dynamic>? _queuedPassivePayload;
+  final Queue<Map<String, dynamic>> _pipelineQueue = Queue<Map<String, dynamic>>();
+  final Queue<Map<String, dynamic>> _passiveQueue = Queue<Map<String, dynamic>>();
+  bool _camPoolDisposed = false;
   bool _pipelineBusy = false;
   bool _passiveBusy = false;
   Completer<void>? _pipelineIdle;
   Completer<void>? _passiveIdle;
   int _sessionId = 0;
-
+  int _diagPipelineFrameSeq = 0;
+  int _diagPipelineResultCount = 0;
   Stream<WorkerFrameResult> get frames => _frames.stream;
 
   Future<void> initialize() async {
-    // Spawn all 3 isolates in parallel.
-    debugPrint('[FaceVerification] Worker: starting pipeline/passive/match isolates');
-    await Future.wait(<Future<void>>[_pipeline.start(), _passive.start(), _match.start()]);
+    _camPool = List.generate(_camPoolSize, (_) => FaceFrameBuffer.create(_camBufCap));
 
-    debugPrint('[FaceVerification] Worker: loading face_detector.tflite');
-    debugPrint('[FaceVerification] Worker: loading face_landmarks_detector.tflite');
-    debugPrint('[FaceVerification] Worker: loading face_blendshapes.tflite');
-    debugPrint('[FaceVerification] Worker: loading minifasnet_v1se.tflite');
-    debugPrint('[FaceVerification] Worker: loading minifasnet_v2.tflite');
-    debugPrint('[FaceVerification] Worker: loading bigsmall_1.tflite');
-    debugPrint('[FaceVerification] Worker: loading bigsmall_2.tflite');
-    debugPrint('[FaceVerification] Worker: loading bigsmall_3.tflite');
-    debugPrint('[FaceVerification] Worker: loading GhostFaceNet_fp32_V2.tflite');
-    final results = await Future.wait([
-      rootBundle.load('assets/face_verification/face_detector.tflite'),
-      rootBundle.load('assets/face_verification/face_landmarks_detector.tflite'),
-      rootBundle.load('assets/face_verification/face_blendshapes.tflite'),
-      rootBundle.load('assets/face_verification/minifasnet_v1se.tflite'),
-      rootBundle.load('assets/face_verification/minifasnet_v2.tflite'),
-      rootBundle.load('assets/face_verification/bigsmall_1.tflite'),
-      rootBundle.load('assets/face_verification/bigsmall_2.tflite'),
-      rootBundle.load('assets/face_verification/bigsmall_3.tflite'),
-      rootBundle.load('assets/face_verification/GhostFaceNet_fp32_V2.tflite'),
-    ]);
-    debugPrint('[FaceVerification] Worker: all model assets loaded');
-    final detectorBytes = results[0].buffer.asUint8List();
-    final landmarksBytes = results[1].buffer.asUint8List();
-    final blendshapesBytes = results[2].buffer.asUint8List();
-    final v1Bytes = results[3].buffer.asUint8List();
-    final v2Bytes = results[4].buffer.asUint8List();
-    final bs1Bytes = results[5].buffer.asUint8List();
-    final bs2Bytes = results[6].buffer.asUint8List();
-    final bs3Bytes = results[7].buffer.asUint8List();
-    final recognizerBytes = results[8].buffer.asUint8List();
+    // Start worker isolates immediately — independent of asset loading.
+    final workersFuture = Future.wait<void>([_pipeline.start(), _passive.start(), _match.start()]);
 
-    // Initialize all 3 isolates in parallel — each loads its own TFLite interpreters.
-    debugPrint('[FaceVerification] Worker: initializing pipeline/passive/match interpreters');
+    // Models are listed largest-first so the platform thread loads the heaviest
+    // bytes early, and the 15 MB GhostFaceNet temp isolate can start parsing
+    // while the smaller models are still loading — instead of waiting for all
+    // 9 to finish before any isolate starts.
+    //
+    // Each load chains directly into its temp isolate spawn via .then(),
+    // so no asset sits in main-isolate memory waiting for stragglers.
+    //
+    // GPU flags match each model's original initializeFromBuffers preference.
+    // Index→semantic mapping (used in Future.wait assignments below):
+    //   [0] GhostFaceNet  [1] bigsmall_1  [2] bigsmall_2  [3] bigsmall_3
+    //   [4] landmarks     [5] v1se        [6] v2          [7] blendshapes  [8] detector
+    const modelPaths = <String>[
+      'assets/face_verification/GhostFaceNet_fp32_V2.tflite', // 0 — 15.5 MB, CPU
+      'assets/face_verification/bigsmall_1.tflite', // 1 —  3.1 MB, GPU
+      'assets/face_verification/bigsmall_2.tflite', // 2 —  3.1 MB, GPU
+      'assets/face_verification/bigsmall_3.tflite', // 3 —  3.1 MB, GPU
+      'assets/face_verification/face_landmarks_detector.tflite', // 4 —  2.4 MB, GPU
+      'assets/face_verification/minifasnet_v1se.tflite', // 5 —  1.8 MB, CPU
+      'assets/face_verification/minifasnet_v2.tflite', // 6 —  1.8 MB, CPU
+      'assets/face_verification/face_blendshapes.tflite', // 7 —  0.9 MB, GPU
+      'assets/face_verification/face_detector.tflite', // 8 —  0.2 MB, GPU
+    ];
+    const tryGpuFlags = <bool>[false, true, true, true, true, false, false, true, true];
+    final numThreads = (Platform.numberOfProcessors ~/ 2).clamp(1, 4);
+
+    const modelNames = <String>[
+      'GhostFaceNet_fp32_V2',
+      'bigsmall_1',
+      'bigsmall_2',
+      'bigsmall_3',
+      'face_landmarks_detector',
+      'minifasnet_v1se',
+      'minifasnet_v2',
+      'face_blendshapes',
+      'face_detector',
+    ];
+    // GPU shader serialization: compiled kernels are cached to disk so that on
+    // subsequent launches the delegate loads from cache instead of recompiling.
+    // Android-only — iOS Metal does not use this path.
+    final String? gpuCacheDir = Platform.isAndroid ? (await getTemporaryDirectory()).path : null;
+
+    final totalStart = DateTime.now();
+    debugPrint('[FaceVerification] Worker: loading + initializing 9 models in pipeline');
+    final addresses = await Future.wait(
+      List.generate(9, (i) async {
+        final t0 = DateTime.now();
+        final bd = await rootBundle.load(modelPaths[i]);
+        final ttd = TransferableTypedData.fromList([Uint8List.sublistView(bd)]);
+        final addr = await _spawnTempModelIsolate(
+          ttd,
+          tryGpuFlags[i],
+          numThreads,
+          gpuCacheDir: gpuCacheDir,
+          modelToken: modelNames[i],
+        );
+        final ms = DateTime.now().difference(t0).inMilliseconds;
+        debugPrint('[FaceVerification] Worker: ${modelNames[i]} ready in ${ms}ms');
+        return addr;
+      }),
+    );
+    await workersFuture;
+    final totalMs = DateTime.now().difference(totalStart).inMilliseconds;
+    debugPrint('[FaceVerification] Worker: all 9 interpreters ready in ${totalMs}ms total, transferring to workers');
+
+    final camBufAddrs = _camPool.map((b) => b.address).toList(growable: false);
     await Future.wait(<Future<Map<String, dynamic>>>[
       _pipeline.request(
         'init',
         payload: <String, dynamic>{
-          'detector': detectorBytes,
-          'landmarks': landmarksBytes,
-          'blendshapes': blendshapesBytes,
+          'detectorAddr': addresses[8],
+          'landmarksAddr': addresses[4],
+          'blendshapesAddr': addresses[7],
+          'camBufAddrs': camBufAddrs,
+          'camBufCap': _camBufCap,
         },
       ),
       _passive.request(
         'init',
         payload: <String, dynamic>{
-          'v1': v1Bytes,
-          'v2': v2Bytes,
-          'bigSmall': <Uint8List>[bs1Bytes, bs2Bytes, bs3Bytes],
+          'v1Addr': addresses[5],
+          'v2Addr': addresses[6],
+          'bigSmallAddrs': [addresses[1], addresses[2], addresses[3]],
+          'camBufAddrs': camBufAddrs,
+          'camBufCap': _camBufCap,
         },
       ),
-      _match.request('init', payload: <String, dynamic>{'model': recognizerBytes}),
+      _match.request('init', payload: <String, dynamic>{'modelAddr': addresses[0]}),
     ]);
     debugPrint('[FaceVerification] Worker: all interpreters initialized');
   }
 
   Future<void> startSession() async {
     _sessionId++;
+    _diagPipelineFrameSeq = 0;
+    _diagPipelineResultCount = 0;
     await Future.wait(<Future<Map<String, dynamic>>>[
       _pipeline.request('start_session'),
       _passive.request('start_session'),
       _match.request('start_session'),
     ]);
-    _queuedPipelinePayload = null;
-    _queuedPassivePayload = null;
+    _pipelineQueue.clear();
+    _passiveQueue.clear();
     _pipelineBusy = false;
     _passiveBusy = false;
     _completePipelineIdle();
@@ -221,6 +277,11 @@ class FaceVerificationWorker {
 
   Future<WorkerMatchResult> matchSelfie(img.Image selfie) async {
     final res = await _match.request('match_selfie', payload: _imagePayload(selfie));
+    final rawScore = res['score'];
+    debugPrint(
+      '[FaceVerification] Match worker response: keys=${res.keys.toList()} '
+      'rawScore=$rawScore rawScoreType=${rawScore.runtimeType}',
+    );
     return WorkerMatchResult(
       score: (res['score'] as num?)?.toDouble() ?? 0.0,
       nfcInputPng: res['nfcInputPng'] as Uint8List?,
@@ -229,18 +290,46 @@ class FaceVerificationWorker {
   }
 
   Future<void> processCameraFrame(CameraImage cameraImage, int rotationDegrees) async {
+    if (_camPoolDisposed) return;
+    // Find the first FREE native buffer — never block, just drop the frame if all are busy.
+    int? freeBufIdx;
+    for (var i = 0; i < _camPool.length; i++) {
+      if (_camPool[i].beginWrite()) {
+        freeBufIdx = i;
+        break;
+      }
+    }
+    if (freeBufIdx == null) {
+      return; // all buffers in use — drop frame
+    }
+
+    // Copy camera planes into native memory (one write, shared by both isolates).
+    final buf = _camPool[freeBufIdx];
+    final dst = buf.dataPtr;
+    var planeOffset = 0;
+    for (final Plane plane in cameraImage.planes) {
+      (dst + planeOffset).asTypedList(plane.bytes.length).setAll(0, plane.bytes);
+      planeOffset += plane.bytes.length;
+    }
+    buf.commitWrite(cameraImage.width, cameraImage.height, cameraImage.planes.length);
+
+    final diagFrameSeq = ++_diagPipelineFrameSeq;
     _enqueuePipelineFrame(<String, dynamic>{
       'sessionId': _sessionId,
-      'camera': _cameraPayload(cameraImage, rotationDegrees),
+      'diagFrameSeq': diagFrameSeq,
+      'camera': _cameraNativeMetadata(cameraImage, rotationDegrees),
+      'camBufIdx': freeBufIdx,
     });
   }
 
-  // Back-pressure: only the latest camera frame is queued. If the isolate is still busy
-  // with the previous frame, the intermediate frames are silently dropped so the pipeline
-  // never accumulates unbounded lag.
+  // Latest-frame-wins: when the pipeline is busy, evict any already-queued frame
+  // (freeing its native buffer atomically) and replace it with the new one.
+  // This bounds lag to at most one pipeline frame time instead of letting stale
+  // frames pile up until the native buffer pool is exhausted (~8 frames / ~267ms).
   void _enqueuePipelineFrame(Map<String, dynamic> payload) {
     if (_pipelineBusy) {
-      _queuedPipelinePayload = payload;
+      _evictPipelineQueue();
+      _pipelineQueue.add(payload);
       _pipelineIdle ??= Completer<void>();
       return;
     }
@@ -249,20 +338,46 @@ class FaceVerificationWorker {
     unawaited(_runPipelinePayload(payload));
   }
 
+  // Reclaims native buffers for all frames waiting in the pipeline queue.
+  // READY → PIL_READING → FREE via the same atomic ops the pipeline uses,
+  // safe to call from the main isolate because the pipeline hasn't received
+  // a process_frame command for these buffers yet.
+  void _evictPipelineQueue() {
+    while (_pipelineQueue.isNotEmpty) {
+      final stale = _pipelineQueue.removeFirst();
+      final buf = _camPool[stale['camBufIdx'] as int];
+      if (buf.beginPipelineRead()) buf.endPipelineRead(handoffToPassive: false);
+    }
+  }
+
   Future<void> _runPipelinePayload(Map<String, dynamic> payload) async {
     final sessionId = payload['sessionId'] as int;
+    final diagFrameSeq = payload['diagFrameSeq'] as int?;
+    final diagStartMs = FaceVerificationDiagnostics.enabled ? DateTime.now().millisecondsSinceEpoch : 0;
     final cameraPayload = (payload['camera'] as Map).cast<String, dynamic>();
+    final camBufIdx = payload['camBufIdx'] as int;
     try {
-      final pipelineResult = await _pipeline.request('process_frame', payload: cameraPayload);
+      final pipelineResult = await _pipeline.request(
+        'process_frame',
+        payload: <String, dynamic>{...cameraPayload, 'camBufIdx': camBufIdx},
+      );
       if (sessionId == _sessionId) {
         final faceMap = pipelineResult['face'] as Map<String, dynamic>?;
+        if (FaceVerificationDiagnostics.enabled && _diagPipelineResultCount < 8) {
+          final durationMs = DateTime.now().millisecondsSinceEpoch - diagStartMs;
+          FaceVerificationDiagnostics.log(
+            'pipeline result #${_diagPipelineResultCount + 1} seq=$diagFrameSeq '
+            'duration=${durationMs}ms hasFace=${faceMap != null}',
+          );
+        }
+        _diagPipelineResultCount++;
         if (faceMap != null) {
-          // Forward the already-decoded frame so passive skips its own YUV decode+rotate.
+          // Pipeline transitioned the buffer to PASS_READY — passive reads the same raw frame.
+          // Send buffer index + camera metadata (no pixel bytes) so passive can decode.
           _enqueuePassiveFrame(<String, dynamic>{
             'face': faceMap,
-            'frameRgb': pipelineResult['frameRgb'] as Uint8List?,
-            'frameW': pipelineResult['frameW'] as int?,
-            'frameH': pipelineResult['frameH'] as int?,
+            'camBufIdx': camBufIdx,
+            ...cameraPayload, // width, height, format, rotation, planes metadata (no bytes)
           });
         }
         _emitFrameResult(WorkerFrameResult(face: faceMap == null ? null : _deserializeFaceMap(faceMap)));
@@ -271,10 +386,8 @@ class FaceVerificationWorker {
       if (sessionId == _sessionId) _emitFrameError(e);
     }
 
-    final next = _queuedPipelinePayload;
-    _queuedPipelinePayload = null;
-    if (next != null) {
-      unawaited(_runPipelinePayload(next));
+    if (_pipelineQueue.isNotEmpty) {
+      unawaited(_runPipelinePayload(_pipelineQueue.removeFirst()));
     } else {
       _pipelineBusy = false;
       _completePipelineIdle();
@@ -306,8 +419,8 @@ class FaceVerificationWorker {
 
   Future<void> stop() async {
     _sessionId++;
-    _queuedPipelinePayload = null;
-    _queuedPassivePayload = null;
+    _pipelineQueue.clear();
+    _passiveQueue.clear();
     await _waitPipelineIdle();
     await _waitPassiveIdle();
     await _pipeline.request('stop');
@@ -315,28 +428,35 @@ class FaceVerificationWorker {
     await _match.request('stop');
   }
 
+  void _disposeCamPool() {
+    if (_camPoolDisposed) return;
+    _camPoolDisposed = true;
+    for (final buf in _camPool) buf.dispose();
+  }
+
   Future<void> dispose() async {
     await _pipeline.dispose();
     await _passive.dispose();
     await _match.dispose();
     await _frames.close();
-    _queuedPipelinePayload = null;
-    _queuedPassivePayload = null;
+    _pipelineQueue.clear();
+    _passiveQueue.clear();
     _pipelineBusy = false;
     _passiveBusy = false;
     _completePipelineIdle();
     _completePassiveIdle();
+    _disposeCamPool();
   }
 
   void _enqueuePassiveFrame(Map<String, dynamic> payload) {
+    _passiveQueue.add(payload);
     if (_passiveBusy) {
-      _queuedPassivePayload = payload;
       _passiveIdle ??= Completer<void>();
       return;
     }
     _passiveBusy = true;
     _passiveIdle ??= Completer<void>();
-    unawaited(_runPassivePayload(payload));
+    unawaited(_runPassivePayload(_passiveQueue.removeFirst()));
   }
 
   Future<void> _runPassivePayload(Map<String, dynamic> payload) async {
@@ -344,13 +464,10 @@ class FaceVerificationWorker {
       await _passive.request('collect_frame', payload: payload);
     } catch (_) {}
 
-    final next = _queuedPassivePayload;
-    _queuedPassivePayload = null;
-    if (next != null) {
-      unawaited(_runPassivePayload(next));
+    if (_passiveQueue.isNotEmpty) {
+      unawaited(_runPassivePayload(_passiveQueue.removeFirst()));
       return;
     }
-
     _passiveBusy = false;
     _completePassiveIdle();
   }
@@ -358,12 +475,12 @@ class FaceVerificationWorker {
   // Must drain the passive queue before reading results: the last buffered frames may still
   // be in-flight in the isolate when getPassiveResult() is called after the session ends.
   Future<void> _waitPassiveIdle() {
-    if (!_passiveBusy && _queuedPassivePayload == null) return Future<void>.value();
+    if (!_passiveBusy && _passiveQueue.isEmpty) return Future<void>.value();
     return (_passiveIdle ??= Completer<void>()).future;
   }
 
   Future<void> _waitPipelineIdle() {
-    if (!_pipelineBusy && _queuedPipelinePayload == null) return Future<void>.value();
+    if (!_pipelineBusy && _pipelineQueue.isEmpty) return Future<void>.value();
     return (_pipelineIdle ??= Completer<void>()).future;
   }
 
@@ -378,6 +495,77 @@ class FaceVerificationWorker {
     if (idle != null && !idle.isCompleted) idle.complete();
     _passiveIdle = null;
   }
+}
+
+// Creates one TFLite interpreter from model bytes and sends its native address back.
+// Does NOT call close() before exiting so the TfLiteInterpreter* stays alive on the
+// process heap for the worker isolate to adopt via Interpreter.fromAddress().
+void _tempModelIsolateMain(List<Object?> args) {
+  final sendPort = args[0] as SendPort;
+  final modelBytes = (args[1] as TransferableTypedData).materialize().asUint8List();
+  final tryGpu = args[2] as bool;
+  final numThreads = args[3] as int;
+  final cacheDir = args[4] as String?;
+  final modelToken = args[5] as String;
+  Interpreter? interp;
+  if (tryGpu) {
+    try {
+      interp = Interpreter.fromBuffer(
+        modelBytes,
+        options: _makeModelInterpOptions(numThreads, useGpu: true, gpuCacheDir: cacheDir, modelToken: modelToken),
+      );
+    } catch (_) {
+      interp?.close();
+      interp = Interpreter.fromBuffer(modelBytes, options: _makeModelInterpOptions(numThreads, useGpu: false));
+    }
+  } else {
+    interp = Interpreter.fromBuffer(modelBytes, options: _makeModelInterpOptions(numThreads, useGpu: false));
+  }
+  sendPort.send(interp.address);
+  // Intentionally no close() — native pointer must survive for worker adoption.
+}
+
+InterpreterOptions _makeModelInterpOptions(
+  int threads, {
+  required bool useGpu,
+  String? gpuCacheDir,
+  String modelToken = '',
+}) {
+  final opts = InterpreterOptions()..threads = threads;
+  if (useGpu && Platform.isAndroid) {
+    try {
+      final delegate = (gpuCacheDir != null && modelToken.isNotEmpty)
+          ? GpuDelegateV2(
+              options: GpuDelegateOptionsV2(
+                // 1 = ENABLE_QUANT, 8 = ENABLE_SERIALIZATION
+                experimentalFlags: const [1, 8],
+                serializationDir: gpuCacheDir,
+                modelToken: modelToken,
+              ),
+            )
+          : GpuDelegateV2();
+      opts.addDelegate(delegate);
+    } catch (_) {}
+  } else if (useGpu && Platform.isIOS) {
+    try {
+      opts.addDelegate(GpuDelegate());
+    } catch (_) {}
+  }
+  return opts;
+}
+
+Future<int> _spawnTempModelIsolate(
+  TransferableTypedData ttd,
+  bool tryGpu,
+  int numThreads, {
+  String? gpuCacheDir,
+  required String modelToken,
+}) async {
+  final receivePort = ReceivePort();
+  await Isolate.spawn(_tempModelIsolateMain, [receivePort.sendPort, ttd, tryGpu, numThreads, gpuCacheDir, modelToken]);
+  final address = await receivePort.first as int;
+  receivePort.close();
+  return address;
 }
 
 SendPort _initializeWorkerIsolate(List<Object?> args) {
@@ -400,17 +588,22 @@ Future<void> _pipelineWorkerLoop(SendPort mainSendPort) async {
   mainSendPort.send(commandPort.sendPort);
 
   final detector = FaceDetectorService();
+  List<FaceFrameBuffer>? camPool;
 
   Future<Map<String, dynamic>> handle(String cmd, Map<String, dynamic> payload) async {
     switch (cmd) {
       case 'init':
-        debugPrint('[FaceVerification] Pipeline worker: initializing detector/landmarks/blendshapes');
-        detector.initializeFromBuffers(
-          detector: payload['detector'] as Uint8List,
-          landmarks: payload['landmarks'] as Uint8List,
-          blendshapes: payload['blendshapes'] as Uint8List,
+        debugPrint('[FaceVerification] Pipeline worker: adopting detector/landmarks/blendshapes from addresses');
+        detector.initializeFromAddresses(
+          detectorAddr: payload['detectorAddr'] as int,
+          landmarksAddr: payload['landmarksAddr'] as int,
+          blendshapesAddr: payload['blendshapesAddr'] as int,
         );
-        debugPrint('[FaceVerification] Pipeline worker: detector/landmarks/blendshapes initialized');
+        camPool = (payload['camBufAddrs'] as List)
+            .cast<int>()
+            .map((a) => FaceFrameBuffer.fromAddress(a, payload['camBufCap'] as int))
+            .toList(growable: false);
+        debugPrint('[FaceVerification] Pipeline worker: initialized');
         return <String, dynamic>{'ok': true};
       case 'start_session':
         detector.resetTracking();
@@ -424,7 +617,7 @@ Future<void> _pipelineWorkerLoop(SendPort mainSendPort) async {
         if (cropped == null) return <String, dynamic>{'ok': false};
         return <String, dynamic>{'ok': true, 'png': Uint8List.fromList(img.encodePng(cropped))};
       case 'process_frame':
-        return _handleProcessFrame(detector, payload);
+        return _handleProcessFrame(detector, payload, camPool!);
       case 'stop':
         return <String, dynamic>{'ok': true};
       case 'dispose':
@@ -438,29 +631,55 @@ Future<void> _pipelineWorkerLoop(SendPort mainSendPort) async {
   await _serve(commandPort, mainSendPort, handle);
 }
 
-Map<String, dynamic> _handleProcessFrame(FaceDetectorService detector, Map<String, dynamic> payload) {
-  final frame = _decodeCameraPayload(payload);
-  if (frame == null) {
+Map<String, dynamic> _handleProcessFrame(
+  FaceDetectorService detector,
+  Map<String, dynamic> payload,
+  List<FaceFrameBuffer> camPool,
+) {
+  final camBufIdx = payload['camBufIdx'] as int;
+  final buf = camPool[camBufIdx];
+
+  // Claim the buffer for pipeline reading (READY → PIL_READING).
+  if (!buf.beginPipelineRead()) {
+    // Buffer is not READY — very unlikely (main just wrote it), treat as lost frame.
     detector.resetTracking();
     return <String, dynamic>{'face': null};
   }
+
+  // Decode raw camera bytes from native memory into a Dart-heap img.Image.
+  // The decode functions (_bgraToRgbImage / _yuv420ToRgbImage) build a new
+  // Dart-heap buffer, so it is safe to release the native buffer afterwards.
+  final frame = _decodeCameraFromBuffer(buf, payload);
+
+  if (frame == null) {
+    buf.endPipelineRead(handoffToPassive: false); // PIL_READING → FREE
+    detector.resetTracking();
+    return <String, dynamic>{'face': null};
+  }
+
   final crop = detector.runDetectorStage(frame);
   if (crop == null) {
+    buf.endPipelineRead(handoffToPassive: false);
     detector.resetTracking();
     return <String, dynamic>{'face': null};
   }
+
   final face = detector.runLandmarkStage(frame, crop, runBlendshapes: true);
   if (face == null) {
+    buf.endPipelineRead(handoffToPassive: false);
     detector.resetTracking();
     return <String, dynamic>{'face': null};
   }
+
   detector.setTrackingCrop(detector.computeTrackingCrop(face.result, frame.width, frame.height));
-  // Include decoded frame so passive can skip its own YUV decode.
+
+  // Hand off to passive: PIL_READING → PASS_READY.
+  // Native buffer remains valid until passive calls endPassiveRead().
+  buf.endPipelineRead(handoffToPassive: true);
+
   return <String, dynamic>{
     'face': _serializeFace(face),
-    'frameRgb': frame.getBytes(order: img.ChannelOrder.rgb),
-    'frameW': frame.width,
-    'frameH': frame.height,
+    // camBufIdx not needed in response — main already has it from the request payload.
   };
 }
 
@@ -474,29 +693,45 @@ Future<void> _passiveWorkerLoop(SendPort mainSendPort) async {
   mainSendPort.send(commandPort.sendPort);
 
   final passive = PassiveLivenessService();
+  List<FaceFrameBuffer>? camPool;
 
   Future<Map<String, dynamic>> handle(String cmd, Map<String, dynamic> payload) async {
     switch (cmd) {
       case 'init':
-        debugPrint('[FaceVerification] Passive worker: initializing MiniFASNet and BigSmall models');
-        passive.initializeFromBuffers(
-          v1: payload['v1'] as Uint8List,
-          v2: payload['v2'] as Uint8List,
-          bigSmall: (payload['bigSmall'] as List).cast<Uint8List>(),
+        debugPrint('[FaceVerification] Passive worker: adopting MiniFASNet and BigSmall from addresses');
+        passive.initializeFromAddresses(
+          v1Addr: payload['v1Addr'] as int,
+          v2Addr: payload['v2Addr'] as int,
+          bigSmallAddrs: (payload['bigSmallAddrs'] as List).cast<int>(),
         );
-        debugPrint('[FaceVerification] Passive worker: MiniFASNet and BigSmall models initialized');
+        camPool = (payload['camBufAddrs'] as List)
+            .cast<int>()
+            .map((a) => FaceFrameBuffer.fromAddress(a, payload['camBufCap'] as int))
+            .toList(growable: false);
+        debugPrint('[FaceVerification] Passive worker: initialized');
         return <String, dynamic>{'ok': true};
       case 'start_session':
         passive.reset();
         return <String, dynamic>{'ok': true};
       case 'collect_frame':
-        final frameRgb = payload['frameRgb'] as Uint8List?;
-        final frameW = (payload['frameW'] as num?)?.toInt();
-        final frameH = (payload['frameH'] as num?)?.toInt();
-        if (frameRgb == null || frameW == null || frameH == null) {
+        final camBufIdx = (payload['camBufIdx'] as num?)?.toInt();
+        if (camBufIdx == null || camPool == null) return <String, dynamic>{'ok': true};
+
+        final buf = camPool![camBufIdx];
+        // Claim PASS_READY → PASS_READING.
+        if (!buf.beginPassiveRead()) {
+          // Buffer was freed (e.g. main reused it) — skip this frame.
           return <String, dynamic>{'ok': true};
         }
-        final frame = img.Image.fromBytes(width: frameW, height: frameH, bytes: frameRgb.buffer, numChannels: 3);
+
+        // Decode raw camera bytes from native memory.
+        // The decode builds a new Dart-heap img.Image, so we can release the
+        // native buffer as soon as decode returns.
+        final frame = _decodeCameraFromBuffer(buf, payload);
+        buf.endPassiveRead(); // PASS_READING → FREE — native buffer available for reuse
+
+        if (frame == null) return <String, dynamic>{'ok': true};
+
         final face = _deserializeFaceMap((payload['face'] as Map).cast<String, dynamic>());
         passive.collectPassiveMetrics(frame, face);
         return <String, dynamic>{'ok': true};
@@ -544,8 +779,8 @@ Future<void> _matchWorkerLoop(SendPort mainSendPort) async {
   Future<Map<String, dynamic>> handle(String cmd, Map<String, dynamic> payload) async {
     switch (cmd) {
       case 'init':
-        debugPrint('[FaceVerification] Match worker: initializing GhostFaceNet_fp32_V2.tflite');
-        await recognizer.initializeFromBuffer(payload['model'] as Uint8List);
+        debugPrint('[FaceVerification] Match worker: adopting GhostFaceNet from address');
+        recognizer.initializeFromAddress(payload['modelAddr'] as int);
         debugPrint('[FaceVerification] Match worker: GhostFaceNet initialized');
         return <String, dynamic>{'ok': true};
       case 'start_session':
@@ -609,36 +844,57 @@ Future<void> _serve(
   }
 }
 
-Map<String, dynamic> _cameraPayload(CameraImage image, int rotationDegrees) {
+/// Builds plane metadata (no pixel bytes) for passing via SendPort to isolates.
+/// Each plane entry records its byte offset within the packed native buffer.
+Map<String, dynamic> _cameraNativeMetadata(CameraImage image, int rotationDegrees) {
+  var offset = 0;
+  final planesList = <Map<String, dynamic>>[];
+  for (final Plane p in image.planes) {
+    final byteCount = p.bytes.length;
+    planesList.add(<String, dynamic>{
+      'offset': offset,
+      'byteCount': byteCount,
+      'bytesPerRow': p.bytesPerRow,
+      'bytesPerPixel': p.bytesPerPixel ?? 1,
+    });
+    offset += byteCount;
+  }
   return <String, dynamic>{
     'width': image.width,
     'height': image.height,
     'format': image.format.group.name,
     'rotation': rotationDegrees,
-    'planes': image.planes
-        .map(
-          (Plane plane) => <String, dynamic>{
-            'bytes': plane.bytes,
-            'bytesPerRow': plane.bytesPerRow,
-            'bytesPerPixel': plane.bytesPerPixel,
-          },
-        )
-        .toList(growable: false),
+    'planes': planesList,
   };
 }
 
-img.Image? _decodeCameraPayload(Map<String, dynamic> payload) {
+/// Decodes raw camera bytes from a native FFI buffer into a Dart-heap img.Image.
+/// Creates zero-copy Uint8List views into native memory — no alloc until the
+/// decode functions write their output RGB buffers.
+img.Image? _decodeCameraFromBuffer(FaceFrameBuffer buf, Map<String, dynamic> payload) {
   final width = (payload['width'] as num).toInt();
   final height = (payload['height'] as num).toInt();
   final format = payload['format'] as String;
   final rotation = (payload['rotation'] as num).toInt();
-  final planes = (payload['planes'] as List).cast<Map>().map((Map p) => p.cast<String, dynamic>()).toList();
+  final planes = (payload['planes'] as List).cast<Map>().map((Map m) => m.cast<String, dynamic>()).toList();
+  final dataPtr = buf.dataPtr;
 
   img.Image? frame;
   if (format == ImageFormatGroup.bgra8888.name && planes.isNotEmpty) {
-    frame = _bgraToRgbImage(planes.first['bytes'] as Uint8List, width, height, planes.first['bytesPerRow'] as int);
+    final p = planes.first;
+    final bytes = (dataPtr + (p['offset'] as num).toInt()).asTypedList((p['byteCount'] as num).toInt());
+    frame = _bgraToRgbImage(bytes, width, height, (p['bytesPerRow'] as num).toInt());
   } else if (format == ImageFormatGroup.yuv420.name && planes.length >= 3) {
-    frame = _yuv420ToRgbImage(width, height, planes);
+    final planeViews = planes
+        .map(
+          (Map<String, dynamic> p) => <String, dynamic>{
+            'bytes': (dataPtr + (p['offset'] as num).toInt()).asTypedList((p['byteCount'] as num).toInt()),
+            'bytesPerRow': p['bytesPerRow'],
+            'bytesPerPixel': p['bytesPerPixel'],
+          },
+        )
+        .toList(growable: false);
+    frame = _yuv420ToRgbImage(width, height, planeViews);
   }
   if (frame == null) return null;
   return _rotateToUpright(frame, rotation);
@@ -766,6 +1022,7 @@ Map<String, dynamic> _serializeFace(FaceObservation face) {
   final matrix = face.result.transformMatrices?.isNotEmpty == true ? face.result.transformMatrices!.first : null;
   return <String, dynamic>{
     'bbox': <double>[face.boundingBox.left, face.boundingBox.top, face.boundingBox.right, face.boundingBox.bottom],
+    'bboxAreaRatio': face.boundingBoxAreaRatio,
     'yaw': face.yawDegrees,
     'mouthRatio': face.mouthRatio,
     'blendshapes': face.blendshapeScores,
@@ -807,6 +1064,7 @@ FaceObservation _deserializeFaceMap(Map<String, dynamic> map) {
   return FaceObservation(
     result: result,
     boundingBox: Rect.fromLTRB(bbox[0].toDouble(), bbox[1].toDouble(), bbox[2].toDouble(), bbox[3].toDouble()),
+    boundingBoxAreaRatio: (map['bboxAreaRatio'] as num?)?.toDouble() ?? 0.0,
     mouthRatio: mouthRatio,
     yawDegrees: yaw,
     blendshapeScores: blend,

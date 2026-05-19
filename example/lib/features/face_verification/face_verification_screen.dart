@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:vcmrtdapp/features/face_verification/face_verification_diagnostics.dart';
 import 'package:vcmrtdapp/features/face_verification/face_verification_engine.dart';
 
 // ── Enums & helpers ────────────────────────────────────────────────────────
@@ -110,9 +111,14 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
   bool _activeLivenessStopping = false;
   bool _startingLiveness = false;
   bool _engineReady = false;
+  Future<void>? _stopActiveFlowFuture;
   CameraImage? _pendingImage;
   bool _isSending = false;
   int _frameToken = 0;
+  int _flowToken = 0;
+  bool _diagSawFirstCameraImage = false;
+  bool _diagSawFirstFrameSent = false;
+  bool _diagSawFirstNextActionEvent = false;
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -172,7 +178,22 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
     await _engine.dispose();
   }
 
-  Future<void> _stopActiveFlow({required bool disposeCamera}) async {
+  Future<void> _stopActiveFlow({required bool disposeCamera}) {
+    _flowToken++;
+    final runningStop = _stopActiveFlowFuture;
+    if (runningStop != null) {
+      if (!disposeCamera) return runningStop;
+      return runningStop.then((_) async {
+        final ctrl = _cameraController;
+        if (ctrl != null) await _disposeCameraController(ctrl, disposeCamera: true);
+      });
+    }
+    final stopFuture = _doStopActiveFlow(disposeCamera: disposeCamera);
+    _stopActiveFlowFuture = stopFuture.whenComplete(() => _stopActiveFlowFuture = null);
+    return _stopActiveFlowFuture!;
+  }
+
+  Future<void> _doStopActiveFlow({required bool disposeCamera}) async {
     if (_cameraClosing || _activeLivenessStopping) return;
     _activeLivenessStopping = true;
     try {
@@ -274,6 +295,12 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
     if (_isDisposed) return;
     if (_state != VerificationState.activeLiveness) return;
     if (_cameraClosing || _activeLivenessStopping) return;
+    if (FaceVerificationDiagnostics.enabled && !_diagSawFirstCameraImage) {
+      _diagSawFirstCameraImage = true;
+      FaceVerificationDiagnostics.log(
+        'first CameraImage ${image.width}x${image.height} format=${image.format.group.name}',
+      );
+    }
     _pendingImage = image;
     if (!_isSending) {
       _isSending = true;
@@ -290,6 +317,10 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
         _pendingImage = null;
         final rotation = _cameraFrameRotation();
         if (rotation == null) continue;
+        if (FaceVerificationDiagnostics.enabled && !_diagSawFirstFrameSent) {
+          _diagSawFirstFrameSent = true;
+          FaceVerificationDiagnostics.log('first frame sent to engine rotation=$rotation');
+        }
         await _engine.processFrame(image, rotation);
       }
     } catch (e) {
@@ -318,19 +349,30 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
       setState(() => _errorMessage = 'Missing NFC image');
       return;
     }
+    FaceVerificationDiagnostics.startSession('start tapped');
+    _diagSawFirstCameraImage = false;
+    _diagSawFirstFrameSent = false;
+    _diagSawFirstNextActionEvent = false;
     setState(() => _startingLiveness = true);
+    final flowToken = _flowToken;
     try {
       await _doStartLiveness(ctrl, nfcImage);
     } catch (e) {
-      if (mounted && !_isDisposed) setState(() => _errorMessage = 'Could not start liveness: $e');
+      if (flowToken == _flowToken && mounted && !_isDisposed) {
+        setState(() => _errorMessage = 'Could not start liveness: $e');
+      }
     } finally {
-      if (mounted && !_isDisposed) setState(() => _startingLiveness = false);
+      if (flowToken == _flowToken && mounted && !_isDisposed) {
+        setState(() => _startingLiveness = false);
+      }
     }
   }
 
   Future<void> _doStartLiveness(CameraController ctrl, Uint8List nfcImage) async {
+    final flowToken = _flowToken;
     final newActions = await _engine.start(nfcImage);
-    if (!mounted || _isDisposed || newActions.isEmpty) return;
+    FaceVerificationDiagnostics.log('engine.start complete actions=${newActions.join(',')}');
+    if (flowToken != _flowToken || !mounted || _isDisposed || newActions.isEmpty) return;
     setState(() {
       _state = VerificationState.activeLiveness;
       _actions = newActions;
@@ -341,12 +383,23 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
       _errorMessage = null;
       _result = null;
     });
-    if (!ctrl.value.isStreamingImages) await ctrl.startImageStream(_onCameraFrame);
+    if (flowToken != _flowToken || !mounted || _isDisposed) return;
+    if (!ctrl.value.isStreamingImages) {
+      await ctrl.startImageStream(_onCameraFrame);
+      FaceVerificationDiagnostics.log('image stream started');
+    } else {
+      FaceVerificationDiagnostics.log('image stream already active');
+    }
   }
 
   void _onLivenessEvent(Map<String, dynamic> map) {
     if (_handleCommonLivenessEvent(map)) return;
     if (map['type'] != 'complete') return;
+    final rawMatchScore = map['matchScore'];
+    debugPrint(
+      '[FaceVerification] UI complete event: rawMatchScore=$rawMatchScore '
+      'rawMatchScoreType=${rawMatchScore.runtimeType}',
+    );
     final passed = map['passed'] as bool;
     final matchScore = (map['matchScore'] as num?)?.toDouble() ?? 0.0;
     final antiSpoofScore = (map['antiSpoofScore'] as num?)?.toDouble();
@@ -391,6 +444,10 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
         return true;
 
       case 'nextAction':
+        if (FaceVerificationDiagnostics.enabled && !_diagSawFirstNextActionEvent) {
+          _diagSawFirstNextActionEvent = true;
+          FaceVerificationDiagnostics.log('ui received first nextAction action=${map['action']}');
+        }
         setState(() => _currentAction = map['action'] as String);
         return true;
 

@@ -32,6 +32,13 @@ class FaceRecognizer {
     _readShapes();
   }
 
+  void initializeFromAddress(int addr) {
+    if (_interpreter != null) return;
+    debugPrint('[FaceVerification] FaceRecognizer: adopting GhostFaceNet interpreter from address');
+    _interpreter = Interpreter.fromAddress(addr);
+    _readShapes();
+  }
+
   void _readShapes() {
     final inputShape = _interpreter!.getInputTensor(0).shape;
     final outputShape = _interpreter!.getOutputTensor(0).shape;

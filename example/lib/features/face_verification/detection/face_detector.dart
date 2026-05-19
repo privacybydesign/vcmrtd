@@ -10,6 +10,7 @@ class FaceObservation {
   const FaceObservation({
     required this.result,
     required this.boundingBox,
+    required this.boundingBoxAreaRatio,
     required this.mouthRatio,
     required this.yawDegrees,
     required this.blendshapeScores,
@@ -18,6 +19,7 @@ class FaceObservation {
 
   final FaceLandmarkerResult result;
   final Rect boundingBox;
+  final double boundingBoxAreaRatio;
   final double mouthRatio;
   final double? yawDegrees;
   final Map<String, double> blendshapeScores;
@@ -50,8 +52,12 @@ class FaceDetectorService {
 
   final FaceLandmarkPipeline _pipeline = FaceLandmarkPipeline();
 
-  Future<void> initialize() async {
-    await _pipeline.initialize();
+  void initializeFromAddresses({required int detectorAddr, required int landmarksAddr, required int blendshapesAddr}) {
+    _pipeline.initializeFromAddresses(
+      detectorAddr: detectorAddr,
+      landmarksAddr: landmarksAddr,
+      blendshapesAddr: blendshapesAddr,
+    );
   }
 
   void initializeFromBuffers({
@@ -114,6 +120,7 @@ class FaceDetectorService {
     }
 
     final box = _boundsFromLandmarks(landmarks, image.width, image.height);
+    final boxAreaRatio = (box.width * box.height) / (image.width * image.height).clamp(1, 1 << 30);
     final mouthRatio = _mouthOpenRatioFromLandmarks(landmarks);
     final yaw = matrixYaw(result);
     final blendshapeScores = _blendshapeMap(result);
@@ -122,6 +129,7 @@ class FaceDetectorService {
     return FaceObservation(
       result: result,
       boundingBox: box,
+      boundingBoxAreaRatio: boxAreaRatio.clamp(0.0, 1.0),
       mouthRatio: mouthRatio,
       yawDegrees: yaw,
       blendshapeScores: blendshapeScores,

@@ -298,6 +298,14 @@ class FaceLandmarkPipeline {
     _finishInit();
   }
 
+  void initializeFromAddresses({required int detectorAddr, required int landmarksAddr, required int blendshapesAddr}) {
+    if (_detectorInterp != null) return;
+    _detectorInterp = Interpreter.fromAddress(detectorAddr);
+    _landmarkInterp = Interpreter.fromAddress(landmarksAddr);
+    _blendshapeInterp = Interpreter.fromAddress(blendshapesAddr);
+    _finishInit();
+  }
+
   void initializeFromBuffers({
     required Uint8List detector,
     required Uint8List landmarks,

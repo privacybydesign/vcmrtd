@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtdapp/features/face_verification/detection/face_detector.dart';
+import 'package:vcmrtdapp/features/face_verification/face_verification_diagnostics.dart';
 import 'package:vcmrtdapp/features/face_verification/face_verification_tuning.dart';
 import 'package:vcmrtdapp/features/face_verification/face_verification_worker.dart';
 import 'package:vcmrtdapp/features/face_verification/liveness/liveness_service.dart';
@@ -39,9 +40,14 @@ class FaceVerificationEngine {
 
   bool _nfcFacePrepared = false;
   Future<void>? _nfcPrepareFuture;
+  Uint8List? _nfcImageBytes;
   img.Image? _firstSelfie;
   Uint8List? _debugNfcMatchInputPng;
   Uint8List? _debugSelfieMatchInputPng;
+  bool _diagSawFirstPipelineResult = false;
+  bool _diagSawFirstFaceResult = false;
+  bool _diagSawFirstNextAction = false;
+  int _diagAligningFrameCount = 0;
 
   Future<void> initialize() async {
     await _worker.initialize();
@@ -59,6 +65,7 @@ class FaceVerificationEngine {
   /// Call this right after [initialize] to decode + detect + embed the NFC face
   /// in the background, so it's ready before the user taps Start.
   Future<void> prepareNfcFaceEagerly(Uint8List nfcImageBytes) {
+    _nfcImageBytes = nfcImageBytes;
     _nfcPrepareFuture ??= _doNfcPrep(nfcImageBytes);
     return _nfcPrepareFuture!;
   }
@@ -89,6 +96,7 @@ class FaceVerificationEngine {
   }
 
   Future<List<String>> start(Uint8List nfcImageBytes) async {
+    _nfcImageBytes = nfcImageBytes;
     _running = true;
     _processing = false;
     _sessionFinished = false;
@@ -105,12 +113,17 @@ class FaceVerificationEngine {
     _firstSelfie = null;
     _debugNfcMatchInputPng = null;
     _debugSelfieMatchInputPng = null;
+    _diagSawFirstPipelineResult = false;
+    _diagSawFirstFaceResult = false;
+    _diagSawFirstNextAction = false;
+    _diagAligningFrameCount = 0;
     _active.reset();
     await _worker.startSession();
 
-    // Reuse eager prep if already done; otherwise prepare now (first tap or after error).
-    if (!_nfcFacePrepared) {
-      await (_nfcPrepareFuture ?? _doNfcPrep(nfcImageBytes));
+    // Keep NFC prep eager, but never block camera/alignment/liveness startup on it.
+    if (!_nfcFacePrepared && _nfcPrepareFuture == null) {
+      _nfcPrepareFuture = _doNfcPrep(nfcImageBytes);
+      unawaited(_nfcPrepareFuture!.catchError((_) {}));
     }
 
     return _pendingActions.map((LivenessAction a) => a.wireName).toList(growable: false);
@@ -126,6 +139,18 @@ class FaceVerificationEngine {
     try {
       _framesSinceLastAction++;
       final face = frameResult.face;
+      if (FaceVerificationDiagnostics.enabled && !_diagSawFirstPipelineResult) {
+        _diagSawFirstPipelineResult = true;
+        FaceVerificationDiagnostics.log('first pipeline result received hasFace=${face != null}');
+      }
+      if (FaceVerificationDiagnostics.enabled && face != null && !_diagSawFirstFaceResult) {
+        _diagSawFirstFaceResult = true;
+        FaceVerificationDiagnostics.log(
+          'first pipeline result with face '
+          'bboxArea=${face.boundingBoxAreaRatio.toStringAsFixed(3)} '
+          'yaw=${_fmt(face.yawDegrees)} mouth=${face.mouthRatio.toStringAsFixed(3)}',
+        );
+      }
       _updateFaceState(face);
 
       if (_currentActionIndex >= _pendingActions.length) return;
@@ -149,11 +174,7 @@ class FaceVerificationEngine {
   }
 
   void _updateFaceState(FaceObservation? face) {
-    if (face == null) {
-      _active.lastFacePresent = false;
-      return;
-    }
-    _captureInitialNeutralSelfie(face);
+    if (face == null) return;
     if (!FaceVerificationTuning.emitDebugEvents) return;
     _sendEvent({
       'type': 'debug',
@@ -173,13 +194,33 @@ class FaceVerificationEngine {
     if (_framesSinceLastAction > _actionTimeoutFrames) {
       _active.startAction(action);
       _framesSinceLastAction = 0;
-      _sendEvent({'type': 'nextAction', 'action': action.wireName});
+      _sendNextActionEvent(action.wireName);
       return;
     }
     if (face == null) return;
-    if (_active.processAlignmentFrame(face: face, action: action, timedOut: false)) {
+    final alignmentDiag = FaceVerificationDiagnostics.enabled ? _active.diagnoseAlignmentFrame(face) : null;
+    final accepted = _active.processAlignmentFrame(face: face, action: action, timedOut: false);
+    if (FaceVerificationDiagnostics.enabled) {
+      _diagAligningFrameCount++;
+      final stableAfter = accepted ? alignmentDiag!.baselineFrames : alignmentDiag!.stableFramesAfter;
+      FaceVerificationDiagnostics.log(
+        'align frame #$_diagAligningFrameCount '
+        'bboxArea=${face.boundingBoxAreaRatio.toStringAsFixed(3)} '
+        'yaw=${_fmt(face.yawDegrees)} mouth=${face.mouthRatio.toStringAsFixed(3)} '
+        'rest=${alignmentDiag.atRest} reason=${alignmentDiag.rejectReason ?? 'ok'} '
+        'stable=${alignmentDiag.stableFramesBefore}->$stableAfter/${alignmentDiag.baselineFrames} '
+        'accepted=$accepted',
+      );
+    }
+    if (accepted) {
+      if (_firstSelfie == null) {
+        _firstSelfie = face.alignedFace112;
+        debugPrint(
+          '[FaceVerification] Initial alignment selfie face crop captured: ${_firstSelfie!.width}x${_firstSelfie!.height}',
+        );
+      }
       _framesSinceLastAction = 0;
-      _sendEvent({'type': 'nextAction', 'action': action.wireName});
+      _sendNextActionEvent(action.wireName);
     }
   }
 
@@ -239,7 +280,7 @@ class FaceVerificationEngine {
     } else {
       _active.startAction(next);
     }
-    _sendEvent({'type': 'nextAction', 'action': next.wireName});
+    _sendNextActionEvent(next.wireName);
   }
 
   // If the user completed exactly the borderline number of actions (neither clearly passed
@@ -305,9 +346,28 @@ class FaceVerificationEngine {
   }
 
   Future<double> _computeMatchScore() async {
+    debugPrint(
+      '[FaceVerification] Match score start: nfcPrepared=$_nfcFacePrepared '
+      'nfcFuture=${_nfcPrepareFuture != null} nfcBytes=${_nfcImageBytes?.length ?? 0} '
+      'hasSelfie=${_firstSelfie != null}',
+    );
     if (!_nfcFacePrepared) {
-      debugPrint('[FaceVerification] Match skipped: NFC embedding is not prepared');
-      return 0.0;
+      final nfcImageBytes = _nfcImageBytes;
+      if (nfcImageBytes == null || nfcImageBytes.isEmpty) {
+        debugPrint('[FaceVerification] Match skipped: no NFC image available for embedding prep');
+        return 0.0;
+      }
+      try {
+        await (_nfcPrepareFuture ??= _doNfcPrep(nfcImageBytes));
+      } catch (e) {
+        debugPrint('[FaceVerification] Match skipped: NFC embedding prep failed: $e');
+        return 0.0;
+      }
+      debugPrint('[FaceVerification] Match score after NFC wait: nfcPrepared=$_nfcFacePrepared');
+      if (!_nfcFacePrepared) {
+        debugPrint('[FaceVerification] Match skipped: NFC embedding prep did not complete');
+        return 0.0;
+      }
     }
     final selfie = _firstSelfie;
     if (selfie == null) {
@@ -323,25 +383,19 @@ class FaceVerificationEngine {
     return score;
   }
 
-  void _captureInitialNeutralSelfie(FaceObservation face) {
-    if (_firstSelfie != null || !_active.isAligning || _currentActionIndex != 0) return;
-    if (!_isNeutralSelfieFace(face)) return;
-    _firstSelfie = face.alignedFace112;
-    debugPrint(
-      '[FaceVerification] Initial neutral selfie face crop captured: ${_firstSelfie!.width}x${_firstSelfie!.height}',
-    );
-  }
-
-  bool _isNeutralSelfieFace(FaceObservation face) {
-    final yaw = (face.yawDegrees ?? 0.0).abs();
-    final smile =
-        ((face.blendshapeScores['mouthSmileLeft'] ?? 0.0) + (face.blendshapeScores['mouthSmileRight'] ?? 0.0)) / 2.0;
-    return yaw <= 12.0 && face.mouthRatio <= 0.34 && smile <= 0.25;
-  }
-
   void _sendEvent(Map<String, dynamic> event) {
     if (!_events.isClosed) _events.add(event);
   }
+
+  void _sendNextActionEvent(String action) {
+    if (FaceVerificationDiagnostics.enabled && !_diagSawFirstNextAction) {
+      _diagSawFirstNextAction = true;
+      FaceVerificationDiagnostics.log('first nextAction action=$action');
+    }
+    _sendEvent({'type': 'nextAction', 'action': action});
+  }
+
+  String _fmt(double? value) => value == null ? 'n/a' : value.toStringAsFixed(3);
 
   List<LivenessAction> _chooseActions() {
     final all = LivenessAction.values.toList(growable: true)..shuffle(_random);
@@ -350,13 +404,29 @@ class FaceVerificationEngine {
 
   Future<img.Image?> _decodeNfcImage(Uint8List bytes) async {
     final decoded = img.decodeImage(bytes);
-    if (decoded != null) return decoded;
+    if (decoded != null) {
+      debugPrint('[FaceVerification] NFC decode: dart decode ok ${decoded.width}x${decoded.height}');
+      return decoded;
+    }
+    debugPrint('[FaceVerification] NFC decode: dart decode failed, trying image_channel fallback');
 
     try {
       final converted = await _imageChannel.invokeMethod<Uint8List>('decodeImage', {'jp2ImageData': bytes});
-      if (converted == null) return null;
-      return img.decodeImage(converted);
-    } catch (_) {
+      if (converted == null) {
+        debugPrint('[FaceVerification] NFC decode: image_channel returned null');
+        return null;
+      }
+      final fallbackDecoded = img.decodeImage(converted);
+      if (fallbackDecoded == null) {
+        debugPrint('[FaceVerification] NFC decode: fallback bytes not decodeable, bytes=${converted.length}');
+        return null;
+      }
+      debugPrint(
+        '[FaceVerification] NFC decode: fallback decode ok ${fallbackDecoded.width}x${fallbackDecoded.height}',
+      );
+      return fallbackDecoded;
+    } catch (e) {
+      debugPrint('[FaceVerification] NFC decode: image_channel failed ${e.runtimeType}: $e');
       return null;
     }
   }

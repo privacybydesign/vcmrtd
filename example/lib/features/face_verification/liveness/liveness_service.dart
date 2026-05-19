@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -26,15 +27,45 @@ class BaselineSnapshot {
     required this.yawMatrix,
     required this.yawLandmark,
     required this.mouth,
+    required this.jaw,
     required this.smileLift,
     required this.smileWidth,
+    required this.smileBlend,
+    required this.eyeFused,
   });
 
   final double? yawMatrix;
   final double yawLandmark;
   final double mouth;
+  final double jaw;
   final double smileLift;
   final double smileWidth;
+  final double smileBlend;
+  final double eyeFused;
+}
+
+class AlignmentFrameDiagnostics {
+  const AlignmentFrameDiagnostics({
+    required this.atRest,
+    required this.rejectReason,
+    required this.stableFramesBefore,
+    required this.stableFramesAfter,
+    required this.baselineFrames,
+    required this.yaw,
+    required this.mouth,
+    required this.smile,
+    required this.avgEar,
+  });
+
+  final bool atRest;
+  final String? rejectReason;
+  final int stableFramesBefore;
+  final int stableFramesAfter;
+  final int baselineFrames;
+  final double yaw;
+  final double mouth;
+  final double smile;
+  final double avgEar;
 }
 
 class ActiveLivenessService {
@@ -46,23 +77,24 @@ class ActiveLivenessService {
   static const int restStableFrames = 2;
   static const double restMaxYawDeg = 12.0;
   static const int restGraceMs = 300;
-  static const double restMaxEar = 0.15;
+  static const double restMaxEar = 0.10;
   static const double restMaxMouth = 0.05;
-  static const double restMaxSmile = 0.25;
+  static const double restMaxSmile = 0.35;
 
   static const double earOpenThreshold = 0.25;
   static const double blendEyeClosedThreshold = 0.45;
   static const double earWeight = 0.3;
   static const double blendWeight = 0.7;
-  static const double fusedBlinkClosed = 0.55;
-  static const double fusedBlinkOpen = 0.45;
+  // Relative blink: how much the fused eye-close score must rise above the person's own baseline.
+  static const double blinkRelativeClosedDelta = 0.28;
+  static const double blinkRelativeOpenDelta = 0.10;
   static const int minClosedFrames = 1;
 
   static final double mouthOpenThreshold = FaceVerificationTuning.mouthOpenThreshold;
-  static const double jawOpenBlendThreshold = 0.10;
-  static const double smileSuppressesMouthBlend = 0.45;
+  static const double jawOpenRelativeDelta = 0.15;
+  static const double smileSuppressesMouthBlend = 0.60;
 
-  static final double smileBlendThreshold = FaceVerificationTuning.smileThreshold;
+  static const double smileRelativeBlendDelta = 0.20;
   static const double smileWidthThreshold = 0.018;
   static const double smileLiftThreshold = 0.010;
   static const double mouthSuppressesSmileBlend = 0.25;
@@ -73,8 +105,6 @@ class ActiveLivenessService {
   static const double yawReleaseDeg = 5.0;
 
   bool isAligning = true;
-  bool lastFacePresent = false;
-  bool get isWaitingForRest => _waitingForRest;
 
   LivenessAction? _currentAction;
   int _confirmCount = 0;
@@ -91,13 +121,17 @@ class ActiveLivenessService {
   double? _neutralYawMatrix;
   double? _neutralYawLandmark;
   double? _neutralMouth;
+  double? _neutralJaw;
   double? _neutralSmileLift;
   double? _neutralSmileWidth;
+  double? _neutralSmileBlend;
   bool _actionBaselineReady = false;
 
   final _BaselineAccumulator _actionAccumulator = _BaselineAccumulator();
   final _BaselineAccumulator _restAccumulator = _BaselineAccumulator();
   final _BaselineAccumulator _alignAccumulator = _BaselineAccumulator();
+  final _BaselineAccumulator _eyeBaselineAccumulator = _BaselineAccumulator();
+  double? _eyeOpenBaseline;
 
   void reset() {
     _currentAction = null;
@@ -113,15 +147,18 @@ class ActiveLivenessService {
     _neutralYawMatrix = null;
     _neutralYawLandmark = null;
     _neutralMouth = null;
+    _neutralJaw = null;
     _neutralSmileLift = null;
     _neutralSmileWidth = null;
+    _neutralSmileBlend = null;
     _actionBaselineReady = false;
 
     _actionAccumulator.clear();
     _restAccumulator.clear();
     _alignAccumulator.clear();
+    _eyeBaselineAccumulator.clear();
+    _eyeOpenBaseline = null;
     isAligning = true;
-    lastFacePresent = false;
   }
 
   void startAction(LivenessAction action, {BaselineSnapshot? baseline}) {
@@ -137,12 +174,16 @@ class ActiveLivenessService {
 
     _actionAccumulator.clear();
     _restAccumulator.clear();
+    _eyeBaselineAccumulator.clear();
+    _eyeOpenBaseline = null;
 
     _neutralYawMatrix = null;
     _neutralYawLandmark = null;
     _neutralMouth = null;
+    _neutralJaw = null;
     _neutralSmileLift = null;
     _neutralSmileWidth = null;
+    _neutralSmileBlend = null;
 
     if (baseline != null) {
       switch (action) {
@@ -152,11 +193,13 @@ class ActiveLivenessService {
           _neutralYawLandmark = baseline.yawLandmark;
         case LivenessAction.mouthOpen:
           _neutralMouth = baseline.mouth;
+          _neutralJaw = baseline.jaw;
         case LivenessAction.smile:
           _neutralSmileLift = baseline.smileLift;
           _neutralSmileWidth = baseline.smileWidth;
+          _neutralSmileBlend = baseline.smileBlend;
         case LivenessAction.blink:
-          break;
+          _eyeOpenBaseline = baseline.eyeFused;
       }
       _actionBaselineReady = true;
     } else {
@@ -185,7 +228,7 @@ class ActiveLivenessService {
       _alignAccumulator.clear();
       return false;
     }
-    _alignAccumulator.add(lm, face.yawDegrees);
+    _alignAccumulator.add(face);
     if (_alignAccumulator.size >= baselineFrames) {
       final snap = _alignAccumulator.computeSnapshot();
       _alignAccumulator.clear();
@@ -195,10 +238,42 @@ class ActiveLivenessService {
     return false;
   }
 
+  AlignmentFrameDiagnostics diagnoseAlignmentFrame(FaceObservation face) {
+    final lm = face.result.landmarks.first;
+    final yaw = (face.yawDegrees ?? 0.0).abs();
+    final avgEar = (_ear(lm, true) + _ear(lm, false)) / 2.0;
+    final mouth = _mouthRatio(lm);
+    final smile = ((_blend(face, 'mouthSmileLeft')) + (_blend(face, 'mouthSmileRight'))) / 2.0;
+
+    String? rejectReason;
+    if (yaw > restMaxYawDeg) {
+      rejectReason = 'yaw';
+    } else if (avgEar < restMaxEar) {
+      rejectReason = 'eyes';
+    } else if (mouth > restMaxMouth) {
+      rejectReason = 'mouth';
+    } else if (smile > restMaxSmile) {
+      rejectReason = 'smile';
+    }
+
+    final stableBefore = _alignAccumulator.size;
+    final atRest = rejectReason == null;
+    return AlignmentFrameDiagnostics(
+      atRest: atRest,
+      rejectReason: rejectReason,
+      stableFramesBefore: stableBefore,
+      stableFramesAfter: atRest ? stableBefore + 1 : 0,
+      baselineFrames: baselineFrames,
+      yaw: yaw,
+      mouth: mouth,
+      smile: smile,
+      avgEar: avgEar,
+    );
+  }
+
   bool processFrame({required FaceObservation face}) {
     final action = _currentAction;
     if (action == null) return false;
-    lastFacePresent = true;
 
     final lm = face.result.landmarks.first;
     if (_waitingForRest) {
@@ -226,7 +301,7 @@ class ActiveLivenessService {
     if (DateTime.now().millisecondsSinceEpoch < _restGraceUntilMs) return;
     if (_isFaceAtRest(face, lm)) {
       _restStableCount++;
-      _restAccumulator.add(lm, face.yawDegrees);
+      _restAccumulator.add(face);
     } else {
       _restStableCount = 0;
       _restAccumulator.clear();
@@ -254,8 +329,9 @@ class ActiveLivenessService {
     return true;
   }
 
-  // Fuses geometric EAR with blendshape confidence: EAR alone fails under reflections/glasses,
-  // blendshape alone fires on squinting. The weighted combination is more robust than either alone.
+  // Fuses EAR and blendshape, then compares against the person's own resting eye state.
+  // This makes detection work regardless of natural eye shape — narrow eyes, thick eyelids, glasses, etc.
+  // If no alignment baseline was captured (e.g., timeout), the first few frames self-calibrate.
   bool _detectBlink(FaceObservation face, List<NormalizedLandmark> lm) {
     final avgEar = (_ear(lm, true) + _ear(lm, false)) / 2.0;
     final bL = _blend(face, 'eyeBlinkLeft').clamp(0.0, 1.0);
@@ -266,8 +342,15 @@ class ActiveLivenessService {
     final blendScore = (blend / blendEyeClosedThreshold).clamp(0.0, 1.0);
     final fused = earWeight * earScore + blendWeight * blendScore;
 
-    final closed = fused >= fusedBlinkClosed;
-    final open = fused <= fusedBlinkOpen;
+    if (_eyeOpenBaseline == null) {
+      _eyeBaselineAccumulator.add(face);
+      if (_eyeBaselineAccumulator.size < baselineFrames) return false;
+      _eyeOpenBaseline = _eyeBaselineAccumulator.computeSnapshot().eyeFused;
+    }
+
+    final base = _eyeOpenBaseline!;
+    final closed = fused >= base + blinkRelativeClosedDelta;
+    final open = fused <= base + blinkRelativeOpenDelta;
 
     switch (_blinkPhase) {
       case _BlinkPhase.open:
@@ -297,7 +380,7 @@ class ActiveLivenessService {
   // near neutral. Without this, a slow turn would fire and immediately un-fire on the same frame.
   bool _detectTurn(FaceObservation face, List<NormalizedLandmark> lm, {required bool left}) {
     if (!_actionBaselineReady) {
-      _accumulateActionBaseline(face, lm);
+      _accumulateActionBaseline(face);
       return false;
     }
     final matYaw = face.yawDegrees;
@@ -336,11 +419,12 @@ class ActiveLivenessService {
     final jawBlend = _blend(face, 'jawOpen');
     final ratio = _mouthRatio(lm);
     if (!_actionBaselineReady) {
-      _accumulateActionBaseline(face, lm);
+      _accumulateActionBaseline(face);
       return false;
     }
-    final delta = ratio - (_neutralMouth ?? 0.0);
-    return jawBlend >= jawOpenBlendThreshold || delta >= mouthOpenThreshold;
+    final jawDelta = jawBlend - (_neutralJaw ?? 0.0);
+    final ratioDelta = ratio - (_neutralMouth ?? 0.0);
+    return jawDelta >= jawOpenRelativeDelta || ratioDelta >= mouthOpenThreshold;
   }
 
   bool _detectSmile(FaceObservation face, List<NormalizedLandmark> lm) {
@@ -355,19 +439,20 @@ class ActiveLivenessService {
     final width = _landmarkDist(lm[61], lm[291]) / fW;
 
     if (!_actionBaselineReady) {
-      _accumulateActionBaseline(face, lm);
+      _accumulateActionBaseline(face);
       return false;
     }
     final liftD = lift - (_neutralSmileLift ?? 0.0);
     final widthD = width - (_neutralSmileWidth ?? 0.0);
-    return sBlend >= smileBlendThreshold || (widthD >= smileWidthThreshold && liftD >= smileLiftThreshold);
+    final blendD = sBlend - (_neutralSmileBlend ?? 0.0);
+    return blendD >= smileRelativeBlendDelta || (widthD >= smileWidthThreshold && liftD >= smileLiftThreshold);
   }
 
   // Collects a short neutral baseline before relative gesture detection begins.
   // Absolute thresholds would fail for faces that naturally rest off-center or with a
   // slightly open mouth, so gestures are measured as deltas from this personal baseline.
-  void _accumulateActionBaseline(FaceObservation face, List<NormalizedLandmark> lm) {
-    _actionAccumulator.add(lm, face.yawDegrees);
+  void _accumulateActionBaseline(FaceObservation face) {
+    _actionAccumulator.add(face);
     if (_actionAccumulator.size < baselineFrames) return;
     final snap = _actionAccumulator.computeSnapshot();
     switch (_currentAction) {
@@ -377,9 +462,11 @@ class ActiveLivenessService {
         _neutralYawLandmark = snap.yawLandmark;
       case LivenessAction.mouthOpen:
         _neutralMouth = snap.mouth;
+        _neutralJaw = snap.jaw;
       case LivenessAction.smile:
         _neutralSmileLift = snap.smileLift;
         _neutralSmileWidth = snap.smileWidth;
+        _neutralSmileBlend = snap.smileBlend;
       case LivenessAction.blink:
       case null:
         break;
@@ -401,33 +488,21 @@ class ActiveLivenessService {
     return _landmarkDist(lm[13], lm[14]) / fH;
   }
 
-  // Eye Aspect Ratio: (vertical openness) / (horizontal span), using MediaPipe face mesh indices.
-  // Values near 0 = closed, ~0.3 = open. Left/right use mirrored contour landmark sets.
-  double _ear(List<NormalizedLandmark> lm, bool left) {
-    late final int p1;
-    late final int p2;
-    late final int p3;
-    late final int p4;
-    late final int p5;
-    late final int p6;
-    if (left) {
-      p1 = 362;
-      p2 = 385;
-      p3 = 387;
-      p4 = 263;
-      p5 = 373;
-      p6 = 380;
-    } else {
-      p1 = 33;
-      p2 = 160;
-      p3 = 158;
-      p4 = 133;
-      p5 = 153;
-      p6 = 144;
-    }
-    final a = _landmarkDist(lm[p2], lm[p6]);
-    final b = _landmarkDist(lm[p3], lm[p5]);
-    final c = _landmarkDist(lm[p1], lm[p4]);
+  double _ear(List<NormalizedLandmark> lm, bool left) => _computeEar(lm, left);
+}
+
+// Eye Aspect Ratio: (vertical openness) / (horizontal span), MediaPipe face mesh indices.
+// Extracted top-level so _BaselineAccumulator can use it without referencing ActiveLivenessService.
+double _computeEar(List<NormalizedLandmark> lm, bool left) {
+  if (left) {
+    final a = _landmarkDist(lm[385], lm[380]);
+    final b = _landmarkDist(lm[387], lm[373]);
+    final c = _landmarkDist(lm[362], lm[263]);
+    return (a + b) / ((2.0 * c) + 1e-6);
+  } else {
+    final a = _landmarkDist(lm[160], lm[144]);
+    final b = _landmarkDist(lm[158], lm[153]);
+    final c = _landmarkDist(lm[33], lm[133]);
     return (a + b) / ((2.0 * c) + 1e-6);
   }
 }
@@ -444,8 +519,11 @@ class _BaselineAccumulator {
   final List<double> _yawMatrix = <double>[];
   final List<double> _yawLandmark = <double>[];
   final List<double> _mouth = <double>[];
+  final List<double> _jaw = <double>[];
   final List<double> _smileLift = <double>[];
   final List<double> _smileWidth = <double>[];
+  final List<double> _smileBlend = <double>[];
+  final List<double> _eyeFused = <double>[];
 
   int get size => _yawLandmark.length;
 
@@ -453,19 +531,37 @@ class _BaselineAccumulator {
     _yawMatrix.clear();
     _yawLandmark.clear();
     _mouth.clear();
+    _jaw.clear();
     _smileLift.clear();
     _smileWidth.clear();
+    _smileBlend.clear();
+    _eyeFused.clear();
   }
 
-  void add(List<NormalizedLandmark> lm, double? matrixYaw) {
+  void add(FaceObservation face) {
+    final lm = face.result.landmarks.first;
+    final matrixYaw = face.yawDegrees;
     final fH = _landmarkDist(lm[10], lm[152]).clamp(1e-6, 1e6);
     final fW = _landmarkDist(lm[234], lm[454]).clamp(1e-6, 1e6);
     final cornerY = (lm[61].y + lm[291].y) / 2.0;
     if (matrixYaw != null) _yawMatrix.add(matrixYaw);
     _yawLandmark.add((lm[1].x - ((lm[234].x + lm[454].x) / 2.0)) / (lm[454].x - lm[234].x).abs().clamp(1e-6, 1e6));
     _mouth.add(_landmarkDist(lm[13], lm[14]) / fH);
+    _jaw.add((face.blendshapeScores['jawOpen'] ?? 0.0).clamp(0.0, 1.0));
     _smileLift.add((lm[0].y - cornerY) / fH);
     _smileWidth.add(_landmarkDist(lm[61], lm[291]) / fW);
+    _smileBlend.add(
+      (((face.blendshapeScores['mouthSmileLeft'] ?? 0.0) + (face.blendshapeScores['mouthSmileRight'] ?? 0.0)) / 2.0)
+          .clamp(0.0, 1.0),
+    );
+    // Eye-close fused score at rest — baseline for relative blink detection.
+    final avgEar = (_computeEar(lm, true) + _computeEar(lm, false)) / 2.0;
+    final bL = (face.blendshapeScores['eyeBlinkLeft'] ?? 0.0).clamp(0.0, 1.0);
+    final bR = (face.blendshapeScores['eyeBlinkRight'] ?? 0.0).clamp(0.0, 1.0);
+    final avgBlend = (bL + bR) / 2.0;
+    final earScore = 1.0 - (avgEar / ActiveLivenessService.earOpenThreshold).clamp(0.0, 1.0);
+    final blendScore = (avgBlend / ActiveLivenessService.blendEyeClosedThreshold).clamp(0.0, 1.0);
+    _eyeFused.add(ActiveLivenessService.earWeight * earScore + ActiveLivenessService.blendWeight * blendScore);
   }
 
   BaselineSnapshot computeSnapshot() {
@@ -473,8 +569,11 @@ class _BaselineAccumulator {
       yawMatrix: _yawMatrix.isEmpty ? null : _median(_yawMatrix),
       yawLandmark: _median(_yawLandmark),
       mouth: _median(_mouth),
+      jaw: _jaw.isEmpty ? 0.0 : _median(_jaw),
       smileLift: _median(_smileLift),
       smileWidth: _median(_smileWidth),
+      smileBlend: _smileBlend.isEmpty ? 0.0 : _median(_smileBlend),
+      eyeFused: _eyeFused.isEmpty ? 0.0 : _median(_eyeFused),
     );
   }
 
@@ -518,15 +617,12 @@ class PassiveLivenessService {
 
   final List<double> _scores = <double>[];
   final List<int> _scoreTimes = <int>[];
-  // ignore: unused_field
-  int _attempts = 0;
-  // ignore: unused_field
-  int _totalFrames = 0;
+  double _scoresSum = 0.0;
 
   final _BigSmallService _bigSmall = _BigSmallService();
   final List<_RppgFrame> _rppgFrameBuffer = <_RppgFrame>[];
-  final List<double> _bvpSamples = <double>[];
-  final List<int> _bvpSampleTimes = <int>[];
+  final Queue<double> _bvpSamples = Queue<double>();
+  final Queue<int> _bvpSampleTimes = Queue<int>();
   int _lastFrameBufferedMs = 0;
 
   Future<void> initialize() async {
@@ -537,6 +633,15 @@ class PassiveLivenessService {
 
     _readAntiSpoofShapes();
     await _bigSmall.initialize();
+  }
+
+  void initializeFromAddresses({required int v1Addr, required int v2Addr, required List<int> bigSmallAddrs}) {
+    debugPrint('[FaceVerification] Passive service: adopting MiniFASNet v1 from address');
+    _v1 = Interpreter.fromAddress(v1Addr);
+    debugPrint('[FaceVerification] Passive service: adopting MiniFASNet v2 from address');
+    _v2 = Interpreter.fromAddress(v2Addr);
+    _readAntiSpoofShapes();
+    _bigSmall.initializeFromAddresses(bigSmallAddrs);
   }
 
   void initializeFromBuffers({required Uint8List v1, required Uint8List v2, required List<Uint8List> bigSmall}) {
@@ -561,8 +666,7 @@ class PassiveLivenessService {
   void reset() {
     _scores.clear();
     _scoreTimes.clear();
-    _attempts = 0;
-    _totalFrames = 0;
+    _scoresSum = 0.0;
     _rppgFrameBuffer.clear();
     _bvpSamples.clear();
     _bvpSampleTimes.clear();
@@ -570,14 +674,13 @@ class PassiveLivenessService {
   }
 
   void collectPassiveMetrics(img.Image frame, FaceObservation face) {
-    _totalFrames++;
     _sampleAntiSpoof(frame, face);
     _sampleRppg(frame, face);
   }
 
   double? getAntiSpoofScore() {
     if (_scores.isEmpty) return null;
-    return _scores.reduce((double a, double b) => a + b) / _scores.length;
+    return _scoresSum / _scores.length;
   }
 
   bool isAntiSpoofPassed() {
@@ -592,18 +695,18 @@ class PassiveLivenessService {
     final durationMs = (_bvpSampleTimes.last - _bvpSampleTimes.first).clamp(1, 1 << 30);
     if (durationMs < _minDurationMs) return null;
     final fps = (((_bvpSamples.length - 1) * 1000) / durationMs).clamp(1, 1000).toInt();
-    return _evaluateBvp(_bvpSamples, fps);
+    return _evaluateBvp(_bvpSamples.toList(growable: false), fps);
   }
 
   void _sampleAntiSpoof(img.Image frame, FaceObservation face) {
     if (_random.nextDouble() >= _antiSpoofSampleRate) return;
-    _attempts++;
     final yaw = face.yawDegrees;
     final isFrontal = yaw == null || yaw.abs() < _antiSpoofMaxYawDeg;
     if (!isFrontal) return;
     final score = _scoreFrame(frame, face.result);
     if (score != null) {
       _scores.add(score);
+      _scoresSum += score;
       _scoreTimes.add(DateTime.now().millisecondsSinceEpoch);
     }
   }
@@ -674,8 +777,8 @@ class PassiveLivenessService {
           _bvpSampleTimes.add(t0 + ((t1 - t0) ~/ 2));
         }
         while (_bvpSamples.length > 900) {
-          _bvpSamples.removeAt(0);
-          _bvpSampleTimes.removeAt(0);
+          _bvpSamples.removeFirst();
+          _bvpSampleTimes.removeFirst();
         }
       }
     }
@@ -892,6 +995,15 @@ class _BigSmallService {
         _interpreters[i]?.close();
         _interpreters[i] = await Interpreter.fromAsset(_modelFiles[i], options: _makeInterpOptions(2, useGpu: false));
       }
+      _loadShapes(i);
+    }
+  }
+
+  void initializeFromAddresses(List<int> addrs) {
+    for (var i = 0; i < addrs.length && i < _modelFiles.length; i++) {
+      if (_interpreters[i] != null) continue;
+      debugPrint('[FaceVerification] BigSmall service: adopting ${_modelFiles[i]} from address');
+      _interpreters[i] = Interpreter.fromAddress(addrs[i]);
       _loadShapes(i);
     }
   }

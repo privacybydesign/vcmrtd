@@ -57,6 +57,9 @@ dev_dependencies:
     sdk: flutter
   lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
+  code_assets: ^1.0.0
+  hooks: ^1.0.3
+  native_toolchain_c: ^0.18.0
 
 flutter_launcher_icons:
   android: true
