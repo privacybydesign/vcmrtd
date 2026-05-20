@@ -10,6 +10,9 @@ class FaceRecognizer {
   static const _modelAsset = 'assets/face_verification/GhostFaceNet_fp32_V2.tflite';
 
   Interpreter? _interpreter;
+  // Kept alive because TFLite's fromBuffer holds a non-owning C pointer into this
+  // buffer. Dart GC does not see the C reference, so we must hold it ourselves.
+  Uint8List? _modelBytes;
   int _inputH = 112;
   int _inputW = 112;
   int _embeddingSize = 512;
@@ -29,6 +32,7 @@ class FaceRecognizer {
   Future<void> initializeFromBuffer(Uint8List modelBytes) async {
     if (_interpreter != null) return;
     debugPrint('[FaceVerification] FaceRecognizer: initializing $_modelAsset from buffer, bytes=${modelBytes.length}');
+    _modelBytes = modelBytes;
     _interpreter = Interpreter.fromBuffer(modelBytes, options: await _buildOptions());
     _readShapes();
   }
@@ -168,5 +172,6 @@ class FaceRecognizer {
   Future<void> dispose() async {
     _interpreter?.close();
     _interpreter = null;
+    _modelBytes = null;
   }
 }

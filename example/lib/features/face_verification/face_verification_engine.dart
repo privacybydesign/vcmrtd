@@ -42,6 +42,9 @@ class FaceVerificationEngine {
   Future<void>? _nfcPrepareFuture;
   Uint8List? _nfcImageBytes;
   img.Image? _firstSelfie;
+  double _bestSelfieYaw = double.infinity;
+  int _selfieFrameCount = 0;
+  static const int _selfieFrameSampleSize = 5;
   Uint8List? _debugNfcMatchInputPng;
   Uint8List? _debugSelfieMatchInputPng;
   bool _diagSawFirstPipelineResult = false;
@@ -72,23 +75,17 @@ class FaceVerificationEngine {
 
   Future<void> _doNfcPrep(Uint8List nfcImageBytes) async {
     try {
-      debugPrint('[FaceVerification] NFC prep started: bytes=${nfcImageBytes.length}');
       final nfcImage = await _decodeNfcImage(nfcImageBytes);
       if (nfcImage == null) {
-        debugPrint('[FaceVerification] NFC prep failed: could not decode image');
         throw StateError('Could not decode NFC image');
       }
-      debugPrint('[FaceVerification] NFC image decoded: ${nfcImage.width}x${nfcImage.height}');
       final encodedNfc = Uint8List.fromList(img.encodePng(nfcImage));
       final nfcFace = await _worker.detectAndCropEncoded(encodedNfc);
       if (nfcFace == null) {
-        debugPrint('[FaceVerification] NFC prep failed: no face found in NFC photo');
         throw StateError('No face found in NFC photo');
       }
-      debugPrint('[FaceVerification] NFC face crop ready: ${nfcFace.width}x${nfcFace.height}');
       await _worker.prepareNfcFace(nfcFace);
       _nfcFacePrepared = true;
-      debugPrint('[FaceVerification] NFC embedding prepared');
     } catch (_) {
       _nfcPrepareFuture = null; // allow retry on next Start tap
       rethrow;
@@ -111,6 +108,8 @@ class FaceVerificationEngine {
     _framesSinceLastAction = 0;
 
     _firstSelfie = null;
+    _bestSelfieYaw = double.infinity;
+    _selfieFrameCount = 0;
     _debugNfcMatchInputPng = null;
     _debugSelfieMatchInputPng = null;
     _diagSawFirstPipelineResult = false;
@@ -213,11 +212,16 @@ class FaceVerificationEngine {
       );
     }
     if (accepted) {
-      if (_firstSelfie == null) {
-        _firstSelfie = face.alignedFace112;
-        debugPrint(
-          '[FaceVerification] Initial alignment selfie face crop captured: ${_firstSelfie!.width}x${_firstSelfie!.height}',
-        );
+      if (_selfieFrameCount < _selfieFrameSampleSize) {
+        _selfieFrameCount++;
+        final absYaw = (face.yawDegrees ?? double.infinity).abs();
+        if (absYaw < _bestSelfieYaw) {
+          _bestSelfieYaw = absYaw;
+          _firstSelfie = face.alignedFace112;
+          debugPrint(
+            '[FaceVerification] Selfie candidate updated: yaw=${absYaw.toStringAsFixed(1)}° sample=$_selfieFrameCount/$_selfieFrameSampleSize',
+          );
+        }
       }
       _framesSinceLastAction = 0;
       _sendNextActionEvent(action.wireName);
@@ -354,27 +358,21 @@ class FaceVerificationEngine {
     if (!_nfcFacePrepared) {
       final nfcImageBytes = _nfcImageBytes;
       if (nfcImageBytes == null || nfcImageBytes.isEmpty) {
-        debugPrint('[FaceVerification] Match skipped: no NFC image available for embedding prep');
         return 0.0;
       }
       try {
         await (_nfcPrepareFuture ??= _doNfcPrep(nfcImageBytes));
       } catch (e) {
-        debugPrint('[FaceVerification] Match skipped: NFC embedding prep failed: $e');
         return 0.0;
       }
-      debugPrint('[FaceVerification] Match score after NFC wait: nfcPrepared=$_nfcFacePrepared');
       if (!_nfcFacePrepared) {
-        debugPrint('[FaceVerification] Match skipped: NFC embedding prep did not complete');
         return 0.0;
       }
     }
     final selfie = _firstSelfie;
     if (selfie == null) {
-      debugPrint('[FaceVerification] Match skipped: no initial neutral selfie face crop captured');
       return 0.0;
     }
-    debugPrint('[FaceVerification] Match started: selfie=${selfie.width}x${selfie.height}');
     final match = await _worker.matchSelfie(selfie);
     _debugNfcMatchInputPng = match.nfcInputPng;
     _debugSelfieMatchInputPng = match.selfieInputPng;
@@ -405,28 +403,20 @@ class FaceVerificationEngine {
   Future<img.Image?> _decodeNfcImage(Uint8List bytes) async {
     final decoded = img.decodeImage(bytes);
     if (decoded != null) {
-      debugPrint('[FaceVerification] NFC decode: dart decode ok ${decoded.width}x${decoded.height}');
       return decoded;
     }
-    debugPrint('[FaceVerification] NFC decode: dart decode failed, trying image_channel fallback');
 
     try {
       final converted = await _imageChannel.invokeMethod<Uint8List>('decodeImage', {'jp2ImageData': bytes});
       if (converted == null) {
-        debugPrint('[FaceVerification] NFC decode: image_channel returned null');
         return null;
       }
       final fallbackDecoded = img.decodeImage(converted);
       if (fallbackDecoded == null) {
-        debugPrint('[FaceVerification] NFC decode: fallback bytes not decodeable, bytes=${converted.length}');
         return null;
       }
-      debugPrint(
-        '[FaceVerification] NFC decode: fallback decode ok ${fallbackDecoded.width}x${fallbackDecoded.height}',
-      );
       return fallbackDecoded;
     } catch (e) {
-      debugPrint('[FaceVerification] NFC decode: image_channel failed ${e.runtimeType}: $e');
       return null;
     }
   }
