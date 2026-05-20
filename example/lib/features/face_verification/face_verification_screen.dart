@@ -624,10 +624,12 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: (ready && !_startingLiveness) ? _startActiveLiveness : null,
-                  icon: _startingLiveness
+                  icon: (!_engineReady || _startingLiveness)
                       ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                       : const Icon(Icons.face),
-                  label: Text(_startingLiveness ? 'Preparing...' : 'Start Verification'),
+                  label: Text(
+                    !_engineReady ? 'Loading models...' : (_startingLiveness ? 'Preparing...' : 'Start Verification'),
+                  ),
                 ),
               ),
             ],

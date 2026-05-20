@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:collection';
 import 'dart:ffi';
+import 'dart:io' show Platform;
 import 'dart:isolate';
+import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:camera/camera.dart';
@@ -132,6 +134,11 @@ class FaceVerificationWorker {
   static const int _camBufCap = 12 * 1024 * 1024; // 12 MB — covers 1080p BGRA with headroom
   late final List<FaceFrameBuffer> _camPool;
 
+  // Interpreters created on the main isolate and held here for two reasons:
+  // 1. Keeps the native TfLiteInterpreter* alive so iOS GC cannot free it before/while workers use it.
+  // 2. Sole owner — workers adopt via fromAddress() (no C API calls) and must NOT call close().
+  final List<Interpreter> _ownedInterpreters = [];
+
   final StreamController<WorkerFrameResult> _frames = StreamController<WorkerFrameResult>.broadcast();
 
   final Queue<Map<String, dynamic>> _pipelineQueue = Queue<Map<String, dynamic>>();
@@ -149,56 +156,44 @@ class FaceVerificationWorker {
   Future<void> initialize() async {
     _camPool = List.generate(_camPoolSize, (_) => FaceFrameBuffer.create(_camBufCap));
 
-    // Start worker isolates immediately — independent of asset loading.
+    // Load all 9 models in parallel on the main isolate.
+    // fromAsset() on the main isolate works unconditionally on iOS and Android.
+    // Workers adopt via fromAddress() — no TFLite C API calls in background isolates.
+    // _ownedInterpreters keeps the native objects alive so iOS cannot GC them.
+    final numThreads = (Platform.numberOfProcessors ~/ 2).clamp(1, 4);
+
+    // Kick off worker spawning and model loading simultaneously.
     final workersFuture = Future.wait<void>([_pipeline.start(), _passive.start(), _match.start()]);
 
-    // Index→semantic mapping:
-    //   [0] GhostFaceNet  [1] bigsmall_1  [2] bigsmall_2  [3] bigsmall_3
-    //   [4] landmarks     [5] v1se        [6] v2          [7] blendshapes  [8] detector
-    const modelPaths = <String>[
-      'assets/face_verification/GhostFaceNet_fp32_V2.tflite', // 0 — 15.5 MB
-      'assets/face_verification/bigsmall_1.tflite',           // 1 —  3.1 MB
-      'assets/face_verification/bigsmall_2.tflite',           // 2 —  3.1 MB
-      'assets/face_verification/bigsmall_3.tflite',           // 3 —  3.1 MB
-      'assets/face_verification/face_landmarks_detector.tflite', // 4 —  2.4 MB
-      'assets/face_verification/minifasnet_v1se.tflite',      // 5 —  1.8 MB
-      'assets/face_verification/minifasnet_v2.tflite',        // 6 —  1.8 MB
-      'assets/face_verification/face_blendshapes.tflite',     // 7 —  0.9 MB
-      'assets/face_verification/face_detector.tflite',        // 8 —  0.2 MB
-    ];
+    final interps = await Future.wait<Interpreter>(<Future<Interpreter>>[
+      _loadInterp('assets/face_verification/face_detector.tflite', _gpuOpts(numThreads), _cpuOpts(numThreads)), // 0
+      _loadInterp(
+        'assets/face_verification/face_landmarks_detector.tflite',
+        _gpuOpts(numThreads),
+        _cpuOpts(numThreads),
+      ), // 1
+      _loadInterp('assets/face_verification/face_blendshapes.tflite', _gpuOpts(numThreads), _cpuOpts(numThreads)), // 2
+      _loadInterp('assets/face_verification/minifasnet_v1se.tflite', _cpuOpts(2)), // 3
+      _loadInterp('assets/face_verification/minifasnet_v2.tflite', _cpuOpts(2)), // 4
+      _loadInterp('assets/face_verification/bigsmall_1.tflite', _gpuOpts(2), _cpuOpts(2)), // 5
+      _loadInterp('assets/face_verification/bigsmall_2.tflite', _gpuOpts(2), _cpuOpts(2)), // 6
+      _loadInterp('assets/face_verification/bigsmall_3.tflite', _gpuOpts(2), _cpuOpts(2)), // 7
+      _loadInterp('assets/face_verification/GhostFaceNet_fp32_V2.tflite', _cpuOpts(4)), // 8
+    ]);
 
-    final totalStart = DateTime.now();
-    debugPrint('[FaceVerification] Worker: loading 9 model assets');
-
-    // Load all bytes in parallel (pure I/O, no TFLite involved here), then hand each
-    // buffer as a TransferableTypedData directly to its worker isolate. Workers have
-    // DartPluginRegistrant initialized, so flutter_litert FFI symbols resolve correctly.
-    // Temp isolates are no longer used — they caused "Failed to lookup symbol" crashes
-    // on iOS because DartPluginRegistrant was never called in them.
-    final ttds = await Future.wait(
-      List.generate(9, (i) async {
-        final t0 = DateTime.now();
-        final bd = await rootBundle.load(modelPaths[i]);
-        final ttd = TransferableTypedData.fromList([Uint8List.sublistView(bd)]);
-        debugPrint(
-          '[FaceVerification] Worker: ${modelPaths[i].split('/').last} loaded in ${DateTime.now().difference(t0).inMilliseconds}ms',
-        );
-        return ttd;
-      }),
-    );
+    _ownedInterpreters.addAll(interps);
+    debugPrint('[FaceVerification] Worker: all ${interps.length} interpreters loaded');
 
     await workersFuture;
-    final totalMs = DateTime.now().difference(totalStart).inMilliseconds;
-    debugPrint('[FaceVerification] Worker: all assets loaded in ${totalMs}ms, sending to workers');
 
     final camBufAddrs = _camPool.map((b) => b.address).toList(growable: false);
     await Future.wait(<Future<Map<String, dynamic>>>[
       _pipeline.request(
         'init',
         payload: <String, dynamic>{
-          'detectorTtd': ttds[8],
-          'landmarksTtd': ttds[4],
-          'blendshapesTtd': ttds[7],
+          'detectorAddr': interps[0].address,
+          'landmarksAddr': interps[1].address,
+          'blendshapesAddr': interps[2].address,
           'camBufAddrs': camBufAddrs,
           'camBufCap': _camBufCap,
         },
@@ -206,16 +201,16 @@ class FaceVerificationWorker {
       _passive.request(
         'init',
         payload: <String, dynamic>{
-          'v1Ttd': ttds[5],
-          'v2Ttd': ttds[6],
-          'bigSmallTtds': [ttds[1], ttds[2], ttds[3]],
+          'v1Addr': interps[3].address,
+          'v2Addr': interps[4].address,
+          'bigSmallAddrs': <int>[interps[5].address, interps[6].address, interps[7].address],
           'camBufAddrs': camBufAddrs,
           'camBufCap': _camBufCap,
         },
       ),
-      _match.request('init', payload: <String, dynamic>{'modelTtd': ttds[0]}),
+      _match.request('init', payload: <String, dynamic>{'ghostAddr': interps[8].address}),
     ]);
-    debugPrint('[FaceVerification] Worker: all interpreters initialized');
+    debugPrint('[FaceVerification] Worker: all workers initialized');
   }
 
   Future<void> startSession() async {
@@ -420,6 +415,11 @@ class FaceVerificationWorker {
     _completePipelineIdle();
     _completePassiveIdle();
     _disposeCamPool();
+    // Workers are dead — safe to close the real native objects now (sole TfLiteInterpreterDelete call).
+    for (final interp in _ownedInterpreters) {
+      interp.close();
+    }
+    _ownedInterpreters.clear();
   }
 
   void _enqueuePassiveFrame(Map<String, dynamic> payload) {
@@ -471,7 +471,6 @@ class FaceVerificationWorker {
   }
 }
 
-
 SendPort _initializeWorkerIsolate(List<Object?> args) {
   final mainSendPort = args[0] as SendPort;
   final rootToken = args[1] as RootIsolateToken;
@@ -497,11 +496,11 @@ Future<void> _pipelineWorkerLoop(SendPort mainSendPort) async {
   Future<Map<String, dynamic>> handle(String cmd, Map<String, dynamic> payload) async {
     switch (cmd) {
       case 'init':
-        debugPrint('[FaceVerification] Pipeline worker: initializing detector/landmarks/blendshapes from buffers');
-        detector.initializeFromBuffers(
-          detector: (payload['detectorTtd'] as TransferableTypedData).materialize().asUint8List(),
-          landmarks: (payload['landmarksTtd'] as TransferableTypedData).materialize().asUint8List(),
-          blendshapes: (payload['blendshapesTtd'] as TransferableTypedData).materialize().asUint8List(),
+        debugPrint('[FaceVerification] Pipeline worker: adopting interpreter addresses from main isolate');
+        detector.initializeFromAddresses(
+          detectorAddr: payload['detectorAddr'] as int,
+          landmarksAddr: payload['landmarksAddr'] as int,
+          blendshapesAddr: payload['blendshapesAddr'] as int,
         );
         camPool = (payload['camBufAddrs'] as List)
             .cast<int>()
@@ -525,7 +524,7 @@ Future<void> _pipelineWorkerLoop(SendPort mainSendPort) async {
       case 'stop':
         return <String, dynamic>{'ok': true};
       case 'dispose':
-        await detector.close();
+        // Interpreters are owned by the main isolate — do not close here.
         return <String, dynamic>{'ok': true};
       default:
         throw StateError('Unknown pipeline worker cmd: $cmd');
@@ -602,14 +601,11 @@ Future<void> _passiveWorkerLoop(SendPort mainSendPort) async {
   Future<Map<String, dynamic>> handle(String cmd, Map<String, dynamic> payload) async {
     switch (cmd) {
       case 'init':
-        debugPrint('[FaceVerification] Passive worker: initializing MiniFASNet and BigSmall from buffers');
-        passive.initializeFromBuffers(
-          v1: (payload['v1Ttd'] as TransferableTypedData).materialize().asUint8List(),
-          v2: (payload['v2Ttd'] as TransferableTypedData).materialize().asUint8List(),
-          bigSmall: (payload['bigSmallTtds'] as List)
-              .cast<TransferableTypedData>()
-              .map((ttd) => ttd.materialize().asUint8List())
-              .toList(growable: false),
+        debugPrint('[FaceVerification] Passive worker: adopting interpreter addresses from main isolate');
+        passive.initializeFromAddresses(
+          v1Addr: payload['v1Addr'] as int,
+          v2Addr: payload['v2Addr'] as int,
+          bigSmallAddrs: (payload['bigSmallAddrs'] as List).cast<int>(),
         );
         camPool = (payload['camBufAddrs'] as List)
             .cast<int>()
@@ -659,7 +655,7 @@ Future<void> _passiveWorkerLoop(SendPort mainSendPort) async {
       case 'stop':
         return <String, dynamic>{'ok': true};
       case 'dispose':
-        await passive.dispose();
+        // Interpreters are owned by the main isolate — do not close here.
         return <String, dynamic>{'ok': true};
       default:
         throw StateError('Unknown passive worker cmd: $cmd');
@@ -679,9 +675,6 @@ Future<void> _matchWorkerLoop(SendPort mainSendPort) async {
   mainSendPort.send(commandPort.sendPort);
 
   final recognizer = FaceRecognizer();
-  // Holds the model bytes so the TFLite interpreter's non-owning pointer remains
-  // valid for the lifetime of this isolate.
-  Uint8List? matchModelBytes;
   List<double>? nfcEmbedding;
   Uint8List? nfcInputPng;
   Uint8List? selfieInputPng;
@@ -689,10 +682,9 @@ Future<void> _matchWorkerLoop(SendPort mainSendPort) async {
   Future<Map<String, dynamic>> handle(String cmd, Map<String, dynamic> payload) async {
     switch (cmd) {
       case 'init':
-        debugPrint('[FaceVerification] Match worker: initializing GhostFaceNet from buffer');
-        matchModelBytes = (payload['modelTtd'] as TransferableTypedData).materialize().asUint8List();
-        await recognizer.initializeFromBuffer(matchModelBytes!);
-        debugPrint('[FaceVerification] Match worker: GhostFaceNet initialized');
+        debugPrint('[FaceVerification] Match worker: adopting GhostFaceNet address from main isolate');
+        recognizer.initializeFromAddress(payload['ghostAddr'] as int);
+        debugPrint('[FaceVerification] Match worker: initialized');
         return <String, dynamic>{'ok': true};
       case 'start_session':
         // nfcEmbedding is preserved across sessions — the NFC image doesn't change
@@ -725,7 +717,7 @@ Future<void> _matchWorkerLoop(SendPort mainSendPort) async {
       case 'stop':
         return <String, dynamic>{'ok': true};
       case 'dispose':
-        await recognizer.dispose();
+        // Interpreters are owned by the main isolate — do not close here.
         return <String, dynamic>{'ok': true};
       default:
         throw StateError('Unknown match worker cmd: $cmd');
@@ -733,6 +725,31 @@ Future<void> _matchWorkerLoop(SendPort mainSendPort) async {
   }
 
   await _serve(commandPort, mainSendPort, handle);
+}
+
+Future<Interpreter> _loadInterp(String asset, InterpreterOptions opts, [InterpreterOptions? fallback]) async {
+  try {
+    return await Interpreter.fromAsset(asset, options: opts);
+  } catch (_) {
+    if (fallback != null) return Interpreter.fromAsset(asset, options: fallback);
+    rethrow;
+  }
+}
+
+InterpreterOptions _cpuOpts(int threads) => InterpreterOptions()..threads = threads;
+
+InterpreterOptions _gpuOpts(int threads) {
+  final opts = InterpreterOptions()..threads = threads;
+  if (Platform.isAndroid) {
+    try {
+      opts.addDelegate(GpuDelegateV2());
+    } catch (_) {}
+  } else if (Platform.isIOS) {
+    try {
+      opts.addDelegate(GpuDelegate());
+    } catch (_) {}
+  }
+  return opts;
 }
 
 Future<void> _serve(

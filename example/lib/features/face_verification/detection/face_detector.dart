@@ -52,6 +52,10 @@ class FaceDetectorService {
 
   final FaceLandmarkPipeline _pipeline = FaceLandmarkPipeline();
 
+  Future<void> initialize() async {
+    await _pipeline.initialize();
+  }
+
   void initializeFromAddresses({required int detectorAddr, required int landmarksAddr, required int blendshapesAddr}) {
     _pipeline.initializeFromAddresses(
       detectorAddr: detectorAddr,
