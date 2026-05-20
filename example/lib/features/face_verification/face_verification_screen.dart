@@ -155,7 +155,6 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
 
   Future<void> _bootstrap() async {
     try {
-      // Engine init and camera opening are independent — run in parallel.
       await Future.wait(<Future<void>>[_engine.initialize(), _openCamera()]);
       if (!mounted) return;
       _eventSub = _engine.events.listen(_onLivenessEvent);
