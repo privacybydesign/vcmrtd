@@ -30,7 +30,11 @@ class FaceLandmarkPipeline {
   static const int _detectorKeypoints = 6;
   static const double _scoreThreshold = 0.5;
   static const double _iouThreshold = 0.3;
-  static const double _fixedCropMargin = 2.0;
+  // 1.5× matches MediaPipe's intended crop proportion and keeps the crop within
+  // image bounds for 16:9 cameras (iOS). At 2.0× the crop overflowed 30–42% of
+  // the image width on narrow portrait frames, filling that space with black and
+  // giving the landmark model a face surrounded by large black borders.
+  static const double _fixedCropMargin = 1.5;
   // Shifts the crop window upward so the top of the head is included rather than cropped off.
   static const double _fixedCropShiftY = -0.10;
   static const double _presenceThreshold = 0.5;

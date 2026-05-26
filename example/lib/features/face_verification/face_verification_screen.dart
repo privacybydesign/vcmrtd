@@ -154,8 +154,11 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
   // ── Bootstrap & cleanup ───────────────────────────────────────────────────
 
   Future<void> _bootstrap() async {
+    // Open camera first so the live feed is visible while models load.
+    await _openCamera();
+    if (!mounted) return;
     try {
-      await Future.wait(<Future<void>>[_engine.initialize(), _openCamera()]);
+      await _engine.initialize();
       if (!mounted) return;
       _eventSub = _engine.events.listen(_onLivenessEvent);
       setState(() => _engineReady = true);
@@ -263,11 +266,12 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
     final ctrl = _cameraController;
     final camera = _activeCamera ?? ctrl?.description;
     if (ctrl == null || camera == null) return null;
-    final rotationComp = _orientations[ctrl.value.deviceOrientation];
-    if (rotationComp == null) return null;
     if (camera.lensDirection == CameraLensDirection.front) {
-      return (camera.sensorOrientation + rotationComp) % 360;
+      // Portrait-only selfie: iOS always needs 270°; Android uses sensorOrientation directly.
+      if (Platform.isIOS) return 270;
+      return camera.sensorOrientation;
     }
+    final rotationComp = _orientations[ctrl.value.deviceOrientation] ?? 0;
     return (camera.sensorOrientation - rotationComp + 360) % 360;
   }
 
