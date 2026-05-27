@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,18 @@ import 'package:vcmrtdapp/features/face_verification/face_verification_engine.da
 // ── Enums & helpers ────────────────────────────────────────────────────────
 
 enum VerificationState { idle, activeLiveness, processing, result }
+
+class _PassiveProgress {
+  const _PassiveProgress({
+    required this.started,
+    required this.elapsedMs,
+    required this.targetMs,
+  });
+
+  final bool started;
+  final int elapsedMs;
+  final int targetMs;
+}
 
 String faceActionLabel(String action) => switch (action) {
   'BLINK' => 'Blink your eyes',
@@ -111,6 +124,11 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
   bool _activeLivenessStopping = false;
   bool _startingLiveness = false;
   bool _engineReady = false;
+  String? _alignTip;
+  LivenessMode _selectedMode = LivenessMode.active;
+  _PassiveProgress? _passive;
+  DateTime? _passiveAt;
+  Timer? _passiveTicker;
   Future<void>? _stopActiveFlowFuture;
   CameraImage? _pendingImage;
   bool _isSending = false;
@@ -132,6 +150,8 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
   @override
   void dispose() {
     _isDisposed = true;
+    _passiveTicker?.cancel();
+    _passiveTicker = null;
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_disposeEverything());
     super.dispose();
@@ -342,7 +362,7 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
 
   // ── Liveness ──────────────────────────────────────────────────────────────
 
-  Future<void> _startActiveLiveness() async {
+  Future<void> _startLiveness(LivenessMode mode) async {
     if (_startingLiveness || _state == VerificationState.activeLiveness) return;
     if (!_engineReady) return;
     final ctrl = _cameraController;
@@ -352,14 +372,22 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
       setState(() => _errorMessage = 'Missing NFC image');
       return;
     }
-    FaceVerificationDiagnostics.startSession('start tapped');
+    FaceVerificationDiagnostics.startSession('start tapped (${mode.name})');
     _diagSawFirstCameraImage = false;
     _diagSawFirstFrameSent = false;
     _diagSawFirstNextActionEvent = false;
-    setState(() => _startingLiveness = true);
+    setState(() {
+      _startingLiveness = true;
+      _selectedMode = mode;
+      _alignTip = null;
+      _passive = null;
+      _passiveAt = null;
+    });
+    _passiveTicker?.cancel();
+    _passiveTicker = null;
     final flowToken = _flowToken;
     try {
-      await _doStartLiveness(ctrl, nfcImage);
+      await _doStartLiveness(ctrl, nfcImage, mode);
     } catch (e) {
       if (flowToken == _flowToken && mounted && !_isDisposed) {
         setState(() => _errorMessage = 'Could not start liveness: $e');
@@ -371,11 +399,12 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
     }
   }
 
-  Future<void> _doStartLiveness(CameraController ctrl, Uint8List nfcImage) async {
+  Future<void> _doStartLiveness(CameraController ctrl, Uint8List nfcImage, LivenessMode mode) async {
     final flowToken = _flowToken;
-    final newActions = await _engine.start(nfcImage);
+    final newActions = await _engine.start(nfcImage, mode: mode);
     FaceVerificationDiagnostics.log('engine.start complete actions=${newActions.join(',')}');
-    if (flowToken != _flowToken || !mounted || _isDisposed || newActions.isEmpty) return;
+    if (flowToken != _flowToken || !mounted || _isDisposed) return;
+    if (mode == LivenessMode.active && newActions.isEmpty) return;
     setState(() {
       _state = VerificationState.activeLiveness;
       _actions = newActions;
@@ -443,6 +472,30 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
     if (type == null) return false;
 
     switch (type) {
+      case 'align':
+        final tip = map['tip'] as String?;
+        if (tip != _alignTip) setState(() => _alignTip = tip);
+        return true;
+
+      case 'passiveProgress':
+        final progress = _PassiveProgress(
+          started: (map['started'] as bool?) ?? false,
+          elapsedMs: (map['elapsedMs'] as num?)?.toInt() ?? 0,
+          targetMs: (map['targetMs'] as num?)?.toInt() ?? 5000,
+        );
+        setState(() {
+          _passive = progress;
+          _passiveAt = DateTime.now();
+        });
+        // Once the countdown has started, interpolate between frames so the
+        // timer ticks down smoothly. It runs to completion (never pauses).
+        if (progress.started) {
+          _passiveTicker ??= Timer.periodic(const Duration(milliseconds: 100), (_) {
+            if (mounted) setState(() {});
+          });
+        }
+        return true;
+
       case 'actionDetected':
         final action = map['action'] as String;
         setState(() {
@@ -457,7 +510,10 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
           _diagSawFirstNextActionEvent = true;
           FaceVerificationDiagnostics.log('ui received first nextAction action=${map['action']}');
         }
-        setState(() => _currentAction = map['action'] as String);
+        setState(() {
+          _currentAction = map['action'] as String;
+          _alignTip = null;
+        });
         return true;
 
       case 'extraAction':
@@ -470,6 +526,8 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
         return true;
 
       case 'processing':
+        _passiveTicker?.cancel();
+        _passiveTicker = null;
         setState(() {
           _state = VerificationState.processing;
           _currentAction = null;
@@ -490,6 +548,8 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
 
       case 'error':
         final message = map['message']?.toString() ?? 'Unknown error';
+        _passiveTicker?.cancel();
+        _passiveTicker = null;
         _invalidateFramePipeline();
         setState(() {
           _state = VerificationState.idle;
@@ -516,6 +576,8 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
   Future<void> _retry() async {
     await _stopActiveFlow(disposeCamera: true);
     if (_isDisposed || !mounted) return;
+    _passiveTicker?.cancel();
+    _passiveTicker = null;
     setState(() {
       _result = null;
       _errorMessage = null;
@@ -525,6 +587,9 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
       _completedActions = <String>{};
       _extraActionMode = false;
       _actionFlash = false;
+      _passive = null;
+      _passiveAt = null;
+      _alignTip = null;
     });
     await _openCamera();
   }
@@ -547,12 +612,105 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
       body: SafeArea(
         child: _errorMessage != null
             ? _buildErrorScreen()
-            : switch (_state) {
-                VerificationState.idle => _buildIdleScreen(),
-                VerificationState.activeLiveness => _buildActiveLivenessScreen(),
-                VerificationState.processing => _buildProcessingScreen(),
-                VerificationState.result => _buildResultScreen(),
-              },
+            : (_state == VerificationState.idle && !_isReady)
+                ? _buildLoadingScreen()
+                : switch (_state) {
+                    VerificationState.idle => _buildIdleScreen(),
+                    VerificationState.activeLiveness => _buildActiveLivenessScreen(),
+                    VerificationState.processing => _buildProcessingScreen(),
+                    VerificationState.result => _buildResultScreen(),
+                  },
+      ),
+    );
+  }
+
+  bool get _isReady => _engineReady && _cameraController?.value.isInitialized == true;
+
+  Widget _buildLoadingScreen() {
+    final cameraReady = _cameraController?.value.isInitialized == true;
+    final modelsReady = _engineReady;
+    return ColoredBox(
+      color: Colors.black,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.face_retouching_natural, size: 64, color: Colors.white70),
+              const SizedBox(height: 16),
+              const Text(
+                'Setting up face verification',
+                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'This only takes a moment',
+                style: TextStyle(color: Colors.white60, fontSize: 13),
+              ),
+              const SizedBox(height: 28),
+              _LoadingStage(label: 'Opening camera', done: cameraReady),
+              const SizedBox(height: 10),
+              _LoadingStage(label: 'Loading face models', done: modelsReady),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget? _buildPassiveProgressCard() {
+    if (_selectedMode != LivenessMode.passive) return null;
+    final p = _passive;
+    if (p == null || !p.started) return null;
+    // Fixed countdown: interpolate elapsed against wall-clock so the timer ticks
+    // down smoothly between camera frames.
+    var elapsedMs = p.elapsedMs;
+    if (_passiveAt != null) {
+      elapsedMs += DateTime.now().difference(_passiveAt!).inMilliseconds;
+    }
+    elapsedMs = elapsedMs.clamp(0, p.targetMs);
+    final remainingMs = (p.targetMs - elapsedMs).clamp(0, p.targetMs);
+    // Bar represents time LEFT: starts full, depletes to empty in sync with the
+    // seconds countdown.
+    final progress = p.targetMs == 0 ? 0.0 : (remainingMs / p.targetMs).clamp(0.0, 1.0);
+    final secondsLeft = (remainingMs / 1000).ceil().clamp(0, 99);
+    return Positioned(
+      top: 16,
+      left: 16,
+      right: 16,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.7), borderRadius: BorderRadius.circular(16)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    secondsLeft <= 0 ? 'Almost done…' : 'Hold still',
+                    style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                Text(
+                  '${secondsLeft}s',
+                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 6,
+                backgroundColor: Colors.white24,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.green[400]!),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -574,19 +732,29 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
         ),
       );
     }
+    final preview = ctrl.value.previewSize;
+    if (preview == null) {
+      return ColoredBox(color: Colors.black, child: CameraPreview(ctrl));
+    }
     return ColoredBox(
       color: Colors.black,
-      child: Center(
-        child: AspectRatio(aspectRatio: 3 / 4, child: CameraPreview(ctrl)),
+      child: ClipRect(
+        child: SizedBox.expand(
+          child: FittedBox(
+            fit: BoxFit.cover,
+            child: SizedBox(
+              width: preview.height,
+              height: preview.width,
+              child: CameraPreview(ctrl),
+            ),
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildOvalOverlay() => const Center(
-    child: AspectRatio(
-      aspectRatio: 3 / 4,
-      child: CustomPaint(painter: _FaceOvalPainter()),
-    ),
+  Widget _buildOvalOverlay() => const Positioned.fill(
+    child: CustomPaint(painter: _FaceOvalPainter()),
   );
 
   Widget _buildIdleScreen() {
@@ -623,17 +791,16 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
                 ),
               ),
               const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: (ready && !_startingLiveness) ? _startActiveLiveness : null,
-                  icon: (!_engineReady || _startingLiveness)
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.face),
-                  label: Text(
-                    !_engineReady ? 'Loading models...' : (_startingLiveness ? 'Preparing...' : 'Start Verification'),
-                  ),
-                ),
+              _buildStartButton(
+                ready: ready,
+                mode: LivenessMode.active,
+                label: 'Start with Active Liveness',
+              ),
+              const SizedBox(height: 8),
+              _buildStartButton(
+                ready: ready,
+                mode: LivenessMode.passive,
+                label: 'Start with Passive Liveness',
               ),
             ],
           ),
@@ -642,40 +809,93 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
     );
   }
 
+  Widget _buildStartButton({required bool ready, required LivenessMode mode, required String label}) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: (ready && !_startingLiveness) ? () => _startLiveness(mode) : null,
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          backgroundColor: Colors.green[600],
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        icon: _startingLiveness
+            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+            : const Icon(Icons.face),
+        label: Text(_startingLiveness ? 'Preparing…' : label),
+      ),
+    );
+  }
+
+  Widget? _buildTipCard() {
+    final tip = _alignTip;
+    if (tip == null) return null;
+    final message = _alignTipMessage(tip);
+    if (message == null) return null;
+    return Positioned(
+      left: 20,
+      right: 20,
+      bottom: 24,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.65), borderRadius: BorderRadius.circular(16)),
+        child: Row(
+          children: [
+            const Icon(Icons.tips_and_updates_outlined, color: Colors.amberAccent, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(message, style: const TextStyle(color: Colors.white, fontSize: 14)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String? _alignTipMessage(String tip) {
+    switch (tip) {
+      case 'noFace':
+        return 'Position your face in the oval';
+      case 'centerFace':
+        return 'Move your face into the oval';
+      case 'tooFar':
+        return 'Move a bit closer to the camera';
+      case 'tooClose':
+        return 'Move a bit further from the camera';
+      case 'lookStraight':
+        return 'Look straight at the camera';
+      case 'openEyes':
+        return 'Keep your eyes open';
+      case 'closeMouth':
+        return 'Close your mouth';
+      case 'relaxFace':
+        return 'Relax your expression';
+      case 'holdStill':
+        return _selectedMode == LivenessMode.passive ? 'Hold still…' : 'Get ready…';
+      default:
+        return null;
+    }
+  }
+
   Widget _buildActiveLivenessScreen() {
     final isAligning = _currentAction == null;
+    final tipCard = _buildTipCard();
+    final passiveCard = _buildPassiveProgressCard();
     return Stack(
       fit: StackFit.expand,
       children: [
         _buildCameraPreview(),
         if (_actionFlash) Container(color: Colors.green.withValues(alpha: 0.25)),
-        if (isAligning) ..._buildAlignmentOverlay(),
-        if (!isAligning) _buildActionChecklist(),
+        // Always show the oval guide while the camera is live.
+        _buildOvalOverlay(),
+        if (_selectedMode == LivenessMode.active && !isAligning) _buildActionChecklist(),
         if (_currentAction != null) _buildActionInstruction(_currentAction!),
+        if (passiveCard != null) passiveCard,
+        if (tipCard != null) tipCard,
       ],
     );
   }
-
-  List<Widget> _buildAlignmentOverlay() => [
-    _buildOvalOverlay(),
-    Positioned(
-      bottom: 40,
-      left: 24,
-      right: 24,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(24)),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(width: 13, height: 13, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70)),
-            SizedBox(width: 10),
-            Text('Hold still - reading your face...', style: TextStyle(color: Colors.white70, fontSize: 15)),
-          ],
-        ),
-      ),
-    ),
-  ];
 
   Widget _buildActionChecklist() => Positioned(
     top: 16,
@@ -861,6 +1081,30 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
 
 // ── Supporting widgets ─────────────────────────────────────────────────────
 
+class _LoadingStage extends StatelessWidget {
+  const _LoadingStage({required this.label, required this.done});
+  final String label;
+  final bool done;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 18,
+          height: 18,
+          child: done
+              ? const Icon(Icons.check_circle, color: Colors.greenAccent, size: 18)
+              : const CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
+        ),
+        const SizedBox(width: 10),
+        Text(label, style: TextStyle(color: done ? Colors.white : Colors.white70, fontSize: 14)),
+      ],
+    );
+  }
+}
+
 class _FaceStepRow extends StatelessWidget {
   final String number;
   final String text;
@@ -895,10 +1139,13 @@ class _FaceOvalPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Size the oval to a face-shaped 3:4 (w:h), fitting inside the screen.
+    final ovalWidth = math.min(size.width * 0.80, size.height * 0.90 * (3 / 4));
+    final ovalHeight = ovalWidth * (4 / 3);
     final ovalRect = Rect.fromCenter(
       center: Offset(size.width * 0.50, size.height * 0.46),
-      width: size.width * 0.80,
-      height: size.height * 0.90,
+      width: ovalWidth,
+      height: ovalHeight,
     );
 
     canvas.saveLayer(Offset.zero & size, Paint());

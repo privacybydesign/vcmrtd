@@ -11,6 +11,7 @@ class FaceObservation {
     required this.result,
     required this.boundingBox,
     required this.boundingBoxAreaRatio,
+    required this.boundingBoxCenter,
     required this.mouthRatio,
     required this.yawDegrees,
     required this.blendshapeScores,
@@ -20,6 +21,11 @@ class FaceObservation {
   final FaceLandmarkerResult result;
   final Rect boundingBox;
   final double boundingBoxAreaRatio;
+
+  /// Face bounding-box center, normalized to the frame (0..1 on each axis).
+  /// Mirror- and rotation-robust enough to test "is the face centered in the
+  /// oval" without mapping to exact screen coordinates.
+  final Offset boundingBoxCenter;
   final double mouthRatio;
   final double? yawDegrees;
   final Map<String, double> blendshapeScores;
@@ -125,6 +131,10 @@ class FaceDetectorService {
 
     final box = _boundsFromLandmarks(landmarks, image.width, image.height);
     final boxAreaRatio = (box.width * box.height) / (image.width * image.height).clamp(1, 1 << 30);
+    final center = Offset(
+      (box.center.dx / image.width).clamp(0.0, 1.0),
+      (box.center.dy / image.height).clamp(0.0, 1.0),
+    );
     final mouthRatio = _mouthOpenRatioFromLandmarks(landmarks);
     final yaw = matrixYaw(result);
     final blendshapeScores = _blendshapeMap(result);
@@ -134,6 +144,7 @@ class FaceDetectorService {
       result: result,
       boundingBox: box,
       boundingBoxAreaRatio: boxAreaRatio.clamp(0.0, 1.0),
+      boundingBoxCenter: center,
       mouthRatio: mouthRatio,
       yawDegrees: yaw,
       blendshapeScores: blendshapeScores,

@@ -12,6 +12,33 @@ class FaceVerificationTuning {
   static final double turnYawThreshold = _doubleEnv('FV_TURN_YAW_THRESHOLD', 28.0);
   static final double mouthOpenThreshold = _doubleEnv('FV_MOUTH_OPEN_THRESHOLD', 0.028);
 
+  // Selfie quality gates used during alignment for both active and passive flows.
+  static final double alignMinBboxArea = _doubleEnv('FV_ALIGN_MIN_BBOX_AREA', 0.04);
+  static final double alignMaxBboxArea = _doubleEnv('FV_ALIGN_MAX_BBOX_AREA', 0.45);
+
+  // Passive liveness: once the face is well-aligned, a fixed countdown of this
+  // many milliseconds runs to completion (it does not pause). Sized to
+  // comfortably cover the rPPG window (~2s) plus anti-spoof sampling.
+  static const int passiveTargetMs = int.fromEnvironment('FV_PASSIVE_TARGET_MS', defaultValue: 5000);
+
+  // The face must be held continuously in the oval for this long before the
+  // countdown begins, so it never fires on a single already-aligned frame
+  // (e.g. when the user is still positioned after a retry).
+  static const int passiveLockOnMs = int.fromEnvironment('FV_PASSIVE_LOCK_ON_MS', defaultValue: 600);
+
+  // Passive alignment is intentionally lenient: we only need a present,
+  // reasonably frontal face at a sensible distance. We deliberately do NOT
+  // require eyes-open / mouth-closed / no-smile (that strict "at rest" gate is
+  // for grabbing a single baseline frame in active mode) — held continuously it
+  // would trip on every blink. Liveness itself is covered by anti-spoof + rPPG.
+  static final double passiveMaxYawDeg = _doubleEnv('FV_PASSIVE_MAX_YAW_DEG', 22.0);
+
+  // "Inside the oval" gate: how far the face bbox center may sit from the frame
+  // center (normalized 0..1 per axis) before the countdown will start. The oval
+  // is taller than wide, so the vertical tolerance is a touch larger.
+  static final double passiveCenterMaxOffsetX = _doubleEnv('FV_PASSIVE_CENTER_MAX_OFFSET_X', 0.18);
+  static final double passiveCenterMaxOffsetY = _doubleEnv('FV_PASSIVE_CENTER_MAX_OFFSET_Y', 0.22);
+
   static const bool emitDebugEvents = bool.fromEnvironment('FV_EMIT_DEBUG_EVENTS', defaultValue: false);
 
   static double _doubleEnv(String key, double fallback) {

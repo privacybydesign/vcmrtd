@@ -917,6 +917,7 @@ Map<String, dynamic> _serializeFace(FaceObservation face) {
   return <String, dynamic>{
     'bbox': <double>[face.boundingBox.left, face.boundingBox.top, face.boundingBox.right, face.boundingBox.bottom],
     'bboxAreaRatio': face.boundingBoxAreaRatio,
+    'bboxCenter': <double>[face.boundingBoxCenter.dx, face.boundingBoxCenter.dy],
     'yaw': face.yawDegrees,
     'mouthRatio': face.mouthRatio,
     'blendshapes': face.blendshapeScores,
@@ -955,10 +956,14 @@ FaceObservation _deserializeFaceMap(Map<String, dynamic> map) {
   if (alignedRgb == null) throw StateError('Worker face payload missing aligned image');
   final aligned = img.Image.fromBytes(width: 112, height: 112, bytes: alignedRgb.buffer, numChannels: 3);
 
+  final center = (map['bboxCenter'] as List?)?.cast<num>();
   return FaceObservation(
     result: result,
     boundingBox: Rect.fromLTRB(bbox[0].toDouble(), bbox[1].toDouble(), bbox[2].toDouble(), bbox[3].toDouble()),
     boundingBoxAreaRatio: (map['bboxAreaRatio'] as num?)?.toDouble() ?? 0.0,
+    boundingBoxCenter: center != null && center.length >= 2
+        ? Offset(center[0].toDouble(), center[1].toDouble())
+        : const Offset(0.5, 0.5),
     mouthRatio: mouthRatio,
     yawDegrees: yaw,
     blendshapeScores: blend,

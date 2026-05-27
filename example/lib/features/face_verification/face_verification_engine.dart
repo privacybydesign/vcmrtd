@@ -11,6 +11,8 @@ import 'package:vcmrtdapp/features/face_verification/face_verification_tuning.da
 import 'package:vcmrtdapp/features/face_verification/face_verification_worker.dart';
 import 'package:vcmrtdapp/features/face_verification/liveness/liveness_service.dart';
 
+enum LivenessMode { active, passive }
+
 class FaceVerificationEngine {
   static const int _requiredActions = FaceVerificationTuning.requiredActions;
   static const int _actionsNeededToPass = FaceVerificationTuning.actionsNeededToPass;
@@ -29,6 +31,13 @@ class FaceVerificationEngine {
   bool _processing = false;
   bool _sessionFinished = true;
   bool _sessionStopping = false;
+  LivenessMode _mode = LivenessMode.active;
+  // Wall-clock timestamp when the passive countdown began. Null until the face
+  // has been held in the oval for the lock-on period. The countdown is a fixed
+  // duration from here.
+  int? _passiveStartMs;
+  // When the face first became (and stayed) in the oval, for the lock-on hold.
+  int? _passiveInOvalSinceMs;
   StreamSubscription<WorkerFrameResult>? _workerFrameSub;
   Future<void> _workerFrameChain = Future<void>.value();
 
@@ -92,16 +101,20 @@ class FaceVerificationEngine {
     }
   }
 
-  Future<List<String>> start(Uint8List nfcImageBytes) async {
+  Future<List<String>> start(Uint8List nfcImageBytes, {LivenessMode mode = LivenessMode.active}) async {
     _nfcImageBytes = nfcImageBytes;
     _running = true;
     _processing = false;
     _sessionFinished = false;
     _sessionStopping = false;
+    _mode = mode;
+    _passiveStartMs = null;
+    _passiveInOvalSinceMs = null;
+    _lastAlignTip = null;
 
     _pendingActions
       ..clear()
-      ..addAll(_chooseActions());
+      ..addAll(mode == LivenessMode.passive ? const <LivenessAction>[] : _chooseActions());
     _completedCount = 0;
     _currentActionIndex = 0;
     _extraActionMode = false;
@@ -152,6 +165,11 @@ class FaceVerificationEngine {
       }
       _updateFaceState(face);
 
+      if (_mode == LivenessMode.passive) {
+        await _processPassiveFrame(face);
+        return;
+      }
+
       if (_currentActionIndex >= _pendingActions.length) return;
       final currentAction = _pendingActions[_currentActionIndex];
 
@@ -196,12 +214,25 @@ class FaceVerificationEngine {
       _sendNextActionEvent(action.wireName);
       return;
     }
-    if (face == null) return;
-    final alignmentDiag = FaceVerificationDiagnostics.enabled ? _active.diagnoseAlignmentFrame(face) : null;
+    if (face == null) {
+      _emitAlignTip('noFace');
+      return;
+    }
+    final sizeTip = _bboxSizeTip(face);
+    if (sizeTip != null) {
+      _emitAlignTip(sizeTip);
+      return;
+    }
+    final alignmentDiag = _active.diagnoseAlignmentFrame(face);
+    if (!alignmentDiag.atRest) {
+      _emitAlignTip(_mapRejectReason(alignmentDiag.rejectReason));
+    } else {
+      _emitAlignTip('holdStill');
+    }
     final accepted = _active.processAlignmentFrame(face: face, action: action, timedOut: false);
     if (FaceVerificationDiagnostics.enabled) {
       _diagAligningFrameCount++;
-      final stableAfter = accepted ? alignmentDiag!.baselineFrames : alignmentDiag!.stableFramesAfter;
+      final stableAfter = accepted ? alignmentDiag.baselineFrames : alignmentDiag.stableFramesAfter;
       FaceVerificationDiagnostics.log(
         'align frame #$_diagAligningFrameCount '
         'bboxArea=${face.boundingBoxAreaRatio.toStringAsFixed(3)} '
@@ -234,6 +265,111 @@ class FaceVerificationEngine {
       return;
     }
     await _handleActionDetected();
+  }
+
+  Future<void> _processPassiveFrame(FaceObservation? face) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final tip = _passiveCoarseTip(face);
+
+    // Before the countdown starts: the face must be held in the oval
+    // continuously for the lock-on period. This shows guidance only (no
+    // countdown card yet) and guarantees the countdown never fires on a single
+    // already-aligned frame, e.g. when the user is still positioned on retry.
+    if (_passiveStartMs == null) {
+      if (tip != null) {
+        _passiveInOvalSinceMs = null;
+        _emitAlignTip(tip);
+        _emitPassiveProgress(started: false, elapsedMs: 0);
+        return;
+      }
+      _passiveInOvalSinceMs ??= now;
+      if (now - _passiveInOvalSinceMs! < FaceVerificationTuning.passiveLockOnMs) {
+        _emitAlignTip('holdStill');
+        _emitPassiveProgress(started: false, elapsedMs: 0);
+        return;
+      }
+      _passiveStartMs = now;
+    }
+
+    // Countdown running — fixed wall-clock duration from the start moment.
+    if (tip != null) {
+      // Misaligned mid-countdown: keep counting, but coach the user back.
+      _emitAlignTip(tip);
+    } else {
+      _emitAlignTip('holdStill');
+      // Keep the best (most frontal) selfie among aligned frames for matching.
+      if (_selfieFrameCount < _selfieFrameSampleSize && face != null) {
+        _selfieFrameCount++;
+        final absYaw = (face.yawDegrees ?? double.infinity).abs();
+        if (absYaw < _bestSelfieYaw) {
+          _bestSelfieYaw = absYaw;
+          _firstSelfie = face.alignedFace112;
+        }
+      }
+    }
+
+    final elapsed = now - _passiveStartMs!;
+    _emitPassiveProgress(started: true, elapsedMs: elapsed);
+
+    if (elapsed >= FaceVerificationTuning.passiveTargetMs) {
+      await _finishSession(true);
+    }
+  }
+
+  // Gate for passive: the face must be inside the oval (centered + right size)
+  // and reasonably frontal. No eyes/mouth/smile checks — those would trip on
+  // every blink. Liveness itself is covered by anti-spoof + rPPG.
+  String? _passiveCoarseTip(FaceObservation? face) {
+    if (face == null) return 'noFace';
+    final sizeTip = _bboxSizeTip(face);
+    if (sizeTip != null) return sizeTip;
+    final c = face.boundingBoxCenter;
+    if ((c.dx - 0.5).abs() > FaceVerificationTuning.passiveCenterMaxOffsetX ||
+        (c.dy - 0.5).abs() > FaceVerificationTuning.passiveCenterMaxOffsetY) {
+      return 'centerFace';
+    }
+    final yaw = (face.yawDegrees ?? 0.0).abs();
+    if (yaw > FaceVerificationTuning.passiveMaxYawDeg) return 'lookStraight';
+    return null;
+  }
+
+  void _emitPassiveProgress({required bool started, required int elapsedMs}) {
+    if (_mode != LivenessMode.passive) return;
+    _sendEvent({
+      'type': 'passiveProgress',
+      'started': started,
+      'elapsedMs': elapsedMs,
+      'targetMs': FaceVerificationTuning.passiveTargetMs,
+    });
+  }
+
+  String? _bboxSizeTip(FaceObservation face) {
+    final area = face.boundingBoxAreaRatio;
+    if (area < FaceVerificationTuning.alignMinBboxArea) return 'tooFar';
+    if (area > FaceVerificationTuning.alignMaxBboxArea) return 'tooClose';
+    return null;
+  }
+
+  String _mapRejectReason(String? reason) {
+    switch (reason) {
+      case 'yaw':
+        return 'lookStraight';
+      case 'eyes':
+        return 'openEyes';
+      case 'mouth':
+        return 'closeMouth';
+      case 'smile':
+        return 'relaxFace';
+      default:
+        return 'holdStill';
+    }
+  }
+
+  String? _lastAlignTip;
+  void _emitAlignTip(String tip) {
+    if (tip == _lastAlignTip) return;
+    _lastAlignTip = tip;
+    _sendEvent({'type': 'align', 'tip': tip});
   }
 
   Future<void> stop() async {

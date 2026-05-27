@@ -61,6 +61,12 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
                   final passport = widget.document as PassportData;
                   widget.onFaceVerification(passport.photoImageData, passport.dateOfIssue);
                 },
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  backgroundColor: Colors.green[600],
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
                 icon: const Icon(Icons.face),
                 label: const Text('Start Face Verification'),
               ),

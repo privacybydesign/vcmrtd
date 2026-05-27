@@ -153,4 +153,4 @@ docs/build/
 .dart-tool/CLIENT_ID
 AGENTS.md
 .dart-tool/dart-flutter-telemetry.config
-example/android/build/reports/problems/problems-report.html
+example/android/build/

@@ -94,7 +94,7 @@ private extension DeepLinkPlugin {
         // Require host/path to match start-app endpoint
         let host = url.host ?? ""
         let path = url.path
-        guard host == "passport-issuer.staging.yivi.app",
+        guard host == "passport-issuer.yivi.app",
               path.hasPrefix("/start-app") else { return false }
         
         // Extract query parameters

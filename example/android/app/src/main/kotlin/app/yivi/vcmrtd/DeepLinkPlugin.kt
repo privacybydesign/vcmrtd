@@ -89,7 +89,7 @@ class DeepLinkPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
     private fun isValidPassportIssuerUrl(uri: Uri): Boolean {
         if (uri.scheme != "https") return false
-        if (uri.host != "passport-issuer.staging.yivi.app") return false
+        if (uri.host != "passport-issuer.yivi.app") return false
         if (!uri.path.orEmpty().startsWith("/start-app")) return false
 
         val sessionId = uri.getQueryParameter("sessionId")
