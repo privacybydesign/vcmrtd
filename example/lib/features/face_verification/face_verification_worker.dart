@@ -301,7 +301,7 @@ class FaceVerificationWorker {
       final buf = _camPool[stale['camBufIdx'] as int];
       if (buf.beginPipelineRead()) buf.endPipelineRead(handoffToPassive: false);
     }
-  } 
+  }
 
   Future<void> _runPipelinePayload(Map<String, dynamic> payload) async {
     final sessionId = payload['sessionId'] as int;
