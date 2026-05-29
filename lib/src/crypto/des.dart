@@ -41,7 +41,10 @@ class DESCipher {
   /// Sets new iv. The [iv] length must be 8 bytes.
   set iv(final Uint8List iv) {
     if (iv.length != blockSize) {
-      throw ArgumentError.value(iv, "invalid IV length should be $blockSize bytes");
+      throw ArgumentError.value(
+        iv,
+        "invalid IV length should be $blockSize bytes",
+      );
     }
     _iv = _bytesToDWordList(iv);
   }
@@ -78,7 +81,10 @@ class DESCipher {
   // Returns decrypted [eblock].
   Uint8List decryptBlock(final Uint8List eblock) {
     if (eblock.length % blockSize != 0) {
-      throw ArgumentError.value(eblock, "eblock size should be $blockSize bytes");
+      throw ArgumentError.value(
+        eblock,
+        "eblock size should be $blockSize bytes",
+      );
     }
     _bc.init(false, _key);
     final wblock = _bytesToDWordList(eblock);
@@ -94,14 +100,19 @@ class DESCipher {
   /// Encrypts/decrypts [data] using CBC block cipher mode.
   Uint8List _process(final Uint8List data) {
     if (data.length % blockSize != 0) {
-      throw ArgumentError.value(data, "data size should be multiple of $blockSize bytes");
+      throw ArgumentError.value(
+        data,
+        "data size should be multiple of $blockSize bytes",
+      );
     }
 
     List<int> pdata = List<int>.empty(growable: true);
     List<int> xord = _iv;
     final size = data.length / blockSize;
     for (int i = 0; i < size; i++) {
-      final block = _bytesToDWordList(data.sublist(i * blockSize, i * blockSize + 8));
+      final block = _bytesToDWordList(
+        data.sublist(i * blockSize, i * blockSize + 8),
+      );
 
       // copy current block - to be used for CBC xoring when decrypting
       List<int> pblock = List.from(block);
@@ -147,7 +158,10 @@ class DESCipher {
 
   void _xorBlock(final List<int> block, final List<int> xdata) {
     if (block.length != xdata.length) {
-      throw ArgumentError.value(xdata, "invalid length pf data to xor block with");
+      throw ArgumentError.value(
+        xdata,
+        "invalid length pf data to xor block with",
+      );
     }
     for (int i = 0; i < block.length; i++) {
       block[i] ^= xdata[i];

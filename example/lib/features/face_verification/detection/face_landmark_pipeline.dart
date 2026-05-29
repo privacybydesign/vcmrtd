@@ -264,7 +264,6 @@ class FaceLandmarkPipeline {
   img.Image? _letterboxCanvas;
 
   DetectorStageOutput? _lastCrop;
-  static const double _presenceThresholdValue = _presenceThreshold;
 
   Future<void> initialize() async {
     if (_detectorInterp != null) return;
@@ -299,14 +298,6 @@ class FaceLandmarkPipeline {
       );
     }
 
-    _finishInit();
-  }
-
-  void initializeFromAddresses({required int detectorAddr, required int landmarksAddr, required int blendshapesAddr}) {
-    if (_detectorInterp != null) return;
-    _detectorInterp = Interpreter.fromAddress(detectorAddr);
-    _landmarkInterp = Interpreter.fromAddress(landmarksAddr);
-    _blendshapeInterp = Interpreter.fromAddress(blendshapesAddr);
     _finishInit();
   }
 
@@ -455,7 +446,7 @@ class FaceLandmarkPipeline {
     final rawPresence = _flatFloatArray(_presenceOutRaw);
     if (rawPresence.isEmpty) return null;
     final presence = _sigmoid(rawPresence.first);
-    if (presence < _presenceThresholdValue) return null;
+    if (presence < _presenceThreshold) return null;
 
     final raw = _flatFloatArray(_lmOutRaw);
     if (raw.length < _numLandmarks * 3) return null;

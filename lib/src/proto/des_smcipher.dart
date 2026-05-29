@@ -22,12 +22,22 @@ class DES_SMCipher implements SMCipher {
 
   @override
   Uint8List encrypt(Uint8List data, {SSC? ssc}) {
-    return DESedeEncrypt(key: encKey, iv: Uint8List(DESedeCipher.blockSize), data: data, padData: false);
+    return DESedeEncrypt(
+      key: encKey,
+      iv: Uint8List(DESedeCipher.blockSize),
+      data: data,
+      padData: false,
+    );
   }
 
   @override
   Uint8List decrypt(Uint8List edata, {SSC? ssc}) {
-    return DESedeDecrypt(key: encKey, iv: Uint8List(DESedeCipher.blockSize), edata: edata, paddedData: false);
+    return DESedeDecrypt(
+      key: encKey,
+      iv: Uint8List(DESedeCipher.blockSize),
+      edata: edata,
+      paddedData: false,
+    );
   }
 
   @override

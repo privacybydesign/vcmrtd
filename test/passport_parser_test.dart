@@ -13,12 +13,18 @@ void main() {
 
     test('invalid DG11 tag throws EfParseError', () {
       final parser = PassportParser();
-      expect(() => parser.parseDG11(parseTestCase(invalidDg11Tag)), throwsA(isA<EfParseError>()));
+      expect(
+        () => parser.parseDG11(parseTestCase(invalidDg11Tag)),
+        throwsA(isA<EfParseError>()),
+      );
     });
 
     test('invalid DG11 missing tag list throws EfParseError', () {
       final parser = PassportParser();
-      expect(() => parser.parseDG11(parseTestCase(invalidDg11MissingTagList)), throwsA(isA<EfParseError>()));
+      expect(
+        () => parser.parseDG11(parseTestCase(invalidDg11MissingTagList)),
+        throwsA(isA<EfParseError>()),
+      );
     });
 
     test('empty bytes throws error', () {
@@ -30,7 +36,10 @@ void main() {
   group('DG12 parsing', () {
     test('invalid DG12 tag throws EfParseError', () {
       final parser = PassportParser();
-      expect(() => parser.parseDG12(parseTestCase(invalidDg12Tag)), throwsA(isA<EfParseError>()));
+      expect(
+        () => parser.parseDG12(parseTestCase(invalidDg12Tag)),
+        throwsA(isA<EfParseError>()),
+      );
     });
   });
 }

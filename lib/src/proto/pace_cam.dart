@@ -55,16 +55,24 @@ class PaceCam {
       allOnes[i] = 0xFF;
     }
     final iv = aesCipher.encrypt(data: allOnes, key: ksEnc);
-    _log.sdVerbose('IV: ${iv.map((b) => b.toRadixString(16).padLeft(2, '0')).join()}');
+    _log.sdVerbose(
+      'IV: ${iv.map((b) => b.toRadixString(16).padLeft(2, '0')).join()}',
+    );
 
     // Decrypt ECAD using CBC mode
-    final decryptedPadded = aesCipher.decrypt(data: encryptedChipAuthData, key: ksEnc, iv: iv);
+    final decryptedPadded = aesCipher.decrypt(
+      data: encryptedChipAuthData,
+      key: ksEnc,
+      iv: iv,
+    );
     _log.sdVerbose('Decrypted (padded): ${decryptedPadded.length} bytes');
 
     // Remove ISO 9797-1 Method 2 padding
     final caIc = ISO9797.unpad(decryptedPadded);
     _log.sdVerbose('CA_IC: ${caIc.length} bytes');
-    _log.sdVerbose('CA_IC value: ${caIc.map((b) => b.toRadixString(16).padLeft(2, '0')).join()}');
+    _log.sdVerbose(
+      'CA_IC value: ${caIc.map((b) => b.toRadixString(16).padLeft(2, '0')).join()}',
+    );
 
     return caIc;
   }
@@ -95,27 +103,54 @@ class PaceCam {
     required int domainParameterId,
   }) {
     _log.debug('Verifying PACE-CAM...');
-    _log.sdVerbose('CA_IC: ${caIc.map((b) => b.toRadixString(16).padLeft(2, '0')).join()}');
-    _log.sdVerbose('PK_IC X: ${pkIcX.map((b) => b.toRadixString(16).padLeft(2, '0')).join()}');
-    _log.sdVerbose('PK_IC Y: ${pkIcY.map((b) => b.toRadixString(16).padLeft(2, '0')).join()}');
-    _log.sdVerbose('PKMap_IC X: ${pkMapIcX.map((b) => b.toRadixString(16).padLeft(2, '0')).join()}');
-    _log.sdVerbose('PKMap_IC Y: ${pkMapIcY.map((b) => b.toRadixString(16).padLeft(2, '0')).join()}');
+    _log.sdVerbose(
+      'CA_IC: ${caIc.map((b) => b.toRadixString(16).padLeft(2, '0')).join()}',
+    );
+    _log.sdVerbose(
+      'PK_IC X: ${pkIcX.map((b) => b.toRadixString(16).padLeft(2, '0')).join()}',
+    );
+    _log.sdVerbose(
+      'PK_IC Y: ${pkIcY.map((b) => b.toRadixString(16).padLeft(2, '0')).join()}',
+    );
+    _log.sdVerbose(
+      'PKMap_IC X: ${pkMapIcX.map((b) => b.toRadixString(16).padLeft(2, '0')).join()}',
+    );
+    _log.sdVerbose(
+      'PKMap_IC Y: ${pkMapIcY.map((b) => b.toRadixString(16).padLeft(2, '0')).join()}',
+    );
 
     // Get the domain parameters for the curve
-    final domainParams = DomainParameterSelectorECDH.getDomainParameter(id: domainParameterId);
+    final domainParams = DomainParameterSelectorECDH.getDomainParameter(
+      id: domainParameterId,
+    );
     final curve = domainParams.domainParameters;
 
     // Parse PK_IC (chip's static public key from CardSecurity)
-    final pkIcXBigInt = BigInt.parse(pkIcX.map((b) => b.toRadixString(16).padLeft(2, '0')).join(), radix: 16);
-    final pkIcYBigInt = BigInt.parse(pkIcY.map((b) => b.toRadixString(16).padLeft(2, '0')).join(), radix: 16);
+    final pkIcXBigInt = BigInt.parse(
+      pkIcX.map((b) => b.toRadixString(16).padLeft(2, '0')).join(),
+      radix: 16,
+    );
+    final pkIcYBigInt = BigInt.parse(
+      pkIcY.map((b) => b.toRadixString(16).padLeft(2, '0')).join(),
+      radix: 16,
+    );
     final pkIc = curve.curve.createPoint(pkIcXBigInt, pkIcYBigInt);
 
     // Parse PKMap_IC (chip's mapping public key from PACE step 2)
-    final pkMapIcXBigInt = BigInt.parse(pkMapIcX.map((b) => b.toRadixString(16).padLeft(2, '0')).join(), radix: 16);
-    final pkMapIcYBigInt = BigInt.parse(pkMapIcY.map((b) => b.toRadixString(16).padLeft(2, '0')).join(), radix: 16);
+    final pkMapIcXBigInt = BigInt.parse(
+      pkMapIcX.map((b) => b.toRadixString(16).padLeft(2, '0')).join(),
+      radix: 16,
+    );
+    final pkMapIcYBigInt = BigInt.parse(
+      pkMapIcY.map((b) => b.toRadixString(16).padLeft(2, '0')).join(),
+      radix: 16,
+    );
 
     // Parse CA_IC as a scalar (chip's ephemeral private key contribution)
-    final caIcBigInt = BigInt.parse(caIc.map((b) => b.toRadixString(16).padLeft(2, '0')).join(), radix: 16);
+    final caIcBigInt = BigInt.parse(
+      caIc.map((b) => b.toRadixString(16).padLeft(2, '0')).join(),
+      radix: 16,
+    );
 
     // Compute KA = CA_IC * PK_IC (scalar multiplication)
     // This is the key agreement: KA(CA_IC, PK_IC, D_IC)
@@ -134,7 +169,9 @@ class PaceCam {
       _log.sdDebug('Actual X: ${kaX.toRadixString(16)}');
       _log.sdDebug('Expected Y: ${pkMapIcYBigInt.toRadixString(16)}');
       _log.sdDebug('Actual Y: ${kaY.toRadixString(16)}');
-      throw PaceCamError('PACE-CAM verification failed: computed KA does not match PKMap_IC');
+      throw PaceCamError(
+        'PACE-CAM verification failed: computed KA does not match PKMap_IC',
+      );
     }
 
     _log.info('PACE-CAM verification successful');
@@ -175,7 +212,11 @@ class PaceCam {
     }
 
     // Step 1: Decrypt ECAD to get CA_IC
-    final caIc = decryptEcad(encryptedChipAuthData: encryptedChipAuthData, ksEnc: ksEnc, keyLength: keyLength);
+    final caIc = decryptEcad(
+      encryptedChipAuthData: encryptedChipAuthData,
+      ksEnc: ksEnc,
+      keyLength: keyLength,
+    );
 
     // Step 2: Verify that PKMap_IC = KA(CA_IC, PK_IC, D_IC)
     return verify(

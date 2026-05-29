@@ -35,7 +35,8 @@ class BACError implements Exception {
 /// Ref: https://www.icao.int/publications/Documents/9303_p11_cons_en.pdf
 class BAC {
   static final _log = Logger("bac");
-  static final bool Function(List<dynamic>, List<dynamic>) _eq = const ListEquality().equals;
+  static final bool Function(List<dynamic>, List<dynamic>) _eq =
+      const ListEquality().equals;
 
   // Specified in section 4.3.1 of ICAO 9303 p11 doc
   static const nonceLen = 8; // Challenge is 8 bytes
@@ -45,7 +46,10 @@ class BAC {
   static const eLen = sLen; // Encrypted cryptogram S length 32 bytes
   static const macLen = ISO9797.macAlg3_DigestLen; // 8 bytes
 
-  static Future<void> initSession({required BacKey bacKey, required ICC icc}) async {
+  static Future<void> initSession({
+    required BacKey bacKey,
+    required ICC icc,
+  }) async {
     final Kenc = bacKey.encKey;
     final Kmac = bacKey.macKey;
 
@@ -88,7 +92,11 @@ class BAC {
     _log.verbose("  Micc=${pairEiccMicc.second.hex()}");
 
     // Verify MAC of received Eicc
-    if (!verifyEicc(Eicc: pairEiccMicc.first, Kmac: Kmac, Micc: pairEiccMicc.second)) {
+    if (!verifyEicc(
+      Eicc: pairEiccMicc.first,
+      Kmac: Kmac,
+      Micc: pairEiccMicc.second,
+    )) {
       _log.error("Verifying mac of Eicc failed");
       throw BACError("Verifying mac of Eicc failed");
     }
@@ -119,11 +127,16 @@ class BAC {
 
   /// Calculates Send Sequence Counter (SCC) from [RNDifd] and [RNDicc].
   @visibleForTesting
-  static DESedeSSC calculateSCC({required final Uint8List RNDifd, required final Uint8List RNDicc}) {
+  static DESedeSSC calculateSCC({
+    required final Uint8List RNDifd,
+    required final Uint8List RNDicc,
+  }) {
     assert(RNDifd.length == nonceLen);
     assert(RNDicc.length == nonceLen);
     final int suffix = (nonceLen / 2).round();
-    final ssc = Uint8List.fromList(RNDicc.sublist(suffix) + RNDifd.sublist(suffix));
+    final ssc = Uint8List.fromList(
+      RNDicc.sublist(suffix) + RNDifd.sublist(suffix),
+    );
     return DESedeSSC(ssc);
   }
 
@@ -150,7 +163,9 @@ class BAC {
 
   /// Extracts Eicc and Micc from [ICCea_data].
   @visibleForTesting
-  static Pair<Uint8List, Uint8List> extractEiccAndMicc({required final Uint8List ICCea_data}) {
+  static Pair<Uint8List, Uint8List> extractEiccAndMicc({
+    required final Uint8List ICCea_data,
+  }) {
     assert(ICCea_data.length == eLen + macLen);
     final Eicc = Uint8List.fromList(ICCea_data.sublist(0, eLen));
     final Micc = Uint8List.fromList(ICCea_data.sublist(eLen, eLen + macLen));
@@ -172,7 +187,10 @@ class BAC {
 
   /// Generates data for External Authenticate command
   @visibleForTesting
-  static Uint8List generateEAData({required final Uint8List Eifd, required final Uint8List Mifd}) {
+  static Uint8List generateEAData({
+    required final Uint8List Eifd,
+    required final Uint8List Mifd,
+  }) {
     assert(Eifd.length == eLen);
     assert(Mifd.length == macLen);
     return Uint8List.fromList(Eifd + Mifd);
@@ -180,22 +198,41 @@ class BAC {
 
   /// Returns Eifd
   @visibleForTesting
-  static Uint8List E({required final Uint8List Kenc, required final Uint8List S}) {
+  static Uint8List E({
+    required final Uint8List Kenc,
+    required final Uint8List S,
+  }) {
     assert(Kenc.length == kLen);
     assert(S.length == sLen);
-    return DESedeEncrypt(key: Kenc, data: S, iv: Uint8List(DESCipher.blockSize), padData: false);
+    return DESedeEncrypt(
+      key: Kenc,
+      data: S,
+      iv: Uint8List(DESCipher.blockSize),
+      padData: false,
+    );
   }
 
   /// Returns R
   @visibleForTesting
-  static Uint8List D({required final Uint8List Kdec, required final Uint8List Eicc}) {
+  static Uint8List D({
+    required final Uint8List Kdec,
+    required final Uint8List Eicc,
+  }) {
     assert(Kdec.length == kLen);
     assert(Eicc.length == eLen);
-    return DESedeDecrypt(key: Kdec, edata: Eicc, iv: Uint8List(DESCipher.blockSize), paddedData: false);
+    return DESedeDecrypt(
+      key: Kdec,
+      edata: Eicc,
+      iv: Uint8List(DESCipher.blockSize),
+      paddedData: false,
+    );
   }
 
   @visibleForTesting
-  static Uint8List MAC({required final Uint8List Kmac, required final Uint8List Eifd}) {
+  static Uint8List MAC({
+    required final Uint8List Kmac,
+    required final Uint8List Eifd,
+  }) {
     assert(Kmac.length == ISO9797.macAlg3_Key1Len);
     assert(Eifd.length == eLen);
     return ISO9797.macAlg3(Kmac, Eifd, padMsg: true);
@@ -204,12 +241,17 @@ class BAC {
   /// Extracts Eicc and Micc from [ICCea_data].
   /// Will throw [BACError] if [RNDifd] doesn't match the RND.IFD in [R];
   @visibleForTesting
-  static Uint8List verifyRNDifdAndExtractKicc({required final Uint8List RNDifd, required final Uint8List R}) {
+  static Uint8List verifyRNDifdAndExtractKicc({
+    required final Uint8List RNDifd,
+    required final Uint8List R,
+  }) {
     assert(RNDifd.length == nonceLen);
     assert(R.length == rLen);
     final eRNDifd = Uint8List.fromList(R.sublist(nonceLen, 2 * nonceLen));
     if (!_eq(eRNDifd, RNDifd)) {
-      throw BACError("Extrected RND.IFD=${eRNDifd.hex()} from R is different than generated RND.IFD=${RNDifd.hex()}");
+      throw BACError(
+        "Extrected RND.IFD=${eRNDifd.hex()} from R is different than generated RND.IFD=${RNDifd.hex()}",
+      );
     }
     final Kicc = Uint8List.fromList(R.sublist(2 * nonceLen));
     return Kicc;

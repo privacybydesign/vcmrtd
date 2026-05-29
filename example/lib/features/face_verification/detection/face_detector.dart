@@ -62,14 +62,6 @@ class FaceDetectorService {
     await _pipeline.initialize();
   }
 
-  void initializeFromAddresses({required int detectorAddr, required int landmarksAddr, required int blendshapesAddr}) {
-    _pipeline.initializeFromAddresses(
-      detectorAddr: detectorAddr,
-      landmarksAddr: landmarksAddr,
-      blendshapesAddr: blendshapesAddr,
-    );
-  }
-
   void initializeFromBuffers({
     required Uint8List detector,
     required Uint8List landmarks,

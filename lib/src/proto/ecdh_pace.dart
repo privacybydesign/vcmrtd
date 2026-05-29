@@ -29,7 +29,9 @@ class ECDHBasicAgreementPACE extends ECDHBasicAgreement {
   ECPoint calculateAgreementAndReturnPoint(ECPublicKey pubKey) {
     var params = key.parameters;
     if (pubKey.parameters?.curve != params?.curve) {
-      throw ECDHBasicAgreementPACEError('ECDH public key has wrong domain parameters');
+      throw ECDHBasicAgreementPACEError(
+        'ECDH public key has wrong domain parameters',
+      );
     }
 
     var d = key.d!;
@@ -37,7 +39,9 @@ class ECDHBasicAgreementPACE extends ECDHBasicAgreement {
     // Always perform calculations on the exact curve specified by our private key's parameters
     var Q = cleanPoint(params!.curve, pubKey.Q!);
     if (Q == null || Q.isInfinity) {
-      throw ECDHBasicAgreementPACEError('Infinity is not a valid public key for ECDH');
+      throw ECDHBasicAgreementPACEError(
+        'Infinity is not a valid public key for ECDH',
+      );
     }
 
     var h = (params as ECDomainParametersImpl).h!;
@@ -50,7 +54,9 @@ class ECDHBasicAgreementPACE extends ECDHBasicAgreement {
     var P = (Q! * d)!;
 
     if (P.isInfinity) {
-      throw ECDHBasicAgreementPACEError('Infinity is not a valid agreement value for ECDH');
+      throw ECDHBasicAgreementPACEError(
+        'Infinity is not a valid agreement value for ECDH',
+      );
     }
 
     return P;
@@ -76,7 +82,8 @@ class ECDHPace {
   bool get isEphemeralPublicKeySet => _pubEphemeral != null;
   ECPublicKey get ephemeralPublicKey => _pubEphemeral!;
 
-  ECDHPace({required int id, required ECDomainParameters domainParameters}) : domainParameters = domainParameters {
+  ECDHPace({required int id, required ECDomainParameters domainParameters})
+    : domainParameters = domainParameters {
     if (!ICAO_DOMAIN_PARAMETERS.containsKey(id)) {
       _log.error("Domain parameter with id $id does not exist.");
       throw Exception("Domain parameter with id $id does not exist.");
@@ -87,15 +94,19 @@ class ECDHPace {
   }
 
   String toStringWithCaution() {
-    _log.warning("This function is only for testing purposes. It prints private keys. Do not use in production.");
+    _log.warning(
+      "This function is only for testing purposes. It prints private keys. Do not use in production.",
+    );
     String forReturn = "ECDHPaceCurve: ${selectedDomainParameter.name}: ";
     bool isAny = false;
     if (_priv != null && _priv!.d != null) {
-      forReturn += " private key: ${Utils.bigIntToUint8List(bigInt: _priv!.d!).hex()}";
+      forReturn +=
+          " private key: ${Utils.bigIntToUint8List(bigInt: _priv!.d!).hex()}";
       isAny = true;
     }
     if (_privEphemeral != null && _privEphemeral!.d != null) {
-      forReturn += " ephemeral private key: ${Utils.bigIntToUint8List(bigInt: _privEphemeral!.d!).hex()}";
+      forReturn +=
+          " ephemeral private key: ${Utils.bigIntToUint8List(bigInt: _privEphemeral!.d!).hex()}";
       isAny = true;
     }
     if (!isAny) {
@@ -109,14 +120,20 @@ class ECDHPace {
     BigInt? y = point.y!.toBigInteger();
 
     if (x == null || y == null) {
-      _log.error("Public key has no parameters (as BigInteger). Something went wrong in PC library.");
-      throw ECDHPaceError("Public key has no parameters(as BigInteger). Something went wrong in PC library.");
+      _log.error(
+        "Public key has no parameters (as BigInteger). Something went wrong in PC library.",
+      );
+      throw ECDHPaceError(
+        "Public key has no parameters(as BigInteger). Something went wrong in PC library.",
+      );
     }
     return PublicKeyPACEeCDH(x: x, y: y);
   }
 
   void generateKeyPairFromPriv({required Uint8List privKey}) {
-    _log.fine("Generating key pair for domain parameter ${selectedDomainParameter.name}.");
+    _log.fine(
+      "Generating key pair for domain parameter ${selectedDomainParameter.name}.",
+    );
     var privateKeyBigInt = BigInt.parse(
       privKey.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join(),
       radix: 16,
@@ -129,7 +146,9 @@ class ECDHPace {
 
   ECPublicKey transformPublic({required PublicKeyPACEeCDH pubKey}) {
     // this function is used for converting received public key (from ICC) to ECPublicKey
-    _log.fine("Generating key pair (from PublicKeyPACEeCDH) for domain parameter ${selectedDomainParameter.name}.");
+    _log.fine(
+      "Generating key pair (from PublicKeyPACEeCDH) for domain parameter ${selectedDomainParameter.name}.",
+    );
     _log.sdDebug("Received public key: ${pubKey.toString()}");
     ECPoint ecPoint = domainParameters.curve.createPoint(pubKey.x, pubKey.y);
     return ECPublicKey(ecPoint, domainParameters);
@@ -138,7 +157,9 @@ class ECDHPace {
   ECPoint get G => domainParameters.G;
 
   void generateKeyPair({Uint8List? seed32byte}) {
-    _log.fine("Generating key pair for domain parameter ${selectedDomainParameter.name}.");
+    _log.fine(
+      "Generating key pair for domain parameter ${selectedDomainParameter.name}.",
+    );
     if (seed32byte == null) {
       _log.debug("Seed is null. Generating random seed (32 bytes).");
       seed32byte = randomBytes(32);
@@ -152,15 +173,27 @@ class ECDHPace {
     _log.debug("Seed is calculated. Generating key pair (Generator - EC) ...");
 
     var generator = KeyGenerator('EC')
-      ..init(ParametersWithRandom(ECKeyGeneratorParameters(domainParameters), secureRandom));
+      ..init(
+        ParametersWithRandom(
+          ECKeyGeneratorParameters(domainParameters),
+          secureRandom,
+        ),
+      );
     var keyPair = generator.generateKeyPair();
     _priv = keyPair.privateKey as ECPrivateKey;
     _pub = keyPair.publicKey as ECPublicKey;
-    _log.sdDebug("Generated public key: ${ecPointToList(point: _pub!.Q!).toString()}");
-    _log.sdShout("Generated private key: ${Utils.bigIntToUint8List(bigInt: _priv!.d!).hex()}");
+    _log.sdDebug(
+      "Generated public key: ${ecPointToList(point: _pub!.Q!).toString()}",
+    );
+    _log.sdShout(
+      "Generated private key: ${Utils.bigIntToUint8List(bigInt: _priv!.d!).hex()}",
+    );
   }
 
-  void generateKeyPairWithCustomGenerator({required ECPoint mappedGenerator, Uint8List? seed32byte}) {
+  void generateKeyPairWithCustomGenerator({
+    required ECPoint mappedGenerator,
+    Uint8List? seed32byte,
+  }) {
     _log.fine(
       "Generating custom key pair for domain parameter "
       "${selectedDomainParameter.name}.",
@@ -174,7 +207,9 @@ class ECDHPace {
       throw ECDHPaceError("Seed must be 256 bits long.");
     }
 
-    _log.sdVerbose("Mapped generator: ${ecPointToList(point: mappedGenerator).toString()}");
+    _log.sdVerbose(
+      "Mapped generator: ${ecPointToList(point: mappedGenerator).toString()}",
+    );
 
     var secureRandom = SecureRandom("Fortuna")..seed(KeyParameter(seed32byte));
     _log.debug("Seed is calculated. Generating key pair (Generator - EC) ...");
@@ -187,7 +222,12 @@ class ECDHPace {
     );
 
     var generator = KeyGenerator('EC')
-      ..init(ParametersWithRandom(ECKeyGeneratorParameters(domainParametersCustom), secureRandom));
+      ..init(
+        ParametersWithRandom(
+          ECKeyGeneratorParameters(domainParametersCustom),
+          secureRandom,
+        ),
+      );
 
     AsymmetricKeyPair keyPair = generator.generateKeyPair();
 
@@ -195,17 +235,32 @@ class ECDHPace {
     _pubEphemeral = keyPair.publicKey as ECPublicKey;
 
     if (_privEphemeral!.d == null) {
-      _log.error("Ephemeral private key is null. Something went wrong in PC library.");
-      throw ECDHPaceError("Ephemeral private key is null. Something went wrong in PC library.");
+      _log.error(
+        "Ephemeral private key is null. Something went wrong in PC library.",
+      );
+      throw ECDHPaceError(
+        "Ephemeral private key is null. Something went wrong in PC library.",
+      );
     }
 
-    _log.sdDebug("Ephemeral public key: ${ecPointToList(point: _pubEphemeral!.Q!).toString()}");
-    _log.sdVerbose("Ephemeral private key(x): ${Utils.bigIntToUint8List(bigInt: _privEphemeral!.d!).hex()}");
+    _log.sdDebug(
+      "Ephemeral public key: ${ecPointToList(point: _pubEphemeral!.Q!).toString()}",
+    );
+    _log.sdVerbose(
+      "Ephemeral private key(x): ${Utils.bigIntToUint8List(bigInt: _privEphemeral!.d!).hex()}",
+    );
   }
 
-  void setEphemeralKeyPair({required Uint8List private, required ECPoint mappedGenerator}) {
-    _log.fine("Setting ephemeral key pair for domain parameter ${selectedDomainParameter.name}.");
-    _log.debug("This function is only for testing purposes. Do not use in production.");
+  void setEphemeralKeyPair({
+    required Uint8List private,
+    required ECPoint mappedGenerator,
+  }) {
+    _log.fine(
+      "Setting ephemeral key pair for domain parameter ${selectedDomainParameter.name}.",
+    );
+    _log.debug(
+      "This function is only for testing purposes. Do not use in production.",
+    );
 
     BigInt privateKeyBigInt = BigInt.parse(
       private.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join(),
@@ -221,7 +276,10 @@ class ECDHPace {
 
     // Create the private key
     _privEphemeral = ECPrivateKey(privateKeyBigInt, domainParametersCustom);
-    _pubEphemeral = ECPublicKey(domainParametersCustom.G * _privEphemeral!.d, domainParametersCustom);
+    _pubEphemeral = ECPublicKey(
+      domainParametersCustom.G * _privEphemeral!.d,
+      domainParametersCustom,
+    );
   }
 
   PublicKeyPACEeCDH getPubKey() {
@@ -230,15 +288,23 @@ class ECDHPace {
       throw ECDHPaceError("Private key is null. Generate key pair first.");
     }
     if (_pub!.Q == null || _pub!.Q!.x == null || _pub!.Q!.y == null) {
-      _log.error("Public key has no parameters. Something went wrong in PC library.");
-      throw ECDHPaceError("Public key has no parameters. Something went wrong in PC library.");
+      _log.error(
+        "Public key has no parameters. Something went wrong in PC library.",
+      );
+      throw ECDHPaceError(
+        "Public key has no parameters. Something went wrong in PC library.",
+      );
     }
     var x = _pub!.Q!.x!.toBigInteger();
     var y = _pub!.Q!.y!.toBigInteger();
 
     if (x == null || y == null) {
-      _log.error("Public key has no parameters (as BigInteger). Something went wrong in PC library.");
-      throw ECDHPaceError("Public key has no parameters(as BigInteger). Something went wrong in PC library.");
+      _log.error(
+        "Public key has no parameters (as BigInteger). Something went wrong in PC library.",
+      );
+      throw ECDHPaceError(
+        "Public key has no parameters(as BigInteger). Something went wrong in PC library.",
+      );
     }
     final coordLen = (selectedDomainParameter.size + 7) ~/ 8;
     return PublicKeyPACEeCDH(x: x, y: y, coordLen: coordLen);
@@ -247,47 +313,74 @@ class ECDHPace {
   PublicKeyPACEeCDH getPubKeyEphemeral() {
     if (_pubEphemeral == null) {
       _log.error("Public ephemeral key is null. Generate key pair first.");
-      throw ECDHPaceError("Public ephemeral key is null. Generate ephemeral key pair first.");
+      throw ECDHPaceError(
+        "Public ephemeral key is null. Generate ephemeral key pair first.",
+      );
     }
-    if (_pubEphemeral!.Q == null || _pubEphemeral!.Q!.x == null || _pubEphemeral!.Q!.y == null) {
-      _log.error("Public ephemeral key has no parameters. Something went wrong in PC library.");
-      throw ECDHPaceError("Public ephemeral key has no parameters. Something went wrong in PC library.");
+    if (_pubEphemeral!.Q == null ||
+        _pubEphemeral!.Q!.x == null ||
+        _pubEphemeral!.Q!.y == null) {
+      _log.error(
+        "Public ephemeral key has no parameters. Something went wrong in PC library.",
+      );
+      throw ECDHPaceError(
+        "Public ephemeral key has no parameters. Something went wrong in PC library.",
+      );
     }
     var x = _pubEphemeral!.Q!.x!.toBigInteger();
     var y = _pubEphemeral!.Q!.y!.toBigInteger();
 
     if (x == null || y == null) {
-      _log.error("Public ephemeral key has no parameters (as BigInteger). Something went wrong in PC library.");
-      throw ECDHPaceError("Public ephemeral key has no parameters(as BigInteger). Something went wrong in PC library.");
+      _log.error(
+        "Public ephemeral key has no parameters (as BigInteger). Something went wrong in PC library.",
+      );
+      throw ECDHPaceError(
+        "Public ephemeral key has no parameters(as BigInteger). Something went wrong in PC library.",
+      );
     }
     final coordLen = (selectedDomainParameter.size + 7) ~/ 8;
     return PublicKeyPACEeCDH(x: x, y: y, coordLen: coordLen);
   }
 
   ECPoint getSharedSecret({required ECPublicKey otherPubKey}) {
-    _log.fine("Calculate shared secret with domain parameter ${selectedDomainParameter.name}.");
+    _log.fine(
+      "Calculate shared secret with domain parameter ${selectedDomainParameter.name}.",
+    );
     if (_priv == null) {
       _log.error("Private key is null. Generate key pair first.");
       throw ECDHPaceError("Private key is null. Generate key pair first.");
     }
 
-    ECDHBasicAgreementPACE keyAgreement = ECDHBasicAgreementPACE()..init(_priv!);
+    ECDHBasicAgreementPACE keyAgreement = ECDHBasicAgreementPACE()
+      ..init(_priv!);
     return keyAgreement.calculateAgreementAndReturnPoint(otherPubKey);
   }
 
-  ECPoint getEphemeralSharedSecret({required ECPublicKey otherEphemeralPubKey}) {
-    _log.fine("Calculate ephemeral shared secret with domain parameter ${selectedDomainParameter.name}.");
+  ECPoint getEphemeralSharedSecret({
+    required ECPublicKey otherEphemeralPubKey,
+  }) {
+    _log.fine(
+      "Calculate ephemeral shared secret with domain parameter ${selectedDomainParameter.name}.",
+    );
     if (_privEphemeral == null) {
       _log.error("Ephemeral private key is null. Generate key pair first.");
-      throw ECDHPaceError("Ephemeral private key is null. Generate key pair first.");
+      throw ECDHPaceError(
+        "Ephemeral private key is null. Generate key pair first.",
+      );
     }
 
-    ECDHBasicAgreementPACE keyAgreement = ECDHBasicAgreementPACE()..init(_privEphemeral!);
+    ECDHBasicAgreementPACE keyAgreement = ECDHBasicAgreementPACE()
+      ..init(_privEphemeral!);
     return keyAgreement.calculateAgreementAndReturnPoint(otherEphemeralPubKey);
   }
 
-  ECPoint getMappedGenerator({required ECPublicKey otherPubKey, required Uint8List nonce}) {
-    _log.fine("Calculating mapped generator with domain parameter ${selectedDomainParameter.name}.");
+  ECPoint getMappedGenerator({
+    required ECPublicKey otherPubKey,
+    required Uint8List nonce,
+  }) {
+    _log.fine(
+      "Calculating mapped generator with domain parameter ${selectedDomainParameter.name}.",
+    );
     // Specified in section 4.3.3.3.1 - ECDH of ICAO 9303 p11
     // G` = s x G + H
     // s = nonce
@@ -307,7 +400,9 @@ class ECDHPace {
 
     ECPoint? pointG = _priv!.parameters?.G;
     if (pointG == null) {
-      _log.error("ECDHPaceCurve.getMappedGeneratorPoint; G is null. Something went wrong in PC library.");
+      _log.error(
+        "ECDHPaceCurve.getMappedGeneratorPoint; G is null. Something went wrong in PC library.",
+      );
       throw ECDHPaceError(
         "ECDHPaceCurve.getMappedGeneratorPoint; Point G is null. Something went wrong in PC library.",
       );
@@ -317,13 +412,19 @@ class ECDHPace {
 
     ECPoint? p = pointG * nonceBigInt;
     if (p == null) {
-      _log.error("ECDHPaceCurve.getMappedGeneratorPoint; p is null. Something went wrong in PC library.");
-      throw ECDHPaceError("ECDHPaceCurve.getMappedGeneratorPoint; p is null. Something went wrong in PC library.");
+      _log.error(
+        "ECDHPaceCurve.getMappedGeneratorPoint; p is null. Something went wrong in PC library.",
+      );
+      throw ECDHPaceError(
+        "ECDHPaceCurve.getMappedGeneratorPoint; p is null. Something went wrong in PC library.",
+      );
     }
 
     ECPoint? mappedGenerator = p + sharedSecret;
     if (mappedGenerator == null) {
-      _log.error("ECDHPaceCurve.getMappedGeneratorPoint; mappedGenerator is null. Something went wrong in PC library.");
+      _log.error(
+        "ECDHPaceCurve.getMappedGeneratorPoint; mappedGenerator is null. Something went wrong in PC library.",
+      );
       throw ECDHPaceError(
         "ECDHPaceCurve.getMappedGeneratorPoint; mappedGenerator is null. Something went wrong in PC library.",
       );
@@ -345,7 +446,8 @@ class ECDHPaceCurve10 extends ECDHPace {
 }
 
 class ECDHPaceCurve11 extends ECDHPace {
-  ECDHPaceCurve11() : super(id: 11, domainParameters: ECCurve_brainpoolp224r1());
+  ECDHPaceCurve11()
+    : super(id: 11, domainParameters: ECCurve_brainpoolp224r1());
 }
 
 class ECDHPaceCurve12 extends ECDHPace {
@@ -353,11 +455,13 @@ class ECDHPaceCurve12 extends ECDHPace {
 }
 
 class ECDHPaceCurve13 extends ECDHPace {
-  ECDHPaceCurve13() : super(id: 13, domainParameters: ECCurve_brainpoolp256r1());
+  ECDHPaceCurve13()
+    : super(id: 13, domainParameters: ECCurve_brainpoolp256r1());
 }
 
 class ECDHPaceCurve14 extends ECDHPace {
-  ECDHPaceCurve14() : super(id: 14, domainParameters: ECCurve_brainpoolp320r1());
+  ECDHPaceCurve14()
+    : super(id: 14, domainParameters: ECCurve_brainpoolp320r1());
 }
 
 class ECDHPaceCurve15 extends ECDHPace {
@@ -365,11 +469,13 @@ class ECDHPaceCurve15 extends ECDHPace {
 }
 
 class ECDHPaceCurve16 extends ECDHPace {
-  ECDHPaceCurve16() : super(id: 16, domainParameters: ECCurve_brainpoolp384r1());
+  ECDHPaceCurve16()
+    : super(id: 16, domainParameters: ECCurve_brainpoolp384r1());
 }
 
 class ECDHPaceCurve17 extends ECDHPace {
-  ECDHPaceCurve17() : super(id: 17, domainParameters: ECCurve_brainpoolp512r1());
+  ECDHPaceCurve17()
+    : super(id: 17, domainParameters: ECCurve_brainpoolp512r1());
 }
 
 class ECDHPaceCurve18 extends ECDHPace {

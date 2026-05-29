@@ -21,27 +21,34 @@ void main() {
   group('EfCardSecurity', () {
     // Verifies that a real DE passport EF.CardSecurity is parsed and the
     // expected SecurityInfos (PaceInfo, ChipAuthPubKeyInfo, etc.) are extracted.
-    test('parses real DE passport EF.CardSecurity and extracts SecurityInfos', () {
-      final ef = EfCardSecurity.fromBytes(deCardSecurityHex.parseHex());
+    test(
+      'parses real DE passport EF.CardSecurity and extracts SecurityInfos',
+      () {
+        final ef = EfCardSecurity.fromBytes(deCardSecurityHex.parseHex());
 
-      expect(ef.fid, 0x011D);
-      expect(ef.sfi, 0x1D);
+        expect(ef.fid, 0x011D);
+        expect(ef.sfi, 0x1D);
 
-      final si = ef.securityInfos;
-      expect(si, isNotNull, reason: 'SecurityInfos must be extracted from CMS SignedData');
+        final si = ef.securityInfos;
+        expect(
+          si,
+          isNotNull,
+          reason: 'SecurityInfos must be extracted from CMS SignedData',
+        );
 
-      // Counts match gmrtd TestNewCardSecurityDE.
-      expect(si!.paceInfos.length, 2);
-      expect(si.chipAuthenticationInfos.length, 1);
-      expect(si.chipAuthenticationPublicKeyInfos.length, 2);
-      expect(si.terminalAuthenticationInfos.length, 1);
+        // Counts match gmrtd TestNewCardSecurityDE.
+        expect(si!.paceInfos.length, 2);
+        expect(si.chipAuthenticationInfos.length, 1);
+        expect(si.chipAuthenticationPublicKeyInfos.length, 2);
+        expect(si.terminalAuthenticationInfos.length, 1);
 
-      // PK_IC entries must carry the id-PK-ECDH protocol OID.
-      for (final pk in si.chipAuthenticationPublicKeyInfos) {
-        expect(pk.protocol, '0.4.0.127.0.7.2.2.1.2');
-        expect(pk.chipAuthenticationPublicKey, isNotNull);
-      }
-    });
+        // PK_IC entries must carry the id-PK-ECDH protocol OID.
+        for (final pk in si.chipAuthenticationPublicKeyInfos) {
+          expect(pk.protocol, '0.4.0.127.0.7.2.2.1.2');
+          expect(pk.chipAuthenticationPublicKey, isNotNull);
+        }
+      },
+    );
 
     // Verifies the keyId field is correctly parsed for both entries.
     // Per BSI TR-03110 §4.2.3.3, the CAM key has keyId == PACE domainParameterId.
@@ -49,13 +56,22 @@ void main() {
     // so the CAM key must have keyId=13 and the GM key must have keyId=72.
     // This was the root cause of the PACE-CAM bug: the wrong key (keyId=72) was
     // selected because the code ignored keyId.
-    test('chipAuthPublicKeyInfos carry correct keyIds (13 for CAM, 72 for GM)', () {
-      final ef = EfCardSecurity.fromBytes(deCardSecurityHex.parseHex());
-      final si = ef.securityInfos!;
+    test(
+      'chipAuthPublicKeyInfos carry correct keyIds (13 for CAM, 72 for GM)',
+      () {
+        final ef = EfCardSecurity.fromBytes(deCardSecurityHex.parseHex());
+        final si = ef.securityInfos!;
 
-      final keyIds = si.chipAuthenticationPublicKeyInfos.map((k) => k.keyId).toSet();
-      expect(keyIds, containsAll([13, 72]), reason: 'DE passport must have keyId=13 (CAM) and keyId=72 (GM)');
-    });
+        final keyIds = si.chipAuthenticationPublicKeyInfos
+            .map((k) => k.keyId)
+            .toSet();
+        expect(
+          keyIds,
+          containsAll([13, 72]),
+          reason: 'DE passport must have keyId=13 (CAM) and keyId=72 (GM)',
+        );
+      },
+    );
 
     // Verifies that the key with keyId=13 carries the expected CAM public key.
     // X coordinate starts 614CD88B… (from gmrtd TestNewCardSecurityDE).
@@ -63,7 +79,9 @@ void main() {
       final ef = EfCardSecurity.fromBytes(deCardSecurityHex.parseHex());
       final si = ef.securityInfos!;
 
-      final camKey = si.chipAuthenticationPublicKeyInfos.firstWhere((k) => k.keyId == 13);
+      final camKey = si.chipAuthenticationPublicKeyInfos.firstWhere(
+        (k) => k.keyId == 13,
+      );
 
       // SubjectPublicKeyInfo → BIT STRING → 04 ‖ X (32 bytes) ‖ Y (32 bytes)
       // valueBytes on the BIT STRING element skips the tag+length, leaving the raw bit-string value.
@@ -77,7 +95,11 @@ void main() {
           .sublist(pointStart + 1, pointStart + 33)
           .map((b) => b.toRadixString(16).padLeft(2, '0'))
           .join();
-      expect(xCoord.toLowerCase(), startsWith('614cd88b'), reason: 'X must match gmrtd test vector');
+      expect(
+        xCoord.toLowerCase(),
+        startsWith('614cd88b'),
+        reason: 'X must match gmrtd test vector',
+      );
     });
 
     // Verifies that the key with keyId=72 carries a different public key than keyId=13,
@@ -86,13 +108,22 @@ void main() {
       final ef = EfCardSecurity.fromBytes(deCardSecurityHex.parseHex());
       final si = ef.securityInfos!;
 
-      final camKey = si.chipAuthenticationPublicKeyInfos.firstWhere((k) => k.keyId == 13);
-      final gmKey = si.chipAuthenticationPublicKeyInfos.firstWhere((k) => k.keyId == 72);
+      final camKey = si.chipAuthenticationPublicKeyInfos.firstWhere(
+        (k) => k.keyId == 13,
+      );
+      final gmKey = si.chipAuthenticationPublicKeyInfos.firstWhere(
+        (k) => k.keyId == 72,
+      );
 
-      final camBits = camKey.chipAuthenticationPublicKey.elements![1].valueBytes!;
+      final camBits =
+          camKey.chipAuthenticationPublicKey.elements![1].valueBytes!;
       final gmBits = gmKey.chipAuthenticationPublicKey.elements![1].valueBytes!;
 
-      expect(camBits, isNot(equals(gmBits)), reason: 'CAM and GM keys must be distinct');
+      expect(
+        camBits,
+        isNot(equals(gmBits)),
+        reason: 'CAM and GM keys must be distinct',
+      );
     });
 
     // Verifies that malformed input (not a CMS SignedData) does not crash;

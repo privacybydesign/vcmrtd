@@ -200,8 +200,6 @@ class FaceVerificationEngine {
       'yaw': face.yawDegrees,
       'smile':
           ((face.blendshapeScores['mouthSmileLeft'] ?? 0.0) + (face.blendshapeScores['mouthSmileRight'] ?? 0.0)) / 2.0,
-      'leftEyeOpen': null,
-      'rightEyeOpen': null,
       'mouthRatio': face.mouthRatio,
       'framesSinceLastAction': _framesSinceLastAction,
     });
@@ -423,8 +421,8 @@ class FaceVerificationEngine {
     _sendNextActionEvent(next.wireName);
   }
 
-  // If the user completed exactly the borderline number of actions (neither clearly passed
-  // nor clearly failed), add one extra challenge as a tiebreaker rather than deciding on the edge.
+  // If the user completed exactly the minimum to pass, add one extra challenge to confirm
+  // rather than accepting on the bare minimum.
   bool _shouldStartExtra() {
     return !_extraActionMode &&
         _pendingActions.length == _requiredActions &&

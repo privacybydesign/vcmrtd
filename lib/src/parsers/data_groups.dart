@@ -1,4 +1,21 @@
-enum DataGroups { dg1, dg2, dg3, dg4, dg5, dg6, dg7, dg8, dg9, dg10, dg11, dg12, dg13, dg14, dg15, dg16 }
+enum DataGroups {
+  dg1,
+  dg2,
+  dg3,
+  dg4,
+  dg5,
+  dg6,
+  dg7,
+  dg8,
+  dg9,
+  dg10,
+  dg11,
+  dg12,
+  dg13,
+  dg14,
+  dg15,
+  dg16,
+}
 
 extension GetNameExtension on DataGroups {
   String getName() {

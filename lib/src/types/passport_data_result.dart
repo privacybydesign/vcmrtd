@@ -23,9 +23,16 @@ class RawDocumentData {
   @Uint8ListConverter()
   final Uint8List? aaSignature;
 
-  RawDocumentData({required this.dataGroups, required this.efSod, this.sessionId, this.nonce, this.aaSignature});
+  RawDocumentData({
+    required this.dataGroups,
+    required this.efSod,
+    this.sessionId,
+    this.nonce,
+    this.aaSignature,
+  });
 
-  factory RawDocumentData.fromJson(Map<String, dynamic> json) => _$PassportDataResultFromJson(json);
+  factory RawDocumentData.fromJson(Map<String, dynamic> json) =>
+      _$PassportDataResultFromJson(json);
 
   Map<String, dynamic> toJson() => _$PassportDataResultToJson(this);
 }

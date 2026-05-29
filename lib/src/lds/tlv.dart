@@ -20,7 +20,8 @@ class DecodedLen {
 class DecodedTV {
   final DecodedTag tag;
   final Uint8List value;
-  final int encodedLen; // number of bytes it took to encode tag, value length and value
+  final int
+  encodedLen; // number of bytes it took to encode tag, value length and value
   DecodedTV(this.tag, this.value, this.encodedLen);
 }
 
@@ -28,7 +29,8 @@ class DecodedTV {
 class DecodedTL {
   final DecodedTag tag;
   final DecodedLen length;
-  final int encodedLen; // number of bytes it took to encode tag and value length
+  final int
+  encodedLen; // number of bytes it took to encode tag and value length
   DecodedTL(this.tag, this.length, this.encodedLen);
 }
 
@@ -92,7 +94,10 @@ class TLV {
   /// throws [TLVError] if [encodedTLV] is empty or if encoding of tag/length is invalid.
   static DecodedTV decode(final Uint8List encodedTLV) {
     final tl = decodeTagAndLength(encodedTLV);
-    final data = encodedTLV.sublist(tl.encodedLen, tl.encodedLen + tl.length.value);
+    final data = encodedTLV.sublist(
+      tl.encodedLen,
+      tl.encodedLen + tl.length.value,
+    );
     return DecodedTV(tl.tag, data, tl.encodedLen + data.length);
   }
 
@@ -168,7 +173,9 @@ class TLV {
     }
 
     var byteCount = Utils.byteCount(length);
-    var encodedLength = Uint8List(byteCount + (byteCount == 0 /*length=0*/ || length >= 0x80 ? 1 : 0));
+    var encodedLength = Uint8List(
+      byteCount + (byteCount == 0 /*length=0*/ || length >= 0x80 ? 1 : 0),
+    );
     if (length < 0x80) {
       // short form
       encodedLength[0] = length;
@@ -178,7 +185,8 @@ class TLV {
       encodedLength[0] = byteCount | 0x80;
       for (int i = 0; i < byteCount; i++) {
         final pos = 8 * (byteCount - i - 1);
-        encodedLength[i + 1] = (length & (0xFF << pos)) >> pos; // encode in big endian order
+        encodedLength[i + 1] =
+            (length & (0xFF << pos)) >> pos; // encode in big endian order
       }
     }
     return encodedLength;

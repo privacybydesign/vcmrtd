@@ -9,7 +9,9 @@ import 'package:vcmrtd/internal.dart';
 void main(List<String> args) {
   if (args.length != 4) {
     print("Error: Invalid number of arguments!");
-    print("\n  Usage: rapdu_bac_decrypt <K.IFD> <K.ICC> <SCC> <encrypted_rapdu>");
+    print(
+      "\n  Usage: rapdu_bac_decrypt <K.IFD> <K.ICC> <SCC> <encrypted_rapdu>",
+    );
     exit(1);
   }
 
@@ -21,7 +23,10 @@ void main(List<String> args) {
   // Logger.root.logSensitiveData = true;
 
   // ignore: invalid_use_of_visible_for_testing_member
-  final pairKs = BAC.calculateSessionKeys(Kifd: args[0].parseHex(), Kicc: args[1].parseHex());
+  final pairKs = BAC.calculateSessionKeys(
+    Kifd: args[0].parseHex(),
+    Kicc: args[1].parseHex(),
+  );
   final cipher = DES_SMCipher(pairKs.first, pairKs.second);
   final sm = MrtdSM(cipher, DESedeSSC(args[2].parseHex()));
   var rapdu = ResponseAPDU.fromBytes(args[3].parseHex());

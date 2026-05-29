@@ -19,9 +19,15 @@ void main() {
     // Test vectors taken from Appendix D.3 to Part 11 of ICAO 9303 p11 doc.
     // ref: https://www.icao.int/publications/Documents/9303_p11_cons_en.pdf
 
-    final dbaKeys = DBAKey("T22000129", DateTime(1964, 8, 12), DateTime(2010, 10, 31), paceMode: true);
+    final dbaKeys = DBAKey(
+      "T22000129",
+      DateTime(1964, 8, 12),
+      DateTime(2010, 10, 31),
+      paceMode: true,
+    );
 
-    final tvKeySeed = "7e2d2a41c74ea0b38cd36f863939bfa8e9032aad".parseHex(); //changed
+    final tvKeySeed = "7e2d2a41c74ea0b38cd36f863939bfa8e9032aad"
+        .parseHex(); //changed
     final tvKenc = "3dc4f8862f8a1570b57fefdcfec43e46".parseHex(); //changed
     final tvKmac = "bc641c6b2fa8b5704552322007761f85".parseHex(); //changed
     final tvKPi = "89ded1b26624ec1e634c1989302849dd".parseHex(); //changed
@@ -29,31 +35,66 @@ void main() {
     final nonceEncypted = "95a3a016522ee98d01e76cb6b98b42c3".parseHex();
     final nonceDecrypted = "3F00C4D39D153F2B2A214A078D899B22".parseHex();
 
-    final terminalPrivateKey = "7F4EF07B9EA82FD78AD689B38D0BC78CF21F249D953BC46F4C6E19259C010F99".parseHex();
-    final terminalPublicKeyX = "7ACF3EFC982EC45565A4B155129EFBC74650DCBFA6362D896FC70262E0C2CC5E".parseHex();
-    final terminalPublicKeyY = "544552DCB6725218799115B55C9BAA6D9F6BC3A9618E70C25AF71777A9C4922D".parseHex();
+    final terminalPrivateKey =
+        "7F4EF07B9EA82FD78AD689B38D0BC78CF21F249D953BC46F4C6E19259C010F99"
+            .parseHex();
+    final terminalPublicKeyX =
+        "7ACF3EFC982EC45565A4B155129EFBC74650DCBFA6362D896FC70262E0C2CC5E"
+            .parseHex();
+    final terminalPublicKeyY =
+        "544552DCB6725218799115B55C9BAA6D9F6BC3A9618E70C25AF71777A9C4922D"
+            .parseHex();
 
-    final chipPrivateKey = "498FF49756F2DC1587840041839A85982BE7761D14715FB091EFA7BCE9058560".parseHex();
-    final chipPublicKeyX = "824FBA91C9CBE26BEF53A0EBE7342A3BF178CEA9F45DE0B70AA601651FBA3F57".parseHex();
-    final chipPublicKeyY = "30D8C879AAA9C9F73991E61B58F4D52EB87A0A0C709A49DC63719363CCD13C54".parseHex();
+    final chipPrivateKey =
+        "498FF49756F2DC1587840041839A85982BE7761D14715FB091EFA7BCE9058560"
+            .parseHex();
+    final chipPublicKeyX =
+        "824FBA91C9CBE26BEF53A0EBE7342A3BF178CEA9F45DE0B70AA601651FBA3F57"
+            .parseHex();
+    final chipPublicKeyY =
+        "30D8C879AAA9C9F73991E61B58F4D52EB87A0A0C709A49DC63719363CCD13C54"
+            .parseHex();
 
-    final sharedSecretX = "60332EF2450B5D247EF6D3868397D398852ED6E8CAF6FFEEF6BF85CA57057FD5".parseHex();
-    final sharedSecretY = "0840CA7415BAF3E43BD414D35AA4608B93A2CAF3A4E3EA4E82C9C13D03EB7181".parseHex();
+    final sharedSecretX =
+        "60332EF2450B5D247EF6D3868397D398852ED6E8CAF6FFEEF6BF85CA57057FD5"
+            .parseHex();
+    final sharedSecretY =
+        "0840CA7415BAF3E43BD414D35AA4608B93A2CAF3A4E3EA4E82C9C13D03EB7181"
+            .parseHex();
 
-    final mappedGeneratorX = "8CED63C91426D4F0EB1435E7CB1D74A46723A0AF21C89634F65A9AE87A9265E2".parseHex();
-    final mappedGeneratorY = "8C879506743F8611AC33645C5B985C80B5F09A0B83407C1B6A4D857AE76FE522".parseHex();
+    final mappedGeneratorX =
+        "8CED63C91426D4F0EB1435E7CB1D74A46723A0AF21C89634F65A9AE87A9265E2"
+            .parseHex();
+    final mappedGeneratorY =
+        "8C879506743F8611AC33645C5B985C80B5F09A0B83407C1B6A4D857AE76FE522"
+            .parseHex();
 
-    final terminalEphemeralPrivateKey = "A73FB703AC1436A18E0CFA5ABB3F7BEC7A070E7A6788486BEE230C4A22762595".parseHex();
-    final terminalEphemeralPublicKeyX = "2DB7A64C0355044EC9DF190514C625CBA2CEA48754887122F3A5EF0D5EDD301C".parseHex();
-    final terminalEphemeralPublicKeyY = "3556F3B3B186DF10B857B58F6A7EB80F20BA5DC7BE1D43D9BF850149FBB36462".parseHex();
+    final terminalEphemeralPrivateKey =
+        "A73FB703AC1436A18E0CFA5ABB3F7BEC7A070E7A6788486BEE230C4A22762595"
+            .parseHex();
+    final terminalEphemeralPublicKeyX =
+        "2DB7A64C0355044EC9DF190514C625CBA2CEA48754887122F3A5EF0D5EDD301C"
+            .parseHex();
+    final terminalEphemeralPublicKeyY =
+        "3556F3B3B186DF10B857B58F6A7EB80F20BA5DC7BE1D43D9BF850149FBB36462"
+            .parseHex();
 
-    final chipEphemeralPrivateKey = "107CF58696EF6155053340FD633392BA81909DF7B9706F226F32086C7AFF974A".parseHex();
-    final chipEphemeralPublicKeyX = "9E880F842905B8B3181F7AF7CAA9F0EFB743847F44A306D2D28C1D9EC65DF6DB".parseHex();
-    final chipEphemeralPublicKeyY = "7764B22277A2EDDC3C265A9F018F9CB852E111B768B326904B59A0193776F094".parseHex();
+    final chipEphemeralPrivateKey =
+        "107CF58696EF6155053340FD633392BA81909DF7B9706F226F32086C7AFF974A"
+            .parseHex();
+    final chipEphemeralPublicKeyX =
+        "9E880F842905B8B3181F7AF7CAA9F0EFB743847F44A306D2D28C1D9EC65DF6DB"
+            .parseHex();
+    final chipEphemeralPublicKeyY =
+        "7764B22277A2EDDC3C265A9F018F9CB852E111B768B326904B59A0193776F094"
+            .parseHex();
 
-    final ephemeralKeyPairSharedSecret = "28768D20701247DAE81804C9E780EDE582A9996DB4A315020B2733197DB84925".parseHex();
+    final ephemeralKeyPairSharedSecret =
+        "28768D20701247DAE81804C9E780EDE582A9996DB4A315020B2733197DB84925"
+            .parseHex();
 
-    final efCardAccessData = "31143012060A04007F0007020204020202010202010D".parseHex();
+    final efCardAccessData = "31143012060A04007F0007020204020202010202010D"
+        .parseHex();
 
     final paceDomainParameterID = 13;
 
@@ -72,10 +113,12 @@ void main() {
 
     //messages
 
-    final initializePaceMsgTerminal = "0022C1A40F800A04007F00070202040202830101".parseHex();
+    final initializePaceMsgTerminal = "0022C1A40F800A04007F00070202040202830101"
+        .parseHex();
 
     final generalAuthenticateStep1MsgTerminal = "10860000027C0000".parseHex();
-    final generalAuthenticateStep1MsgChip = "7C12801095A3A016522EE98D01E76CB6B98B42C39000".parseHex();
+    final generalAuthenticateStep1MsgChip =
+        "7C12801095A3A016522EE98D01E76CB6B98B42C39000".parseHex();
 
     final generalAuthenticateStep2MsgTerminal =
         "10860000457C438141047ACF3EFC982EC45565A4B1"
@@ -103,8 +146,10 @@ void main() {
                 "A0193776F0949000"
             .parseHex();
 
-    final generalAuthenticateStep4MsgTerminal = "008600000C7C0A8508C2B0BD78D94BA86600".parseHex();
-    final generalAuthenticateStep4MsgChip = "7C0A86083ABB9674BCE93C089000".parseHex();
+    final generalAuthenticateStep4MsgTerminal =
+        "008600000C7C0A8508C2B0BD78D94BA86600".parseHex();
+    final generalAuthenticateStep4MsgChip = "7C0A86083ABB9674BCE93C089000"
+        .parseHex();
 
     print("PACE session establishment test(with DBA) - ECDH => START...");
 
@@ -129,7 +174,19 @@ void main() {
     expect(
       efCardAccess.paceInfo!.protocol,
       OIE(
-        identifier: [0x00, 0x04, 0x00, 0x7F, 0x00, 0x07, 0x02, 0x02, 0x04, 0x02, 0x02],
+        identifier: [
+          0x00,
+          0x04,
+          0x00,
+          0x7F,
+          0x00,
+          0x07,
+          0x02,
+          0x02,
+          0x04,
+          0x02,
+          0x02,
+        ],
         identifierString: "id-PACE-ECDH-GM-AES-CBC-CMAC-128",
         readableName: "0.4.0.127.0.7.2.2.4.2.2",
       ),
@@ -145,24 +202,35 @@ void main() {
     expect(kpi, tvKPi);
 
     // terminal's public key
-    ECDHPace terminal = DomainParameterSelectorECDH.getDomainParameter(id: paceDomainParameterID);
+    ECDHPace terminal = DomainParameterSelectorECDH.getDomainParameter(
+      id: paceDomainParameterID,
+    );
     terminal.generateKeyPairFromPriv(privKey: terminalPrivateKey);
     expect(terminal.isPublicKeySet, true);
-    expect(terminal.getPubKey().toBytes(), Uint8List.fromList([...terminalPublicKeyX, ...terminalPublicKeyY]));
+    expect(
+      terminal.getPubKey().toBytes(),
+      Uint8List.fromList([...terminalPublicKeyX, ...terminalPublicKeyY]),
+    );
 
     // chip's public key
-    ECDHPace chip = DomainParameterSelectorECDH.getDomainParameter(id: paceDomainParameterID);
+    ECDHPace chip = DomainParameterSelectorECDH.getDomainParameter(
+      id: paceDomainParameterID,
+    );
     chip.generateKeyPairFromPriv(privKey: chipPrivateKey);
     expect(chip.isPublicKeySet, true);
-    expect(chip.getPubKey().toBytes(), Uint8List.fromList([...chipPublicKeyX, ...chipPublicKeyY]));
+    expect(
+      chip.getPubKey().toBytes(),
+      Uint8List.fromList([...chipPublicKeyX, ...chipPublicKeyY]),
+    );
 
     //checking message of step 0
     OIE protocol = efCardAccess.paceInfo!.protocol;
 
-    Uint8List step0terminal = PACE.generateAuthenticationTemplateForMutualAuthenticationData(
-      cryptographicMechanism: Uint8List.fromList(protocol.identifier),
-      paceRefType: dbaKeys.PACE_REF_KEY_TAG,
-    );
+    Uint8List step0terminal = PACE
+        .generateAuthenticationTemplateForMutualAuthenticationData(
+          cryptographicMechanism: Uint8List.fromList(protocol.identifier),
+          paceRefType: dbaKeys.PACE_REF_KEY_TAG,
+        );
 
     Uint8List step0terminalAPDU = CommandAPDU(
       cla: ISO7816_CLA.NO_SM,
@@ -189,7 +257,9 @@ void main() {
 
     expect(step1terminalAPDU, generalAuthenticateStep1MsgTerminal);
 
-    ResponseAPDUStep1Pace step1Chip = ResponseAPDUStep1Pace(generalAuthenticateStep1MsgChip);
+    ResponseAPDUStep1Pace step1Chip = ResponseAPDUStep1Pace(
+      generalAuthenticateStep1MsgChip,
+    );
     step1Chip.parse();
     expect(step1Chip.nonce, nonceEncypted);
 
@@ -197,12 +267,20 @@ void main() {
     // step 2 - when both parties have other side's public key
     // calculate shared secret and mapping point for both parties for key derivation in step 3
     //
-    ECPoint terminalMappingPoint = chip.getSharedSecret(otherPubKey: terminal.publicKey);
-    ECPoint chipMappingPoint = terminal.getSharedSecret(otherPubKey: chip.publicKey);
+    ECPoint terminalMappingPoint = chip.getSharedSecret(
+      otherPubKey: terminal.publicKey,
+    );
+    ECPoint chipMappingPoint = terminal.getSharedSecret(
+      otherPubKey: chip.publicKey,
+    );
 
     //check mapping point
-    print("terminalMappingPoint (X, Y): ${ECDHPace.ecPointToList(point: terminalMappingPoint).toBytes().hex()}");
-    print("chipMappingPoint (X, Y): ${ECDHPace.ecPointToList(point: chipMappingPoint).toBytes().hex()}");
+    print(
+      "terminalMappingPoint (X, Y): ${ECDHPace.ecPointToList(point: terminalMappingPoint).toBytes().hex()}",
+    );
+    print(
+      "chipMappingPoint (X, Y): ${ECDHPace.ecPointToList(point: chipMappingPoint).toBytes().hex()}",
+    );
 
     expect(terminalMappingPoint, chipMappingPoint);
     expect(
@@ -211,8 +289,13 @@ void main() {
     );
 
     // nonce management
-    AESCipher aesCipherNonce = AESChiperSelector.getChiper(size: KEY_LENGTH.s128);
-    Uint8List decryptedNonceCalc = aesCipherNonce.decrypt(data: nonceEncypted, key: kpi);
+    AESCipher aesCipherNonce = AESChiperSelector.getChiper(
+      size: KEY_LENGTH.s128,
+    );
+    Uint8List decryptedNonceCalc = aesCipherNonce.decrypt(
+      data: nonceEncypted,
+      key: kpi,
+    );
     print("Decrypted nonce:${decryptedNonceCalc.hex()}");
     expect(decryptedNonceCalc.length, 16);
     expect(decryptedNonceCalc, nonceDecrypted);
@@ -222,11 +305,18 @@ void main() {
       otherPubKey: terminal.publicKey,
       nonce: decryptedNonceCalc,
     );
-    ECPoint chipGeneratorPoint = terminal.getMappedGenerator(otherPubKey: chip.publicKey, nonce: decryptedNonceCalc);
+    ECPoint chipGeneratorPoint = terminal.getMappedGenerator(
+      otherPubKey: chip.publicKey,
+      nonce: decryptedNonceCalc,
+    );
 
-    print("terminalGeneratorPoint (X,Y): ${ECDHPace.ecPointToList(point: terminalGeneratorPoint).toBytes().hex()}");
+    print(
+      "terminalGeneratorPoint (X,Y): ${ECDHPace.ecPointToList(point: terminalGeneratorPoint).toBytes().hex()}",
+    );
 
-    print("chipGeneratorPoint (X,Y): ${ECDHPace.ecPointToList(point: chipGeneratorPoint).toBytes().hex()}");
+    print(
+      "chipGeneratorPoint (X,Y): ${ECDHPace.ecPointToList(point: chipGeneratorPoint).toBytes().hex()}",
+    );
 
     expect(terminalGeneratorPoint, chipGeneratorPoint);
     expect(
@@ -235,7 +325,9 @@ void main() {
     );
 
     //checking message of step 2
-    Uint8List step2terminal = PACE.generateGeneralAuthenticateDataStep2and3(public: terminal.getPubKey());
+    Uint8List step2terminal = PACE.generateGeneralAuthenticateDataStep2and3(
+      public: terminal.getPubKey(),
+    );
     Uint8List step2terminalAPDU = CommandAPDU(
       cla: ISO7816_CLA.COMMAND_CHAINING,
       ins: ISO7816_INS.GENERAL_AUTHENTICATE,
@@ -247,9 +339,14 @@ void main() {
 
     expect(step2terminalAPDU, generalAuthenticateStep2MsgTerminal);
 
-    ResponseAPDUStep2or3Pace step2Chip = ResponseAPDUStep2or3Pace(generalAuthenticateStep2MsgChip);
+    ResponseAPDUStep2or3Pace step2Chip = ResponseAPDUStep2or3Pace(
+      generalAuthenticateStep2MsgChip,
+    );
     step2Chip.parse(tokenAgreementAlgorithm: TOKEN_AGREEMENT_ALGO.ECDH);
-    expect(step2Chip.public.toBytes(), Uint8List.fromList([...chipPublicKeyX, ...chipPublicKeyY]));
+    expect(
+      step2Chip.public.toBytes(),
+      Uint8List.fromList([...chipPublicKeyX, ...chipPublicKeyY]),
+    );
 
     //
     // step 3 - derivation of private key for both parties
@@ -257,22 +354,36 @@ void main() {
     //
 
     //to create ephemeral key pair - for test purposes we use predefined ephemeral key pair
-    chip.generateKeyPairWithCustomGenerator(mappedGenerator: terminalGeneratorPoint);
+    chip.generateKeyPairWithCustomGenerator(
+      mappedGenerator: terminalGeneratorPoint,
+    );
 
     // set terminal's ephemeral public key
-    terminal.setEphemeralKeyPair(private: terminalEphemeralPrivateKey, mappedGenerator: terminalGeneratorPoint);
+    terminal.setEphemeralKeyPair(
+      private: terminalEphemeralPrivateKey,
+      mappedGenerator: terminalGeneratorPoint,
+    );
     expect(terminal.isEphemeralPublicKeySet, true);
     expect(
       terminal.getPubKeyEphemeral().toBytes(),
-      Uint8List.fromList([...terminalEphemeralPublicKeyX, ...terminalEphemeralPublicKeyY]),
+      Uint8List.fromList([
+        ...terminalEphemeralPublicKeyX,
+        ...terminalEphemeralPublicKeyY,
+      ]),
     );
 
     // chip's public key
-    chip.setEphemeralKeyPair(private: chipEphemeralPrivateKey, mappedGenerator: terminalGeneratorPoint);
+    chip.setEphemeralKeyPair(
+      private: chipEphemeralPrivateKey,
+      mappedGenerator: terminalGeneratorPoint,
+    );
     expect(chip.isEphemeralPublicKeySet, true);
     expect(
       chip.getPubKeyEphemeral().toBytes(),
-      Uint8List.fromList([...chipEphemeralPublicKeyX, ...chipEphemeralPublicKeyY]),
+      Uint8List.fromList([
+        ...chipEphemeralPublicKeyX,
+        ...chipEphemeralPublicKeyY,
+      ]),
     );
 
     //check ephemeral key pair shared secret
@@ -293,7 +404,9 @@ void main() {
 
     expect(terminalEphemeralSharedSecret, chipEphemeralSharedSecret);
     expect(
-      ECDHPace.ecPointToList(point: terminalEphemeralSharedSecret).toRelavantBytes(),
+      ECDHPace.ecPointToList(
+        point: terminalEphemeralSharedSecret,
+      ).toRelavantBytes(),
       ephemeralKeyPairSharedSecret,
     );
 
@@ -313,16 +426,37 @@ void main() {
 
     expect(step3terminalAPDU, generalAuthenticateStep3MsgTerminal);
 
-    ResponseAPDUStep2or3Pace step3Chip = ResponseAPDUStep2or3Pace(generalAuthenticateStep3MsgChip);
+    ResponseAPDUStep2or3Pace step3Chip = ResponseAPDUStep2or3Pace(
+      generalAuthenticateStep3MsgChip,
+    );
     step3Chip.parse(tokenAgreementAlgorithm: TOKEN_AGREEMENT_ALGO.ECDH);
 
     print(step3Chip.public.toBytes().hex());
-    print(Uint8List.fromList([...chipEphemeralPublicKeyX, ...chipEphemeralPublicKeyY]).hex());
-    expect(step3Chip.public.toBytes(), Uint8List.fromList([...chipEphemeralPublicKeyX, ...chipEphemeralPublicKeyY]));
+    print(
+      Uint8List.fromList([
+        ...chipEphemeralPublicKeyX,
+        ...chipEphemeralPublicKeyY,
+      ]).hex(),
+    );
+    expect(
+      step3Chip.public.toBytes(),
+      Uint8List.fromList([
+        ...chipEphemeralPublicKeyX,
+        ...chipEphemeralPublicKeyY,
+      ]),
+    );
 
-    Uint8List seed = ECDHPace.ecPointToList(point: terminalEphemeralSharedSecret).toRelavantBytes();
-    Uint8List encKey = PACE.cacluateEncKey(paceProtocol: efCardAccess.paceInfo!.protocol, seed: seed);
-    Uint8List macKey = PACE.cacluateMacKey(paceProtocol: efCardAccess.paceInfo!.protocol, seed: seed);
+    Uint8List seed = ECDHPace.ecPointToList(
+      point: terminalEphemeralSharedSecret,
+    ).toRelavantBytes();
+    Uint8List encKey = PACE.cacluateEncKey(
+      paceProtocol: efCardAccess.paceInfo!.protocol,
+      seed: seed,
+    );
+    Uint8List macKey = PACE.cacluateMacKey(
+      paceProtocol: efCardAccess.paceInfo!.protocol,
+      seed: seed,
+    );
 
     print("KS-enc is ${encKey.hex()}");
     print("KS-mac is ${macKey.hex()}");
@@ -333,7 +467,9 @@ void main() {
     //authentication token calculation for terminal - IFD
     var calcInputDataTTerminal = PACE.generateEncodingInputData(
       crytpographicMechanism: efCardAccess.paceInfo!.protocol,
-      ephemeralPublic: PublicKeyPACEeCDH.fromECPoint(public: chip.ephemeralPublicKey.Q!),
+      ephemeralPublic: PublicKeyPACEeCDH.fromECPoint(
+        public: chip.ephemeralPublicKey.Q!,
+      ),
     );
 
     expect(calcInputDataTTerminal, inputDataTTerminal);
@@ -349,7 +485,9 @@ void main() {
     //authentication token calculation for chip - IC
     var calcInputDataTChip = PACE.generateEncodingInputData(
       crytpographicMechanism: efCardAccess.paceInfo!.protocol,
-      ephemeralPublic: PublicKeyPACEeCDH.fromECPoint(public: terminal.ephemeralPublicKey.Q!),
+      ephemeralPublic: PublicKeyPACEeCDH.fromECPoint(
+        public: terminal.ephemeralPublicKey.Q!,
+      ),
     );
     expect(calcInputDataTChip, inputDataTChip);
 
@@ -362,18 +500,37 @@ void main() {
     expect(inputTokenChipforCheck, tic);
 
     AESCipher aesCipher = AESChiperSelector.getChiper(size: KEY_LENGTH.s128);
-    Uint8List encryptedTByAES = aesCipher.encrypt(data: calcInputDataTTerminal, key: macKey, padding: true);
-    Uint8List decryptedTByAES = aesCipher.decrypt(data: encryptedTByAES, key: macKey);
+    Uint8List encryptedTByAES = aesCipher.encrypt(
+      data: calcInputDataTTerminal,
+      key: macKey,
+      padding: true,
+    );
+    Uint8List decryptedTByAES = aesCipher.decrypt(
+      data: encryptedTByAES,
+      key: macKey,
+    );
 
-    expect(calcInputDataTTerminal.sublist(0, 82), decryptedTByAES.sublist(0, 82));
+    expect(
+      calcInputDataTTerminal.sublist(0, 82),
+      decryptedTByAES.sublist(0, 82),
+    );
 
-    Uint8List encryptedCByAES = aesCipher.encrypt(data: calcInputDataTChip, key: macKey, padding: true);
-    Uint8List decryptedCByAES = aesCipher.decrypt(data: encryptedCByAES, key: macKey);
+    Uint8List encryptedCByAES = aesCipher.encrypt(
+      data: calcInputDataTChip,
+      key: macKey,
+      padding: true,
+    );
+    Uint8List decryptedCByAES = aesCipher.decrypt(
+      data: encryptedCByAES,
+      key: macKey,
+    );
 
     expect(calcInputDataTChip.sublist(0, 82), decryptedCByAES.sublist(0, 82));
 
     //checking message of step 4
-    Uint8List step4terminal = PACE.generateGeneralAuthenticateDataStep4(authToken: tifd);
+    Uint8List step4terminal = PACE.generateGeneralAuthenticateDataStep4(
+      authToken: tifd,
+    );
     Uint8List step4terminalAPDU = CommandAPDU(
       cla: ISO7816_CLA.NO_SM,
       ins: ISO7816_INS.GENERAL_AUTHENTICATE,
@@ -385,7 +542,9 @@ void main() {
 
     expect(step4terminalAPDU, generalAuthenticateStep4MsgTerminal);
 
-    ResponseAPDUStep4Pace step4Chip = ResponseAPDUStep4Pace(generalAuthenticateStep4MsgChip);
+    ResponseAPDUStep4Pace step4Chip = ResponseAPDUStep4Pace(
+      generalAuthenticateStep4MsgChip,
+    );
     step4Chip.parse();
 
     print(step4Chip.authToken.hex());

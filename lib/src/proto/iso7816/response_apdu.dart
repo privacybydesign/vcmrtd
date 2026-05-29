@@ -24,7 +24,8 @@ class ResponseAPDU {
     _sw = StatusWord.fromBytes(apduBytes, apduBytes.length - 2);
   }
 
-  Uint8List toBytes() => Uint8List.fromList((_data ?? Uint8List(0)) + _sw.toBytes());
+  Uint8List toBytes() =>
+      Uint8List.fromList((_data ?? Uint8List(0)) + _sw.toBytes());
 
   @override
   String toString() => '$status data=${_data?.hex()}';
@@ -52,7 +53,10 @@ class StatusWord {
   static const logicalChannelNotSupported = StatusWord(sw1: 0x68, sw2: 0x81);
   static const secureMessagingNotSupported = StatusWord(sw1: 0x68, sw2: 0x82);
   static const commandNotAllowed = StatusWord(sw1: 0x69, sw2: 0x00);
-  static const incompatibleFileStructureCommand = StatusWord(sw1: 0x69, sw2: 0x81);
+  static const incompatibleFileStructureCommand = StatusWord(
+    sw1: 0x69,
+    sw2: 0x81,
+  );
   static const securityStatusNotSatisfied = StatusWord(sw1: 0x69, sw2: 0x82);
   static const authenticationMethodBlocked = StatusWord(sw1: 0x69, sw2: 0x83);
   static const referencedDataInvalidated = StatusWord(sw1: 0x69, sw2: 0x84);
@@ -79,12 +83,16 @@ class StatusWord {
 
   // Normal processing - success
   static const success = StatusWord(sw1: 0x90, sw2: 0x00);
-  static const int sw1SuccessWithRemainingBytes = 0x61; // This is considered as normal status e.g. success.
+  static const int sw1SuccessWithRemainingBytes =
+      0x61; // This is considered as normal status e.g. success.
   // SW2 indicates a number of extra data bytes still available.
   // Can be returned by GET RESPONSE command (ISO 7816-4 section 7)
 
   static StatusWord remainingAvailableResponseBytes(int numBytes) {
-    return StatusWord(sw1: sw1SuccessWithRemainingBytes, sw2: numBytes); // Normal execution
+    return StatusWord(
+      sw1: sw1SuccessWithRemainingBytes,
+      sw2: numBytes,
+    ); // Normal execution
   }
 
   static StatusWord leWrongLength(int exactLength) {

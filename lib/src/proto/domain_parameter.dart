@@ -16,7 +16,8 @@ class DomainParameter {
   late final String _name;
   late final int _size;
   late final DomainParameterType _type;
-  late final bool _isSupported; //is supported by this library (is in pointycastle)
+  late final bool
+  _isSupported; //is supported by this library (is in pointycastle)
 
   DomainParameter({
     required int id,
@@ -83,7 +84,13 @@ Map<int, DomainParameter> ICAO_DOMAIN_PARAMETERS = {
     type: DomainParameterType.ECP,
     isSupported: false,
   ),
-  9: DomainParameter(id: 9, name: "BrainpoolP192r1", size: 192, type: DomainParameterType.ECP, isSupported: false),
+  9: DomainParameter(
+    id: 9,
+    name: "BrainpoolP192r1",
+    size: 192,
+    type: DomainParameterType.ECP,
+    isSupported: false,
+  ),
   10: DomainParameter(
     id: 10,
     name: "NIST P-224 (secp224r1)",
@@ -91,7 +98,13 @@ Map<int, DomainParameter> ICAO_DOMAIN_PARAMETERS = {
     type: DomainParameterType.ECP,
     isSupported: false,
   ),
-  11: DomainParameter(id: 11, name: "BrainpoolP224r1", size: 224, type: DomainParameterType.ECP, isSupported: false),
+  11: DomainParameter(
+    id: 11,
+    name: "BrainpoolP224r1",
+    size: 224,
+    type: DomainParameterType.ECP,
+    isSupported: false,
+  ),
   12: DomainParameter(
     id: 12,
     name: "NIST P-256 (secp256r1)",
@@ -99,8 +112,20 @@ Map<int, DomainParameter> ICAO_DOMAIN_PARAMETERS = {
     type: DomainParameterType.ECP,
     isSupported: true,
   ),
-  13: DomainParameter(id: 13, name: "BrainpoolP256r1", size: 256, type: DomainParameterType.ECP, isSupported: false),
-  14: DomainParameter(id: 14, name: "BrainpoolP320r1", size: 320, type: DomainParameterType.ECP, isSupported: false),
+  13: DomainParameter(
+    id: 13,
+    name: "BrainpoolP256r1",
+    size: 256,
+    type: DomainParameterType.ECP,
+    isSupported: false,
+  ),
+  14: DomainParameter(
+    id: 14,
+    name: "BrainpoolP320r1",
+    size: 320,
+    type: DomainParameterType.ECP,
+    isSupported: false,
+  ),
   15: DomainParameter(
     id: 15,
     name: "NIST P-384 (secp384r1)",
@@ -108,8 +133,20 @@ Map<int, DomainParameter> ICAO_DOMAIN_PARAMETERS = {
     type: DomainParameterType.ECP,
     isSupported: false,
   ),
-  16: DomainParameter(id: 16, name: "BrainpoolP384r1", size: 384, type: DomainParameterType.ECP, isSupported: false),
-  17: DomainParameter(id: 17, name: "BrainpoolP512r1", size: 512, type: DomainParameterType.ECP, isSupported: false),
+  16: DomainParameter(
+    id: 16,
+    name: "BrainpoolP384r1",
+    size: 384,
+    type: DomainParameterType.ECP,
+    isSupported: false,
+  ),
+  17: DomainParameter(
+    id: 17,
+    name: "BrainpoolP512r1",
+    size: 512,
+    type: DomainParameterType.ECP,
+    isSupported: false,
+  ),
   18: DomainParameter(
     id: 18,
     name: "NIST P-521 (secp521r1)",

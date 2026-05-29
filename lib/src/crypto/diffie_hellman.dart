@@ -48,10 +48,13 @@ class DhParameterSpec {
   final BigInt _g;
   final int _length;
 
-  DhParameterSpec({required BigInt p, required BigInt g, int length = defaultPrivateKeyLength})
-    : _p = p,
-      _g = g,
-      _length = length;
+  DhParameterSpec({
+    required BigInt p,
+    required BigInt g,
+    int length = defaultPrivateKeyLength,
+  }) : _p = p,
+       _g = g,
+       _length = length;
 
   /// Returns the size in bits of the random exponent (private value)
   int get length => _length;
@@ -72,7 +75,9 @@ class DhKeyPair {
   final BigInt _publicKey;
   final BigInt _privateKey;
 
-  DhKeyPair({required BigInt publicKey, required BigInt privateKey}) : _publicKey = publicKey, _privateKey = privateKey;
+  DhKeyPair({required BigInt publicKey, required BigInt privateKey})
+    : _publicKey = publicKey,
+      _privateKey = privateKey;
 
   BigInt get privateKey => _privateKey;
 
@@ -111,15 +116,21 @@ class DHpkcs3Engine {
   // Must call computeSecretKey() method before accessing this value
   BigInt get secretKey => _secretKey;
 
-  factory DHpkcs3Engine.fromPrivate({required BigInt private, required DhParameterSpec parameterSpec}) {
+  factory DHpkcs3Engine.fromPrivate({
+    required BigInt private,
+    required DhParameterSpec parameterSpec,
+  }) {
     return DHpkcs3Engine(parameterSpec: parameterSpec, privateKey: private);
   }
 
   /// Construct an engine with the desired [DhParameterSpec]. If [privateKey] is
   /// provided, the key pair is created with the provided [privateKey],
   /// otherwise a new key pair is generated.
-  DHpkcs3Engine({required DhParameterSpec parameterSpec, BigInt? privateKey, int? seed})
-    : _parameterSpec = parameterSpec {
+  DHpkcs3Engine({
+    required DhParameterSpec parameterSpec,
+    BigInt? privateKey,
+    int? seed,
+  }) : _parameterSpec = parameterSpec {
     _log.debug("Creating DH engine with parameterSpec: $parameterSpec");
     if (privateKey != null) {
       createKeyPair(privateKey: privateKey);
@@ -140,8 +151,13 @@ class DHpkcs3Engine {
   }
 
   /// Compute the secret key using the other party public key
-  BigInt computeGenerator({required BigInt otherPublicKey, required BigInt nonce}) {
-    _log.debug("DHpkcs3Engine.computeGenerator; otherPublicKey: ${Utils.bigIntToUint8List(bigInt: otherPublicKey)}");
+  BigInt computeGenerator({
+    required BigInt otherPublicKey,
+    required BigInt nonce,
+  }) {
+    _log.debug(
+      "DHpkcs3Engine.computeGenerator; otherPublicKey: ${Utils.bigIntToUint8List(bigInt: otherPublicKey)}",
+    );
     _log.sdVerbose(
       "DHpkcs3Engine.computeGenerator; otherPublicKey: ${Utils.bigIntToUint8List(bigInt: otherPublicKey)}, "
       "nonce: ${Utils.bigIntToUint8List(bigInt: nonce)}",
@@ -150,7 +166,9 @@ class DHpkcs3Engine {
     //(g.modPow(nonce, p) * H ) % p
 
     BigInt H = computeSecretKey(otherPublicKey: otherPublicKey);
-    BigInt generator = (_parameterSpec.g.modPow(nonce, _parameterSpec.p) * H) % _parameterSpec.p;
+    BigInt generator =
+        (_parameterSpec.g.modPow(nonce, _parameterSpec.p) * H) %
+        _parameterSpec.p;
 
     return generator;
   }
@@ -172,7 +190,9 @@ class DHpkcs3Engine {
 
   @protected
   BigInt generatePrivateKey({int? seed}) {
-    _log.debug("DHpkcs3Engine.generatePrivateKey. Is seed set?: ${seed != null}");
+    _log.debug(
+      "DHpkcs3Engine.generatePrivateKey. Is seed set?: ${seed != null}",
+    );
     Random rnd;
     try {
       if (seed != null) {
@@ -181,7 +201,9 @@ class DHpkcs3Engine {
         rnd = Random.secure();
       }
     } on UnsupportedError {
-      throw DHpkcs3EngineError('This platform cannot provide a cryptographically secure source of random numbers');
+      throw DHpkcs3EngineError(
+        'This platform cannot provide a cryptographically secure source of random numbers',
+      );
     }
 
     BigInt lowerBound = BigInt.two.pow(parameterSpec.length - 1);
@@ -190,7 +212,8 @@ class DHpkcs3Engine {
     bool loopCondition = true;
     while (loopCondition) {
       generated = rnd.nextBigInt(parameterSpec.length);
-      if (generated.compareTo(lowerBound) >= 0 && generated.compareTo(BigInt.two * lowerBound) < 0) {
+      if (generated.compareTo(lowerBound) >= 0 &&
+          generated.compareTo(BigInt.two * lowerBound) < 0) {
         loopCondition = false;
       }
     }

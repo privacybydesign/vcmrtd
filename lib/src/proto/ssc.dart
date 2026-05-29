@@ -18,12 +18,20 @@ class SSC {
   /// [bitSize] should be equal to the block size of block cipher.
   SSC(Uint8List ssc, this.bitSize) {
     if ((bitSize % 8) != 0) {
-      throw ArgumentError.value(bitSize, null, "(bitSize) must be multiple of 8");
+      throw ArgumentError.value(
+        bitSize,
+        null,
+        "(bitSize) must be multiple of 8",
+      );
     }
 
     _ssc = BigInt.parse(ssc.hex(), radix: 16);
     if (_ssc.bitLength > bitSize) {
-      throw ArgumentError.value(ssc, null, "Bit size of provided argument (ssc) is greater than argument (bitSize)");
+      throw ArgumentError.value(
+        ssc,
+        null,
+        "Bit size of provided argument (ssc) is greater than argument (bitSize)",
+      );
     }
   }
 

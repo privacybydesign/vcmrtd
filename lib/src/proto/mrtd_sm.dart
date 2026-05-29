@@ -22,7 +22,8 @@ import '../crypto/des.dart';
 /// Class defines secure messaging protocol as specified in ICAO 9303 p11.
 class MrtdSM extends SecureMessaging {
   final _log = Logger("mrtd.sm");
-  static final bool Function(List<dynamic>, List<dynamic>) _eq = const ListEquality().equals;
+  static final bool Function(List<dynamic>, List<dynamic>) _eq =
+      const ListEquality().equals;
 
   SSC _ssc;
   set ssc(final SSC ssc) => _ssc = ssc;
@@ -106,12 +107,18 @@ class MrtdSM extends SecureMessaging {
 
     final tag = dtv.tag.value;
     if (tag != SecureMessaging.tagDO85 && tag != SecureMessaging.tagDO87) {
-      throw SMError("Can't decrypt invalid data DO with tag=$tag value=${dtv.value.hex()}");
+      throw SMError(
+        "Can't decrypt invalid data DO with tag=$tag value=${dtv.value.hex()}",
+      );
     }
 
     final bool isDO87 = tag == SecureMessaging.tagDO87;
-    final bool padded = !isDO87 || dtv.value[0] == 0x01; // Defined in ISO/IEC 7816-4 part 5
-    var data = cipher.decrypt(dtv.value.sublist(isDO87 ? 1 : 0), ssc: _ssc); // SSC is used only in AES
+    final bool padded =
+        !isDO87 || dtv.value[0] == 0x01; // Defined in ISO/IEC 7816-4 part 5
+    var data = cipher.decrypt(
+      dtv.value.sublist(isDO87 ? 1 : 0),
+      ssc: _ssc,
+    ); // SSC is used only in AES
     _log.sdVerbose("Decrypted data=${data.hex()}");
     _log.sdVerbose("Decrypted data is padded: $padded");
     if (padded) {
@@ -125,7 +132,10 @@ class MrtdSM extends SecureMessaging {
   Uint8List generateDataDO(final CommandAPDU cmd) {
     var dataDO = Uint8List(0);
     if (cmd.data != null && cmd.data!.isNotEmpty) {
-      final edata = cipher.encrypt(ISO9797.pad(cmd.data!, blockLen()), ssc: _ssc); // SSC is used only in AES
+      final edata = cipher.encrypt(
+        ISO9797.pad(cmd.data!, blockLen()),
+        ssc: _ssc,
+      ); // SSC is used only in AES
       if (cmd.ins == ISO7816_INS.READ_BINARY_EXT) {
         dataDO = SecureMessaging.do85(edata);
       } else {
@@ -180,7 +190,8 @@ class MrtdSM extends SecureMessaging {
   DecodedTV? parseDataDOFromRAPDU(final ResponseAPDU rapdu) {
     if (rapdu.data == null ||
         rapdu.data!.isEmpty ||
-        (rapdu.data![0] != SecureMessaging.tagDO85 && rapdu.data![0] != SecureMessaging.tagDO87)) {
+        (rapdu.data![0] != SecureMessaging.tagDO85 &&
+            rapdu.data![0] != SecureMessaging.tagDO87)) {
       return null;
     }
 
@@ -190,7 +201,9 @@ class MrtdSM extends SecureMessaging {
 
   @visibleForTesting
   DecodedTV parseDO8EFromRAPDU(final ResponseAPDU rapdu, int offset) {
-    if (rapdu.data == null || rapdu.data!.isEmpty || rapdu.data![offset] != SecureMessaging.tagDO8E) {
+    if (rapdu.data == null ||
+        rapdu.data!.isEmpty ||
+        rapdu.data![offset] != SecureMessaging.tagDO8E) {
       throw SMError("Missing DO'8E' in response APDU or invalid offset");
     }
     return TLV.decode(rapdu.data!.sublist(offset));
@@ -198,7 +211,9 @@ class MrtdSM extends SecureMessaging {
 
   @visibleForTesting
   DecodedTV parseDO99FromRAPDU(final ResponseAPDU rapdu, int offset) {
-    if (rapdu.data == null || rapdu.data!.isEmpty || rapdu.data![offset] != SecureMessaging.tagDO99) {
+    if (rapdu.data == null ||
+        rapdu.data!.isEmpty ||
+        rapdu.data![offset] != SecureMessaging.tagDO99) {
       throw SMError("Missing DO'99' in response APDU or invalid offset");
     }
     return TLV.decode(rapdu.data!.sublist(offset));

@@ -120,7 +120,7 @@ class _IsolateClient {
 }
 
 class FaceVerificationWorker {
-  // Single pipeline isolate handles decode + detect + landmarks (matches Kotlin FaceLandmarkPipeline)
+  // Single pipeline isolate handles decode + detect + landmarks (matches FaceLandmarkPipeline)
   final _pipeline = _IsolateClient(_pipelineWorkerMain);
   final _passive = _IsolateClient(_passiveWorkerMain);
   final _match = _IsolateClient(_matchWorkerMain);
@@ -466,7 +466,7 @@ void _pipelineWorkerMain(List<Object?> args) {
   unawaited(_pipelineWorkerLoop(mainSendPort));
 }
 
-// Single isolate that handles decode + detect + landmarks, matching Kotlin's FaceLandmarkPipeline.
+// Single isolate that handles decode + detect + landmarks, matching FaceLandmarkPipeline.
 // Tracking crop is updated internally — no round-trip to main needed.
 Future<void> _pipelineWorkerLoop(SendPort mainSendPort) async {
   final commandPort = ReceivePort();

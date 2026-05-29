@@ -39,7 +39,9 @@ class DataRow {
   //print Hexadecimal Uint8List
   String printHex() {
     Uint8List bytes = toList();
-    return bytes.map((byte) => '0x' + byte.toRadixString(16).padLeft(2, '0') + " ").join();
+    return bytes
+        .map((byte) => '0x' + byte.toRadixString(16).padLeft(2, '0') + " ")
+        .join();
   }
 }
 

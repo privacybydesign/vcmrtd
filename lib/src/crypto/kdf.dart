@@ -57,32 +57,48 @@ class DeriveKey {
 
   /// Returns key for DESede derived from [keySeed] bytes and counter mode 1.
   /// If [paceMode] is true counter 3 is used.
-  static Uint8List desEDE(final Uint8List keySeed, {final bool paceMode = false}) {
+  static Uint8List desEDE(
+    final Uint8List keySeed, {
+    final bool paceMode = false,
+  }) {
     return derive(DeriveKeyType.DESede, keySeed, paceMode: paceMode);
   }
 
   /// Returns key for AES-128 derived from [keySeed] bytes and counter mode 1.
   /// If [paceMode] is true counter 3 is used.
-  static Uint8List aes128(final Uint8List keySeed, {final bool paceMode = false}) {
+  static Uint8List aes128(
+    final Uint8List keySeed, {
+    final bool paceMode = false,
+  }) {
     return derive(DeriveKeyType.AES128, keySeed, paceMode: paceMode);
   }
 
   /// Returns key for AES-192 derived from [keySeed] bytes and counter mode 1.
   /// If [paceMode] is true counter 3 is used.
-  static Uint8List aes192(final Uint8List keySeed, {final bool paceMode = false}) {
+  static Uint8List aes192(
+    final Uint8List keySeed, {
+    final bool paceMode = false,
+  }) {
     return derive(DeriveKeyType.AES192, keySeed, paceMode: paceMode);
   }
 
   /// Returns key for AES-256 derived from [keySeed] bytes and counter mode 1.
   /// If [paceMode] is true counter 3 is used.
-  static Uint8List aes256(final Uint8List keySeed, {final bool paceMode = false}) {
+  static Uint8List aes256(
+    final Uint8List keySeed, {
+    final bool paceMode = false,
+  }) {
     return derive(DeriveKeyType.AES256, keySeed, paceMode: paceMode);
   }
 
   /// Returns key from [keySeed] bytes for specific [keyType] and
   /// counter mode specific for key type (1 - ENC mode, 2 - MAC mode).
   /// If [paceMode] is true counter 3 for encryption key types.
-  static Uint8List derive(final DeriveKeyType keyType, final Uint8List keySeed, {final bool paceMode = false}) {
+  static Uint8List derive(
+    final DeriveKeyType keyType,
+    final Uint8List keySeed, {
+    final bool paceMode = false,
+  }) {
     Int32 mode = Int32(paceMode ? 3 : 1); // PACE/ENC mode
     if (keyType == DeriveKeyType.ISO9797MacAlg3 ||
         keyType == DeriveKeyType.CMAC128 ||
@@ -95,7 +111,11 @@ class DeriveKey {
       case DeriveKeyType.DESede:
       case DeriveKeyType.ISO9797MacAlg3:
         {
-          final key = KDF(sha1, keySeed, mode).sublist(0, 16); // use only 128 bits = 8 * 16;
+          final key = KDF(
+            sha1,
+            keySeed,
+            mode,
+          ).sublist(0, 16); // use only 128 bits = 8 * 16;
 
           // Adjust even parity bits
           for (int i = 0; i < key.length; i++) {
@@ -114,7 +134,11 @@ class DeriveKey {
       case DeriveKeyType.AES128:
       case DeriveKeyType.CMAC128:
         {
-          return KDF(sha1, keySeed, mode).sublist(0, 16); // use only 128 bits = 8 * 16;
+          return KDF(
+            sha1,
+            keySeed,
+            mode,
+          ).sublist(0, 16); // use only 128 bits = 8 * 16;
         }
       case DeriveKeyType.AES192:
       case DeriveKeyType.AES256:
@@ -122,7 +146,8 @@ class DeriveKey {
       case DeriveKeyType.CMAC256:
         {
           var key = KDF(sha256, keySeed, mode);
-          if (keyType == DeriveKeyType.AES192 || keyType == DeriveKeyType.CMAC192) {
+          if (keyType == DeriveKeyType.AES192 ||
+              keyType == DeriveKeyType.CMAC192) {
             key = key.sublist(0, 24); // use only 192 bits = 8 * 24;
           }
           return key;

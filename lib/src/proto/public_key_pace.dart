@@ -79,7 +79,9 @@ class PublicKeyPACEeCDH extends PublicKeyPACE {
 
 class PublicKeyPACEdH extends PublicKeyPACE {
   final Uint8List _pub;
-  PublicKeyPACEdH({required Uint8List pub}) : _pub = pub, super(algo: TOKEN_AGREEMENT_ALGO.DH);
+  PublicKeyPACEdH({required Uint8List pub})
+    : _pub = pub,
+      super(algo: TOKEN_AGREEMENT_ALGO.DH);
 
   Uint8List get pub => _pub;
 

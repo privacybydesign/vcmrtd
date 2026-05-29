@@ -63,7 +63,10 @@ void main() {
     expect(tvSSC.toBytes(), '00000000000000000000000000000000'.parseHex());
 
     // Test case 10 - exceptions
-    expect(() => SSC('00'.parseHex(), 7), throwsArgumentError); // wrong bit size - not multiple of 8
+    expect(
+      () => SSC('00'.parseHex(), 7),
+      throwsArgumentError,
+    ); // wrong bit size - not multiple of 8
     expect(() => SSC('0100'.parseHex(), 8), throwsArgumentError); // too big
 
     tvSSC = SSC('0000000000000000000000000001'.parseHex(), 8);

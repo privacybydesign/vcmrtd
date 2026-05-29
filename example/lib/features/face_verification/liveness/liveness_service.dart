@@ -72,7 +72,6 @@ class AlignmentFrameDiagnostics {
 class ActiveLivenessService {
   static const int confirmThreshold = 2;
   static const int confirmIncrement = 2;
-  static const int confirmDecay = 0;
   static const int baselineFrames = 3;
 
   static const int restStableFrames = 2;
@@ -112,7 +111,6 @@ class ActiveLivenessService {
   int _confirmCount = 0;
 
   _BlinkPhase _blinkPhase = _BlinkPhase.open;
-  int _blinkClosedFrames = 0;
   bool _turnDetectedLatch = false;
 
   bool _waitingForRest = false;
@@ -139,7 +137,6 @@ class ActiveLivenessService {
     _currentAction = null;
     _confirmCount = 0;
     _blinkPhase = _BlinkPhase.open;
-    _blinkClosedFrames = 0;
     _turnDetectedLatch = false;
     _waitingForRest = false;
     _queuedNextAction = null;
@@ -168,7 +165,6 @@ class ActiveLivenessService {
     _currentAction = action;
     _confirmCount = 0;
     _blinkPhase = _BlinkPhase.open;
-    _blinkClosedFrames = 0;
     _turnDetectedLatch = false;
     _waitingForRest = false;
     _queuedNextAction = null;
@@ -293,8 +289,6 @@ class ActiveLivenessService {
 
     if (detected) {
       _confirmCount = (_confirmCount + confirmIncrement).clamp(0, confirmThreshold + 2);
-    } else if (_confirmCount > 0) {
-      _confirmCount = (_confirmCount - confirmDecay).clamp(0, confirmThreshold + 2);
     }
     return _confirmCount >= confirmThreshold;
   }
@@ -360,16 +354,13 @@ class ActiveLivenessService {
 
     switch (_blinkPhase) {
       case _BlinkPhase.open:
-        // A single frame above the closed threshold is enough to enter the closed
-        // state — fast blinks peak for only 1 frame at 30 fps and were previously
-        // reset on frame 2 by the old 'closing' intermediate step.
+        // A single frame above the closed threshold is enough — fast blinks peak for only 1 frame at 30 fps.
         if (closed) {
-          _blinkClosedFrames = 1;
           _blinkPhase = _BlinkPhase.closed;
         }
       case _BlinkPhase.closed:
         if (closed) {
-          _blinkClosedFrames++;
+          // still closed, wait
         } else if (open) {
           _blinkPhase = _BlinkPhase.detected;
         }
@@ -625,7 +616,6 @@ class PassiveLivenessService {
   bool _v2Nchw = false;
 
   final List<double> _scores = <double>[];
-  final List<int> _scoreTimes = <int>[];
   double _scoresSum = 0.0;
 
   final _BigSmallService _bigSmall = _BigSmallService();
@@ -642,15 +632,6 @@ class PassiveLivenessService {
 
     _readAntiSpoofShapes();
     await _bigSmall.initialize();
-  }
-
-  void initializeFromAddresses({required int v1Addr, required int v2Addr, required List<int> bigSmallAddrs}) {
-    debugPrint('[FaceVerification] Passive service: adopting MiniFASNet v1 from address');
-    _v1 = Interpreter.fromAddress(v1Addr);
-    debugPrint('[FaceVerification] Passive service: adopting MiniFASNet v2 from address');
-    _v2 = Interpreter.fromAddress(v2Addr);
-    _readAntiSpoofShapes();
-    _bigSmall.initializeFromAddresses(bigSmallAddrs);
   }
 
   void initializeFromBuffers({required Uint8List v1, required Uint8List v2, required List<Uint8List> bigSmall}) {
@@ -674,7 +655,6 @@ class PassiveLivenessService {
 
   void reset() {
     _scores.clear();
-    _scoreTimes.clear();
     _scoresSum = 0.0;
     _rppgFrameBuffer.clear();
     _bvpSamples.clear();
@@ -716,7 +696,6 @@ class PassiveLivenessService {
     if (score != null) {
       _scores.add(score);
       _scoresSum += score;
-      _scoreTimes.add(DateTime.now().millisecondsSinceEpoch);
     }
   }
 
@@ -1004,15 +983,6 @@ class _BigSmallService {
         _interpreters[i]?.close();
         _interpreters[i] = await Interpreter.fromAsset(_modelFiles[i], options: _makeInterpOptions(2, useGpu: false));
       }
-      _loadShapes(i);
-    }
-  }
-
-  void initializeFromAddresses(List<int> addrs) {
-    for (var i = 0; i < addrs.length && i < _modelFiles.length; i++) {
-      if (_interpreters[i] != null) continue;
-      debugPrint('[FaceVerification] BigSmall service: adopting ${_modelFiles[i]} from address');
-      _interpreters[i] = Interpreter.fromAddress(addrs[i]);
       _loadShapes(i);
     }
   }
