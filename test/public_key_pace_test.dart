@@ -15,53 +15,29 @@ void main() {
     // Core padding behaviour
     // -------------------------------------------------------------------
 
-    test(
-      'xBytes is zero-padded when BigInt representation is shorter than coordLen',
-      () {
-        // A 256-bit coordinate whose top byte is 0x00 encodes as only 31 bytes
-        // when using BigInt.toRadixString. coordLen=32 must restore the full width.
-        final xBigInt = BigInt.parse('00${'AB' * 31}', radix: 16);
-        final yBigInt = BigInt.parse('FF' * 32, radix: 16);
+    test('xBytes is zero-padded when BigInt representation is shorter than coordLen', () {
+      // A 256-bit coordinate whose top byte is 0x00 encodes as only 31 bytes
+      // when using BigInt.toRadixString. coordLen=32 must restore the full width.
+      final xBigInt = BigInt.parse('00${'AB' * 31}', radix: 16);
+      final yBigInt = BigInt.parse('FF' * 32, radix: 16);
 
-        final pubKey = PublicKeyPACEeCDH(x: xBigInt, y: yBigInt, coordLen: 32);
+      final pubKey = PublicKeyPACEeCDH(x: xBigInt, y: yBigInt, coordLen: 32);
 
-        expect(
-          pubKey.xBytes.length,
-          32,
-          reason: 'xBytes must be padded to coordLen',
-        );
-        expect(
-          pubKey.xBytes[0],
-          0x00,
-          reason: 'leading zero byte must be preserved',
-        );
-        expect(
-          pubKey.xBytes.sublist(1),
-          Uint8List.fromList(List.filled(31, 0xAB)),
-        );
-      },
-    );
+      expect(pubKey.xBytes.length, 32, reason: 'xBytes must be padded to coordLen');
+      expect(pubKey.xBytes[0], 0x00, reason: 'leading zero byte must be preserved');
+      expect(pubKey.xBytes.sublist(1), Uint8List.fromList(List.filled(31, 0xAB)));
+    });
 
-    test(
-      'yBytes is zero-padded when BigInt representation is shorter than coordLen',
-      () {
-        final xBigInt = BigInt.parse('FF' * 32, radix: 16);
-        final yBigInt = BigInt.parse('00${'CD' * 31}', radix: 16);
+    test('yBytes is zero-padded when BigInt representation is shorter than coordLen', () {
+      final xBigInt = BigInt.parse('FF' * 32, radix: 16);
+      final yBigInt = BigInt.parse('00${'CD' * 31}', radix: 16);
 
-        final pubKey = PublicKeyPACEeCDH(x: xBigInt, y: yBigInt, coordLen: 32);
+      final pubKey = PublicKeyPACEeCDH(x: xBigInt, y: yBigInt, coordLen: 32);
 
-        expect(
-          pubKey.yBytes.length,
-          32,
-          reason: 'yBytes must be padded to coordLen',
-        );
-        expect(pubKey.yBytes[0], 0x00);
-        expect(
-          pubKey.yBytes.sublist(1),
-          Uint8List.fromList(List.filled(31, 0xCD)),
-        );
-      },
-    );
+      expect(pubKey.yBytes.length, 32, reason: 'yBytes must be padded to coordLen');
+      expect(pubKey.yBytes[0], 0x00);
+      expect(pubKey.yBytes.sublist(1), Uint8List.fromList(List.filled(31, 0xCD)));
+    });
 
     test('full-length coordinate is returned unchanged', () {
       final xBigInt = BigInt.parse('FF' * 32, radix: 16);
@@ -81,11 +57,7 @@ void main() {
 
       final pubKey = PublicKeyPACEeCDH(x: xBigInt, y: yBigInt);
 
-      expect(
-        pubKey.xBytes.length,
-        31,
-        reason: 'without coordLen the leading zero is absent',
-      );
+      expect(pubKey.xBytes.length, 31, reason: 'without coordLen the leading zero is absent');
     });
 
     // -------------------------------------------------------------------
@@ -106,14 +78,8 @@ void main() {
       //   pubKey Y = 46d11970b5f76fb564c3b0e54b215528f647ec5a9ab209cdbe262e763d6119a1
       // Both coordinates are exactly 32 bytes — no padding is needed here, but
       // the coordLen path must still produce exactly 32 bytes.
-      final xBigInt = BigInt.parse(
-        '303f340815eea501772393e299a4a6f6694600189c249c63a8513ff3fefa66e3',
-        radix: 16,
-      );
-      final yBigInt = BigInt.parse(
-        '46d11970b5f76fb564c3b0e54b215528f647ec5a9ab209cdbe262e763d6119a1',
-        radix: 16,
-      );
+      final xBigInt = BigInt.parse('303f340815eea501772393e299a4a6f6694600189c249c63a8513ff3fefa66e3', radix: 16);
+      final yBigInt = BigInt.parse('46d11970b5f76fb564c3b0e54b215528f647ec5a9ab209cdbe262e763d6119a1', radix: 16);
 
       final pubKey = PublicKeyPACEeCDH(x: xBigInt, y: yBigInt, coordLen: 32);
 
@@ -129,11 +95,7 @@ void main() {
       final yBigInt = BigInt.parse('CD' * 32, radix: 16);
 
       final pubKey = PublicKeyPACEeCDH(x: xBigInt, y: yBigInt, coordLen: 32);
-      final encoded = Uint8List.fromList([
-        0x04,
-        ...pubKey.xBytes,
-        ...pubKey.yBytes,
-      ]);
+      final encoded = Uint8List.fromList([0x04, ...pubKey.xBytes, ...pubKey.yBytes]);
 
       expect(encoded.length, 65); // 1 + 32 + 32
       expect(encoded[0], 0x04);

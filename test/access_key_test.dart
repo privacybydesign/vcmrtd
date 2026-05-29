@@ -13,12 +13,7 @@ import 'package:vcmrtd/src/types/document_type.dart';
 void main() {
   test('DBA key testing (for BAC and PACE)', () {
     //DBA can be used for BAC and PACE
-    DBAKey dbaKeys = DBAKey(
-      "T22000129",
-      DateTime(1964, 8, 12),
-      DateTime(2010, 10, 31),
-      paceMode: true,
-    );
+    DBAKey dbaKeys = DBAKey("T22000129", DateTime(1964, 8, 12), DateTime(2010, 10, 31), paceMode: true);
 
     final tvKeySeed = "7e2d2a41c74ea0b38cd36f863939bfa8e9032aad".parseHex();
     final tvKenc = "3dc4f8862f8a1570b57fefdcfec43e46".parseHex();

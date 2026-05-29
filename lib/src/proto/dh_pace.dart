@@ -142,8 +142,7 @@ class DHPace {
   bool get isEphemeralPublicKeySet => _engineEphemeral != null;
   BigInt get ephemeralPublicKey => _engineEphemeral!.publicKey;
 
-  DHPace({required int id, required DhParameterSpec domainParameters})
-    : _domainParameters = domainParameters {
+  DHPace({required int id, required DhParameterSpec domainParameters}) : _domainParameters = domainParameters {
     if (!ICAO_DOMAIN_PARAMETERS.containsKey(id)) {
       _log.error("DHPace; Domain parameter with id $id does not exist.");
       throw DHPaceError("DHPace; Domain parameter with id $id does not exist.");
@@ -156,9 +155,7 @@ class DHPace {
   }
 
   String toStringWithCaution() {
-    _log.warning(
-      "This function is only for testing purposes. It prints private keys. Do not use in production.",
-    );
+    _log.warning("This function is only for testing purposes. It prints private keys. Do not use in production.");
     String forReturn = "DHPace: ${selectedDomainParameter.name}: ";
     bool isAny = false;
     if (isPublicKeySet) {
@@ -166,8 +163,7 @@ class DHPace {
       isAny = true;
     }
     if (isEphemeralPublicKeySet) {
-      forReturn +=
-          " ephemeral private key: ${_engineEphemeral!.privateKey.toString()}";
+      forReturn += " ephemeral private key: ${_engineEphemeral!.privateKey.toString()}";
       isAny = true;
     }
     if (!isAny) {
@@ -185,51 +181,31 @@ class DHPace {
     );
 
     //override engine with predefined private key
-    _engine = DHpkcs3Engine.fromPrivate(
-      private: Utils.uint8ListToBigInt(privKey),
-      parameterSpec: _domainParameters,
-    );
+    _engine = DHpkcs3Engine.fromPrivate(private: Utils.uint8ListToBigInt(privKey), parameterSpec: _domainParameters);
 
     if (!isPublicKeySet) {
-      _log.error(
-        "DHPace.generateKeyPairFromPriv; Public key is null. Generate key pair first.",
-      );
-      throw DHPaceError(
-        "DHPace.generateKeyPairFromPriv; Private key is null. Generate key pair first.",
-      );
+      _log.error("DHPace.generateKeyPairFromPriv; Public key is null. Generate key pair first.");
+      throw DHPaceError("DHPace.generateKeyPairFromPriv; Private key is null. Generate key pair first.");
     }
 
-    _log.debug(
-      "DHPace.generateKeyPairFromPriv; Generated public key: $publicKey",
-    );
+    _log.debug("DHPace.generateKeyPairFromPriv; Generated public key: $publicKey");
   }
 
   BigInt transformPublic({required PublicKeyPACEdH pubKey}) {
     // this function is used for converting received public key (from ICC) to BigInt
-    _log.fine(
-      "Generating key pair (from PublicKeyPACEdH) for domain parameter ${selectedDomainParameter.name}.",
-    );
+    _log.fine("Generating key pair (from PublicKeyPACEdH) for domain parameter ${selectedDomainParameter.name}.");
     return Utils.uint8ListToBigInt(pubKey.toRelavantBytes());
   }
 
   void generateKeyPair({int? seed}) {
-    _log.fine(
-      "DHPace.generateKeyPair; Generating key pair for domain parameter ${selectedDomainParameter.name}.",
-    );
+    _log.fine("DHPace.generateKeyPair; Generating key pair for domain parameter ${selectedDomainParameter.name}.");
 
     DhKeyPair keyPair = _engine!.generateKeyPair(seed: seed);
-    _log.debug(
-      "DHPace.generateKeyPair; Generated public key: ${keyPair.toString()}",
-    );
-    _log.sdVerbose(
-      "DHPace.generateKeyPair; Generated public/private key: ${keyPair.toStringAlsoPrivate()}",
-    );
+    _log.debug("DHPace.generateKeyPair; Generated public key: ${keyPair.toString()}");
+    _log.sdVerbose("DHPace.generateKeyPair; Generated public/private key: ${keyPair.toStringAlsoPrivate()}");
   }
 
-  void generateKeyPairWithCustomGenerator({
-    required BigInt ephemeralGenerator,
-    int? seed,
-  }) {
+  void generateKeyPairWithCustomGenerator({required BigInt ephemeralGenerator, int? seed}) {
     _log.fine(
       "DHPace.generateKeyPairWithCustomGenerator; Generating custom key pair for domain parameter "
       "${selectedDomainParameter.name}.",
@@ -241,33 +217,21 @@ class DHPace {
       length: _domainParameters.length,
     );
 
-    _engineEphemeral = DHpkcs3Engine(
-      parameterSpec: domainParametersEphemeral,
-      seed: seed,
-    );
+    _engineEphemeral = DHpkcs3Engine(parameterSpec: domainParametersEphemeral, seed: seed);
 
     if (!isEphemeralPublicKeySet) {
-      _log.error(
-        "DHPace.generateKeyPairWithCustomGenerator; Public key is null. Generate key pair first.",
-      );
-      throw DHPaceError(
-        "DHPace.generateKeyPairWithCustomGenerator; Private key is null. Generate key pair first.",
-      );
+      _log.error("DHPace.generateKeyPairWithCustomGenerator; Public key is null. Generate key pair first.");
+      throw DHPaceError("DHPace.generateKeyPairWithCustomGenerator; Private key is null. Generate key pair first.");
     }
 
     _log.debug("Generated public key: $ephemeralPublicKey");
   }
 
-  void setEphemeralKeyPair({
-    required Uint8List private,
-    required BigInt ephemeralGenerator,
-  }) {
+  void setEphemeralKeyPair({required Uint8List private, required BigInt ephemeralGenerator}) {
     _log.fine(
       "DHPace.setEphemeralKeyPair; Setting ephemeral key pair for domain parameter ${selectedDomainParameter.name}.",
     );
-    _log.debug(
-      "DHPace.setEphemeralKeyPair; This function is only for testing purposes. Do not use in production.",
-    );
+    _log.debug("DHPace.setEphemeralKeyPair; This function is only for testing purposes. Do not use in production.");
 
     DhParameterSpec domainParametersEphemeral = DhParameterSpec(
       p: _domainParameters.p,
@@ -281,107 +245,60 @@ class DHPace {
     );
 
     if (!isEphemeralPublicKeySet) {
-      _log.error(
-        "DHPace.setEphemeralKeyPair; Ephemeral public key is null. Generate key pair first.",
-      );
-      throw DHPaceError(
-        "DHPace.setEphemeralKeyPair; Ephemeral public key is null. Generate key pair first.",
-      );
+      _log.error("DHPace.setEphemeralKeyPair; Ephemeral public key is null. Generate key pair first.");
+      throw DHPaceError("DHPace.setEphemeralKeyPair; Ephemeral public key is null. Generate key pair first.");
     }
 
-    _log.debug(
-      "DHPace.setEphemeralKeyPair; Generated public key: $ephemeralPublicKey",
-    );
-    _log.sdVerbose(
-      "DHPace.setEphemeralKeyPair; Generated public/private key: $ephemeralPublicKey",
-    );
+    _log.debug("DHPace.setEphemeralKeyPair; Generated public key: $ephemeralPublicKey");
+    _log.sdVerbose("DHPace.setEphemeralKeyPair; Generated public/private key: $ephemeralPublicKey");
   }
 
   PublicKeyPACEdH getPubKey() {
     if (!isPublicKeySet) {
-      _log.error(
-        "DHPace.getPubKey; Public key is null. Generate key pair first.",
-      );
-      throw DHPaceError(
-        "DHPace.getPubKey; Private key is null. Generate key pair first.",
-      );
+      _log.error("DHPace.getPubKey; Public key is null. Generate key pair first.");
+      throw DHPaceError("DHPace.getPubKey; Private key is null. Generate key pair first.");
     }
     return PublicKeyPACEdH(pub: Utils.bigIntToUint8List(bigInt: publicKey));
   }
 
   PublicKeyPACEdH getPubKeyEphemeral() {
     if (!isEphemeralPublicKeySet) {
-      _log.error(
-        "DHPace.getPubKeyEphemeral; Public ephemeral key is null. Generate key pair first.",
-      );
-      throw DHPaceError(
-        "DHPace.getPubKeyEphemeral; Public ephemeral key is null. Generate ephemeral key pair first.",
-      );
+      _log.error("DHPace.getPubKeyEphemeral; Public ephemeral key is null. Generate key pair first.");
+      throw DHPaceError("DHPace.getPubKeyEphemeral; Public ephemeral key is null. Generate ephemeral key pair first.");
     }
-    return PublicKeyPACEdH(
-      pub: Utils.bigIntToUint8List(bigInt: ephemeralPublicKey),
-    );
+    return PublicKeyPACEdH(pub: Utils.bigIntToUint8List(bigInt: ephemeralPublicKey));
   }
 
   BigInt getSharedSecret({required Uint8List otherPubKey}) {
-    _log.fine(
-      "DHPace.getSharedSecret;Calculate shared secret with domain parameter ${selectedDomainParameter.name}.",
-    );
+    _log.fine("DHPace.getSharedSecret;Calculate shared secret with domain parameter ${selectedDomainParameter.name}.");
     if (!isPublicKeySet) {
-      _log.error(
-        "DHPace.getSharedSecret; Private/public key is null. Generate key pair first.",
-      );
-      throw DHPaceError(
-        "DHPace.getSharedSecret; Private/public key is null. Generate key pair first.",
-      );
+      _log.error("DHPace.getSharedSecret; Private/public key is null. Generate key pair first.");
+      throw DHPaceError("DHPace.getSharedSecret; Private/public key is null. Generate key pair first.");
     }
     if (_engine == null) {
-      _log.error(
-        "DHPace.getSharedSecret; Engine is null. Generate key pair first.",
-      );
-      throw DHPaceError(
-        "DHPace.getSharedSecret; Engine is null. Generate key pair first.",
-      );
+      _log.error("DHPace.getSharedSecret; Engine is null. Generate key pair first.");
+      throw DHPaceError("DHPace.getSharedSecret; Engine is null. Generate key pair first.");
     }
 
-    return _engine!.computeSecretKey(
-      otherPublicKey: Utils.uint8ListToBigInt(otherPubKey),
-    );
+    return _engine!.computeSecretKey(otherPublicKey: Utils.uint8ListToBigInt(otherPubKey));
   }
 
   BigInt getEphemeralSharedSecret({required Uint8List otherEphemeralPubKey}) {
-    _log.fine(
-      "Calculate ephemeral shared secret with domain parameter ${selectedDomainParameter.name}.",
-    );
+    _log.fine("Calculate ephemeral shared secret with domain parameter ${selectedDomainParameter.name}.");
     if (!isEphemeralPublicKeySet) {
-      _log.error(
-        "DHPace.getEphemeralSharedSecret; Ephemeral private key is null. Generate key pair first.",
-      );
-      throw DHPaceError(
-        "DHPace.getEphemeralSharedSecret; Ephemeral private key is null. Generate key pair first.",
-      );
+      _log.error("DHPace.getEphemeralSharedSecret; Ephemeral private key is null. Generate key pair first.");
+      throw DHPaceError("DHPace.getEphemeralSharedSecret; Ephemeral private key is null. Generate key pair first.");
     }
     if (_engineEphemeral == null) {
-      _log.error(
-        "DHPace.getEphemeralSharedSecret; Ephemeral engine is null. Generate key pair first.",
-      );
-      throw DHPaceError(
-        "DHPace.getEphemeralSharedSecret; Ephemeral engine is null. Generate key pair first.",
-      );
+      _log.error("DHPace.getEphemeralSharedSecret; Ephemeral engine is null. Generate key pair first.");
+      throw DHPaceError("DHPace.getEphemeralSharedSecret; Ephemeral engine is null. Generate key pair first.");
     }
 
-    return _engineEphemeral!.computeSecretKey(
-      otherPublicKey: Utils.uint8ListToBigInt(otherEphemeralPubKey),
-    );
+    return _engineEphemeral!.computeSecretKey(otherPublicKey: Utils.uint8ListToBigInt(otherEphemeralPubKey));
   }
 
-  Uint8List getMappedGenerator({
-    required Uint8List otherPubKey,
-    required Uint8List nonce,
-  }) {
-    _log.fine(
-      "Calculating mapped generator with domain parameter ${selectedDomainParameter.name}.",
-    );
+  Uint8List getMappedGenerator({required Uint8List otherPubKey, required Uint8List nonce}) {
+    _log.fine("Calculating mapped generator with domain parameter ${selectedDomainParameter.name}.");
     // Specified in section 4.3.3.3.1 - DH of ICAO 9303 p11
     // G` = G^s * H
     // s = nonce
@@ -389,21 +306,13 @@ class DHPace {
     // H = shared secret (my private key * other public key)
 
     if (!isPublicKeySet) {
-      _log.error(
-        "DHPace.getMappedGenerator; Public key is null. Generate key pair first.",
-      );
-      throw DHPaceError(
-        "DHPace.getMappedGenerator; Private key is null. Generate key pair first.",
-      );
+      _log.error("DHPace.getMappedGenerator; Public key is null. Generate key pair first.");
+      throw DHPaceError("DHPace.getMappedGenerator; Private key is null. Generate key pair first.");
     }
 
     if (_engine == null) {
-      _log.error(
-        "DHPace.getMappedGenerator; Engine is null. Generate key pair first.",
-      );
-      throw DHPaceError(
-        "DHPace.getMappedGenerator; Engine is null. Generate key pair first.",
-      );
+      _log.error("DHPace.getMappedGenerator; Engine is null. Generate key pair first.");
+      throw DHPaceError("DHPace.getMappedGenerator; Engine is null. Generate key pair first.");
     }
 
     BigInt generator = _engine!.computeGenerator(
@@ -436,19 +345,13 @@ class DomainParameterSelectorDH {
     }
     switch (id) {
       case 0:
-        _log.finer(
-          "Selected domain parameter: 1024-bit MODP with 160-bit prime order subgroup",
-        );
+        _log.finer("Selected domain parameter: 1024-bit MODP with 160-bit prime order subgroup");
         return DHPaceCurve0();
       case 1:
-        _log.finer(
-          "Selected domain parameter: 2048-bit MODP with 224-bit prime order subgroup",
-        );
+        _log.finer("Selected domain parameter: 2048-bit MODP with 224-bit prime order subgroup");
         return DHPaceCurve1();
       case 2:
-        _log.finer(
-          "Selected domain parameter: 2048-bit MODP with 256-bit prime order subgroup",
-        );
+        _log.finer("Selected domain parameter: 2048-bit MODP with 256-bit prime order subgroup");
         return DHPaceCurve2();
 
       default:

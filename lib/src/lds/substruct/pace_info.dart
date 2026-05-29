@@ -68,10 +68,7 @@ class PaceInfo {
         "parameterId: $_parameterId, isPaceDomainParameterSupported: $_isPaceDomainParameterSupported)";
   }
 
-  void parse({
-    required ASN1Sequence content,
-    required ASN1ObjectIdentifierType protocolType,
-  }) {
+  void parse({required ASN1Sequence content, required ASN1ObjectIdentifierType protocolType}) {
     _log.info("Parsing PaceInfo...");
     _log.sdDebug("Data: $content");
 
@@ -83,12 +80,8 @@ class PaceInfo {
     // }
     // Therefore we require at least 2 elements (protocol and version)
     if (content.elements == null || content.elements!.length < 2) {
-      _log.error(
-        "Invalid structure of PaceInfo. Less than 2 elements in sequence.",
-      );
-      throw EfParseError(
-        "Invalid structure of PaceInfo. Less than 2 elements in sequence.",
-      );
+      _log.error("Invalid structure of PaceInfo. Less than 2 elements in sequence.");
+      throw EfParseError("Invalid structure of PaceInfo. Less than 2 elements in sequence.");
     }
 
     //
@@ -96,23 +89,14 @@ class PaceInfo {
     //
 
     _log.info("... parsing protocol ...");
-    ASN1ObjectIdentifier protocol =
-        content.elements?[0] as ASN1ObjectIdentifier;
+    ASN1ObjectIdentifier protocol = content.elements?[0] as ASN1ObjectIdentifier;
 
-    if (!protocolType.hasOIDWithIdentifierString(
-      identifierString: protocol.objectIdentifierAsString!,
-    )) {
-      _log.sdError(
-        "Invalid protocol in PaceInfo. Protocol is not valid: ${protocol.objectIdentifierAsString}",
-      );
-      throw EfParseError(
-        "Invalid protocol in PaceInfo. Protocol is not valid: ${protocol.objectIdentifierAsString}",
-      );
+    if (!protocolType.hasOIDWithIdentifierString(identifierString: protocol.objectIdentifierAsString!)) {
+      _log.sdError("Invalid protocol in PaceInfo. Protocol is not valid: ${protocol.objectIdentifierAsString}");
+      throw EfParseError("Invalid protocol in PaceInfo. Protocol is not valid: ${protocol.objectIdentifierAsString}");
     }
     _protocol = OIEPaceProtocol.fromMap(
-      item: protocolType.getOIDByIdentifierString(
-        identifierString: protocol.objectIdentifierAsString!,
-      ),
+      item: protocolType.getOIDByIdentifierString(identifierString: protocol.objectIdentifierAsString!),
     );
     _log.info("... protocol parsed ...");
     _log.sdDebug("Protocol: $protocol");
@@ -128,12 +112,8 @@ class PaceInfo {
       throw EfParseError("Invalid version in PaceInfo. Version is null.");
     }
     if (version.integer?.toInt() != VERSION_VALUE_CONST) {
-      _log.error(
-        "Invalid version in PaceInfo. Version is not equal to $VERSION_VALUE_CONST.",
-      );
-      throw EfParseError(
-        "Invalid version in PaceInfo. Version is not equal to $VERSION_VALUE_CONST.",
-      );
+      _log.error("Invalid version in PaceInfo. Version is not equal to $VERSION_VALUE_CONST.");
+      throw EfParseError("Invalid version in PaceInfo. Version is not equal to $VERSION_VALUE_CONST.");
     }
 
     _version = version.integer?.toInt() as int;
@@ -149,9 +129,7 @@ class PaceInfo {
       ASN1Integer parameterId = content.elements?[2] as ASN1Integer;
       if (parameterId.integer == null) {
         _log.error("Invalid parameterId in PaceInfo. ParameterId is null.");
-        throw EfParseError(
-          "Invalid parameterId in PaceInfo. ParameterId is null.",
-        );
+        throw EfParseError("Invalid parameterId in PaceInfo. ParameterId is null.");
       }
 
       _parameterId = parameterId.integer?.toInt() as int;

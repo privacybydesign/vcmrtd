@@ -77,10 +77,7 @@ void testUprotecting(
   final sm = MrtdSM(cipher, ssc);
 
   final dataDO = sm.parseDataDOFromRAPDU(rapdu);
-  expect(
-    dataDO != null ? TLV.encode(dataDO.tag.value, dataDO.value) : null,
-    tvDataDO,
-  );
+  expect(dataDO != null ? TLV.encode(dataDO.tag.value, dataDO.value) : null, tvDataDO);
 
   final do99 = sm.parseDO99FromRAPDU(rapdu, (dataDO?.encodedLen ?? 0));
   expect(TLV.encode(do99.tag.value, do99.value), tvDO99);
@@ -114,23 +111,15 @@ void main() {
     final tvSSC = DESedeSSC("887022120C06C226".parseHex());
 
     // Test case 1
-    var tvCmdAPDU = CommandAPDU(
-      cla: 0x00,
-      ins: 0xA4,
-      p1: 0x02,
-      p2: 0x0C,
-      data: "011E".parseHex(),
-    );
+    var tvCmdAPDU = CommandAPDU(cla: 0x00, ins: 0xA4, p1: 0x02, p2: 0x0C, data: "011E".parseHex());
     var tvMaskedHeader = "0CA4020C".parseHex();
     Uint8List? tvDataDO = "8709016375432908C044F6".parseHex();
     var tvDO97 = Uint8List(0);
     var tvM = "0CA4020C800000008709016375432908C044F6".parseHex();
-    var tvN = "887022120C06C2270CA4020C800000008709016375432908C044F68000000000"
-        .parseHex();
+    var tvN = "887022120C06C2270CA4020C800000008709016375432908C044F68000000000".parseHex();
     var tvCC = "BF8B92D635FF24F8".parseHex();
     var tvDO8E = "8E08BF8B92D635FF24F8".parseHex();
-    var tvProtectedCmd =
-        "0CA4020C158709016375432908C044F68E08BF8B92D635FF24F800".parseHex();
+    var tvProtectedCmd = "0CA4020C158709016375432908C044F68E08BF8B92D635FF24F800".parseHex();
 
     testProtecting(
       tvCmdAPDU,
@@ -146,9 +135,7 @@ void main() {
       tvProtectedCmd,
     );
 
-    var tvProtectedRAPDU = ResponseAPDU.fromBytes(
-      "990290008E08FA855A5D4C50A8ED9000".parseHex(),
-    );
+    var tvProtectedRAPDU = ResponseAPDU.fromBytes("990290008E08FA855A5D4C50A8ED9000".parseHex());
     tvDataDO = null;
     var tvDO99 = "99029000".parseHex();
     tvDO8E = "8E08FA855A5D4C50A8ED".parseHex();
@@ -197,9 +184,7 @@ void main() {
       tvProtectedCmd,
     );
 
-    tvProtectedRAPDU = ResponseAPDU.fromBytes(
-      "8709019FF0EC34F9922651990290008E08AD55CC17140B2DED9000".parseHex(),
-    );
+    tvProtectedRAPDU = ResponseAPDU.fromBytes("8709019FF0EC34F9922651990290008E08AD55CC17140B2DED9000".parseHex());
     tvDataDO = "8709019FF0EC34F9922651".parseHex();
     tvDO99 = "99029000".parseHex();
     tvDO8E = "8E08AD55CC17140B2DED".parseHex();
@@ -249,19 +234,16 @@ void main() {
     );
 
     tvProtectedRAPDU = ResponseAPDU.fromBytes(
-      "871901FB9235F4E4037F2327DCC8964F1F9B8C30F42C8E2FFF224A990290008E08C8B2787EAEA07D749000"
-          .parseHex(),
+      "871901FB9235F4E4037F2327DCC8964F1F9B8C30F42C8E2FFF224A990290008E08C8B2787EAEA07D749000".parseHex(),
     );
-    tvDataDO = "871901FB9235F4E4037F2327DCC8964F1F9B8C30F42C8E2FFF224A"
-        .parseHex();
+    tvDataDO = "871901FB9235F4E4037F2327DCC8964F1F9B8C30F42C8E2FFF224A".parseHex();
     tvDO99 = "99029000".parseHex();
     tvDO8E = "8E08C8B2787EAEA07D74".parseHex();
     tvK = "887022120C06C22C871901FB9235F4E4037F2327DCC8964F1F9B8C30F42C8E2FFF224A9902900080"
         .parseHex(); // Note test vector in specification is missing padding byte 0x80
     tvCC = "C8B2787EAEA07D74".parseHex();
     tvDecryptedData = "04303130365F36063034303030305C026175".parseHex();
-    tvRawUnprotectedRAPDU = "04303130365F36063034303030305C0261759000"
-        .parseHex();
+    tvRawUnprotectedRAPDU = "04303130365F36063034303030305C0261759000".parseHex();
 
     expect(tvSSC.toBytes(), "887022120C06C22B".parseHex());
     testUprotecting(

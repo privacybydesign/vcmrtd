@@ -134,20 +134,12 @@ class PassportMRZ {
     _optData = _read(istream, 15);
     dateOfBirth = _readDate(istream, futureDate: false);
 
-    _assertCheckDigit(
-      dateOfBirth.formatYYMMDD(),
-      _readCD(istream),
-      "Data of Birth check digit mismatch",
-    );
+    _assertCheckDigit(dateOfBirth.formatYYMMDD(), _readCD(istream), "Data of Birth check digit mismatch");
 
     gender = _read(istream, 1);
     dateOfExpiry = _readDate(istream, futureDate: true);
 
-    _assertCheckDigit(
-      dateOfExpiry.formatYYMMDD(),
-      _readCD(istream),
-      "Data of Expiry check digit mismatch",
-    );
+    _assertCheckDigit(dateOfExpiry.formatYYMMDD(), _readCD(istream), "Data of Expiry check digit mismatch");
 
     nationality = _read(istream, 3);
     _optData2 = _read(istream, 11);
@@ -178,19 +170,11 @@ class PassportMRZ {
 
     nationality = _read(istream, 3);
     dateOfBirth = _readDate(istream, futureDate: false);
-    _assertCheckDigit(
-      dateOfBirth.formatYYMMDD(),
-      _readCD(istream),
-      "Data of Birth check digit mismatch",
-    );
+    _assertCheckDigit(dateOfBirth.formatYYMMDD(), _readCD(istream), "Data of Birth check digit mismatch");
 
     gender = _read(istream, 1);
     dateOfExpiry = _readDate(istream, futureDate: true);
-    _assertCheckDigit(
-      dateOfExpiry.formatYYMMDD(),
-      _readCD(istream),
-      "Data of Expiry check digit mismatch",
-    );
+    _assertCheckDigit(dateOfExpiry.formatYYMMDD(), _readCD(istream), "Data of Expiry check digit mismatch");
 
     _optData = _read(istream, 7);
     _parseExtendedDocumentNumber(cdDocNum);
@@ -213,34 +197,18 @@ class PassportMRZ {
     _setNames(_readNameIdentifiers(istream, 39));
 
     _docNum = _read(istream, 9);
-    _assertCheckDigit(
-      _docNum,
-      _readCD(istream),
-      "Document Number check digit mismatch",
-    );
+    _assertCheckDigit(_docNum, _readCD(istream), "Document Number check digit mismatch");
 
     nationality = _read(istream, 3);
     dateOfBirth = _readDate(istream, futureDate: false);
-    _assertCheckDigit(
-      dateOfBirth.formatYYMMDD(),
-      _readCD(istream),
-      "Data of Birth check digit mismatch",
-    );
+    _assertCheckDigit(dateOfBirth.formatYYMMDD(), _readCD(istream), "Data of Birth check digit mismatch");
 
     gender = _read(istream, 1);
     dateOfExpiry = _readDate(istream, futureDate: true);
-    _assertCheckDigit(
-      dateOfExpiry.formatYYMMDD(),
-      _readCD(istream),
-      "Data of Expiry check digit mismatch",
-    );
+    _assertCheckDigit(dateOfExpiry.formatYYMMDD(), _readCD(istream), "Data of Expiry check digit mismatch");
 
     _optData = _read(istream, 14);
-    _assertCheckDigit(
-      _optData,
-      _readCD(istream),
-      "Optional data check digit mismatch",
-    );
+    _assertCheckDigit(_optData, _readCD(istream), "Optional data check digit mismatch");
 
     final cdComposite = _readCD(istream);
 
@@ -276,11 +244,7 @@ class PassportMRZ {
       cdDocNum = int.parse(strCdDocNum);
     }
 
-    _assertCheckDigit(
-      _docNum,
-      cdDocNum,
-      "Document Number check digit mismatch",
-    );
+    _assertCheckDigit(_docNum, cdDocNum, "Document Number check digit mismatch");
   }
 
   static String _read(InputStream istream, int maxLength) {
@@ -294,8 +258,7 @@ class PassportMRZ {
   static int _readCD(InputStream istream) {
     var scd = _readWithPad(istream, 1);
     if (scd == '<') return 0;
-    return int.tryParse(scd) ??
-        (throw MRZParseError("Invalid check digit character in MRZ"));
+    return int.tryParse(scd) ?? (throw MRZParseError("Invalid check digit character in MRZ"));
   }
 
   static List<String> _readNameIdentifiers(InputStream istream, int maxLength) {

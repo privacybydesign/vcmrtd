@@ -34,18 +34,14 @@ class EfCOM extends ElementaryFile {
   void parse(final Uint8List content) {
     final tlv = TLV.fromBytes(content);
     if (tlv.tag != TAG) {
-      throw EfParseError(
-        "Invalid EF.COM tag=${tlv.tag.hex()}, expected tag=${TAG.hex()}",
-      );
+      throw EfParseError("Invalid EF.COM tag=${tlv.tag.hex()}, expected tag=${TAG.hex()}");
     }
 
     // Parse version number
     final data = tlv.value;
     final vtv = TLV.decode(data);
     if (vtv.tag.value != 0x5F01) {
-      throw EfParseError(
-        "Invalid version object tag=${vtv.tag.value.hex()}, expected version object with tag=5F01",
-      );
+      throw EfParseError("Invalid version object tag=${vtv.tag.value.hex()}, expected version object with tag=5F01");
     }
     _ver = String.fromCharCodes(vtv.value);
 
@@ -61,9 +57,7 @@ class EfCOM extends ElementaryFile {
       _uver = String.fromCharCodes(secondTlv.value);
 
       // Parse tag list
-      tvTagList = TLV.decode(
-        data.sublist(vtv.encodedLen + secondTlv.encodedLen),
-      );
+      tvTagList = TLV.decode(data.sublist(vtv.encodedLen + secondTlv.encodedLen));
       if (tvTagList.tag.value != 0x5C) {
         throw EfParseError(
           "Invalid tag list object tag=${tvTagList.tag.value.hex()}, expected tag list object with tag=5C",

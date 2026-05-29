@@ -13,13 +13,8 @@ class VerificationResponse {
   @JsonKey(name: 'authentic_content')
   final bool authenticContent;
 
-  VerificationResponse({
-    required this.isExpired,
-    required this.authenticChip,
-    required this.authenticContent,
-  });
+  VerificationResponse({required this.isExpired, required this.authenticChip, required this.authenticContent});
 
-  factory VerificationResponse.fromJson(Map<String, dynamic> json) =>
-      _$VerificationResponseFromJson(json);
+  factory VerificationResponse.fromJson(Map<String, dynamic> json) => _$VerificationResponseFromJson(json);
   Map<String, dynamic> toJson() => _$VerificationResponseToJson(this);
 }

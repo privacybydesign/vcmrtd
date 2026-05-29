@@ -190,22 +190,12 @@ class OIE {
 
   final _log = Logger("OIE");
 
-  OIE({
-    required this.identifierString,
-    required this.readableName,
-    required this.identifier,
-  });
+  OIE({required this.identifierString, required this.readableName, required this.identifier});
 
   OIE.fromMap({required Map<String, Object> item}) {
-    if (!item.containsKey('identifier') ||
-        !item.containsKey('identifierString') ||
-        !item.containsKey('readableName')) {
-      _log.error(
-        'Object identifier must contain identifier, identifierString and readableName.',
-      );
-      throw OIEexception(
-        'Object identifier must contain identifier, identifierString and readableName.',
-      );
+    if (!item.containsKey('identifier') || !item.containsKey('identifierString') || !item.containsKey('readableName')) {
+      _log.error('Object identifier must contain identifier, identifierString and readableName.');
+      throw OIEexception('Object identifier must contain identifier, identifierString and readableName.');
     }
 
     if (item['identifier'] is! List<int>) {
@@ -227,15 +217,9 @@ class OIE {
   }
 
   void fromMap({required Map<String, Object> item}) {
-    if (!item.containsKey('identifier') ||
-        !item.containsKey('identifierString') ||
-        !item.containsKey('readableName')) {
-      _log.error(
-        'Object identifier must contain identifier, identifierString and readableName.',
-      );
-      throw OIEexception(
-        'Object identifier must contain identifier, identifierString and readableName.',
-      );
+    if (!item.containsKey('identifier') || !item.containsKey('identifierString') || !item.containsKey('readableName')) {
+      _log.error('Object identifier must contain identifier, identifierString and readableName.');
+      throw OIEexception('Object identifier must contain identifier, identifierString and readableName.');
     }
 
     if (item['identifier'] is! List<int>) {
@@ -302,14 +286,8 @@ class OIEPaceProtocol extends OIE {
   TOKEN_AGREEMENT_ALGO? _tokenAgreementAlgorithm;
   MAPPING_TYPE? _mappingType;
 
-  OIEPaceProtocol({
-    required String identifierString,
-    required String readableName,
-    required super.identifier,
-  }) : super(
-         identifierString: identifierString.toUpperCase(),
-         readableName: readableName.toUpperCase(),
-       ) {
+  OIEPaceProtocol({required String identifierString, required String readableName, required super.identifier})
+    : super(identifierString: identifierString.toUpperCase(), readableName: readableName.toUpperCase()) {
     setParams();
   }
 
@@ -437,12 +415,8 @@ class OIEPaceProtocol extends OIE {
         _mappingType = MAPPING_TYPE.CAM;
         break;
       default:
-        _log.error(
-          'OIEPaceProtocol; Unknown identifierString: $identifierString',
-        );
-        throw OIEexception(
-          'OIEPaceProtocol; Unknown identifierString: $identifierString',
-        );
+        _log.error('OIEPaceProtocol; Unknown identifierString: $identifierString');
+        throw OIEexception('OIEPaceProtocol; Unknown identifierString: $identifierString');
     }
 
     _log.sdDebug(
@@ -486,8 +460,7 @@ class OIEPaceProtocol extends OIE {
 
 class ASN1ObjectIdentifierType {
   // A static instance of the class
-  static final ASN1ObjectIdentifierType _instance =
-      ASN1ObjectIdentifierType._internal();
+  static final ASN1ObjectIdentifierType _instance = ASN1ObjectIdentifierType._internal();
 
   // A private constructor
   ASN1ObjectIdentifierType._internal() {
@@ -497,9 +470,7 @@ class ASN1ObjectIdentifierType {
     // add custom object identifiers to existing ones
     for (var customOID in customOIDS) {
       if (!checkOID(item: customOID)) {
-        throw ASN1ObjectIdentifierObjectException(
-          'Object identifier is not valid.',
-        );
+        throw ASN1ObjectIdentifierObjectException('Object identifier is not valid.');
       }
       _OIDS.add(customOID);
     }
@@ -515,12 +486,8 @@ class ASN1ObjectIdentifierType {
   // check if object identifier is valid
   bool checkOID({required Map<String, Object> item}) {
     //check if list contains all required keys
-    if (!item.containsKey('identifier') ||
-        !item.containsKey('identifierString') ||
-        !item.containsKey('readableName')) {
-      _log.error(
-        'Object identifier must contain identifier, identifierString and readableName.',
-      );
+    if (!item.containsKey('identifier') || !item.containsKey('identifierString') || !item.containsKey('readableName')) {
+      _log.error('Object identifier must contain identifier, identifierString and readableName.');
       return false;
     }
 
@@ -542,15 +509,11 @@ class ASN1ObjectIdentifierType {
   // has object identifier with identifier string
   bool hasOIDWithIdentifierString({required String identifierString}) {
     _log.finer("hasOIDWithIdentifierString: $identifierString");
-    return _OIDS.any(
-      (element) => element['identifierString'] == identifierString,
-    );
+    return _OIDS.any((element) => element['identifierString'] == identifierString);
   }
 
   // get object identifier by identifier string
-  Map<String, Object> getOIDByIdentifierString({
-    required String identifierString,
-  }) {
+  Map<String, Object> getOIDByIdentifierString({required String identifierString}) {
     _log.finer("getOIDByIdentifierString: $identifierString");
     return _OIDS.firstWhere(
       (element) => element['identifierString'] == identifierString,
@@ -571,9 +534,8 @@ class ASN1ObjectIdentifierType {
     _log.finer("getOIDByIdentifier: $identifier");
     return _OIDS.firstWhere(
       (element) => element['identifier'] == identifier,
-      orElse: () => throw ASN1ObjectIdentifierObjectException(
-        'Object identifier with identifier $identifier does not exist.',
-      ),
+      orElse: () =>
+          throw ASN1ObjectIdentifierObjectException('Object identifier with identifier $identifier does not exist.'),
     );
   }
 }

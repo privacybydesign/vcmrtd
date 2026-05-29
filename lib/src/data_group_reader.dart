@@ -32,14 +32,10 @@ class DataGroupReader {
   _DF _dfSelected = _DF.None;
   MrtdApi _api;
 
-  DataGroupReader(
-    ComProvider provider,
-    this._applicationAID, {
-    this.bacAccessKey,
-    this.paceAccessKey,
-  }) : _com = provider,
-       _api = MrtdApi(provider),
-       _log = Logger("Data Group bytes reader");
+  DataGroupReader(ComProvider provider, this._applicationAID, {this.bacAccessKey, this.paceAccessKey})
+    : _com = provider,
+      _api = MrtdApi(provider),
+      _log = Logger("Data Group bytes reader");
 
   /// Reset all the api settings and start fresh
   void reset() {
@@ -64,9 +60,7 @@ class DataGroupReader {
       throw Exception('trying PACE while PACE was not enabled');
     }
     await _selectMF();
-    await _exec(
-      () => _api.initSessionViaPACE(paceAccessKey as PaceKey, efCardAccess),
-    );
+    await _exec(() => _api.initSessionViaPACE(paceAccessKey as PaceKey, efCardAccess));
   }
 
   Future<Uint8List> readDG1() async {

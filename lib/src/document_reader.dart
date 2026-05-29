@@ -29,8 +29,7 @@ class DocumentReaderConfig {
   bool shouldRead(DataGroups g) => readIfAvailable.contains(g);
 }
 
-class DocumentReader<DocType extends DocumentData>
-    extends Notifier<DocumentReaderState> {
+class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentReaderState> {
   final DocumentReaderConfig config;
   final DocumentParser<DocType> documentParser;
   final DataGroupReader dataGroupReader;
@@ -99,9 +98,7 @@ class DocumentReader<DocType extends DocumentData>
     }
 
     _setState(DocumentReaderConnecting());
-    await nfc.connect(
-      iosAlertMessage: iosNfcMessages(DocumentReaderConnecting()),
-    );
+    await nfc.connect(iosAlertMessage: iosNfcMessages(DocumentReaderConnecting()));
 
     _AuthMethod method = _AuthMethod.bac;
     _setState(DocumentReaderAuthenticating());
@@ -113,9 +110,7 @@ class DocumentReader<DocType extends DocumentData>
       try {
         await _reconnectionLoop(
           authMethod: _AuthMethod.none,
-          whenConnected: () async => documentParser.parseEfCardAccess(
-            await dataGroupReader.readEfCardAccess(),
-          ),
+          whenConnected: () async => documentParser.parseEfCardAccess(await dataGroupReader.readEfCardAccess()),
         );
         if (state is DocumentReaderCancelled) return null;
       } catch (e) {
@@ -127,8 +122,7 @@ class DocumentReader<DocType extends DocumentData>
       try {
         await _reconnectionLoop(
           authMethod: _AuthMethod.none,
-          whenConnected: () async =>
-              dataGroupReader.startSessionPACE(documentParser.cardAccess),
+          whenConnected: () async => dataGroupReader.startSessionPACE(documentParser.cardAccess),
         );
         if (state is DocumentReaderCancelled) return null;
       } catch (e) {
@@ -141,8 +135,7 @@ class DocumentReader<DocType extends DocumentData>
     try {
       await _reconnectionLoop(
         authMethod: method,
-        whenConnected: () async =>
-            documentParser.parseEfCOM(await dataGroupReader.readEfCOM()),
+        whenConnected: () async => documentParser.parseEfCOM(await dataGroupReader.readEfCOM()),
       );
       if (state is DocumentReaderCancelled) return null;
     } catch (e) {
@@ -154,130 +147,28 @@ class DocumentReader<DocType extends DocumentData>
 
     // isMandatory: DG1, DG2 are mandatory; DG15 is mandatory if provided
     for (final (dataGroup, read, parse, progress, isMandatory) in [
-      (
-        DataGroups.dg1,
-        dataGroupReader.readDG1,
-        documentParser.parseDG1,
-        0.1,
-        true,
-      ),
-      (
-        DataGroups.dg2,
-        dataGroupReader.readDG2,
-        documentParser.parseDG2,
-        0.2,
-        true,
-      ),
-      (
-        DataGroups.dg3,
-        dataGroupReader.readDG3,
-        documentParser.parseDG3,
-        0.3,
-        false,
-      ),
-      (
-        DataGroups.dg4,
-        dataGroupReader.readDG4,
-        documentParser.parseDG4,
-        0.35,
-        false,
-      ),
-      (
-        DataGroups.dg5,
-        dataGroupReader.readDG5,
-        documentParser.parseDG5,
-        0.4,
-        false,
-      ),
-      (
-        DataGroups.dg6,
-        dataGroupReader.readDG6,
-        documentParser.parseDG6,
-        0.5,
-        false,
-      ),
-      (
-        DataGroups.dg7,
-        dataGroupReader.readDG7,
-        documentParser.parseDG7,
-        0.6,
-        false,
-      ),
-      (
-        DataGroups.dg8,
-        dataGroupReader.readDG8,
-        documentParser.parseDG8,
-        0.7,
-        false,
-      ),
-      (
-        DataGroups.dg9,
-        dataGroupReader.readDG9,
-        documentParser.parseDG9,
-        0.75,
-        false,
-      ),
-      (
-        DataGroups.dg10,
-        dataGroupReader.readDG10,
-        documentParser.parseDG10,
-        0.8,
-        false,
-      ),
-      (
-        DataGroups.dg11,
-        dataGroupReader.readDG11,
-        documentParser.parseDG11,
-        0.85,
-        false,
-      ),
-      (
-        DataGroups.dg12,
-        dataGroupReader.readDG12,
-        documentParser.parseDG12,
-        0.9,
-        false,
-      ),
-      (
-        DataGroups.dg13,
-        dataGroupReader.readDG13,
-        documentParser.parseDG13,
-        0.9,
-        false,
-      ),
-      (
-        DataGroups.dg14,
-        dataGroupReader.readDG14,
-        documentParser.parseDG14,
-        0.95,
-        false,
-      ),
-      (
-        DataGroups.dg15,
-        dataGroupReader.readDG15,
-        documentParser.parseDG15,
-        0.9,
-        true,
-      ),
-      (
-        DataGroups.dg16,
-        dataGroupReader.readDG16,
-        documentParser.parseDG16,
-        1.0,
-        false,
-      ),
+      (DataGroups.dg1, dataGroupReader.readDG1, documentParser.parseDG1, 0.1, true),
+      (DataGroups.dg2, dataGroupReader.readDG2, documentParser.parseDG2, 0.2, true),
+      (DataGroups.dg3, dataGroupReader.readDG3, documentParser.parseDG3, 0.3, false),
+      (DataGroups.dg4, dataGroupReader.readDG4, documentParser.parseDG4, 0.35, false),
+      (DataGroups.dg5, dataGroupReader.readDG5, documentParser.parseDG5, 0.4, false),
+      (DataGroups.dg6, dataGroupReader.readDG6, documentParser.parseDG6, 0.5, false),
+      (DataGroups.dg7, dataGroupReader.readDG7, documentParser.parseDG7, 0.6, false),
+      (DataGroups.dg8, dataGroupReader.readDG8, documentParser.parseDG8, 0.7, false),
+      (DataGroups.dg9, dataGroupReader.readDG9, documentParser.parseDG9, 0.75, false),
+      (DataGroups.dg10, dataGroupReader.readDG10, documentParser.parseDG10, 0.8, false),
+      (DataGroups.dg11, dataGroupReader.readDG11, documentParser.parseDG11, 0.85, false),
+      (DataGroups.dg12, dataGroupReader.readDG12, documentParser.parseDG12, 0.9, false),
+      (DataGroups.dg13, dataGroupReader.readDG13, documentParser.parseDG13, 0.9, false),
+      (DataGroups.dg14, dataGroupReader.readDG14, documentParser.parseDG14, 0.95, false),
+      (DataGroups.dg15, dataGroupReader.readDG15, documentParser.parseDG15, 0.9, true),
+      (DataGroups.dg16, dataGroupReader.readDG16, documentParser.parseDG16, 1.0, false),
     ]) {
-      if (!(config.shouldRead(dataGroup) &&
-          documentParser.documentContainsDataGroup(dataGroup))) {
+      if (!(config.shouldRead(dataGroup) && documentParser.documentContainsDataGroup(dataGroup))) {
         continue;
       }
 
-      _setState(
-        DocumentReaderReadingDataGroup(
-          dataGroup: dataGroup.getName(),
-          progress: progress,
-        ),
-      );
+      _setState(DocumentReaderReadingDataGroup(dataGroup: dataGroup.getName(), progress: progress));
       Uint8List? bytes;
 
       // First, read the bytes from the chip
@@ -306,10 +197,7 @@ class DocumentReader<DocType extends DocumentData>
           parse(bytes!);
         } catch (e) {
           if (isMandatory) {
-            await _failure(
-              'Failure parsing mandatory data group $dataGroup',
-              e,
-            );
+            await _failure('Failure parsing mandatory data group $dataGroup', e);
             return null;
           } else {
             _addLog('Failed to parse optional data group $dataGroup: $e');
@@ -322,8 +210,7 @@ class DocumentReader<DocType extends DocumentData>
     try {
       await _reconnectionLoop(
         authMethod: method,
-        whenConnected: () async =>
-            documentParser.parseEfSOD(await dataGroupReader.readEfSOD()),
+        whenConnected: () async => documentParser.parseEfSOD(await dataGroupReader.readEfSOD()),
       );
       if (state is DocumentReaderCancelled) {
         return null;
@@ -341,14 +228,10 @@ class DocumentReader<DocType extends DocumentData>
           authMethod: method,
           whenConnected: () async {
             try {
-              aaSig = await dataGroupReader.activeAuthenticate(
-                stringToUint8List(activeAuthenticationParams.nonce),
-              );
+              aaSig = await dataGroupReader.activeAuthenticate(stringToUint8List(activeAuthenticationParams.nonce));
             } on DocumentError catch (e) {
               if (e.code == StatusWord.invalidInstructionCode) {
-                _addLog(
-                  "Active Authentication not supported by chip (sw=6D00), skipping",
-                );
+                _addLog("Active Authentication not supported by chip (sw=6D00), skipping");
                 return;
               }
               rethrow;
@@ -373,9 +256,7 @@ class DocumentReader<DocType extends DocumentData>
       dataGroups: dataGroups,
       efSod: documentParser.sod.toBytes().hex(),
       sessionId: activeAuthenticationParams?.sessionId,
-      nonce: activeAuthenticationParams != null
-          ? stringToUint8List(activeAuthenticationParams.nonce)
-          : null,
+      nonce: activeAuthenticationParams != null ? stringToUint8List(activeAuthenticationParams.nonce) : null,
       aaSignature: aaSig,
     );
 
@@ -451,9 +332,7 @@ class DocumentReader<DocType extends DocumentData>
             }
             authMethod == _AuthMethod.bac
                 ? await dataGroupReader.startSession()
-                : await dataGroupReader.startSessionPACE(
-                    documentParser.cardAccess,
-                  );
+                : await dataGroupReader.startSessionPACE(documentParser.cardAccess);
           } catch (e) {
             _addLog('Retry authenticate failed: $e');
           }
@@ -511,11 +390,7 @@ class DocumentReader<DocType extends DocumentData>
     final logs = getLogs();
     final sensitiveLogs = getSensitiveLogs();
 
-    state = DocumentReaderFailed(
-      error: DocumentReadingError.unknown,
-      logs: logs,
-      sensitiveLogs: sensitiveLogs,
-    );
+    state = DocumentReaderFailed(error: DocumentReadingError.unknown, logs: logs, sensitiveLogs: sensitiveLogs);
     await nfc.disconnect();
   }
 
@@ -538,11 +413,7 @@ class DocumentReaderCancelled extends DocumentReaderState {}
 class DocumentReaderCancelling extends DocumentReaderState {}
 
 class DocumentReaderFailed extends DocumentReaderState {
-  DocumentReaderFailed({
-    required this.error,
-    required this.logs,
-    required this.sensitiveLogs,
-  });
+  DocumentReaderFailed({required this.error, required this.logs, required this.sensitiveLogs});
 
   final String logs;
   final String sensitiveLogs;
@@ -560,10 +431,7 @@ class DocumentReaderReadingCOM extends DocumentReaderState {}
 class DocumentReaderAuthenticating extends DocumentReaderState {}
 
 class DocumentReaderReadingDataGroup extends DocumentReaderState {
-  DocumentReaderReadingDataGroup({
-    required this.dataGroup,
-    required this.progress,
-  });
+  DocumentReaderReadingDataGroup({required this.dataGroup, required this.progress});
   final String dataGroup;
   final double progress;
 }
@@ -572,13 +440,7 @@ class DocumentReaderActiveAuthentication extends DocumentReaderState {}
 
 class DocumentReaderSuccess extends DocumentReaderState {}
 
-enum DocumentReadingError {
-  unknown,
-  timeoutWaitingForTag,
-  tagLost,
-  failedToInitiateSession,
-  invalidatedByUser,
-}
+enum DocumentReadingError { unknown, timeoutWaitingForTag, tagLost, failedToInitiateSession, invalidatedByUser }
 
 double progressForState(DocumentReaderState state) {
   return switch (state) {

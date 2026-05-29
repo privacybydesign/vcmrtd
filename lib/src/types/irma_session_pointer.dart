@@ -13,8 +13,7 @@ class IrmaSessionPointer {
 
   IrmaSessionPointer({required this.u, required this.irmaqr});
 
-  factory IrmaSessionPointer.fromJson(Map<String, dynamic> json) =>
-      _$IrmaSessionPointerFromJson(json);
+  factory IrmaSessionPointer.fromJson(Map<String, dynamic> json) => _$IrmaSessionPointerFromJson(json);
   Map<String, dynamic> toJson() => _$IrmaSessionPointerToJson(this);
 
   Uri toUniversalLink() {

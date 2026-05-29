@@ -55,26 +55,16 @@ class AESCipher {
     BLOCK_CIPHER_MODE mode = BLOCK_CIPHER_MODE.CBC,
     bool padding = false,
   }) {
-    _log.finest(
-      "AESCipher.encrypt; data size: ${data.length}, data: ${data.hex()}",
-    );
-    _log.sdVerbose(
-      "AESCipher.encrypt; data:${data.hex()}, key size: ${key.length}, key: ${key.hex()}",
-    );
+    _log.finest("AESCipher.encrypt; data size: ${data.length}, data: ${data.hex()}");
+    _log.sdVerbose("AESCipher.encrypt; data:${data.hex()}, key size: ${key.length}, key: ${key.hex()}");
 
     if (key.length != size) {
-      _log.error(
-        "AESCipher.encrypt; AES${size * 8} key length must be ${size * 8} bits.",
-      );
-      throw AESCipherError(
-        "AESCipher.encrypt; AES${size * 8} key length must be ${size * 8} bits.",
-      );
+      _log.error("AESCipher.encrypt; AES${size * 8} key length must be ${size * 8} bits.");
+      throw AESCipherError("AESCipher.encrypt; AES${size * 8} key length must be ${size * 8} bits.");
     }
 
     if (iv != null) {
-      _log.sdVerbose(
-        "AESCipher.encrypt; iv size: ${iv.length}, iv: ${iv.hex()}",
-      );
+      _log.sdVerbose("AESCipher.encrypt; iv size: ${iv.length}, iv: ${iv.hex()}");
       if (iv.length != AES_BLOCK_SIZE) {
         _log.error("AESCipher.encrypt; iv length is not 128 bits.");
         throw AESCipherError("AESCipher.encrypt; iv length is not 128 bits.");
@@ -86,10 +76,7 @@ class AESCipher {
     final Uint8List paddedData;
     if (padding) {
       _log.finest("Padding data with zeros to block size: $AES_BLOCK_SIZE");
-      paddedData = pad(
-        data: data,
-        blockSize: AES_BLOCK_SIZE,
-      ); //AES has no padding
+      paddedData = pad(data: data, blockSize: AES_BLOCK_SIZE); //AES has no padding
     } else {
       _log.finest("Data will not be padded.");
       paddedData = data;
@@ -119,26 +106,16 @@ class AESCipher {
     Uint8List? iv,
     BLOCK_CIPHER_MODE mode = BLOCK_CIPHER_MODE.CBC,
   }) {
-    _log.finest(
-      "AESCipher.decrypt; data size: ${data.length}, data: ${data.hex()}",
-    );
-    _log.sdVerbose(
-      "AESCipher.decrypt; data: ${data.hex()}, key size: ${key.length}, key: ${key.hex()}",
-    );
+    _log.finest("AESCipher.decrypt; data size: ${data.length}, data: ${data.hex()}");
+    _log.sdVerbose("AESCipher.decrypt; data: ${data.hex()}, key size: ${key.length}, key: ${key.hex()}");
 
     if (key.length != size) {
-      _log.error(
-        "AESCipher.decrypt; AES${size * 8} key length must be ${size * 8} bits.",
-      );
-      throw AESCipherError(
-        "AESCipher.decrypt; AES${size * 8} key length must be ${size * 8} bits.",
-      );
+      _log.error("AESCipher.decrypt; AES${size * 8} key length must be ${size * 8} bits.");
+      throw AESCipherError("AESCipher.decrypt; AES${size * 8} key length must be ${size * 8} bits.");
     }
 
     if (iv != null) {
-      _log.sdVerbose(
-        "AESCipher.decrypt; iv size: ${iv.length}, iv: ${iv.hex()}",
-      );
+      _log.sdVerbose("AESCipher.decrypt; iv size: ${iv.length}, iv: ${iv.hex()}");
       if (iv.length != AES_BLOCK_SIZE) {
         _log.error("AESCipher.encrypt; iv length is not 128 bits.");
         throw AESCipherError("AESCipher.encrypt; iv length is not 128 bits.");
@@ -162,15 +139,10 @@ class AESCipher {
           KeyParameter(key),
         ); // NOSONAR - ECB used for single-block operations only (e.g. IV computation per ICAO 9303 §4.4.3.5)
     }
-    return Uint8List.fromList(
-      _processBlocks(cipher: cipher, data: data).toList(),
-    );
+    return Uint8List.fromList(_processBlocks(cipher: cipher, data: data).toList());
   }
 
-  Uint8List _processBlocks({
-    required BlockCipher cipher,
-    required Uint8List data,
-  }) {
+  Uint8List _processBlocks({required BlockCipher cipher, required Uint8List data}) {
     _log.finest("AESCipher._processBlocks; data size: ${data.length}");
     _log.sdVerbose("AESCipher._processBlocks; data: ${data.hex()}");
     final output = Uint8List(data.length);
@@ -193,8 +165,7 @@ class AESCipher {
 
   Uint8List calculateCMAC({required Uint8List data, required Uint8List key}) {
     // AES has no padding for CMAC
-    final cmac = CMac(BlockCipher('AES'), 64)
-      ..init(KeyParameter(key)); //cmac mac size is fixed 64 bits
+    final cmac = CMac(BlockCipher('AES'), 64)..init(KeyParameter(key)); //cmac mac size is fixed 64 bits
     return cmac.process(data);
   }
 }

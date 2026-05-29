@@ -17,30 +17,20 @@ class AES_SMCipher implements SMCipher {
   Uint8List KSmac;
   AESCipher cipher;
 
-  AES_SMCipher(this.KSenc, this.KSmac, {required KEY_LENGTH size})
-    : cipher = AESCipher(size: size);
+  AES_SMCipher(this.KSenc, this.KSmac, {required KEY_LENGTH size}) : cipher = AESCipher(size: size);
 
   @override
   CipherAlgorithm get cipherAlgorithm => type;
 
   @override
   Uint8List encrypt(Uint8List data, {SSC? ssc}) {
-    _log.debug(
-      "encrypt: data size: ${data.length}, ssc: ${ssc?.toBytes().hex()}",
-    );
+    _log.debug("encrypt: data size: ${data.length}, ssc: ${ssc?.toBytes().hex()}");
     _log.sdVerbose("encrypt: data: ${data.hex()}, KSenc: ${KSenc.hex()}");
-    if (ssc == null)
-      throw Exception("PACE_SMCipher_AES.encrypt: SSC should not be null");
+    if (ssc == null) throw Exception("PACE_SMCipher_AES.encrypt: SSC should not be null");
 
     //IV = E(KSenc, SCC)
-    _log.sdDebug(
-      "Encrypting IV with KSenc: ${KSenc.hex()}, ssc: ${ssc.toBytes().hex()}",
-    );
-    Uint8List iv = cipher.encrypt(
-      data: ssc.toBytes(),
-      key: KSenc,
-      mode: BLOCK_CIPHER_MODE.ECB,
-    );
+    _log.sdDebug("Encrypting IV with KSenc: ${KSenc.hex()}, ssc: ${ssc.toBytes().hex()}");
+    Uint8List iv = cipher.encrypt(data: ssc.toBytes(), key: KSenc, mode: BLOCK_CIPHER_MODE.ECB);
 
     _log.sdVerbose("Encrypted IV: ${iv.hex()}");
 
@@ -53,19 +43,12 @@ class AES_SMCipher implements SMCipher {
 
   @override
   Uint8List decrypt(Uint8List data, {SSC? ssc}) {
-    _log.debug(
-      "decrypt: data size: ${data.length}, ssc: ${ssc?.toBytes().hex()}",
-    );
+    _log.debug("decrypt: data size: ${data.length}, ssc: ${ssc?.toBytes().hex()}");
     _log.sdVerbose("decrypt: data: $data, KSenc: ${KSenc.hex()}");
-    if (ssc == null)
-      throw Exception("PACE_SMCipher_AES.decrypt: SSC should not be null");
+    if (ssc == null) throw Exception("PACE_SMCipher_AES.decrypt: SSC should not be null");
 
     //IV = E(KSenc, SCC)
-    Uint8List iv = cipher.encrypt(
-      data: ssc.toBytes(),
-      key: KSenc,
-      mode: BLOCK_CIPHER_MODE.ECB,
-    );
+    Uint8List iv = cipher.encrypt(data: ssc.toBytes(), key: KSenc, mode: BLOCK_CIPHER_MODE.ECB);
     _log.sdVerbose("IV: ${iv.hex()}");
     Uint8List decrypted = cipher.decrypt(data: data, key: KSenc, iv: iv);
     _log.sdVerbose("Decrypted data: ${decrypted.hex()}");

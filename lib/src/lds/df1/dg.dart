@@ -27,9 +27,7 @@ abstract class DataGroup extends ElementaryFile {
   void parse(Uint8List content) {
     final tlv = TLV.fromBytes(content);
     if (tlv.tag != tag) {
-      throw EfParseError(
-        "Invalid tag=${tlv.tag.hex()}, expected tag=${tag.hex()}",
-      );
+      throw EfParseError("Invalid tag=${tlv.tag.hex()}, expected tag=${tag.hex()}");
     }
     parseContent(tlv.value);
   }

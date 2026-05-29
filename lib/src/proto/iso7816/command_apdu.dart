@@ -41,11 +41,7 @@ class CommandAPDU {
     if (cla >= 0 && cla <= 0xff) {
       _cla = cla;
     } else {
-      throw ArgumentError.value(
-        cla,
-        "cla",
-        "Command APDU invalid parameter value",
-      );
+      throw ArgumentError.value(cla, "cla", "Command APDU invalid parameter value");
     }
   }
 
@@ -54,11 +50,7 @@ class CommandAPDU {
     if (ins >= 0 && ins <= 0xff) {
       _ins = ins;
     } else {
-      throw ArgumentError.value(
-        ins,
-        "ins",
-        "Command APDU invalid parameter value",
-      );
+      throw ArgumentError.value(ins, "ins", "Command APDU invalid parameter value");
     }
   }
 
@@ -67,11 +59,7 @@ class CommandAPDU {
     if (p1 >= 0 && p1 <= 0xff) {
       _p1 = p1;
     } else {
-      throw ArgumentError.value(
-        p1,
-        "p1",
-        "Command APDU invalid parameter value",
-      );
+      throw ArgumentError.value(p1, "p1", "Command APDU invalid parameter value");
     }
   }
 
@@ -80,22 +68,14 @@ class CommandAPDU {
     if (p2 >= 0 && p2 <= 0xff) {
       _p2 = p2;
     } else {
-      throw ArgumentError.value(
-        p2,
-        "p2",
-        "Command APDU invalid parameter value",
-      );
+      throw ArgumentError.value(p2, "p2", "Command APDU invalid parameter value");
     }
   }
 
   Uint8List? get data => _data;
   set data(Uint8List? data) {
     if (data != null && data.length > 0xffff) {
-      throw ArgumentError.value(
-        data,
-        "data",
-        "Command APDU invalid parameter value",
-      );
+      throw ArgumentError.value(data, "data", "Command APDU invalid parameter value");
     }
     _data = data;
   }
@@ -105,11 +85,7 @@ class CommandAPDU {
     if (ne >= 0 && ne <= 65536) {
       _ne = ne;
     } else {
-      throw ArgumentError.value(
-        ne,
-        "ne",
-        "Command APDU invalid parameter value",
-      );
+      throw ArgumentError.value(ne, "ne", "Command APDU invalid parameter value");
     }
   }
 
@@ -143,17 +119,10 @@ class CommandAPDU {
     final lev = ByteData.view(le.buffer);
     if (!extended) {
       // case 2s or 4s
-      lev.setUint8(
-        0,
-        ne == 256 ? 0 : ne,
-      ); // 256 is encoded as 0x00 e.g. variable long
+      lev.setUint8(0, ne == 256 ? 0 : ne); // 256 is encoded as 0x00 e.g. variable long
     } else {
       // extended, case 2e or 4e
-      lev.setUint16(
-        addByte,
-        (ne == 256 || ne == 65536) ? 0 : ne,
-        Endian.big,
-      ); // 256 and 65536 are encoded as 0x00 0x00
+      lev.setUint16(addByte, (ne == 256 || ne == 65536) ? 0 : ne, Endian.big); // 256 and 65536 are encoded as 0x00 0x00
     }
     return le;
   }

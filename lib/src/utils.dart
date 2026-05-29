@@ -3,14 +3,8 @@ import 'dart:math';
 import 'dart:typed_data';
 
 class Utils {
-  static const bool isProfileMode = bool.fromEnvironment(
-    'dart.vm.profile',
-    defaultValue: false,
-  );
-  static const bool isReleaseMode = bool.fromEnvironment(
-    'dart.vm.product',
-    defaultValue: false,
-  );
+  static const bool isProfileMode = bool.fromEnvironment('dart.vm.profile', defaultValue: false);
+  static const bool isReleaseMode = bool.fromEnvironment('dart.vm.product', defaultValue: false);
   static const bool isDebugMode = !isReleaseMode && !isProfileMode;
 
   /// Returns number of bits to represent integer [n].
@@ -48,8 +42,7 @@ class Utils {
     return raw.sublist(raw.length - i >= minLen ? i : raw.length - minLen);
   }
 
-  static Uint8List bigIntToUint8List({required BigInt bigInt}) =>
-      bigIntToByteData(bigInt).buffer.asUint8List();
+  static Uint8List bigIntToUint8List({required BigInt bigInt}) => bigIntToByteData(bigInt).buffer.asUint8List();
 
   static ByteData bigIntToByteData(BigInt bigInt) {
     final data = ByteData((bigInt.bitLength / 8).ceil());
@@ -63,10 +56,7 @@ class Utils {
     return data;
   }
 
-  static BigInt uint8ListToBigInt(
-    Uint8List bytes, {
-    bool isLittleEndian = false,
-  }) {
+  static BigInt uint8ListToBigInt(Uint8List bytes, {bool isLittleEndian = false}) {
     BigInt result = BigInt.zero;
     for (int i = 0; i < bytes.length; i++) {
       int power = isLittleEndian ? i : (bytes.length - i - 1);

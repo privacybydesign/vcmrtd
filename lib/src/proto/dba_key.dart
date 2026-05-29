@@ -50,12 +50,7 @@ class DBAKey extends PaceKey implements BacKey {
 
   /// Constructs [DBAKey] using passport number [mrtdNumber],
   /// passport owner's [dateOfBirth] and passport [dateOfExpiry].
-  DBAKey(
-    String mrtdNumber,
-    DateTime dateOfBirth,
-    DateTime dateOfExpiry, {
-    bool paceMode = false,
-  }) {
+  DBAKey(String mrtdNumber, DateTime dateOfBirth, DateTime dateOfExpiry, {bool paceMode = false}) {
     _mrtdNum = mrtdNumber;
     _dob = dateOfBirth.formatYYMMDD();
     _doe = dateOfExpiry.formatYYMMDD();
@@ -89,21 +84,14 @@ class DBAKey extends PaceKey implements BacKey {
 
     if (cipherAlgorithm == CipherAlgorithm.DESede) {
       return DeriveKey.desEDE(keySeed, paceMode: true);
-    } else if (cipherAlgorithm == CipherAlgorithm.AES &&
-        keyLength == KEY_LENGTH.s128) {
+    } else if (cipherAlgorithm == CipherAlgorithm.AES && keyLength == KEY_LENGTH.s128) {
       return DeriveKey.aes128(keySeed, paceMode: true);
-    } else if (cipherAlgorithm == CipherAlgorithm.AES &&
-        keyLength == KEY_LENGTH.s192) {
+    } else if (cipherAlgorithm == CipherAlgorithm.AES && keyLength == KEY_LENGTH.s192) {
       return DeriveKey.aes192(keySeed, paceMode: true);
-    } else if (cipherAlgorithm == CipherAlgorithm.AES &&
-        keyLength == KEY_LENGTH.s256) {
+    } else if (cipherAlgorithm == CipherAlgorithm.AES && keyLength == KEY_LENGTH.s256) {
       return DeriveKey.aes256(keySeed, paceMode: true);
     } else {
-      throw ArgumentError.value(
-        cipherAlgorithm,
-        null,
-        "CanKeys; Unsupported cipher algorithm",
-      );
+      throw ArgumentError.value(cipherAlgorithm, null, "CanKeys; Unsupported cipher algorithm");
     }
   }
 
@@ -136,9 +124,7 @@ class DBAKey extends PaceKey implements BacKey {
   /// Very sensitive data. Do not use in production!
   @override
   String toString() {
-    _log.warning(
-      "DBAKeys.toString() called. This is very sensitive data. Do not use in production!",
-    );
+    _log.warning("DBAKeys.toString() called. This is very sensitive data. Do not use in production!");
     return "DBAKeys{mrtdNumber: $_mrtdNum, dateOfBirth: $_dob, dateOfExpiry: $_doe}. "
         "Is paceMode: ${seedLen == SEED_LEN_PACE}, "
         "Key seed: ${keySeed.hex()}, "

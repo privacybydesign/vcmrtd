@@ -12,10 +12,8 @@ class ISO9797 {
   static final _log = Logger("ISO9797");
 
   static const int macAlg3_DigestLen = DESCipher.blockSize;
-  static const int macAlg3_Key1Len =
-      16; // First possible Alg3 MAC key len is 16 bytes.
-  static const int macAlg3_Key2Len =
-      24; // Second possible Alg3 MAC key len is 16 bytes.
+  static const int macAlg3_Key1Len = 16; // First possible Alg3 MAC key len is 16 bytes.
+  static const int macAlg3_Key2Len = 24; // Second possible Alg3 MAC key len is 16 bytes.
 
   /// Function returns CMAC result according to ISO9797-1 Algorithm 3 scheme
   /// using DES encryption algorithm.

@@ -174,53 +174,21 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
                 sensitive: hex,
               );
             case _HOLDER_SURNAME_TAG:
-              holderSurname = _withContext(
-                "Parsing holder surname",
-                () => latin1.decode(value),
-                sensitive: hex,
-              );
+              holderSurname = _withContext("Parsing holder surname", () => latin1.decode(value), sensitive: hex);
             case _HOLDER_OTHER_NAME_TAG:
-              holderOtherName = _withContext(
-                "Parsing holder other name",
-                () => latin1.decode(value),
-                sensitive: hex,
-              );
+              holderOtherName = _withContext("Parsing holder other name", () => latin1.decode(value), sensitive: hex);
             case _DATE_OF_BIRTH_TAG:
-              dateOfBirth = _withContext(
-                "Parsing date of birth",
-                () => _decodeBcd(value),
-                sensitive: hex,
-              );
+              dateOfBirth = _withContext("Parsing date of birth", () => _decodeBcd(value), sensitive: hex);
             case _PLACE_OF_BIRTH_TAG:
-              placeOfBirth = _withContext(
-                "Parsing place of birth",
-                () => latin1.decode(value),
-                sensitive: hex,
-              );
+              placeOfBirth = _withContext("Parsing place of birth", () => latin1.decode(value), sensitive: hex);
             case _DATE_OF_ISSUE_TAG:
-              dateOfIssue = _withContext(
-                "Parsing date of issue",
-                () => _decodeBcd(value),
-                sensitive: hex,
-              );
+              dateOfIssue = _withContext("Parsing date of issue", () => _decodeBcd(value), sensitive: hex);
             case _DATE_OF_EXPIRY_TAG:
-              dateOfExpiry = _withContext(
-                "Parsing date of expiry",
-                () => _decodeBcd(value),
-                sensitive: hex,
-              );
+              dateOfExpiry = _withContext("Parsing date of expiry", () => _decodeBcd(value), sensitive: hex);
             case _ISSUING_AUTHORITY_TAG:
-              issuingAuthority = _withContext(
-                "Parsing issuing authority",
-                () => latin1.decode(value),
-                sensitive: hex,
-              );
+              issuingAuthority = _withContext("Parsing issuing authority", () => latin1.decode(value), sensitive: hex);
             case _DOCUMENT_NUMBER_TAG:
-              documentNumber = _withContext(
-                "Parsing document number",
-                () => latin1.decode(value),
-                sensitive: hex,
-              );
+              documentNumber = _withContext("Parsing document number", () => latin1.decode(value), sensitive: hex);
           }
 
           fieldOffset += fieldTlv.encodedLen;
@@ -255,18 +223,11 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
   }
 
   /// Runs the provided function and wraps the exception thrown by it with some extra context
-  T _withContext<T>(
-    String context,
-    T Function() toExecute, {
-    String? sensitive,
-  }) {
+  T _withContext<T>(String context, T Function() toExecute, {String? sensitive}) {
     try {
       return toExecute();
     } catch (e) {
-      throw SensitiveException(
-        nonSensitive: "Error in context: $context:\n$e",
-        sensitive: sensitive,
-      );
+      throw SensitiveException(nonSensitive: "Error in context: $context:\n$e", sensitive: sensitive);
     }
   }
 
@@ -291,23 +252,15 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
 
         // Issue date: 4 bytes after first semicolon (DD MM YY YY in BCD/hex)
         if (bytes.length >= firstSemicolon + 5) {
-          final issueDay = bytes[firstSemicolon + 1]
-              .toRadixString(16)
-              .padLeft(2, '0');
-          final issueMonth = bytes[firstSemicolon + 2]
-              .toRadixString(16)
-              .padLeft(2, '0');
+          final issueDay = bytes[firstSemicolon + 1].toRadixString(16).padLeft(2, '0');
+          final issueMonth = bytes[firstSemicolon + 2].toRadixString(16).padLeft(2, '0');
           final issueYear =
               '${bytes[firstSemicolon + 3].toRadixString(16).padLeft(2, '0')}${bytes[firstSemicolon + 4].toRadixString(16).padLeft(2, '0')}';
 
           // Expiry date: 4 bytes after second semicolon
           if (bytes.length >= firstSemicolon + 10) {
-            final expiryDay = bytes[firstSemicolon + 6]
-                .toRadixString(16)
-                .padLeft(2, '0');
-            final expiryMonth = bytes[firstSemicolon + 7]
-                .toRadixString(16)
-                .padLeft(2, '0');
+            final expiryDay = bytes[firstSemicolon + 6].toRadixString(16).padLeft(2, '0');
+            final expiryMonth = bytes[firstSemicolon + 7].toRadixString(16).padLeft(2, '0');
             final expiryYear =
                 '${bytes[firstSemicolon + 8].toRadixString(16).padLeft(2, '0')}${bytes[firstSemicolon + 9].toRadixString(16).padLeft(2, '0')}';
 
@@ -364,9 +317,7 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
       switch (innerTlv.tag.value) {
         case _SIGNATURE_IMAGE_FORMAT_TAG:
           final formatByte = innerTlv.value[0];
-          signatureImageType = formatByte == 0x03
-              ? ImageType.jpeg
-              : ImageType.jpeg2000;
+          signatureImageType = formatByte == 0x03 ? ImageType.jpeg : ImageType.jpeg2000;
 
         case _SIGNATURE_IMAGE_DATA_TAG:
           signatureImageData = innerTlv.value;
@@ -376,10 +327,7 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
     }
 
     if (signatureImageData != null && signatureImageType != null) {
-      _dg5 = DrivingLicenceEfDG5(
-        imageData: signatureImageData,
-        imageType: signatureImageType,
-      );
+      _dg5 = DrivingLicenceEfDG5(imageData: signatureImageData, imageType: signatureImageType);
     } else {
       throw Exception("Something went wrong with EDL DG5 parsing");
     }
@@ -430,11 +378,7 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
     final reader = ByteReader(bytes);
 
     // Verify "FAC\0" header
-    if (!reader.hasRemaining(4) ||
-        bytes[0] != 0x46 ||
-        bytes[1] != 0x41 ||
-        bytes[2] != 0x43 ||
-        bytes[3] != 0x00) {
+    if (!reader.hasRemaining(4) || bytes[0] != 0x46 || bytes[1] != 0x41 || bytes[2] != 0x43 || bytes[3] != 0x00) {
       _dg6 = DrivingLicenceEfDG6(imageData: bytes, imageType: null);
       return;
     }
@@ -544,10 +488,7 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
       offset += tlv.encodedLen;
     }
 
-    _dg12 = DrivingLicenceEfDG12(
-      bapInputString: bapInputString ?? '',
-      saiType: saiType ?? '',
-    );
+    _dg12 = DrivingLicenceEfDG12(bapInputString: bapInputString ?? '', saiType: saiType ?? '');
   }
 
   @override
@@ -557,9 +498,7 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
     // Unwrap outer 0x6F tag
     final outerTlv = TLV.fromBytes(bytes);
 
-    _dg13 = DrivingLicenceEfDG13(
-      aaPublicKey: AAPublicKey.fromBytes(outerTlv.value),
-    );
+    _dg13 = DrivingLicenceEfDG13(aaPublicKey: AAPublicKey.fromBytes(outerTlv.value));
   }
 
   @override
@@ -569,15 +508,11 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
 
   @override
   void parseDG15(Uint8List bytes) {
-    throw UnimplementedError(
-      "Data Group 15 doesn't exist for Driving Licences",
-    );
+    throw UnimplementedError("Data Group 15 doesn't exist for Driving Licences");
   }
 
   @override
   void parseDG16(Uint8List bytes) {
-    throw UnimplementedError(
-      "Data Group 16 doesn't exist for Driving Licences",
-    );
+    throw UnimplementedError("Data Group 16 doesn't exist for Driving Licences");
   }
 }

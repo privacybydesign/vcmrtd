@@ -9,11 +9,7 @@ class DrivingLicenceCategory {
   final String dateOfIssue; // DD/MM/YYY Format
   final String dateOfExpiry;
 
-  DrivingLicenceCategory({
-    required this.category,
-    required this.dateOfIssue,
-    required this.dateOfExpiry,
-  });
+  DrivingLicenceCategory({required this.category, required this.dateOfIssue, required this.dateOfExpiry});
 }
 
 class DrivingLicenceEfDG1 {

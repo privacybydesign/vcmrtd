@@ -134,16 +134,12 @@ class PassportParser extends DocumentParser<PassportData> {
     final tlv = TLV.fromBytes(bytes);
 
     if (tlv.tag != PassportEfDG1.TAG.value) {
-      throw EfParseError(
-        "Invalid tag=${tlv.tag.hex()}, expected tag=${PassportEfDG1.TAG.value.hex()}",
-      );
+      throw EfParseError("Invalid tag=${tlv.tag.hex()}, expected tag=${PassportEfDG1.TAG.value.hex()}");
     }
 
     final mrzTlv = TLV.fromBytes(tlv.value);
     if (mrzTlv.tag != 0x5F1F) {
-      throw EfParseError(
-        "Invalid MRZ tag=${mrzTlv.tag.hex()}, expected tag=5F1F",
-      );
+      throw EfParseError("Invalid MRZ tag=${mrzTlv.tag.hex()}, expected tag=5F1F");
     }
 
     final mrz = PassportMRZ(mrzTlv.value);
@@ -156,9 +152,7 @@ class PassportParser extends DocumentParser<PassportData> {
   void parseDG2(Uint8List bytes) {
     final tlv = TLV.fromBytes(bytes);
     if (tlv.tag != PassportEfDG2.TAG.value) {
-      throw EfParseError(
-        "Invalid DG2 tag=${tlv.tag.hex()}, expected tag=${PassportEfDG2.TAG.value.hex()}",
-      );
+      throw EfParseError("Invalid DG2 tag=${tlv.tag.hex()}, expected tag=${PassportEfDG2.TAG.value.hex()}");
     }
 
     final data = tlv.value;
@@ -229,13 +223,8 @@ class PassportParser extends DocumentParser<PassportData> {
       throw EfParseError("Biometric data block too short");
     }
     final header = br.readBytes(4);
-    if (header[0] != 0x46 ||
-        header[1] != 0x41 ||
-        header[2] != 0x43 ||
-        header[3] != 0x00) {
-      throw EfParseError(
-        "Biometric data block invalid (missing FAC\\0 header)",
-      );
+    if (header[0] != 0x46 || header[1] != 0x41 || header[2] != 0x43 || header[3] != 0x00) {
+      throw EfParseError("Biometric data block invalid (missing FAC\\0 header)");
     }
     final versionNumber = br.readInt(4);
     if (versionNumber != 0x30313000) {
@@ -310,9 +299,7 @@ class PassportParser extends DocumentParser<PassportData> {
   void parseDG11(Uint8List bytes) {
     final tlv = TLV.fromBytes(bytes);
     if (tlv.tag != PassportEfDG11.TAG.value) {
-      throw EfParseError(
-        "Invalid DG11 tag=${tlv.tag.hex()}, expected tag=${PassportEfDG11.TAG.value.hex()}",
-      );
+      throw EfParseError("Invalid DG11 tag=${tlv.tag.hex()}, expected tag=${PassportEfDG11.TAG.value.hex()}");
     }
     final data = tlv.value;
     final tagListTag = TLV.decode(data);
@@ -406,9 +393,7 @@ class PassportParser extends DocumentParser<PassportData> {
   void parseDG12(Uint8List bytes) {
     final tlv = TLV.fromBytes(bytes);
     if (tlv.tag != PassportEfDG12.TAG.value) {
-      throw EfParseError(
-        "Invalid DG12 tag=${tlv.tag.hex()}, expected tag=${PassportEfDG12.TAG.value.hex()}",
-      );
+      throw EfParseError("Invalid DG12 tag=${tlv.tag.hex()}, expected tag=${PassportEfDG12.TAG.value.hex()}");
     }
     final data = tlv.value;
     final tagListTag = TLV.decode(data);
@@ -440,10 +425,7 @@ class PassportParser extends DocumentParser<PassportData> {
           break;
       }
     }
-    _dg12 = PassportEfDG12(
-      issuingAuthority: issuingAuthority,
-      dateOfIssue: dateOfIssue,
-    );
+    _dg12 = PassportEfDG12(issuingAuthority: issuingAuthority, dateOfIssue: dateOfIssue);
   }
 
   @override
@@ -455,9 +437,7 @@ class PassportParser extends DocumentParser<PassportData> {
   void parseDG15(Uint8List bytes) {
     final tlv = TLV.fromBytes(bytes);
     if (tlv.tag != PassportEfDG15.TAG.value) {
-      throw EfParseError(
-        "Invalid DG15 tag=${tlv.tag.hex()}, expected tag=${PassportEfDG15.TAG.value.hex()}",
-      );
+      throw EfParseError("Invalid DG15 tag=${tlv.tag.hex()}, expected tag=${PassportEfDG15.TAG.value.hex()}");
     }
     try {
       final pubkey = AAPublicKey.fromBytes(tlv.value);

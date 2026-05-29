@@ -36,25 +36,19 @@ class AAPublicKey {
     final tvPubKeyInfo = TLV.decode(encPubKey);
     if (tvPubKeyInfo.tag.value != 0x30) {
       // Sequence
-      throw Exception(
-        "Invalid SubjectPublicKeyInfo tag=${tvPubKeyInfo.tag.value.hex()}, expected tag=30",
-      );
+      throw Exception("Invalid SubjectPublicKeyInfo tag=${tvPubKeyInfo.tag.value.hex()}, expected tag=30");
     }
 
     final tvAlg = TLV.decode(tvPubKeyInfo.value);
     if (tvAlg.tag.value != 0x30) {
       // Sequence
-      throw Exception(
-        "Invalid AlgorithmIdentifier tag=${tvAlg.tag.value.hex()}, expected tag=30",
-      );
+      throw Exception("Invalid AlgorithmIdentifier tag=${tvAlg.tag.value.hex()}, expected tag=30");
     }
 
     final tvAlgOID = TLV.decode(tvAlg.value);
     if (tvAlgOID.tag.value != 0x06) {
       // OID
-      throw Exception(
-        "Invalid Algorithm OID object tag=${tvAlgOID.tag.value.hex()}, expected tag=06",
-      );
+      throw Exception("Invalid Algorithm OID object tag=${tvAlgOID.tag.value.hex()}, expected tag=06");
     }
 
     final rsaOID = "2A864886F70D010101".parseHex();
@@ -65,9 +59,7 @@ class AAPublicKey {
     _subPubKeyBytes = tvPubKeyInfo.value.sublist(tvAlg.encodedLen);
     if (_subPubKeyBytes[0] != 0x03) {
       // Bit String
-      throw Exception(
-        "Invalid SubjectPublicKey object tag=${_subPubKeyBytes[0].hex()}, expected tag=03",
-      );
+      throw Exception("Invalid SubjectPublicKey object tag=${_subPubKeyBytes[0].hex()}, expected tag=03");
     }
   }
 }

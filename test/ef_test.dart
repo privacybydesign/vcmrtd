@@ -15,8 +15,7 @@ void main() {
     //  Test vectors from Appendix A to the part 10 of ICAO 9393 p10 doc
     // A.1 - test case 1
     {
-      final tvEfCom = "60165F0104303130375F36063034303030305C046175766C"
-          .parseHex();
+      final tvEfCom = "60165F0104303130375F36063034303030305C046175766C".parseHex();
       final efCom = EfCOM.fromBytes(tvEfCom);
 
       expect(efCom.toBytes(), tvEfCom);
@@ -31,8 +30,7 @@ void main() {
 
     // A.1 - test case 2
     {
-      final tvEfCom = "60165F0104313539395F36063034303030305C046175766C"
-          .parseHex();
+      final tvEfCom = "60165F0104313539395F36063034303030305C046175766C".parseHex();
       final efCom = EfCOM.fromBytes(tvEfCom);
 
       expect(efCom.toBytes(), tvEfCom);
@@ -142,17 +140,8 @@ void main() {
     }
 
     // Fuzz testing
-    expect(
-      () => pParser.parseDG1(Uint8List(0)),
-      throwsTLVError(message: "Can't decode empty encodedTag"),
-    );
-    expect(
-      () => pParser.parseDG1("00".parseHex()),
-      throwsTLVError(message: "Can't decode empty encodedLength"),
-    );
-    expect(
-      () => pParser.parseDG1("1C00".parseHex()),
-      throwsEfParseError(message: "Invalid tag=1C, expected tag=61"),
-    );
+    expect(() => pParser.parseDG1(Uint8List(0)), throwsTLVError(message: "Can't decode empty encodedTag"));
+    expect(() => pParser.parseDG1("00".parseHex()), throwsTLVError(message: "Can't decode empty encodedLength"));
+    expect(() => pParser.parseDG1("1C00".parseHex()), throwsEfParseError(message: "Invalid tag=1C, expected tag=61"));
   });
 }
