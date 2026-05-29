@@ -87,9 +87,10 @@ class ActiveLivenessService {
   static const double earWeight = 0.3;
   static const double blendWeight = 0.7;
   // Relative blink: how much the fused eye-close score must rise above the person's own baseline.
-  static const double blinkRelativeClosedDelta = 0.28;
+  // Lowered 0.28 → 0.20: fast blinks are often captured mid-closure (not at peak),
+  // so a lower threshold catches the partial-closure frames the camera actually sees.
+  static const double blinkRelativeClosedDelta = 0.20;
   static const double blinkRelativeOpenDelta = 0.10;
-  static const int minClosedFrames = 1;
 
   static final double mouthOpenThreshold = FaceVerificationTuning.mouthOpenThreshold;
   static const double jawOpenRelativeDelta = 0.15;
@@ -334,14 +335,18 @@ class ActiveLivenessService {
   // This makes detection work regardless of natural eye shape — narrow eyes, thick eyelids, glasses, etc.
   // If no alignment baseline was captured (e.g., timeout), the first few frames self-calibrate.
   bool _detectBlink(FaceObservation face, List<NormalizedLandmark> lm) {
-    final avgEar = (_ear(lm, true) + _ear(lm, false)) / 2.0;
-    final bL = _blend(face, 'eyeBlinkLeft').clamp(0.0, 1.0);
-    final bR = _blend(face, 'eyeBlinkRight').clamp(0.0, 1.0);
-    final blend = (bL + bR) / 2.0;
+    // Compute a fused eye-close score per eye, then take the STRONGER one.
+    // Averaging both eyes flattens the signal for fast or asymmetric blinks —
+    // one eye may show significantly more closure than the other.
+    double _eyeFused(double ear, double blend) {
+      final earScore = 1.0 - (ear / earOpenThreshold).clamp(0.0, 1.0);
+      final blendScore = (blend / blendEyeClosedThreshold).clamp(0.0, 1.0);
+      return earWeight * earScore + blendWeight * blendScore;
+    }
 
-    final earScore = 1.0 - (avgEar / earOpenThreshold).clamp(0.0, 1.0);
-    final blendScore = (blend / blendEyeClosedThreshold).clamp(0.0, 1.0);
-    final fused = earWeight * earScore + blendWeight * blendScore;
+    final fusedL = _eyeFused(_ear(lm, true), _blend(face, 'eyeBlinkLeft').clamp(0.0, 1.0));
+    final fusedR = _eyeFused(_ear(lm, false), _blend(face, 'eyeBlinkRight').clamp(0.0, 1.0));
+    final fused = math.max(fusedL, fusedR);
 
     if (_eyeOpenBaseline == null) {
       _eyeBaselineAccumulator.add(face);
@@ -355,22 +360,20 @@ class ActiveLivenessService {
 
     switch (_blinkPhase) {
       case _BlinkPhase.open:
+        // A single frame above the closed threshold is enough to enter the closed
+        // state — fast blinks peak for only 1 frame at 30 fps and were previously
+        // reset on frame 2 by the old 'closing' intermediate step.
         if (closed) {
           _blinkClosedFrames = 1;
-          _blinkPhase = _BlinkPhase.closing;
-        }
-      case _BlinkPhase.closing:
-        if (closed) {
-          _blinkClosedFrames++;
-          if (_blinkClosedFrames >= minClosedFrames) {
-            _blinkPhase = _BlinkPhase.closed;
-          }
-        } else {
-          _blinkClosedFrames = 0;
-          _blinkPhase = _BlinkPhase.open;
+          _blinkPhase = _BlinkPhase.closed;
         }
       case _BlinkPhase.closed:
-        if (open) _blinkPhase = _BlinkPhase.detected;
+        if (closed) {
+          _blinkClosedFrames++;
+        } else if (open) {
+          _blinkPhase = _BlinkPhase.detected;
+        }
+        // In the range between open and closed thresholds: stay in closed and wait.
       case _BlinkPhase.detected:
         break;
     }
@@ -514,7 +517,7 @@ double _landmarkDist(NormalizedLandmark a, NormalizedLandmark b) {
   return math.sqrt(dx * dx + dy * dy);
 }
 
-enum _BlinkPhase { open, closing, closed, detected }
+enum _BlinkPhase { open, closed, detected }
 
 class _BaselineAccumulator {
   final List<double> _yawMatrix = <double>[];
@@ -556,13 +559,17 @@ class _BaselineAccumulator {
           .clamp(0.0, 1.0),
     );
     // Eye-close fused score at rest — baseline for relative blink detection.
-    final avgEar = (_computeEar(lm, true) + _computeEar(lm, false)) / 2.0;
+    // Uses max of both eyes to match the per-eye-max used during detection.
     final bL = (face.blendshapeScores['eyeBlinkLeft'] ?? 0.0).clamp(0.0, 1.0);
     final bR = (face.blendshapeScores['eyeBlinkRight'] ?? 0.0).clamp(0.0, 1.0);
-    final avgBlend = (bL + bR) / 2.0;
-    final earScore = 1.0 - (avgEar / ActiveLivenessService.earOpenThreshold).clamp(0.0, 1.0);
-    final blendScore = (avgBlend / ActiveLivenessService.blendEyeClosedThreshold).clamp(0.0, 1.0);
-    _eyeFused.add(ActiveLivenessService.earWeight * earScore + ActiveLivenessService.blendWeight * blendScore);
+    double _eyeFusedScore(double ear, double blend) {
+      final earScore = 1.0 - (ear / ActiveLivenessService.earOpenThreshold).clamp(0.0, 1.0);
+      final blendScore = (blend / ActiveLivenessService.blendEyeClosedThreshold).clamp(0.0, 1.0);
+      return ActiveLivenessService.earWeight * earScore + ActiveLivenessService.blendWeight * blendScore;
+    }
+    final fusedL = _eyeFusedScore(_computeEar(lm, true), bL);
+    final fusedR = _eyeFusedScore(_computeEar(lm, false), bR);
+    _eyeFused.add(math.max(fusedL, fusedR));
   }
 
   BaselineSnapshot computeSnapshot() {
