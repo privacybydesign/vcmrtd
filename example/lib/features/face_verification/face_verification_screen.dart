@@ -13,11 +13,7 @@ import 'package:vcmrtdapp/features/face_verification/face_verification_engine.da
 enum VerificationState { idle, activeLiveness, processing, result }
 
 class _PassiveProgress {
-  const _PassiveProgress({
-    required this.started,
-    required this.elapsedMs,
-    required this.targetMs,
-  });
+  const _PassiveProgress({required this.started, required this.elapsedMs, required this.targetMs});
 
   final bool started;
   final int elapsedMs;
@@ -613,13 +609,13 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
         child: _errorMessage != null
             ? _buildErrorScreen()
             : (_state == VerificationState.idle && !_isReady)
-                ? _buildLoadingScreen()
-                : switch (_state) {
-                    VerificationState.idle => _buildIdleScreen(),
-                    VerificationState.activeLiveness => _buildActiveLivenessScreen(),
-                    VerificationState.processing => _buildProcessingScreen(),
-                    VerificationState.result => _buildResultScreen(),
-                  },
+            ? _buildLoadingScreen()
+            : switch (_state) {
+                VerificationState.idle => _buildIdleScreen(),
+                VerificationState.activeLiveness => _buildActiveLivenessScreen(),
+                VerificationState.processing => _buildProcessingScreen(),
+                VerificationState.result => _buildResultScreen(),
+              },
       ),
     );
   }
@@ -644,10 +640,7 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
                 style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 6),
-              const Text(
-                'This only takes a moment',
-                style: TextStyle(color: Colors.white60, fontSize: 13),
-              ),
+              const Text('This only takes a moment', style: TextStyle(color: Colors.white60, fontSize: 13)),
               const SizedBox(height: 28),
               _LoadingStage(label: 'Opening camera', done: cameraReady),
               const SizedBox(height: 10),
@@ -742,20 +735,14 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
         child: SizedBox.expand(
           child: FittedBox(
             fit: BoxFit.cover,
-            child: SizedBox(
-              width: preview.height,
-              height: preview.width,
-              child: CameraPreview(ctrl),
-            ),
+            child: SizedBox(width: preview.height, height: preview.width, child: CameraPreview(ctrl)),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildOvalOverlay() => const Positioned.fill(
-    child: CustomPaint(painter: _FaceOvalPainter()),
-  );
+  Widget _buildOvalOverlay() => const Positioned.fill(child: CustomPaint(painter: _FaceOvalPainter()));
 
   Widget _buildIdleScreen() {
     final ready = _cameraController?.value.isInitialized == true && _engineReady;
@@ -791,17 +778,9 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
                 ),
               ),
               const SizedBox(height: 12),
-              _buildStartButton(
-                ready: ready,
-                mode: LivenessMode.active,
-                label: 'Start with Active Liveness',
-              ),
+              _buildStartButton(ready: ready, mode: LivenessMode.active, label: 'Start with Active Liveness'),
               const SizedBox(height: 8),
-              _buildStartButton(
-                ready: ready,
-                mode: LivenessMode.passive,
-                label: 'Start with Passive Liveness',
-              ),
+              _buildStartButton(ready: ready, mode: LivenessMode.passive, label: 'Start with Passive Liveness'),
             ],
           ),
         ),
@@ -821,7 +800,11 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
         icon: _startingLiveness
-            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              )
             : const Icon(Icons.face),
         label: Text(_startingLiveness ? 'Preparing…' : label),
       ),

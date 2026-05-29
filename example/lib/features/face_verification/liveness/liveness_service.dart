@@ -373,7 +373,7 @@ class ActiveLivenessService {
         } else if (open) {
           _blinkPhase = _BlinkPhase.detected;
         }
-        // In the range between open and closed thresholds: stay in closed and wait.
+      // In the range between open and closed thresholds: stay in closed and wait.
       case _BlinkPhase.detected:
         break;
     }
@@ -567,6 +567,7 @@ class _BaselineAccumulator {
       final blendScore = (blend / ActiveLivenessService.blendEyeClosedThreshold).clamp(0.0, 1.0);
       return ActiveLivenessService.earWeight * earScore + ActiveLivenessService.blendWeight * blendScore;
     }
+
     final fusedL = _eyeFusedScore(_computeEar(lm, true), bL);
     final fusedR = _eyeFusedScore(_computeEar(lm, false), bR);
     _eyeFused.add(math.max(fusedL, fusedR));
