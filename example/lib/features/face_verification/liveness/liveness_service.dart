@@ -332,14 +332,14 @@ class ActiveLivenessService {
     // Compute a fused eye-close score per eye, then take the STRONGER one.
     // Averaging both eyes flattens the signal for fast or asymmetric blinks —
     // one eye may show significantly more closure than the other.
-    double _eyeFused(double ear, double blend) {
+    double fuseEye(double ear, double blend) {
       final earScore = 1.0 - (ear / earOpenThreshold).clamp(0.0, 1.0);
       final blendScore = (blend / blendEyeClosedThreshold).clamp(0.0, 1.0);
       return earWeight * earScore + blendWeight * blendScore;
     }
 
-    final fusedL = _eyeFused(_ear(lm, true), _blend(face, 'eyeBlinkLeft').clamp(0.0, 1.0));
-    final fusedR = _eyeFused(_ear(lm, false), _blend(face, 'eyeBlinkRight').clamp(0.0, 1.0));
+    final fusedL = fuseEye(_ear(lm, true), _blend(face, 'eyeBlinkLeft').clamp(0.0, 1.0));
+    final fusedR = fuseEye(_ear(lm, false), _blend(face, 'eyeBlinkRight').clamp(0.0, 1.0));
     final fused = math.max(fusedL, fusedR);
 
     if (_eyeOpenBaseline == null) {
@@ -553,14 +553,14 @@ class _BaselineAccumulator {
     // Uses max of both eyes to match the per-eye-max used during detection.
     final bL = (face.blendshapeScores['eyeBlinkLeft'] ?? 0.0).clamp(0.0, 1.0);
     final bR = (face.blendshapeScores['eyeBlinkRight'] ?? 0.0).clamp(0.0, 1.0);
-    double _eyeFusedScore(double ear, double blend) {
+    double fuseEyeScore(double ear, double blend) {
       final earScore = 1.0 - (ear / ActiveLivenessService.earOpenThreshold).clamp(0.0, 1.0);
       final blendScore = (blend / ActiveLivenessService.blendEyeClosedThreshold).clamp(0.0, 1.0);
       return ActiveLivenessService.earWeight * earScore + ActiveLivenessService.blendWeight * blendScore;
     }
 
-    final fusedL = _eyeFusedScore(_computeEar(lm, true), bL);
-    final fusedR = _eyeFusedScore(_computeEar(lm, false), bR);
+    final fusedL = fuseEyeScore(_computeEar(lm, true), bL);
+    final fusedR = fuseEyeScore(_computeEar(lm, false), bR);
     _eyeFused.add(math.max(fusedL, fusedR));
   }
 

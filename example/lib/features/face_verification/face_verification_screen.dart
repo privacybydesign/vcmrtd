@@ -472,26 +472,8 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
         final tip = map['tip'] as String?;
         if (tip != _alignTip) setState(() => _alignTip = tip);
         return true;
-
       case 'passiveProgress':
-        final progress = _PassiveProgress(
-          started: (map['started'] as bool?) ?? false,
-          elapsedMs: (map['elapsedMs'] as num?)?.toInt() ?? 0,
-          targetMs: (map['targetMs'] as num?)?.toInt() ?? 5000,
-        );
-        setState(() {
-          _passive = progress;
-          _passiveAt = DateTime.now();
-        });
-        // Once the countdown has started, interpolate between frames so the
-        // timer ticks down smoothly. It runs to completion (never pauses).
-        if (progress.started) {
-          _passiveTicker ??= Timer.periodic(const Duration(milliseconds: 100), (_) {
-            if (mounted) setState(() {});
-          });
-        }
-        return true;
-
+        return _handlePassiveProgressEvent(map);
       case 'actionDetected':
         final action = map['action'] as String;
         setState(() {
@@ -500,18 +482,9 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
         });
         _scheduleActionFlashClear();
         return true;
-
       case 'nextAction':
-        if (FaceVerificationDiagnostics.enabled && !_diagSawFirstNextActionEvent) {
-          _diagSawFirstNextActionEvent = true;
-          FaceVerificationDiagnostics.log('ui received first nextAction action=${map['action']}');
-        }
-        setState(() {
-          _currentAction = map['action'] as String;
-          _alignTip = null;
-        });
+        _handleNextActionEvent(map);
         return true;
-
       case 'extraAction':
         final extra = map['action'] as String;
         setState(() {
@@ -520,41 +493,80 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
           _currentAction = extra;
         });
         return true;
-
       case 'processing':
-        _passiveTicker?.cancel();
-        _passiveTicker = null;
+        _cancelPassiveTicker();
         setState(() {
           _state = VerificationState.processing;
           _currentAction = null;
         });
         return true;
-
       case 'timeout':
-        final action = map['action'] as String?;
-        if (!mounted) return true;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Take your time - ${action != null ? faceActionLabel(action) : 'perform the action'}'),
-            duration: const Duration(seconds: 2),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        return true;
-
+        return _handleTimeoutEvent(map);
       case 'error':
-        final message = map['message']?.toString() ?? 'Unknown error';
-        _passiveTicker?.cancel();
-        _passiveTicker = null;
-        _invalidateFramePipeline();
-        setState(() {
-          _state = VerificationState.idle;
-          _currentAction = null;
-          _errorMessage = message;
-        });
-        return true;
+        return _handleErrorEvent(map);
     }
     return false;
+  }
+
+  bool _handlePassiveProgressEvent(Map<String, dynamic> map) {
+    final progress = _PassiveProgress(
+      started: (map['started'] as bool?) ?? false,
+      elapsedMs: (map['elapsedMs'] as num?)?.toInt() ?? 0,
+      targetMs: (map['targetMs'] as num?)?.toInt() ?? 5000,
+    );
+    setState(() {
+      _passive = progress;
+      _passiveAt = DateTime.now();
+    });
+    // Once the countdown has started, interpolate between frames so the
+    // timer ticks down smoothly. It runs to completion (never pauses).
+    if (progress.started) {
+      _passiveTicker ??= Timer.periodic(const Duration(milliseconds: 100), (_) {
+        if (mounted) setState(() {});
+      });
+    }
+    return true;
+  }
+
+  void _handleNextActionEvent(Map<String, dynamic> map) {
+    if (FaceVerificationDiagnostics.enabled && !_diagSawFirstNextActionEvent) {
+      _diagSawFirstNextActionEvent = true;
+      FaceVerificationDiagnostics.log('ui received first nextAction action=${map['action']}');
+    }
+    setState(() {
+      _currentAction = map['action'] as String;
+      _alignTip = null;
+    });
+  }
+
+  bool _handleTimeoutEvent(Map<String, dynamic> map) {
+    final action = map['action'] as String?;
+    if (!mounted) return true;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Take your time - ${action != null ? faceActionLabel(action) : 'perform the action'}'),
+        duration: const Duration(seconds: 2),
+        backgroundColor: Colors.orange,
+      ),
+    );
+    return true;
+  }
+
+  bool _handleErrorEvent(Map<String, dynamic> map) {
+    final message = map['message']?.toString() ?? 'Unknown error';
+    _cancelPassiveTicker();
+    _invalidateFramePipeline();
+    setState(() {
+      _state = VerificationState.idle;
+      _currentAction = null;
+      _errorMessage = message;
+    });
+    return true;
+  }
+
+  void _cancelPassiveTicker() {
+    _passiveTicker?.cancel();
+    _passiveTicker = null;
   }
 
   void _onComplete(VerificationResult result) {
@@ -605,22 +617,22 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
         title: const Text('Face Verification'),
         leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: _handleBack),
       ),
-      body: SafeArea(
-        child: _errorMessage != null
-            ? _buildErrorScreen()
-            : (_state == VerificationState.idle && !_isReady)
-            ? _buildLoadingScreen()
-            : switch (_state) {
-                VerificationState.idle => _buildIdleScreen(),
-                VerificationState.activeLiveness => _buildActiveLivenessScreen(),
-                VerificationState.processing => _buildProcessingScreen(),
-                VerificationState.result => _buildResultScreen(),
-              },
-      ),
+      body: SafeArea(child: _buildBody()),
     );
   }
 
   bool get _isReady => _engineReady && _cameraController?.value.isInitialized == true;
+
+  Widget _buildBody() {
+    if (_errorMessage != null) return _buildErrorScreen();
+    if (_state == VerificationState.idle && !_isReady) return _buildLoadingScreen();
+    return switch (_state) {
+      VerificationState.idle => _buildIdleScreen(),
+      VerificationState.activeLiveness => _buildActiveLivenessScreen(),
+      VerificationState.processing => _buildProcessingScreen(),
+      VerificationState.result => _buildResultScreen(),
+    };
+  }
 
   Widget _buildLoadingScreen() {
     final cameraReady = _cameraController?.value.isInitialized == true;

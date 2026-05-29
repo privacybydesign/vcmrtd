@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:ffi';
 import 'dart:isolate';
-import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:camera/camera.dart';
@@ -154,7 +153,7 @@ class FaceVerificationWorker {
     await Future.wait<void>([_pipeline.start(), _passive.start(), _match.start()]);
 
     // Load all model bytes asynchronously via platform channel — pure I/O, does not block UI.
-    const _assets = <String>[
+    const assets = <String>[
       'assets/face_verification/face_detector.tflite',
       'assets/face_verification/face_landmarks_detector.tflite',
       'assets/face_verification/face_blendshapes.tflite',
@@ -165,7 +164,7 @@ class FaceVerificationWorker {
       'assets/face_verification/bigsmall_3.tflite',
       'assets/face_verification/GhostFaceNet_fp32_V2.tflite',
     ];
-    final bytes = await Future.wait(_assets.map(_loadModelBytes));
+    final bytes = await Future.wait(assets.map(_loadModelBytes));
     debugPrint('[FaceVerification] Worker: all ${bytes.length} model assets loaded');
 
     // Wrap each buffer in TransferableTypedData for zero-copy transfer to worker isolates.
@@ -302,7 +301,7 @@ class FaceVerificationWorker {
       final buf = _camPool[stale['camBufIdx'] as int];
       if (buf.beginPipelineRead()) buf.endPipelineRead(handoffToPassive: false);
     }
-  }
+  } 
 
   Future<void> _runPipelinePayload(Map<String, dynamic> payload) async {
     final sessionId = payload['sessionId'] as int;
