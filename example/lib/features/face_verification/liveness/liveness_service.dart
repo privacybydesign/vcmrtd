@@ -1,5 +1,4 @@
 import 'dart:collection';
-import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
@@ -1129,20 +1128,6 @@ class _BigSmallService {
     }
     return buf;
   }
-}
-
-InterpreterOptions _makeInterpOptions(int threads, {required bool useGpu}) {
-  final opts = InterpreterOptions()..threads = threads;
-  if (useGpu && Platform.isAndroid) {
-    try {
-      opts.addDelegate(GpuDelegateV2());
-    } catch (_) {}
-  } else if (useGpu && Platform.isIOS) {
-    try {
-      opts.addDelegate(GpuDelegate());
-    } catch (_) {}
-  }
-  return opts;
 }
 
 // MiniFASNet models have TRANSPOSE ops for NCHW input — GPU delegate produces
