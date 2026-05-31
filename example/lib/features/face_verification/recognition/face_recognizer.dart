@@ -42,7 +42,7 @@ class FaceRecognizer {
     );
   }
 
-  List<double> generateEmbedding(img.Image face, {String label = 'embedding'}) {
+  List<double> generateEmbedding(img.Image face) {
     final interpreter = _interpreter;
     if (interpreter == null) {
       throw StateError('FaceRecognizer is not initialized');
@@ -60,9 +60,7 @@ class FaceRecognizer {
     final output = tfliteMakeTensor(_outputShape);
     interpreter.run(buf.buffer, output);
     final embedding = tfliteFlatFloatArray(output);
-    final normalized = _normalize(embedding.length > _embeddingSize ? embedding.sublist(0, _embeddingSize) : embedding);
-    _logEmbeddingStats(label, normalized);
-    return normalized;
+    return _normalize(embedding.length > _embeddingSize ? embedding.sublist(0, _embeddingSize) : embedding);
   }
 
   Uint8List modelInputPng(img.Image face) {
@@ -82,13 +80,7 @@ class FaceRecognizer {
     normA = math.sqrt(normA);
     normB = math.sqrt(normB);
     final rawCosine = normA > 1e-9 && normB > 1e-9 ? dot / (normA * normB) : double.nan;
-    final score = rawCosine.isNaN ? 0.0 : rawCosine.clamp(0.0, 1.0).toDouble();
-    debugPrint(
-      '[FaceVerification] Embedding compare: dot=${dot.toStringAsFixed(6)} '
-      'normA=${normA.toStringAsFixed(6)} normB=${normB.toStringAsFixed(6)} '
-      'rawCosine=${rawCosine.toStringAsFixed(6)} score=${score.toStringAsFixed(6)}',
-    );
-    return score;
+    return rawCosine.isNaN ? 0.0 : rawCosine.clamp(0.0, 1.0).toDouble();
   }
 
   List<double> _normalize(List<double> embedding) {
@@ -103,52 +95,6 @@ class FaceRecognizer {
 
   img.Image _modelInputImage(img.Image face) {
     return img.copyResize(face, width: _inputW, height: _inputH, interpolation: img.Interpolation.linear);
-  }
-
-  void _logEmbeddingStats(String label, List<double> embedding) {
-    if (embedding.isEmpty) {
-      debugPrint('[FaceVerification] $label embedding stats: len=0');
-      return;
-    }
-
-    var sq = 0.0;
-    var sum = 0.0;
-    var minVal = double.infinity;
-    var maxVal = -double.infinity;
-    var hasNaN = false;
-    var hasInf = false;
-
-    for (final v in embedding) {
-      if (v.isNaN) hasNaN = true;
-      if (v.isInfinite) hasInf = true;
-      if (v < minVal) minVal = v;
-      if (v > maxVal) maxVal = v;
-      sum += v;
-      sq += v * v;
-    }
-
-    final norm = math.sqrt(sq);
-    final mean = sum / embedding.length;
-    final first16 = embedding.take(16).map((double v) => v.isFinite ? v.toStringAsFixed(5) : v.toString()).join(', ');
-    debugPrint(
-      '[FaceVerification] $label embedding stats: len=${embedding.length} '
-      'norm=${norm.toStringAsFixed(6)} min=${minVal.toStringAsFixed(6)} '
-      'max=${maxVal.toStringAsFixed(6)} mean=${mean.toStringAsFixed(6)} '
-      'hasNaN=$hasNaN hasInf=$hasInf first16=[$first16]',
-    );
-    _logEmbeddingValues(label, embedding);
-  }
-
-  void _logEmbeddingValues(String label, List<double> embedding) {
-    const chunkSize = 64;
-    for (var start = 0; start < embedding.length; start += chunkSize) {
-      final end = math.min(start + chunkSize, embedding.length);
-      final values = embedding
-          .sublist(start, end)
-          .map((double v) => v.isFinite ? v.toStringAsFixed(8) : v.toString())
-          .join(', ');
-      debugPrint('[FaceVerification] $label embedding values[$start..${end - 1}]=[$values]');
-    }
   }
 
   Future<void> dispose() async {

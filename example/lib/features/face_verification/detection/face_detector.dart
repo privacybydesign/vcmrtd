@@ -294,9 +294,11 @@ class FaceDetectorService {
     final outBytes = Uint8List(_targetSize * _targetSize * 3);
 
     for (var y = 0; y < _targetSize; y++) {
+      // Precompute per-row values to avoid redundant work in the inner loop.
+      final diRow = y * _targetSize * 3;
+      final dy = y - t.ty;
       for (var x = 0; x < _targetSize; x++) {
         final dx = x - t.tx;
-        final dy = y - t.ty;
         final sx = (t.m11 * dx - t.m01 * dy) / det;
         final sy = (-t.m10 * dx + t.m00 * dy) / det;
         if (sx < 0 || sy < 0 || sx >= srcW || sy >= srcH) continue;
@@ -305,16 +307,28 @@ class FaceDetectorService {
         final fx = sx - x0, fy = sy - y0;
         final x1 = (x0 + 1).clamp(0, srcW - 1);
         final y1 = (y0 + 1).clamp(0, srcH - 1);
-        final i00 = (y0 * srcW + x0) * 3;
-        final i01 = (y0 * srcW + x1) * 3;
-        final i10 = (y1 * srcW + x0) * 3;
-        final i11 = (y1 * srcW + x1) * 3;
-        final di = (y * _targetSize + x) * 3;
-        for (var c = 0; c < 3; c++) {
-          final top = srcBytes[i00 + c] * (1 - fx) + srcBytes[i01 + c] * fx;
-          final bot = srcBytes[i10 + c] * (1 - fx) + srcBytes[i11 + c] * fx;
-          outBytes[di + c] = (top * (1 - fy) + bot * fy).round().clamp(0, 255);
-        }
+        // Precompute row byte offsets to avoid two extra multiplications per pixel.
+        final row0 = y0 * srcW * 3;
+        final row1 = y1 * srcW * 3;
+        final i00 = row0 + x0 * 3;
+        final i01 = row0 + x1 * 3;
+        final i10 = row1 + x0 * 3;
+        final i11 = row1 + x1 * 3;
+        final di = diRow + x * 3;
+        // Precompute the four bilinear weights once per pixel instead of
+        // recomputing (1-fx) and (1-fy) once per channel.
+        // Bilinear combination of [0,255] values stays in [0,255], so no clamp needed.
+        final w00 = (1.0 - fx) * (1.0 - fy);
+        final w01 = fx * (1.0 - fy);
+        final w10 = (1.0 - fx) * fy;
+        final w11 = fx * fy;
+        outBytes[di] = (srcBytes[i00] * w00 + srcBytes[i01] * w01 + srcBytes[i10] * w10 + srcBytes[i11] * w11).round();
+        outBytes[di +
+            1] = (srcBytes[i00 + 1] * w00 + srcBytes[i01 + 1] * w01 + srcBytes[i10 + 1] * w10 + srcBytes[i11 + 1] * w11)
+            .round();
+        outBytes[di +
+            2] = (srcBytes[i00 + 2] * w00 + srcBytes[i01 + 2] * w01 + srcBytes[i10 + 2] * w10 + srcBytes[i11 + 2] * w11)
+            .round();
       }
     }
     return img.Image.fromBytes(width: _targetSize, height: _targetSize, bytes: outBytes.buffer, numChannels: 3);

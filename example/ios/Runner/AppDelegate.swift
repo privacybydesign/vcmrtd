@@ -3,8 +3,12 @@ import UIKit
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
-    private static let passportIssuerHost = "passport-issuer.yivi.app"
-    private static let mrtdAppHost = "mrtd.app"
+    private static var passportIssuerHost: String {
+        Bundle.main.object(forInfoDictionaryKey: "DeepLinkPassportIssuerHost") as? String ?? ""
+    }
+    private static var mrtdAppHost: String {
+        Bundle.main.object(forInfoDictionaryKey: "DeepLinkMrtdAppHost") as? String ?? ""
+    }
     
     override func application(
         _ application: UIApplication,

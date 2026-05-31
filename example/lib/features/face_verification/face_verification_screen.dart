@@ -24,8 +24,8 @@ String faceActionLabel(String action) => switch (action) {
   'BLINK' => 'Blink your eyes',
   'TURN_LEFT' => 'Turn your head left',
   'TURN_RIGHT' => 'Turn your head right',
-  'MOUTH_OPEN' => 'Open your mouth',
-  'SMILE' => 'Smile',
+  'MOUTH_OPEN' => 'Open your mouth and hold',
+  'SMILE' => 'Smile and hold',
   _ => action,
 };
 
@@ -521,7 +521,7 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
     // Once the countdown has started, interpolate between frames so the
     // timer ticks down smoothly. It runs to completion (never pauses).
     if (progress.started) {
-      _passiveTicker ??= Timer.periodic(const Duration(milliseconds: 100), (_) {
+      _passiveTicker ??= Timer.periodic(const Duration(milliseconds: 200), (_) {
         if (mounted) setState(() {});
       });
     }
@@ -680,42 +680,37 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
     // seconds countdown.
     final progress = p.targetMs == 0 ? 0.0 : (remainingMs / p.targetMs).clamp(0.0, 1.0);
     final secondsLeft = (remainingMs / 1000).ceil().clamp(0, 99);
-    return Positioned(
-      top: 16,
-      left: 16,
-      right: 16,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.7), borderRadius: BorderRadius.circular(16)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    secondsLeft <= 0 ? 'Almost done…' : 'Hold still',
-                    style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
-                  ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.7), borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  secondsLeft <= 0 ? 'Almost done…' : 'Hold still',
+                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
                 ),
-                Text(
-                  '${secondsLeft}s',
-                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 6,
-                backgroundColor: Colors.white24,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.green[400]!),
               ),
+              Text(
+                '${secondsLeft}s',
+                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 6,
+              backgroundColor: Colors.white24,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.green[400]!),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -828,22 +823,17 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
     if (tip == null) return null;
     final message = _alignTipMessage(tip);
     if (message == null) return null;
-    return Positioned(
-      left: 20,
-      right: 20,
-      bottom: 24,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.65), borderRadius: BorderRadius.circular(16)),
-        child: Row(
-          children: [
-            const Icon(Icons.tips_and_updates_outlined, color: Colors.amberAccent, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(message, style: const TextStyle(color: Colors.white, fontSize: 14)),
-            ),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.65), borderRadius: BorderRadius.circular(16)),
+      child: Row(
+        children: [
+          const Icon(Icons.tips_and_updates_outlined, color: Colors.amberAccent, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(message, style: const TextStyle(color: Colors.white, fontSize: 14)),
+          ),
+        ],
       ),
     );
   }
@@ -874,85 +864,101 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
   }
 
   Widget _buildActiveLivenessScreen() {
-    final isAligning = _currentAction == null;
-    final tipCard = _buildTipCard();
-    final passiveCard = _buildPassiveProgressCard();
     return Stack(
       fit: StackFit.expand,
       children: [
         _buildCameraPreview(),
         if (_actionFlash) Container(color: Colors.green.withValues(alpha: 0.25)),
-        // Always show the oval guide while the camera is live.
         _buildOvalOverlay(),
-        if (_selectedMode == LivenessMode.active && !isAligning) _buildActionChecklist(),
-        if (_currentAction != null) _buildActionInstruction(_currentAction!),
-        if (passiveCard != null) passiveCard,
-        if (tipCard != null) tipCard,
+        _buildTopInfoPanel(),
       ],
     );
   }
 
-  Widget _buildActionChecklist() => Positioned(
-    top: 16,
-    left: 16,
-    right: 16,
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(16)),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: _actions.asMap().entries.map((e) {
-          final done = _completedActions.contains(e.value);
-          final current = e.value == _currentAction;
-          final iconWhenNotDone = current ? Icons.radio_button_checked : Icons.radio_button_unchecked;
-          final itemIcon = done ? Icons.check_circle : iconWhenNotDone;
-          final colorWhenNotDone = current ? Colors.white : Colors.white38;
-          final itemColor = done ? Colors.green : colorWhenNotDone;
-          final itemWeight = current ? FontWeight.bold : FontWeight.normal;
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 3),
-            child: Row(
-              children: [
-                Icon(itemIcon, color: itemColor, size: 18),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    faceActionLabel(e.value),
-                    style: TextStyle(color: itemColor, fontWeight: itemWeight),
-                  ),
+  Widget _buildTopInfoPanel() {
+    final tipCard = _buildTipCard();
+    final passiveCard = _buildPassiveProgressCard();
+    final action = _currentAction;
+    final isAligning = action == null;
+
+    final cards = <Widget>[];
+
+    if (passiveCard != null) cards.add(passiveCard);
+    if (tipCard != null) {
+      if (cards.isNotEmpty) cards.add(const SizedBox(height: 8));
+      cards.add(tipCard);
+    }
+    if (action != null) {
+      if (cards.isNotEmpty) cards.add(const SizedBox(height: 8));
+      cards.add(_buildActionInstruction(action));
+      if (_selectedMode == LivenessMode.active && !isAligning) {
+        cards.add(const SizedBox(height: 8));
+        cards.add(_buildActionChecklist());
+      }
+    }
+
+    if (cards.isEmpty) return const SizedBox.shrink();
+    return Positioned(
+      top: 16,
+      left: 16,
+      right: 16,
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: cards),
+    );
+  }
+
+  Widget _buildActionChecklist() => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(16)),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: _actions.asMap().entries.map((e) {
+        final done = _completedActions.contains(e.value);
+        final current = e.value == _currentAction;
+        final iconWhenNotDone = current ? Icons.radio_button_checked : Icons.radio_button_unchecked;
+        final itemIcon = done ? Icons.check_circle : iconWhenNotDone;
+        final colorWhenNotDone = current ? Colors.white : Colors.white38;
+        final itemColor = done ? Colors.green : colorWhenNotDone;
+        final itemWeight = current ? FontWeight.bold : FontWeight.normal;
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          child: Row(
+            children: [
+              Icon(itemIcon, color: itemColor, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  faceActionLabel(e.value),
+                  style: TextStyle(color: itemColor, fontWeight: itemWeight),
                 ),
-                if (_extraActionMode && e.key == _actions.length - 1)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(8)),
-                    child: const Text('extra', style: TextStyle(color: Colors.white, fontSize: 10)),
-                  ),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
+              ),
+              if (_extraActionMode && e.key == _actions.length - 1)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: Colors.orange, borderRadius: BorderRadius.circular(8)),
+                  child: const Text('extra', style: TextStyle(color: Colors.white, fontSize: 10)),
+                ),
+            ],
+          ),
+        );
+      }).toList(),
     ),
   );
 
-  Widget _buildActionInstruction(String action) => Positioned(
-    bottom: 40,
-    left: 24,
-    right: 24,
-    child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(24)),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(faceActionIcon(action), color: Colors.white, size: 28),
-          const SizedBox(width: 12),
-          Text(
+  Widget _buildActionInstruction(String action) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+    decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(24)),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(faceActionIcon(action), color: Colors.white, size: 28),
+        const SizedBox(width: 12),
+        Flexible(
+          child: Text(
             faceActionLabel(action),
             style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
           ),
-        ],
-      ),
+        ),
+      ],
     ),
   );
 

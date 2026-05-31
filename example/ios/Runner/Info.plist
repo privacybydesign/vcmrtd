@@ -80,6 +80,10 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>DeepLinkPassportIssuerHost</key>
+	<string>passport-issuer.yivi.app</string>
+	<key>DeepLinkMrtdAppHost</key>
+	<string>mrtd.app</string>
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:passport-issuer.yivi.app</string>

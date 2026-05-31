@@ -39,6 +39,10 @@ class FaceVerificationTuning {
   static final double passiveCenterMaxOffsetX = _doubleEnv('FV_PASSIVE_CENTER_MAX_OFFSET_X', 0.18);
   static final double passiveCenterMaxOffsetY = _doubleEnv('FV_PASSIVE_CENTER_MAX_OFFSET_Y', 0.22);
 
+  // Mid-liveness selfie-to-selfie consistency check threshold.
+  // Same session, same lighting — a face swap drops this well below 0.50.
+  static final double consistencyCheckThreshold = _doubleEnv('FV_CONSISTENCY_THRESHOLD', 0.50);
+
   static const bool emitDebugEvents = bool.fromEnvironment('FV_EMIT_DEBUG_EVENTS', defaultValue: false);
 
   static double _doubleEnv(String key, double fallback) {

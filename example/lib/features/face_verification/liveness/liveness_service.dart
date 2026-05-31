@@ -90,33 +90,46 @@ class ActiveLivenessService {
   // so a lower threshold catches the partial-closure frames the camera actually sees.
   static const double blinkRelativeClosedDelta = 0.20;
   static const double blinkRelativeOpenDelta = 0.10;
+  // A shake spike typically lasts only 1 frame. Require the eye to stay above
+  // the closed threshold for this many frames before the blink can be confirmed.
+  static const int blinkMinClosedFrames = 2;
 
   static final double mouthOpenThreshold = FaceVerificationTuning.mouthOpenThreshold;
   static const double jawOpenRelativeDelta = 0.15;
   static const double smileSuppressesMouthBlend = 0.60;
 
   static const double smileRelativeBlendDelta = 0.20;
-  static const double smileWidthThreshold = 0.018;
-  static const double smileLiftThreshold = 0.010;
+  static const double smileWidthThreshold = 0.025;
+  static const double smileLiftThreshold = 0.015;
+  // Geometry-only smile detection requires blendshapes to confirm actual smile musculature.
+  static const double smileGeometryMinBlend = 0.15;
   static const double mouthSuppressesSmileBlend = 0.25;
 
   static final double yawThresholdDeg = FaceVerificationTuning.turnYawThreshold;
   static const double landmarkTurnThreshold = 0.10;
   static const double landmarkTurnRelease = 0.05;
   static const double yawReleaseDeg = 5.0;
+  // Phone shake causes 1–2 frame landmark jitter that can mimic gestures. Require
+  // consecutive detected frames before confirming. Smile uses more frames because
+  // natural resting expressions can sit close to the threshold.
+  static const int mouthOpenMinConfirmFrames = 3;
+  static const int smileMinConfirmFrames = 5;
 
   bool isAligning = true;
+  bool get isWaitingForRest => _waitingForRest;
 
   LivenessAction? _currentAction;
   int _confirmCount = 0;
 
   _BlinkPhase _blinkPhase = _BlinkPhase.open;
+  int _blinkClosedFrames = 0;
   bool _turnDetectedLatch = false;
 
   bool _waitingForRest = false;
   LivenessAction? _queuedNextAction;
   int _restStableCount = 0;
   int _restGraceUntilMs = 0;
+  int _gestureConfirmFrames = 0;
 
   double? _neutralYawMatrix;
   double? _neutralYawLandmark;
@@ -137,6 +150,7 @@ class ActiveLivenessService {
     _currentAction = null;
     _confirmCount = 0;
     _blinkPhase = _BlinkPhase.open;
+    _blinkClosedFrames = 0;
     _turnDetectedLatch = false;
     _waitingForRest = false;
     _queuedNextAction = null;
@@ -151,6 +165,7 @@ class ActiveLivenessService {
     _neutralSmileWidth = null;
     _neutralSmileBlend = null;
     _actionBaselineReady = false;
+    _gestureConfirmFrames = 0;
 
     _actionAccumulator.clear();
     _restAccumulator.clear();
@@ -165,6 +180,7 @@ class ActiveLivenessService {
     _currentAction = action;
     _confirmCount = 0;
     _blinkPhase = _BlinkPhase.open;
+    _blinkClosedFrames = 0;
     _turnDetectedLatch = false;
     _waitingForRest = false;
     _queuedNextAction = null;
@@ -174,6 +190,7 @@ class ActiveLivenessService {
     _restAccumulator.clear();
     _eyeBaselineAccumulator.clear();
     _eyeOpenBaseline = null;
+    _gestureConfirmFrames = 0;
 
     _neutralYawMatrix = null;
     _neutralYawLandmark = null;
@@ -325,6 +342,11 @@ class ActiveLivenessService {
     return true;
   }
 
+  bool checkFaceAtRest(FaceObservation face) {
+    final lm = face.result.landmarks.first;
+    return _isFaceAtRest(face, lm);
+  }
+
   // Fuses EAR and blendshape, then compares against the person's own resting eye state.
   // This makes detection work regardless of natural eye shape — narrow eyes, thick eyelids, glasses, etc.
   // If no alignment baseline was captured (e.g., timeout), the first few frames self-calibrate.
@@ -354,15 +376,23 @@ class ActiveLivenessService {
 
     switch (_blinkPhase) {
       case _BlinkPhase.open:
-        // A single frame above the closed threshold is enough — fast blinks peak for only 1 frame at 30 fps.
         if (closed) {
           _blinkPhase = _BlinkPhase.closed;
+          _blinkClosedFrames = 1;
         }
       case _BlinkPhase.closed:
         if (closed) {
-          // still closed, wait
+          _blinkClosedFrames++;
         } else if (open) {
-          _blinkPhase = _BlinkPhase.detected;
+          // Require the eye to have been closed for at least blinkMinClosedFrames.
+          // A single-frame spike from phone shake produces closed=1 then open,
+          // which is rejected here and resets to open phase.
+          if (_blinkClosedFrames >= blinkMinClosedFrames) {
+            _blinkPhase = _BlinkPhase.detected;
+          } else {
+            _blinkPhase = _BlinkPhase.open;
+            _blinkClosedFrames = 0;
+          }
         }
       // In the range between open and closed thresholds: stay in closed and wait.
       case _BlinkPhase.detected:
@@ -409,7 +439,10 @@ class ActiveLivenessService {
 
   bool _detectMouthOpen(FaceObservation face, List<NormalizedLandmark> lm) {
     final smile = (_blend(face, 'mouthSmileLeft') + _blend(face, 'mouthSmileRight')) / 2.0;
-    if (smile >= smileSuppressesMouthBlend) return false;
+    if (smile >= smileSuppressesMouthBlend) {
+      _gestureConfirmFrames = 0;
+      return false;
+    }
 
     final jawBlend = _blend(face, 'jawOpen');
     final ratio = _mouthRatio(lm);
@@ -419,12 +452,20 @@ class ActiveLivenessService {
     }
     final jawDelta = jawBlend - (_neutralJaw ?? 0.0);
     final ratioDelta = ratio - (_neutralMouth ?? 0.0);
-    return jawDelta >= jawOpenRelativeDelta || ratioDelta >= mouthOpenThreshold;
+    if (jawDelta >= jawOpenRelativeDelta || ratioDelta >= mouthOpenThreshold) {
+      _gestureConfirmFrames++;
+      return _gestureConfirmFrames >= mouthOpenMinConfirmFrames;
+    }
+    _gestureConfirmFrames = 0;
+    return false;
   }
 
   bool _detectSmile(FaceObservation face, List<NormalizedLandmark> lm) {
     final jaw = _blend(face, 'jawOpen');
-    if (jaw >= mouthSuppressesSmileBlend) return false;
+    if (jaw >= mouthSuppressesSmileBlend) {
+      _gestureConfirmFrames = 0;
+      return false;
+    }
     final sBlend = (_blend(face, 'mouthSmileLeft') + _blend(face, 'mouthSmileRight')) / 2.0;
 
     final fH = _landmarkDist(lm[10], lm[152]).clamp(1e-6, 1e6);
@@ -440,7 +481,13 @@ class ActiveLivenessService {
     final liftD = lift - (_neutralSmileLift ?? 0.0);
     final widthD = width - (_neutralSmileWidth ?? 0.0);
     final blendD = sBlend - (_neutralSmileBlend ?? 0.0);
-    return blendD >= smileRelativeBlendDelta || (widthD >= smileWidthThreshold && liftD >= smileLiftThreshold);
+    final geometryHit = sBlend >= smileGeometryMinBlend && widthD >= smileWidthThreshold && liftD >= smileLiftThreshold;
+    if (blendD >= smileRelativeBlendDelta || geometryHit) {
+      _gestureConfirmFrames++;
+      return _gestureConfirmFrames >= smileMinConfirmFrames;
+    }
+    _gestureConfirmFrames = 0;
+    return false;
   }
 
   // Collects a short neutral baseline before relative gesture detection begins.
@@ -977,12 +1024,7 @@ class _BigSmallService {
     for (var i = 0; i < _modelFiles.length; i++) {
       if (_interpreters[i] != null) continue;
       debugPrint('[FaceVerification] BigSmall service: loading ${_modelFiles[i]} interpreter');
-      try {
-        _interpreters[i] = await Interpreter.fromAsset(_modelFiles[i], options: _makeInterpOptions(2, useGpu: true));
-      } catch (_) {
-        _interpreters[i]?.close();
-        _interpreters[i] = await Interpreter.fromAsset(_modelFiles[i], options: _makeInterpOptions(2, useGpu: false));
-      }
+      _interpreters[i] = await Interpreter.fromAsset(_modelFiles[i], options: _cpuOptions(2));
       _loadShapes(i);
     }
   }
@@ -991,12 +1033,7 @@ class _BigSmallService {
     for (var i = 0; i < modelBuffers.length; i++) {
       if (_interpreters[i] != null) continue;
       debugPrint('[FaceVerification] BigSmall service: initializing ${_modelFiles[i]} from buffer');
-      try {
-        _interpreters[i] = Interpreter.fromBuffer(modelBuffers[i], options: _makeInterpOptions(2, useGpu: true));
-      } catch (_) {
-        _interpreters[i]?.close();
-        _interpreters[i] = Interpreter.fromBuffer(modelBuffers[i], options: _makeInterpOptions(2, useGpu: false));
-      }
+      _interpreters[i] = Interpreter.fromBuffer(modelBuffers[i], options: _cpuOptions(2));
       _loadShapes(i);
     }
   }

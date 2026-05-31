@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:ffi';
 import 'dart:isolate';
+import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:camera/camera.dart';
@@ -226,6 +227,15 @@ class FaceVerificationWorker {
 
   Future<void> prepareNfcFace(img.Image face) async {
     await _match.request('prepare_nfc_face', payload: _imagePayload(face));
+  }
+
+  Future<void> storeConsistencySelfie(img.Image selfie) async {
+    await _match.request('store_consistency_selfie', payload: _imagePayload(selfie));
+  }
+
+  Future<double> checkConsistencySelfie(img.Image selfie) async {
+    final res = await _match.request('check_consistency_selfie', payload: _imagePayload(selfie));
+    return (res['score'] as num?)?.toDouble() ?? 1.0;
   }
 
   Future<WorkerMatchResult> matchSelfie(img.Image selfie) async {
@@ -661,6 +671,7 @@ Future<void> _matchWorkerLoop(SendPort mainSendPort) async {
 
   final recognizer = FaceRecognizer();
   List<double>? nfcEmbedding;
+  List<double>? consistencyEmbedding;
   Uint8List? nfcInputPng;
   Uint8List? selfieInputPng;
 
@@ -674,6 +685,7 @@ Future<void> _matchWorkerLoop(SendPort mainSendPort) async {
       case 'start_session':
         // nfcEmbedding is preserved across sessions — the NFC image doesn't change
         // within a widget lifetime, so re-embedding is wasteful.
+        consistencyEmbedding = null;
         return <String, dynamic>{'ok': true};
       case 'prepare_nfc_face':
         debugPrint(
@@ -681,9 +693,25 @@ Future<void> _matchWorkerLoop(SendPort mainSendPort) async {
         );
         final nfcFace = _imageFromPayload(payload);
         nfcInputPng = recognizer.modelInputPng(nfcFace);
-        nfcEmbedding = recognizer.generateEmbedding(nfcFace, label: 'NFC');
+        nfcEmbedding = recognizer.generateEmbedding(nfcFace);
         debugPrint('[FaceVerification] Match worker: NFC embedding ready, length=${nfcEmbedding?.length ?? 0}');
         return <String, dynamic>{'ok': true};
+      case 'store_consistency_selfie':
+        final refFace = _imageFromPayload(payload);
+        consistencyEmbedding = recognizer.generateEmbedding(refFace);
+        debugPrint('[FaceVerification] Match worker: consistency reference embedding stored');
+        return <String, dynamic>{'ok': true};
+      case 'check_consistency_selfie':
+        final ref = consistencyEmbedding;
+        if (ref == null) {
+          debugPrint('[FaceVerification] Match worker: consistency check skipped, no reference stored');
+          return <String, dynamic>{'score': 1.0};
+        }
+        final checkFace = _imageFromPayload(payload);
+        final checkEmb = recognizer.generateEmbedding(checkFace);
+        final score = recognizer.cosineSimilarity(ref, checkEmb);
+        debugPrint('[FaceVerification] Match worker: consistency score=${(score * 100).toStringAsFixed(1)}%');
+        return <String, dynamic>{'score': score};
       case 'match_selfie':
         final nfc = nfcEmbedding;
         if (nfc == null) {
@@ -695,7 +723,7 @@ Future<void> _matchWorkerLoop(SendPort mainSendPort) async {
         );
         final selfieFace = _imageFromPayload(payload);
         selfieInputPng = recognizer.modelInputPng(selfieFace);
-        final emb = recognizer.generateEmbedding(selfieFace, label: 'selfie');
+        final emb = recognizer.generateEmbedding(selfieFace);
         final score = recognizer.cosineSimilarity(nfc, emb);
         debugPrint('[FaceVerification] Match worker: comparison done, score=${(score * 100).toStringAsFixed(2)}%');
         return <String, dynamic>{'score': score, 'nfcInputPng': nfcInputPng, 'selfieInputPng': selfieInputPng};
@@ -906,11 +934,11 @@ img.Image _imageFromPayload(Map<String, dynamic> payload) {
 
 Map<String, dynamic> _serializeFace(FaceObservation face) {
   final landmarks = face.result.landmarks.first;
-  final flat = <double>[];
-  for (final lm in landmarks) {
-    flat.add(lm.x);
-    flat.add(lm.y);
-    flat.add(lm.z);
+  final flat = Float64List(landmarks.length * 3);
+  for (var i = 0; i < landmarks.length; i++) {
+    flat[i * 3] = landmarks[i].x;
+    flat[i * 3 + 1] = landmarks[i].y;
+    flat[i * 3 + 2] = landmarks[i].z;
   }
   final matrix = face.result.transformMatrices?.isNotEmpty == true ? face.result.transformMatrices!.first : null;
   return <String, dynamic>{
@@ -934,12 +962,15 @@ FaceObservation _deserializeFaceMap(Map<String, dynamic> map) {
   final blend = <String, double>{for (final e in blendRaw.entries) e.key: (e.value as num).toDouble()};
 
   final landmarksFlat = (map['landmarks'] as List).cast<num>();
-  final landmarks = <NormalizedLandmark>[];
-  for (var i = 0; i + 2 < landmarksFlat.length; i += 3) {
-    landmarks.add(
-      NormalizedLandmark(landmarksFlat[i].toDouble(), landmarksFlat[i + 1].toDouble(), landmarksFlat[i + 2].toDouble()),
+  final landmarkCount = landmarksFlat.length ~/ 3;
+  final landmarks = List<NormalizedLandmark>.generate(landmarkCount, (i) {
+    final j = i * 3;
+    return NormalizedLandmark(
+      landmarksFlat[j].toDouble(),
+      landmarksFlat[j + 1].toDouble(),
+      landmarksFlat[j + 2].toDouble(),
     );
-  }
+  }, growable: false);
 
   final matrix = (map['matrix'] as List?)?.cast<num>().map((num v) => v.toDouble()).toList(growable: false);
   final categories = blend.entries

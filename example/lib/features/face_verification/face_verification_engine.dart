@@ -54,6 +54,17 @@ class FaceVerificationEngine {
   double _bestSelfieYaw = double.infinity;
   int _selfieFrameCount = 0;
   static const int _selfieFrameSampleSize = 5;
+
+  // Mid-liveness consistency check — selfie captured at a random neutral-face
+  // moment and compared against _firstSelfie to detect face swaps mid-session.
+  bool _consistencySelfieStored = false;
+  bool _consistencyChecked = false;
+  bool _consistencyFailed = false;
+  bool _wasWaitingForRest = false;
+  int _consistencyRestFrameCount = 0;
+  int _consistencyRestDelay = -1;
+  // For passive mode: wall-clock ms at which to take the mid-liveness selfie.
+  int? _consistencyCheckMs;
   Uint8List? _debugNfcMatchInputPng;
   Uint8List? _debugSelfieMatchInputPng;
   bool _diagSawFirstPipelineResult = false;
@@ -124,6 +135,14 @@ class FaceVerificationEngine {
     _bestSelfieYaw = double.infinity;
     _selfieFrameCount = 0;
     _debugNfcMatchInputPng = null;
+
+    _consistencySelfieStored = false;
+    _consistencyChecked = false;
+    _consistencyFailed = false;
+    _wasWaitingForRest = false;
+    _consistencyRestFrameCount = 0;
+    _consistencyRestDelay = -1;
+    _consistencyCheckMs = null;
     _debugSelfieMatchInputPng = null;
     _diagSawFirstPipelineResult = false;
     _diagSawFirstFaceResult = false;
@@ -252,6 +271,11 @@ class FaceVerificationEngine {
           );
         }
       }
+      // Store reference embedding once, after action 0's alignment completes.
+      if (_currentActionIndex == 0 && !_consistencySelfieStored && _firstSelfie != null) {
+        _consistencySelfieStored = true;
+        unawaited(_worker.storeConsistencySelfie(_firstSelfie!));
+      }
       _framesSinceLastAction = 0;
       _sendNextActionEvent(action.wireName);
     }
@@ -260,6 +284,24 @@ class FaceVerificationEngine {
   Future<void> _processActionFrame(FaceObservation face) async {
     if (!_active.processFrame(face: face)) {
       if (_framesSinceLastAction > _actionTimeoutFrames) await _handleTimeout();
+      if (!_consistencyChecked && _consistencySelfieStored && _active.isWaitingForRest) {
+        // On entering a new rest phase pick a random frame delay (0–14 frames).
+        if (!_wasWaitingForRest) {
+          _consistencyRestFrameCount = 0;
+          _consistencyRestDelay = _random.nextInt(15);
+        }
+        if (_consistencyRestFrameCount >= _consistencyRestDelay) {
+          // Only capture when the face is genuinely neutral — no open mouth,
+          // no head turn, no smile — so the selfie-vs-selfie comparison is fair.
+          if (_active.checkFaceAtRest(face)) {
+            _consistencyChecked = true;
+            unawaited(_runConsistencyCheck(face));
+          }
+        } else {
+          _consistencyRestFrameCount++;
+        }
+      }
+      _wasWaitingForRest = _active.isWaitingForRest;
       return;
     }
     await _handleActionDetected();
@@ -287,6 +329,10 @@ class FaceVerificationEngine {
         return;
       }
       _passiveStartMs = now;
+      // Pick a random moment between 30–70% through the countdown to take the
+      // consistency selfie. Set once when the countdown starts.
+      final target = FaceVerificationTuning.passiveTargetMs;
+      _consistencyCheckMs = now + (target * (0.3 + _random.nextDouble() * 0.4)).toInt();
     }
 
     // Countdown running — fixed wall-clock duration from the start moment.
@@ -303,6 +349,20 @@ class FaceVerificationEngine {
           _bestSelfieYaw = absYaw;
           _firstSelfie = face.alignedFace112;
         }
+        // Store reference once we have the first good selfie.
+        if (!_consistencySelfieStored && _firstSelfie != null) {
+          _consistencySelfieStored = true;
+          unawaited(_worker.storeConsistencySelfie(_firstSelfie!));
+        }
+      }
+      // Consistency check: take a second selfie at the random time point.
+      if (face != null &&
+          !_consistencyChecked &&
+          _consistencySelfieStored &&
+          _consistencyCheckMs != null &&
+          now >= _consistencyCheckMs!) {
+        _consistencyChecked = true;
+        unawaited(_runConsistencyCheck(face));
       }
     }
 
@@ -456,7 +516,7 @@ class FaceVerificationEngine {
       final antiSpoofScore = passive.antiSpoofScore;
       final antiSpoofPassed = passive.antiSpoofPassed;
       final rppgPassed = passive.rppgPassed;
-      final finalPassed = passed && antiSpoofPassed && rppgPassed;
+      final finalPassed = passed && antiSpoofPassed && rppgPassed && !_consistencyFailed;
 
       _sendEvent({
         'type': 'complete',
@@ -513,6 +573,23 @@ class FaceVerificationEngine {
     final score = match.score;
     debugPrint('[FaceVerification] Match finished: score=${(score * 100).toStringAsFixed(2)}%');
     return score;
+  }
+
+  Future<void> _runConsistencyCheck(FaceObservation face) async {
+    try {
+      final score = await _worker.checkConsistencySelfie(face.alignedFace112);
+      final threshold = FaceVerificationTuning.consistencyCheckThreshold;
+      if (score < threshold) {
+        debugPrint(
+          '[FaceVerification] Consistency check FAILED: score=${(score * 100).toStringAsFixed(1)}% threshold=${(threshold * 100).toStringAsFixed(0)}%',
+        );
+        _consistencyFailed = true;
+      } else {
+        debugPrint('[FaceVerification] Consistency check passed: score=${(score * 100).toStringAsFixed(1)}%');
+      }
+    } catch (e) {
+      debugPrint('[FaceVerification] Consistency check error: $e');
+    }
   }
 
   void _sendEvent(Map<String, dynamic> event) {
