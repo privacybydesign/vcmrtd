@@ -5,12 +5,22 @@ import 'dart:math' as math;
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:vcmrtdapp/features/face_verification/face_verification_diagnostics.dart';
 import 'package:vcmrtdapp/features/face_verification/face_verification_engine.dart';
 
 // ── Enums & helpers ────────────────────────────────────────────────────────
 
 enum VerificationState { idle, activeLiveness, processing, result }
+
+class VerificationDebugStep {
+  final String label;
+  // Aligned 112x112 face exactly as fed into GhostFaceNet.
+  final Uint8List alignedPng;
+  // Annotated camera-frame thumbnail: bbox + all 468 landmarks + 5 ArcFace keypoints.
+  final Uint8List? framePng;
+  const VerificationDebugStep({required this.label, required this.alignedPng, this.framePng});
+}
 
 class _PassiveProgress {
   const _PassiveProgress({required this.started, required this.elapsedMs, required this.targetMs});
@@ -58,6 +68,7 @@ class VerificationResult {
   final int rppgSampleCount;
   final Uint8List? debugNfcInputPng;
   final Uint8List? debugSelfieInputPng;
+  final List<VerificationDebugStep> debugSelfieSteps;
   const VerificationResult({
     required this.matchScore,
     required this.isLive,
@@ -68,6 +79,7 @@ class VerificationResult {
     this.rppgSampleCount = 0,
     this.debugNfcInputPng,
     this.debugSelfieInputPng,
+    this.debugSelfieSteps = const [],
   });
 }
 
@@ -133,6 +145,8 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
   bool _diagSawFirstCameraImage = false;
   bool _diagSawFirstFrameSent = false;
   bool _diagSawFirstNextActionEvent = false;
+
+  List<String?> _debugFilePaths = [];
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -438,6 +452,19 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
     final rppgSampleCount = (rppg?['sampleCount'] as num?)?.toInt() ?? 0;
     final debugNfcInputPng = map['debugNfcInputPng'] as Uint8List?;
     final debugSelfieInputPng = map['debugSelfieInputPng'] as Uint8List?;
+    final stepsRaw = map['debugSelfieSteps'] as List?;
+    final debugSelfieSteps = stepsRaw == null
+        ? <VerificationDebugStep>[]
+        : stepsRaw
+              .map<VerificationDebugStep>((dynamic m) {
+                final step = m as Map<String, dynamic>;
+                return VerificationDebugStep(
+                  label: step['label'] as String,
+                  alignedPng: step['alignedPng'] as Uint8List,
+                  framePng: step['framePng'] as Uint8List?,
+                );
+              })
+              .toList(growable: false);
     _onComplete(
       VerificationResult(
         matchScore: matchScore,
@@ -449,6 +476,7 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
         rppgSampleCount: rppgSampleCount,
         debugNfcInputPng: debugNfcInputPng,
         debugSelfieInputPng: debugSelfieInputPng,
+        debugSelfieSteps: debugSelfieSteps,
       ),
     );
   }
@@ -575,8 +603,32 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
     setState(() {
       _state = VerificationState.result;
       _result = result;
+      _debugFilePaths = List.filled(result.debugSelfieSteps.length, null);
     });
+    unawaited(_saveDebugImages(result));
     unawaited(_stopActiveFlow(disposeCamera: false));
+  }
+
+  Future<void> _saveDebugImages(VerificationResult result) async {
+    if (result.debugSelfieSteps.isEmpty) return;
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      final paths = <String?>[];
+      for (var i = 0; i < result.debugSelfieSteps.length; i++) {
+        final step = result.debugSelfieSteps[i];
+        String? savedPath;
+        try {
+          // Save the annotated frame thumbnail if present, otherwise the aligned face.
+          final bytes = step.framePng ?? step.alignedPng;
+          final file = File('${dir.path}/face_debug_${ts}_$i.png');
+          await file.writeAsBytes(bytes);
+          savedPath = file.path;
+        } catch (_) {}
+        paths.add(savedPath);
+      }
+      if (mounted && !_isDisposed) setState(() => _debugFilePaths = paths);
+    } catch (_) {}
   }
 
   // ── Navigation ────────────────────────────────────────────────────────────
@@ -997,10 +1049,9 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
     final matchPassed = r.matchScore > threshold;
     final passed = matchPassed && r.isLive;
 
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Icon(passed ? Icons.check_circle : Icons.cancel, size: 80, color: passed ? Colors.green : Colors.red),
@@ -1035,12 +1086,84 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
             r.rppgPassed,
           ),
           _scoreRow('Liveness actions', r.isLive ? 'passed' : 'failed', r.isLive),
+          if (r.debugSelfieSteps.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            const Text('Pipeline steps per selfie candidate', style: TextStyle(fontSize: 12, color: Colors.grey)),
+            const SizedBox(height: 4),
+            const Text(
+              'Left: raw frame (bbox green, landmarks cyan, keypoints red)  ·  Right: aligned 112×112 → GhostFaceNet',
+              style: TextStyle(fontSize: 9, color: Colors.grey),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 210,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: r.debugSelfieSteps.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (context, i) {
+                  final step = r.debugSelfieSteps[i];
+                  final path = i < _debugFilePaths.length ? _debugFilePaths[i] : null;
+                  return _debugStepCard(step, path);
+                },
+              ),
+            ),
+          ],
           const SizedBox(height: 32),
           OutlinedButton(onPressed: _retry, child: const Text('Try Again')),
         ],
       ),
     );
   }
+
+  static Widget _debugStepCard(VerificationDebugStep step, String? filePath) {
+    return SizedBox(
+      width: step.framePng != null ? 248 : 124,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            step.label,
+            style: const TextStyle(fontSize: 10, color: Colors.grey),
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (step.framePng != null) ...[
+                _debugImageBox(step.framePng!, 'frame', 128, 128),
+                const SizedBox(width: 4),
+              ],
+              _debugImageBox(step.alignedPng, 'aligned', 112, 112),
+            ],
+          ),
+          if (filePath != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              filePath.split('/').last,
+              style: const TextStyle(fontSize: 8, color: Colors.blueGrey),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  static Widget _debugImageBox(Uint8List bytes, String sublabel, int w, int h) => Column(
+    children: [
+      Text(sublabel, style: const TextStyle(fontSize: 8, color: Colors.grey)),
+      Container(
+        width: w.toDouble(),
+        height: h.toDouble(),
+        decoration: BoxDecoration(border: Border.all(color: Colors.black12)),
+        clipBehavior: Clip.antiAlias,
+        child: Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true),
+      ),
+    ],
+  );
 
   static Widget _scoreRow(String label, String value, bool ok) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 3),

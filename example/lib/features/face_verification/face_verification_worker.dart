@@ -17,9 +17,12 @@ import 'package:vcmrtdapp/features/face_verification/liveness/liveness_service.d
 import 'package:vcmrtdapp/features/face_verification/recognition/face_recognizer.dart';
 
 class WorkerFrameResult {
-  const WorkerFrameResult({required this.face});
+  const WorkerFrameResult({required this.face, this.debugFramePng});
 
   final FaceObservation? face;
+  // Small annotated thumbnail (bbox + landmarks + alignment keypoints drawn on the
+  // rotated camera frame). Only non-null when a face was detected.
+  final Uint8List? debugFramePng;
 }
 
 class WorkerPassiveResult {
@@ -334,6 +337,7 @@ class FaceVerificationWorker {
           );
         }
         _diagPipelineResultCount++;
+        final debugFramePng = pipelineResult['debugFramePng'] as Uint8List?;
         if (faceMap != null) {
           // Pipeline transitioned the buffer to PASS_READY — passive reads the same raw frame.
           // Send buffer index + camera metadata (no pixel bytes) so passive can decode.
@@ -343,7 +347,12 @@ class FaceVerificationWorker {
             ...cameraPayload, // width, height, format, rotation, planes metadata (no bytes)
           });
         }
-        _emitFrameResult(WorkerFrameResult(face: faceMap == null ? null : _deserializeFaceMap(faceMap)));
+        _emitFrameResult(
+          WorkerFrameResult(
+            face: faceMap == null ? null : _deserializeFaceMap(faceMap),
+            debugFramePng: faceMap == null ? null : debugFramePng,
+          ),
+        );
       }
     } catch (e) {
       if (sessionId == _sessionId) _emitFrameError(e);
@@ -567,12 +576,18 @@ Map<String, dynamic> _handleProcessFrame(
 
   detector.setTrackingCrop(detector.computeTrackingCrop(face.result, frame.width, frame.height));
 
+  // Build a small debug thumbnail (bbox + all landmarks + 5 alignment keypoints) while
+  // the frame is still in scope. Kept small (≤160px wide) to minimise isolate-message
+  // traffic. Done before handoff so the frame buffer is still valid.
+  final debugFramePng = _buildDebugFramePng(frame, face);
+
   // Hand off to passive: PIL_READING → PASS_READY.
   // Native buffer remains valid until passive calls endPassiveRead().
   buf.endPipelineRead(handoffToPassive: true);
 
   return <String, dynamic>{
     'face': _serializeFace(face),
+    'debugFramePng': debugFramePng,
     // camBufIdx not needed in response — main already has it from the request payload.
   };
 }
@@ -913,6 +928,50 @@ img.Image _rotate270CW(img.Image src) {
 img.Image _rotate180(img.Image src) {
   final w = src.width, h = src.height;
   return _transposePixels(src, w, h, (x, y) => (h - 1 - y) * w + (w - 1 - x));
+}
+
+// Generates a small annotated debug thumbnail from the upright camera frame.
+// Draws the face bounding box (green), all 468 mesh landmarks (cyan dots),
+// and the 5 ArcFace alignment keypoints – left eye, right eye, nose tip,
+// left/right mouth corners (red circles).
+// Kept at ≤160 px wide so the PNG is small enough to pass via isolate message
+// without significant overhead (~10–25 kB per image).
+Uint8List _buildDebugFramePng(img.Image frame, FaceObservation face) {
+  const maxW = 160;
+  final scale = frame.width > maxW ? maxW / frame.width : 1.0;
+  final tw = (frame.width * scale).round().clamp(1, maxW);
+  final th = (frame.height * scale).round().clamp(1, 9999);
+  final thumb = img.copyResize(frame, width: tw, height: th, interpolation: img.Interpolation.nearest);
+
+  final landmarks = face.result.landmarks.isNotEmpty ? face.result.landmarks.first : <NormalizedLandmark>[];
+
+  // All 468 mesh landmarks — tiny cyan dot per point.
+  for (final lm in landmarks) {
+    final px = (lm.x * tw).round().clamp(0, tw - 1);
+    final py = (lm.y * th).round().clamp(0, th - 1);
+    img.fillCircle(thumb, x: px, y: py, radius: 1, color: img.ColorRgb8(0, 220, 220));
+  }
+
+  // Bounding box in green.
+  final box = face.boundingBox;
+  final bx1 = (box.left * scale).round().clamp(0, tw - 1);
+  final by1 = (box.top * scale).round().clamp(0, th - 1);
+  final bx2 = (box.right * scale).round().clamp(0, tw - 1);
+  final by2 = (box.bottom * scale).round().clamp(0, th - 1);
+  img.drawRect(thumb, x1: bx1, y1: by1, x2: bx2, y2: by2, color: img.ColorRgb8(0, 255, 0), thickness: 2);
+
+  // 5 ArcFace alignment keypoints: left eye (468), right eye (473),
+  // nose tip (1), left mouth (61), right mouth (291) — red circles.
+  const kpIndices = <int>[468, 473, 1, 61, 291];
+  for (final idx in kpIndices) {
+    if (idx >= landmarks.length) continue;
+    final lm = landmarks[idx];
+    final px = (lm.x * tw).round().clamp(0, tw - 1);
+    final py = (lm.y * th).round().clamp(0, th - 1);
+    img.fillCircle(thumb, x: px, y: py, radius: 3, color: img.ColorRgb8(255, 50, 50));
+  }
+
+  return Uint8List.fromList(img.encodePng(thumb));
 }
 
 Map<String, dynamic> _imagePayload(img.Image image) {

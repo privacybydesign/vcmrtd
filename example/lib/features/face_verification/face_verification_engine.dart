@@ -67,6 +67,10 @@ class FaceVerificationEngine {
   int? _consistencyCheckMs;
   Uint8List? _debugNfcMatchInputPng;
   Uint8List? _debugSelfieMatchInputPng;
+  // Each entry: (label, aligned112png, framePng)
+  // framePng = annotated camera-frame thumbnail from the pipeline worker.
+  final List<(String, Uint8List, Uint8List?)> _debugSelfieStepPngs = [];
+  Uint8List? _latestDebugFramePng;
   bool _diagSawFirstPipelineResult = false;
   bool _diagSawFirstFaceResult = false;
   bool _diagSawFirstNextAction = false;
@@ -144,6 +148,8 @@ class FaceVerificationEngine {
     _consistencyRestDelay = -1;
     _consistencyCheckMs = null;
     _debugSelfieMatchInputPng = null;
+    _debugSelfieStepPngs.clear();
+    _latestDebugFramePng = null;
     _diagSawFirstPipelineResult = false;
     _diagSawFirstFaceResult = false;
     _diagSawFirstNextAction = false;
@@ -169,6 +175,7 @@ class FaceVerificationEngine {
     if (!_running || _processing || _sessionFinished || _sessionStopping) return;
     try {
       _framesSinceLastAction++;
+      if (frameResult.debugFramePng != null) _latestDebugFramePng = frameResult.debugFramePng;
       final face = frameResult.face;
       if (FaceVerificationDiagnostics.enabled && !_diagSawFirstPipelineResult) {
         _diagSawFirstPipelineResult = true;
@@ -266,6 +273,11 @@ class FaceVerificationEngine {
         if (absYaw < _bestSelfieYaw) {
           _bestSelfieYaw = absYaw;
           _firstSelfie = face.alignedFace112;
+          _debugSelfieStepPngs.add((
+            'Aligned #$_selfieFrameCount yaw=${absYaw.toStringAsFixed(1)}°',
+            Uint8List.fromList(img.encodePng(face.alignedFace112)),
+            _latestDebugFramePng,
+          ));
           debugPrint(
             '[FaceVerification] Selfie candidate updated: yaw=${absYaw.toStringAsFixed(1)}° sample=$_selfieFrameCount/$_selfieFrameSampleSize',
           );
@@ -348,6 +360,11 @@ class FaceVerificationEngine {
         if (absYaw < _bestSelfieYaw) {
           _bestSelfieYaw = absYaw;
           _firstSelfie = face.alignedFace112;
+          _debugSelfieStepPngs.add((
+            'Passive #$_selfieFrameCount yaw=${absYaw.toStringAsFixed(1)}°',
+            Uint8List.fromList(img.encodePng(face.alignedFace112)),
+            _latestDebugFramePng,
+          ));
         }
         // Store reference once we have the first good selfie.
         if (!_consistencySelfieStored && _firstSelfie != null) {
@@ -526,6 +543,9 @@ class FaceVerificationEngine {
         'antiSpoofPassed': antiSpoofPassed,
         'debugNfcInputPng': _debugNfcMatchInputPng,
         'debugSelfieInputPng': _debugSelfieMatchInputPng,
+        'debugSelfieSteps': _debugSelfieStepPngs
+            .map((s) => <String, dynamic>{'label': s.$1, 'alignedPng': s.$2, 'framePng': s.$3})
+            .toList(growable: false),
         'rppg': {
           'hr': passive.rppgHr,
           'passed': passive.rppgPassed,
