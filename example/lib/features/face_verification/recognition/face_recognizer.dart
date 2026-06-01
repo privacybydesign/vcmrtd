@@ -7,7 +7,7 @@ import 'package:image/image.dart' as img;
 import 'package:vcmrtdapp/features/face_verification/tflite_tensor_utils.dart';
 
 class FaceRecognizer {
-  static const _modelAsset = 'assets/face_verification/GhostFaceNet_fp32_V2.tflite';
+  static const _modelAsset = 'assets/face_verification/GhostFaceNet.tflite';
 
   Interpreter? _interpreter;
   int _inputH = 112;

@@ -170,7 +170,7 @@ class FaceVerificationWorker {
       'assets/face_verification/bigsmall_1.tflite',
       'assets/face_verification/bigsmall_2.tflite',
       'assets/face_verification/bigsmall_3.tflite',
-      'assets/face_verification/GhostFaceNet_fp32_V2.tflite',
+      'assets/face_verification/GhostFaceNet.tflite',
     ];
     final bytes = await Future.wait(assets.map(_loadModelBytes));
     debugPrint('[FaceVerification] Worker: all ${bytes.length} model assets loaded');
