@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:ffi';
 import 'dart:isolate';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui';
 
@@ -10,6 +11,7 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtdapp/features/face_verification/detection/face_detector.dart';
+import 'package:vcmrtdapp/features/face_verification/detection/face_landmark_pipeline.dart';
 import 'package:vcmrtdapp/features/face_verification/detection/face_landmarker_types.dart';
 import 'package:vcmrtdapp/features/face_verification/face_verification_diagnostics.dart';
 import 'package:vcmrtdapp/features/face_verification/ffi/face_frame_buffer.dart';
@@ -17,12 +19,14 @@ import 'package:vcmrtdapp/features/face_verification/liveness/liveness_service.d
 import 'package:vcmrtdapp/features/face_verification/recognition/face_recognizer.dart';
 
 class WorkerFrameResult {
-  const WorkerFrameResult({required this.face, this.debugFramePng});
+  const WorkerFrameResult({required this.face, this.debugFramePng, this.debugLandmarkInputPng});
 
   final FaceObservation? face;
-  // Small annotated thumbnail (bbox + landmarks + alignment keypoints drawn on the
-  // rotated camera frame). Only non-null when a face was detected.
+  // Annotated frame thumbnail: bbox + all 468 landmarks + 5 ArcFace keypoints + crop box.
   final Uint8List? debugFramePng;
+  // Exact 256×256 float input fed to the landmark model, converted to PNG.
+  // Shows what the model actually sees before placing any landmarks.
+  final Uint8List? debugLandmarkInputPng;
 }
 
 class WorkerPassiveResult {
@@ -338,6 +342,7 @@ class FaceVerificationWorker {
         }
         _diagPipelineResultCount++;
         final debugFramePng = pipelineResult['debugFramePng'] as Uint8List?;
+        final debugLandmarkInputPng = pipelineResult['debugLandmarkInputPng'] as Uint8List?;
         if (faceMap != null) {
           // Pipeline transitioned the buffer to PASS_READY — passive reads the same raw frame.
           // Send buffer index + camera metadata (no pixel bytes) so passive can decode.
@@ -351,6 +356,7 @@ class FaceVerificationWorker {
           WorkerFrameResult(
             face: faceMap == null ? null : _deserializeFaceMap(faceMap),
             debugFramePng: faceMap == null ? null : debugFramePng,
+            debugLandmarkInputPng: faceMap == null ? null : debugLandmarkInputPng,
           ),
         );
       }
@@ -576,10 +582,12 @@ Map<String, dynamic> _handleProcessFrame(
 
   detector.setTrackingCrop(detector.computeTrackingCrop(face.result, frame.width, frame.height));
 
-  // Build a small debug thumbnail (bbox + all landmarks + 5 alignment keypoints) while
-  // the frame is still in scope. Kept small (≤160px wide) to minimise isolate-message
-  // traffic. Done before handoff so the frame buffer is still valid.
-  final debugFramePng = _buildDebugFramePng(frame, face);
+  // Capture debug images while frame + model buffers are still in scope.
+  // debugFramePng  : annotated frame thumbnail with bbox + landmarks + crop box.
+  // debugLandmarkInputPng : exact 256×256 float input the model received → reveals
+  //                          orientation/crop issues before any landmark placement.
+  final debugFramePng = _buildDebugFramePng(frame, face, crop);
+  final debugLandmarkInputPng = detector.buildLastLandmarkInputPng();
 
   // Hand off to passive: PIL_READING → PASS_READY.
   // Native buffer remains valid until passive calls endPassiveRead().
@@ -588,6 +596,7 @@ Map<String, dynamic> _handleProcessFrame(
   return <String, dynamic>{
     'face': _serializeFace(face),
     'debugFramePng': debugFramePng,
+    'debugLandmarkInputPng': debugLandmarkInputPng,
     // camBufIdx not needed in response — main already has it from the request payload.
   };
 }
@@ -931,12 +940,13 @@ img.Image _rotate180(img.Image src) {
 }
 
 // Generates a small annotated debug thumbnail from the upright camera frame.
-// Draws the face bounding box (green), all 468 mesh landmarks (cyan dots),
-// and the 5 ArcFace alignment keypoints – left eye, right eye, nose tip,
-// left/right mouth corners (red circles).
-// Kept at ≤160 px wide so the PNG is small enough to pass via isolate message
-// without significant overhead (~10–25 kB per image).
-Uint8List _buildDebugFramePng(img.Image frame, FaceObservation face) {
+//   Green rect   : face bounding box from all 478 landmarks
+//   Cyan dots    : all 468 mesh landmark positions
+//   Red circles  : 5 ArcFace alignment keypoints (eyes, nose, mouth corners)
+//   Yellow box   : rotated crop window fed to the landmark model (angle encoded by tilt)
+//   Magenta dot  : crop centre
+// Kept at ≤160 px wide; ~10–30 kB per PNG.
+Uint8List _buildDebugFramePng(img.Image frame, FaceObservation face, DetectorStageOutput crop) {
   const maxW = 160;
   final scale = frame.width > maxW ? maxW / frame.width : 1.0;
   final tw = (frame.width * scale).round().clamp(1, maxW);
@@ -970,6 +980,45 @@ Uint8List _buildDebugFramePng(img.Image frame, FaceObservation face) {
     final py = (lm.y * th).round().clamp(0, th - 1);
     img.fillCircle(thumb, x: px, y: py, radius: 3, color: img.ColorRgb8(255, 50, 50));
   }
+
+  // Rotated crop box in yellow — shows WHERE and at WHAT ANGLE the landmark
+  // model sampled the frame.  The tilt of the box = crop.angle (face roll).
+  // The crop is a square in pixel space; in normalized coords cropW * imgW == cropH * imgH.
+  final cosA = math.cos(crop.angle);
+  final sinA = math.sin(crop.angle);
+  // Half-size of the crop in thumbnail pixels (same in both axes since crop is square).
+  final halfPx = crop.cropW * tw * 0.5;
+  final cx = (crop.cropX1 + crop.cropW * 0.5) * tw;
+  final cy = (crop.cropY1 + crop.cropH * 0.5) * th;
+  // Four corners: rotate (±h, ±h) around crop centre.
+  final List<List<double>> corners = <List<double>>[
+    <double>[cx + cosA * (-halfPx) - sinA * (-halfPx), cy + sinA * (-halfPx) + cosA * (-halfPx)],
+    <double>[cx + cosA * ( halfPx) - sinA * (-halfPx), cy + sinA * ( halfPx) + cosA * (-halfPx)],
+    <double>[cx + cosA * ( halfPx) - sinA * ( halfPx), cy + sinA * ( halfPx) + cosA * ( halfPx)],
+    <double>[cx + cosA * (-halfPx) - sinA * ( halfPx), cy + sinA * (-halfPx) + cosA * ( halfPx)],
+  ];
+  final yellow = img.ColorRgb8(255, 200, 0);
+  for (var i = 0; i < 4; i++) {
+    final a = corners[i];
+    final b = corners[(i + 1) % 4];
+    img.drawLine(
+      thumb,
+      x1: a[0].round().clamp(0, tw - 1), y1: a[1].round().clamp(0, th - 1),
+      x2: b[0].round().clamp(0, tw - 1), y2: b[1].round().clamp(0, th - 1),
+      color: yellow,
+    );
+  }
+  // Crop centre (magenta dot) and a short line showing the angle direction.
+  img.fillCircle(thumb, x: cx.round().clamp(0, tw - 1), y: cy.round().clamp(0, th - 1),
+      radius: 2, color: img.ColorRgb8(255, 0, 255));
+  final arrowLen = halfPx * 0.6;
+  img.drawLine(
+    thumb,
+    x1: cx.round().clamp(0, tw - 1), y1: cy.round().clamp(0, th - 1),
+    x2: (cx + cosA * arrowLen).round().clamp(0, tw - 1),
+    y2: (cy + sinA * arrowLen).round().clamp(0, th - 1),
+    color: img.ColorRgb8(255, 0, 255),
+  );
 
   return Uint8List.fromList(img.encodePng(thumb));
 }

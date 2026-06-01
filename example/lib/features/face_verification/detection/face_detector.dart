@@ -78,6 +78,9 @@ class FaceDetectorService {
     _pipeline.setTrackingCrop(crop);
   }
 
+  /// See [FaceLandmarkPipeline.buildLastLandmarkInputPng].
+  Uint8List? buildLastLandmarkInputPng() => _pipeline.buildLastLandmarkInputPng();
+
   DetectorStageOutput? runDetectorStage(img.Image image) {
     return _pipeline.runDetectorStage(image);
   }

@@ -437,6 +437,22 @@ class FaceLandmarkPipeline {
     return DetectorStageOutput(cropX1: crop[0], cropY1: crop[1], cropW: crop[2], cropH: crop[3], angle: crop[4]);
   }
 
+  /// Returns the last 256×256 input fed to the landmark model as a PNG.
+  /// Each float in [0,1] is mapped to uint8 [0,255].  Useful for debugging:
+  /// shows exactly what orientation/content the model received before any
+  /// landmark placement.  Returns null if the model has not run yet.
+  Uint8List? buildLastLandmarkInputPng() {
+    final buf = _landmarkInputBuf;
+    if (buf == null) return null;
+    const size = _landmarkSize;
+    final rgb = Uint8List(size * size * 3);
+    for (var i = 0; i < rgb.length; i++) {
+      rgb[i] = (buf[i] * 255.0).round().clamp(0, 255);
+    }
+    final image = img.Image.fromBytes(width: size, height: size, bytes: rgb.buffer, numChannels: 3);
+    return Uint8List.fromList(img.encodePng(image));
+  }
+
   FaceLandmarkerResult? runLandmarkStage(img.Image bitmap, DetectorStageOutput crop, {bool runBlendshapes = true}) {
     if (_landmarkInterp == null) return null;
     final landmarkInput = _buildLandmarkInput(bitmap, crop);

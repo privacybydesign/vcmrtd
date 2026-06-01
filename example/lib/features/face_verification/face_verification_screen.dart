@@ -17,9 +17,17 @@ class VerificationDebugStep {
   final String label;
   // Aligned 112x112 face exactly as fed into GhostFaceNet.
   final Uint8List alignedPng;
-  // Annotated camera-frame thumbnail: bbox + all 468 landmarks + 5 ArcFace keypoints.
+  // Annotated frame thumbnail: bbox + landmarks + crop box (yellow) + angle arrow.
   final Uint8List? framePng;
-  const VerificationDebugStep({required this.label, required this.alignedPng, this.framePng});
+  // Exact 256×256 input the landmark model received — shows face orientation before
+  // any landmarks are placed.  Saved as face_debug_*_model.png.
+  final Uint8List? landmarkInputPng;
+  const VerificationDebugStep({
+    required this.label,
+    required this.alignedPng,
+    this.framePng,
+    this.landmarkInputPng,
+  });
 }
 
 class _PassiveProgress {
@@ -297,8 +305,10 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
     final camera = _activeCamera ?? ctrl?.description;
     if (ctrl == null || camera == null) return null;
     if (camera.lensDirection == CameraLensDirection.front) {
-      // Portrait-only selfie: iOS always needs 270°; Android uses sensorOrientation directly.
-      if (Platform.isIOS) return 270;
+      // iOS AVFoundation delivers BGRA buffers already portrait (system applies the
+      // orientation transform internally). Android Camera2 does not — raw YUV comes out
+      // in sensor orientation and needs the sensorOrientation correction.
+      if (Platform.isIOS) return 0;
       return camera.sensorOrientation;
     }
     final rotationComp = _orientations[ctrl.value.deviceOrientation] ?? 0;
@@ -462,6 +472,7 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
                   label: step['label'] as String,
                   alignedPng: step['alignedPng'] as Uint8List,
                   framePng: step['framePng'] as Uint8List?,
+                  landmarkInputPng: step['landmarkInputPng'] as Uint8List?,
                 );
               })
               .toList(growable: false);
@@ -619,11 +630,20 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
         final step = result.debugSelfieSteps[i];
         String? savedPath;
         try {
-          // Save the annotated frame thumbnail if present, otherwise the aligned face.
-          final bytes = step.framePng ?? step.alignedPng;
-          final file = File('${dir.path}/face_debug_${ts}_$i.png');
-          await file.writeAsBytes(bytes);
-          savedPath = file.path;
+          // _frame.png  : annotated frame (bbox + landmarks + yellow crop box + angle arrow)
+          // _model.png  : 256×256 input the landmark model actually received
+          // _aligned.png: 112×112 face fed to GhostFaceNet
+          final framePng = step.framePng ?? step.alignedPng;
+          final frameFile = File('${dir.path}/face_debug_${ts}_${i}_frame.png');
+          await frameFile.writeAsBytes(framePng);
+          savedPath = frameFile.path;
+
+          if (step.landmarkInputPng != null) {
+            final modelFile = File('${dir.path}/face_debug_${ts}_${i}_model.png');
+            await modelFile.writeAsBytes(step.landmarkInputPng!);
+          }
+          final alignedFile = File('${dir.path}/face_debug_${ts}_${i}_aligned.png');
+          await alignedFile.writeAsBytes(step.alignedPng);
         } catch (_) {}
         paths.add(savedPath);
       }
