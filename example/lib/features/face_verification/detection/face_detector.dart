@@ -81,8 +81,8 @@ class FaceDetectorService {
   /// See [FaceLandmarkPipeline.buildLastLandmarkInputPng].
   Uint8List? buildLastLandmarkInputPng() => _pipeline.buildLastLandmarkInputPng();
 
-  DetectorStageOutput? runDetectorStage(img.Image image) {
-    return _pipeline.runDetectorStage(image);
+  DetectorStageOutput? runDetectorStage(img.Image image, {FaceAlignmentMode mode = FaceAlignmentMode.selfie}) {
+    return _pipeline.runDetectorStage(image, mode: mode);
   }
 
   FaceObservation? runLandmarkStage(img.Image image, DetectorStageOutput crop, {bool runBlendshapes = true}) {
@@ -97,8 +97,12 @@ class FaceDetectorService {
     return _pipeline.computeTrackingCrop(result, imgW, imgH);
   }
 
-  FaceObservation? detectPrimaryFace(img.Image image, {bool runBlendshapes = true}) {
-    final crop = _pipeline.runDetectorStage(image);
+  FaceObservation? detectPrimaryFace(
+    img.Image image, {
+    bool runBlendshapes = true,
+    FaceAlignmentMode mode = FaceAlignmentMode.selfie,
+  }) {
+    final crop = _pipeline.runDetectorStage(image, mode: mode);
     if (crop == null) {
       _pipeline.resetTracking();
       return null;
@@ -108,13 +112,17 @@ class FaceDetectorService {
       _pipeline.resetTracking();
       return null;
     }
-    _pipeline.updateTrackingCrop(result, image.width, image.height);
+    if (mode == FaceAlignmentMode.selfie) {
+      _pipeline.updateTrackingCrop(result, image.width, image.height);
+    }
     if (result.landmarks.first.length <= _idxRightEye) return null;
     return buildObservation(image, result);
   }
 
   img.Image? detectAndCrop(img.Image image) {
-    final result = detectPrimaryFace(image, runBlendshapes: false);
+    _pipeline.resetTracking();
+    final result = detectPrimaryFace(image, runBlendshapes: false, mode: FaceAlignmentMode.nfc);
+    _pipeline.resetTracking();
     return result?.alignedFace112;
   }
 

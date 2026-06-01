@@ -224,12 +224,18 @@ class FaceVerificationWorker {
     _completePassiveIdle();
   }
 
-  Future<img.Image?> detectAndCropEncoded(Uint8List encoded) async {
+  Future<({img.Image? face, Uint8List? debugFramePng, Uint8List? debugLandmarkInputPng})> detectAndCropEncoded(
+    Uint8List encoded,
+  ) async {
     final res = await _pipeline.request('detect_crop_encoded', payload: <String, dynamic>{'bytes': encoded});
-    if (res['ok'] != true) return null;
+    if (res['ok'] != true) return (face: null, debugFramePng: null, debugLandmarkInputPng: null);
     final png = res['png'] as Uint8List?;
-    if (png == null || png.isEmpty) return null;
-    return img.decodeImage(png);
+    if (png == null || png.isEmpty) return (face: null, debugFramePng: null, debugLandmarkInputPng: null);
+    return (
+      face: img.decodeImage(png),
+      debugFramePng: res['debugFramePng'] as Uint8List?,
+      debugLandmarkInputPng: res['debugLandmarkInputPng'] as Uint8List?,
+    );
   }
 
   Future<void> prepareNfcFace(img.Image face) async {
@@ -522,9 +528,26 @@ Future<void> _pipelineWorkerLoop(SendPort mainSendPort) async {
         if (bytes == null || bytes.isEmpty) return <String, dynamic>{'ok': false};
         final decoded = img.decodeImage(bytes);
         if (decoded == null) return <String, dynamic>{'ok': false};
-        final cropped = detector.detectAndCrop(decoded);
-        if (cropped == null) return <String, dynamic>{'ok': false};
-        return <String, dynamic>{'ok': true, 'png': Uint8List.fromList(img.encodePng(cropped))};
+        detector.resetTracking();
+        final nfcCrop = detector.runDetectorStage(decoded, mode: FaceAlignmentMode.nfc);
+        if (nfcCrop == null) {
+          detector.resetTracking();
+          return <String, dynamic>{'ok': false};
+        }
+        final nfcFace = detector.runLandmarkStage(decoded, nfcCrop, runBlendshapes: false);
+        if (nfcFace == null) {
+          detector.resetTracking();
+          return <String, dynamic>{'ok': false};
+        }
+        final nfcDebugFramePng = _buildDebugFramePng(decoded, nfcFace, nfcCrop);
+        final nfcDebugLandmarkInputPng = detector.buildLastLandmarkInputPng();
+        detector.resetTracking();
+        return <String, dynamic>{
+          'ok': true,
+          'png': Uint8List.fromList(img.encodePng(nfcFace.alignedFace112)),
+          'debugFramePng': nfcDebugFramePng,
+          'debugLandmarkInputPng': nfcDebugLandmarkInputPng,
+        };
       case 'process_frame':
         return _handleProcessFrame(detector, payload, camPool!);
       case 'stop':
@@ -944,7 +967,7 @@ img.Image _rotate180(img.Image src) {
 //   Cyan dots    : all 468 mesh landmark positions
 //   Red circles  : 5 ArcFace alignment keypoints (eyes, nose, mouth corners)
 //   Yellow box   : rotated crop window fed to the landmark model (angle encoded by tilt)
-//   Magenta dot  : crop centre
+//   Magenta dot  : crop centre of the yellow bounding box, with a short line indicating the angle direction
 // Kept at ≤160 px wide; ~10–30 kB per PNG.
 Uint8List _buildDebugFramePng(img.Image frame, FaceObservation face, DetectorStageOutput crop) {
   const maxW = 160;
@@ -993,9 +1016,9 @@ Uint8List _buildDebugFramePng(img.Image frame, FaceObservation face, DetectorSta
   // Four corners: rotate (±h, ±h) around crop centre.
   final List<List<double>> corners = <List<double>>[
     <double>[cx + cosA * (-halfPx) - sinA * (-halfPx), cy + sinA * (-halfPx) + cosA * (-halfPx)],
-    <double>[cx + cosA * ( halfPx) - sinA * (-halfPx), cy + sinA * ( halfPx) + cosA * (-halfPx)],
-    <double>[cx + cosA * ( halfPx) - sinA * ( halfPx), cy + sinA * ( halfPx) + cosA * ( halfPx)],
-    <double>[cx + cosA * (-halfPx) - sinA * ( halfPx), cy + sinA * (-halfPx) + cosA * ( halfPx)],
+    <double>[cx + cosA * (halfPx) - sinA * (-halfPx), cy + sinA * (halfPx) + cosA * (-halfPx)],
+    <double>[cx + cosA * (halfPx) - sinA * (halfPx), cy + sinA * (halfPx) + cosA * (halfPx)],
+    <double>[cx + cosA * (-halfPx) - sinA * (halfPx), cy + sinA * (-halfPx) + cosA * (halfPx)],
   ];
   final yellow = img.ColorRgb8(255, 200, 0);
   for (var i = 0; i < 4; i++) {
@@ -1003,18 +1026,26 @@ Uint8List _buildDebugFramePng(img.Image frame, FaceObservation face, DetectorSta
     final b = corners[(i + 1) % 4];
     img.drawLine(
       thumb,
-      x1: a[0].round().clamp(0, tw - 1), y1: a[1].round().clamp(0, th - 1),
-      x2: b[0].round().clamp(0, tw - 1), y2: b[1].round().clamp(0, th - 1),
+      x1: a[0].round().clamp(0, tw - 1),
+      y1: a[1].round().clamp(0, th - 1),
+      x2: b[0].round().clamp(0, tw - 1),
+      y2: b[1].round().clamp(0, th - 1),
       color: yellow,
     );
   }
   // Crop centre (magenta dot) and a short line showing the angle direction.
-  img.fillCircle(thumb, x: cx.round().clamp(0, tw - 1), y: cy.round().clamp(0, th - 1),
-      radius: 2, color: img.ColorRgb8(255, 0, 255));
+  img.fillCircle(
+    thumb,
+    x: cx.round().clamp(0, tw - 1),
+    y: cy.round().clamp(0, th - 1),
+    radius: 2,
+    color: img.ColorRgb8(255, 0, 255),
+  );
   final arrowLen = halfPx * 0.6;
   img.drawLine(
     thumb,
-    x1: cx.round().clamp(0, tw - 1), y1: cy.round().clamp(0, th - 1),
+    x1: cx.round().clamp(0, tw - 1),
+    y1: cy.round().clamp(0, th - 1),
     x2: (cx + cosA * arrowLen).round().clamp(0, tw - 1),
     y2: (cy + sinA * arrowLen).round().clamp(0, th - 1),
     color: img.ColorRgb8(255, 0, 255),

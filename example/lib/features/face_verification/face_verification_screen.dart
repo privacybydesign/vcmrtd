@@ -22,12 +22,7 @@ class VerificationDebugStep {
   // Exact 256×256 input the landmark model received — shows face orientation before
   // any landmarks are placed.  Saved as face_debug_*_model.png.
   final Uint8List? landmarkInputPng;
-  const VerificationDebugStep({
-    required this.label,
-    required this.alignedPng,
-    this.framePng,
-    this.landmarkInputPng,
-  });
+  const VerificationDebugStep({required this.label, required this.alignedPng, this.framePng, this.landmarkInputPng});
 }
 
 class _PassiveProgress {
@@ -75,6 +70,9 @@ class VerificationResult {
   final bool rppgPassed;
   final int rppgSampleCount;
   final Uint8List? debugNfcInputPng;
+  final Uint8List? debugNfcAnnotatedPng;
+  final Uint8List? debugNfcAlignedPng;
+  final Uint8List? debugNfcLandmarkInputPng;
   final Uint8List? debugSelfieInputPng;
   final List<VerificationDebugStep> debugSelfieSteps;
   const VerificationResult({
@@ -86,6 +84,9 @@ class VerificationResult {
     this.rppgPassed = false,
     this.rppgSampleCount = 0,
     this.debugNfcInputPng,
+    this.debugNfcAnnotatedPng,
+    this.debugNfcAlignedPng,
+    this.debugNfcLandmarkInputPng,
     this.debugSelfieInputPng,
     this.debugSelfieSteps = const [],
   });
@@ -461,6 +462,9 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
     final rppgPassed = (rppg?['passed'] as bool?) ?? false;
     final rppgSampleCount = (rppg?['sampleCount'] as num?)?.toInt() ?? 0;
     final debugNfcInputPng = map['debugNfcInputPng'] as Uint8List?;
+    final debugNfcAnnotatedPng = map['debugNfcAnnotatedPng'] as Uint8List?;
+    final debugNfcAlignedPng = map['debugNfcAlignedPng'] as Uint8List?;
+    final debugNfcLandmarkInputPng = map['debugNfcLandmarkInputPng'] as Uint8List?;
     final debugSelfieInputPng = map['debugSelfieInputPng'] as Uint8List?;
     final stepsRaw = map['debugSelfieSteps'] as List?;
     final debugSelfieSteps = stepsRaw == null
@@ -486,6 +490,9 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
         rppgPassed: rppgPassed,
         rppgSampleCount: rppgSampleCount,
         debugNfcInputPng: debugNfcInputPng,
+        debugNfcAnnotatedPng: debugNfcAnnotatedPng,
+        debugNfcAlignedPng: debugNfcAlignedPng,
+        debugNfcLandmarkInputPng: debugNfcLandmarkInputPng,
         debugSelfieInputPng: debugSelfieInputPng,
         debugSelfieSteps: debugSelfieSteps,
       ),
@@ -1106,6 +1113,25 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
             r.rppgPassed,
           ),
           _scoreRow('Liveness actions', r.isLive ? 'passed' : 'failed', r.isLive),
+          if (r.debugNfcAlignedPng != null) ...[
+            const SizedBox(height: 20),
+            const Text('NFC image pipeline', style: TextStyle(fontSize: 12, color: Colors.grey)),
+            const SizedBox(height: 4),
+            const Text(
+              'Left: annotated NFC (bbox + landmarks + crop box)  ·  Right: aligned 112×112 → GhostFaceNet',
+              style: TextStyle(fontSize: 9, color: Colors.grey),
+            ),
+            const SizedBox(height: 8),
+            _debugStepCard(
+              VerificationDebugStep(
+                label: 'NFC face',
+                alignedPng: r.debugNfcAlignedPng!,
+                framePng: r.debugNfcAnnotatedPng,
+                landmarkInputPng: r.debugNfcLandmarkInputPng,
+              ),
+              null,
+            ),
+          ],
           if (r.debugSelfieSteps.isNotEmpty) ...[
             const SizedBox(height: 20),
             const Text('Pipeline steps per selfie candidate', style: TextStyle(fontSize: 12, color: Colors.grey)),

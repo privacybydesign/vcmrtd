@@ -67,6 +67,9 @@ class FaceVerificationEngine {
   int? _consistencyCheckMs;
   Uint8List? _debugNfcMatchInputPng;
   Uint8List? _debugSelfieMatchInputPng;
+  Uint8List? _debugNfcAnnotatedPng;
+  Uint8List? _debugNfcAlignedPng;
+  Uint8List? _debugNfcLandmarkInputPng;
   // Each entry: (label, aligned112png, framePng, landmarkInputPng)
   // framePng         = annotated frame thumbnail (bbox + landmarks + crop box).
   // landmarkInputPng = 256×256 model input PNG (what the model actually saw).
@@ -106,10 +109,14 @@ class FaceVerificationEngine {
         throw StateError('Could not decode NFC image');
       }
       final encodedNfc = Uint8List.fromList(img.encodePng(nfcImage));
-      final nfcFace = await _worker.detectAndCropEncoded(encodedNfc);
+      final nfcResult = await _worker.detectAndCropEncoded(encodedNfc);
+      final nfcFace = nfcResult.face;
       if (nfcFace == null) {
         throw StateError('No face found in NFC photo');
       }
+      _debugNfcAnnotatedPng = nfcResult.debugFramePng;
+      _debugNfcAlignedPng = Uint8List.fromList(img.encodePng(nfcFace));
+      _debugNfcLandmarkInputPng = nfcResult.debugLandmarkInputPng;
       await _worker.prepareNfcFace(nfcFace);
       _nfcFacePrepared = true;
     } catch (_) {
@@ -548,14 +555,14 @@ class FaceVerificationEngine {
         'antiSpoofScore': antiSpoofScore,
         'antiSpoofPassed': antiSpoofPassed,
         'debugNfcInputPng': _debugNfcMatchInputPng,
+        'debugNfcAnnotatedPng': _debugNfcAnnotatedPng,
+        'debugNfcAlignedPng': _debugNfcAlignedPng,
+        'debugNfcLandmarkInputPng': _debugNfcLandmarkInputPng,
         'debugSelfieInputPng': _debugSelfieMatchInputPng,
         'debugSelfieSteps': _debugSelfieStepPngs
-            .map((s) => <String, dynamic>{
-              'label': s.$1,
-              'alignedPng': s.$2,
-              'framePng': s.$3,
-              'landmarkInputPng': s.$4,
-            })
+            .map(
+              (s) => <String, dynamic>{'label': s.$1, 'alignedPng': s.$2, 'framePng': s.$3, 'landmarkInputPng': s.$4},
+            )
             .toList(growable: false),
         'rppg': {
           'hr': passive.rppgHr,

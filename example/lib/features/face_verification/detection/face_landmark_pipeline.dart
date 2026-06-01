@@ -22,6 +22,8 @@ class DetectorStageOutput {
   final double angle;
 }
 
+enum FaceAlignmentMode { selfie, nfc }
+
 class FaceLandmarkPipeline {
   static const int _detectorSize = 128;
   static const int _landmarkSize = 256;
@@ -35,8 +37,14 @@ class FaceLandmarkPipeline {
   // the image width on narrow portrait frames, filling that space with black and
   // giving the landmark model a face surrounded by large black borders.
   static const double _fixedCropMargin = 1.5;
-  // Shifts the crop window upward so the top of the head is included rather than cropped off.
-  static const double _fixedCropShiftY = -0.10;
+  // No vertical shift needed: the Y crop centre now uses boxCy (full detector
+  // bounding box) rather than the keypoint-blended centre, which already biased
+  // the crop upward enough that the chin sat at or below the model-input edge.
+  // A previous -0.10 value made this worse (chin at model row ~239/256 = 93 %).
+  static const double _fixedCropShiftY = 0.0;
+  // NFC/document photos used the original crop policy successfully. Keep that
+  // separate from the live-camera selfie policy so tuning one does not break the other.
+  static const double _nfcCropShiftY = -0.10;
   static const double _presenceThreshold = 0.5;
 
   static const List<String> _blendshapeNames = <String>[
@@ -425,15 +433,15 @@ class FaceLandmarkPipeline {
     _lastCrop = crop;
   }
 
-  DetectorStageOutput? runDetectorStage(img.Image bitmap) {
+  DetectorStageOutput? runDetectorStage(img.Image bitmap, {FaceAlignmentMode mode = FaceAlignmentMode.selfie}) {
     if (_detectorInterp == null) return null;
-    final cached = _lastCrop;
+    final cached = mode == FaceAlignmentMode.selfie ? _lastCrop : null;
     _lastCrop = null;
     if (cached != null) return cached;
 
-    final box = _detectFace(bitmap);
+    final box = _detectFace(bitmap, mode: mode);
     if (box == null) return null;
-    final crop = _cropRegion(box, bitmap.width, bitmap.height);
+    final crop = _cropRegion(box, bitmap.width, bitmap.height, mode);
     return DetectorStageOutput(cropX1: crop[0], cropY1: crop[1], cropW: crop[2], cropH: crop[3], angle: crop[4]);
   }
 
@@ -493,10 +501,15 @@ class FaceLandmarkPipeline {
     var minY = double.infinity;
     var maxY = -double.infinity;
     for (final lm in lms) {
-      if (lm.x < minX) minX = lm.x;
-      if (lm.x > maxX) maxX = lm.x;
-      if (lm.y < minY) minY = lm.y;
-      if (lm.y > maxY) maxY = lm.y;
+      // Clamp to [0,1] before computing bounds: out-of-image landmarks (y > 1 or
+      // x < 0, etc.) from a previous overflowing crop would otherwise pull the
+      // crop centre toward the image edge, compounding the overflow each frame.
+      final x = lm.x.clamp(0.0, 1.0);
+      final y = lm.y.clamp(0.0, 1.0);
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
     }
 
     final cx = (minX + maxX) / 2.0;
@@ -504,7 +517,7 @@ class FaceLandmarkPipeline {
     final w = (maxX - minX).clamp(1e-6, 1.0);
     final h = (maxY - minY).clamp(1e-6, 1.0);
     final angle = _computeRotation(lms[33].x, lms[33].y, lms[263].x, lms[263].y, imgW: imgW, imgH: imgH);
-    final crop = _buildSquareCrop(cx, cy, w, h, angle, imgW, imgH);
+    final crop = _buildSquareCrop(cx, cy, w, h, angle, imgW, imgH, FaceAlignmentMode.selfie);
     return DetectorStageOutput(cropX1: crop[0], cropY1: crop[1], cropW: crop[2], cropH: crop[3], angle: crop[4]);
   }
 
@@ -569,12 +582,45 @@ class FaceLandmarkPipeline {
     return buf.buffer;
   }
 
-  List<double>? _detectFace(img.Image bitmap) {
+  List<double>? _detectFace(img.Image bitmap, {required FaceAlignmentMode mode}) {
     if (_detectorInterp == null) return null;
     final input = _buildDetectorInput(bitmap);
     final out = <int, Object>{0: _detRegressors, 1: _detScores};
     _detectorInterp!.runForMultipleInputs(<Object>[input], out);
-    return _decodeAndNms();
+    final box = _decodeAndNms();
+    if (box == null) return null;
+    if (mode == FaceAlignmentMode.nfc) return box;
+    return _deLetterboxDetection(box, bitmap.width, bitmap.height);
+  }
+
+  // The detector runs on a letterboxed 128×128 image.  Its outputs are in
+  // [0,1] of that padded space, not [0,1] of the original image.  For portrait
+  // NFC images the face can be several percent right of image-center, and the
+  // letterbox left-pad (≈15 px for a 4:3 face photo) compresses that offset,
+  // placing the crop center too far left and shifting all landmarks in the model
+  // input.  This function converts the box coordinates back to original-image
+  // fractions so the crop is correctly centred on the face.
+  List<double> _deLetterboxDetection(List<double> box, int imgW, int imgH) {
+    final srcW = imgW.toDouble();
+    final srcH = imgH.toDouble();
+    final scale = math.min(_detectorSize / srcW, _detectorSize / srcH);
+    final drawW = (srcW * scale).round().clamp(1, _detectorSize).toDouble();
+    final drawH = (srcH * scale).round().clamp(1, _detectorSize).toDouble();
+    final left = ((_detectorSize - drawW) / 2.0).round().toDouble();
+    final top = ((_detectorSize - drawH) / 2.0).round().toDouble();
+    if (left == 0 && top == 0) return box;
+
+    final result = List<double>.from(box);
+    // Box corners: indices 0=x1, 1=y1, 2=x2, 3=y2; keypoints at 5+k*2 (x), 6+k*2 (y).
+    final xIdx = [0, 2, ...List<int>.generate(_detectorKeypoints, (k) => 5 + k * 2)];
+    final yIdx = [1, 3, ...List<int>.generate(_detectorKeypoints, (k) => 6 + k * 2)];
+    for (final i in xIdx) {
+      if (i < result.length) result[i] = ((box[i] * _detectorSize - left) / drawW).clamp(0.0, 1.0);
+    }
+    for (final i in yIdx) {
+      if (i < result.length) result[i] = ((box[i] * _detectorSize - top) / drawH).clamp(0.0, 1.0);
+    }
+    return result;
   }
 
   List<double>? _decodeAndNms() {
@@ -688,19 +734,19 @@ class FaceLandmarkPipeline {
     return canvas;
   }
 
-  List<double> _cropRegion(List<double> box, int imgW, int imgH) {
+  List<double> _cropRegion(List<double> box, int imgW, int imgH, FaceAlignmentMode mode) {
     final boxCx = (box[0] + box[2]) * 0.5;
     final boxCy = (box[1] + box[3]) * 0.5;
     final boxW = (box[2] - box[0]).clamp(0.05, 0.95);
     final boxH = (box[3] - box[1]).clamp(0.05, 0.95);
-    final blended = _keypointBlendedCenter(box, boxCx, boxCy);
+    final blended = _keypointBlendedCenter(box, boxCx, boxCy, mode);
     final cx = blended?[0] ?? boxCx;
     final cy = blended?[1] ?? boxCy;
     final angle = box.length >= 9 ? _computeRotation(box[5], box[6], box[7], box[8], imgW: imgW, imgH: imgH) : 0.0;
-    return _buildSquareCrop(cx, cy, boxW, boxH, angle, imgW, imgH);
+    return _buildSquareCrop(cx, cy, boxW, boxH, angle, imgW, imgH, mode);
   }
 
-  List<double>? _keypointBlendedCenter(List<double> box, double boxCx, double boxCy) {
+  List<double>? _keypointBlendedCenter(List<double> box, double boxCx, double boxCy, FaceAlignmentMode mode) {
     if (box.length < 17) return null;
     var minKx = double.infinity;
     var minKy = double.infinity;
@@ -724,16 +770,42 @@ class FaceLandmarkPipeline {
     if (kpW <= 0.05 || kpH <= 0.03) return null;
     final kpCx = (minKx + maxKx) * 0.5;
     final kpCy = (minKy + maxKy) * 0.5;
-    return <double>[(kpCx * 0.7 + boxCx * 0.3).clamp(0.0, 1.0), (kpCy * 0.7 + boxCy * 0.3).clamp(0.0, 1.0)];
+    if (mode == FaceAlignmentMode.nfc) {
+      return <double>[(kpCx * 0.7 + boxCx * 0.3).clamp(0.0, 1.0), (kpCy * 0.7 + boxCy * 0.3).clamp(0.0, 1.0)];
+    }
+    // Y: use box center, not keypoint center. The 6 detector keypoints are
+    // eye/nose/mouth/ear — no chin. Their bounding-box midpoint in Y is biased
+    // toward the upper face, which pushes the crop center too high and leaves
+    // the chin at or below the model-input boundary, causing the model to
+    // hallucinate chin landmarks at the bottom-lip position.  boxCy comes from
+    // the full detector bounding box which does include the chin.
+    // X: keep the keypoint blend; eye/ear keypoints are symmetric so no bias.
+    return <double>[(kpCx * 0.7 + boxCx * 0.3).clamp(0.0, 1.0), boxCy.clamp(0.0, 1.0)];
   }
 
-  List<double> _buildSquareCrop(double cx, double cy, double w, double h, double angle, int imgW, int imgH) {
-    final pxSize = math.max(w * imgW, h * imgH) * _fixedCropMargin;
+  List<double> _buildSquareCrop(
+    double cx,
+    double cy,
+    double w,
+    double h,
+    double angle,
+    int imgW,
+    int imgH,
+    FaceAlignmentMode mode,
+  ) {
+    // Cap pxSize at 2× the narrow image dimension so the crop never overflows
+    // by more than ~2× in any direction, even for very close-up faces on narrow
+    // portrait frames (e.g. 360 × 640 iOS).  Without this cap a close face drives
+    // pxSize to 3–4× the image width, filling the 256-px model input with black
+    // borders and producing unreliable landmark positions for chin / forehead.
+    final rawPxSize = math.max(w * imgW, h * imgH) * _fixedCropMargin;
+    final pxSize = mode == FaceAlignmentMode.selfie ? rawPxSize.clamp(1.0, math.min(imgW, imgH) * 2.0) : rawPxSize;
     final normW = pxSize / imgW;
     final normH = pxSize / imgH;
     final cosA = math.cos(angle);
     final sinA = math.sin(angle);
-    final shiftPx = _fixedCropShiftY * pxSize;
+    final shiftY = mode == FaceAlignmentMode.selfie ? _fixedCropShiftY : _nfcCropShiftY;
+    final shiftPx = shiftY * pxSize;
     final shiftedCx = (cx - (sinA * shiftPx / imgW)).clamp(0.0, 1.0);
     final shiftedCy = (cy + (cosA * shiftPx / imgH)).clamp(0.0, 1.0);
     return <double>[shiftedCx - normW / 2.0, shiftedCy - normH / 2.0, normW, normH, angle];
