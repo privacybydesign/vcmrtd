@@ -2,7 +2,7 @@ import 'dart:collection';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/foundation.dart' show TargetPlatform, debugPrint, defaultTargetPlatform;
 import 'package:flutter_litert/flutter_litert.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtdapp/features/face_verification/detection/face_detector.dart';
@@ -429,6 +429,12 @@ class ActiveLivenessService {
 
   bool _yawThresholdCrossed(double? matD, bool left) {
     if (matD == null) return false;
+
+    final isIOS = defaultTargetPlatform == TargetPlatform.iOS;
+    if (isIOS) {
+      return left ? matD >= yawThresholdDeg : matD <= -yawThresholdDeg;
+    }
+
     return left ? matD <= -yawThresholdDeg : matD >= yawThresholdDeg;
   }
 
