@@ -75,6 +75,12 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
                   widget.drivingLicence.photoImageData,
                   _parseDrivingLicenceDate(widget.drivingLicence.dateOfIssue),
                 ),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  backgroundColor: Colors.green[600],
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
                 icon: const Icon(Icons.face),
                 label: const Text('Start Face Verification'),
               ),

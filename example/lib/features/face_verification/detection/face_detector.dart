@@ -1,59 +1,41 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
-import 'dart:ui';
+import 'dart:ui' show Offset, Rect;
 
 import 'package:image/image.dart' as img;
 import 'package:vcmrtdapp/features/face_verification/detection/face_landmark_pipeline.dart';
 import 'package:vcmrtdapp/features/face_verification/detection/face_landmarker_types.dart';
+import 'package:vcmrtdapp/features/face_verification/detection/face_observation.dart';
 
-class FaceObservation {
-  const FaceObservation({
-    required this.result,
-    required this.boundingBox,
-    required this.boundingBoxAreaRatio,
-    required this.boundingBoxCenter,
-    required this.mouthRatio,
-    required this.yawDegrees,
-    required this.blendshapeScores,
-    required this.alignedFace112,
-  });
+// Re-export so that files importing face_detector.dart still get FaceObservation
+// without needing a second import.
+export 'package:vcmrtdapp/features/face_verification/detection/face_observation.dart';
 
-  final FaceLandmarkerResult result;
-  final Rect boundingBox;
-  final double boundingBoxAreaRatio;
-
-  /// Face bounding-box center, normalized to the frame (0..1 on each axis).
-  /// Mirror- and rotation-robust enough to test "is the face centered in the
-  /// oval" without mapping to exact screen coordinates.
-  final Offset boundingBoxCenter;
-  final double mouthRatio;
-  final double? yawDegrees;
-  final Map<String, double> blendshapeScores;
-  final img.Image alignedFace112;
-}
-
+/// Detects and aligns faces using the [FaceLandmarkPipeline].
+///
+/// Wraps the pipeline with ArcFace-style similarity warping to produce
+/// consistent 112×112 crops for the face recognizer.
 class FaceDetectorService {
   static const int _targetSize = 112;
 
+  // MediaPipe face-mesh landmark indices for the 5 ArcFace keypoints.
   static const int _idxLeftEye = 468;
   static const int _idxRightEye = 473;
   static const int _idxNose = 1;
   static const int _idxMouthL = 61;
   static const int _idxMouthR = 291;
 
-  // ArcFace canonical 5-point alignment targets for a 112×112 crop:
-  // left eye, right eye, nose tip, left mouth corner, right mouth corner.
+  // ArcFace canonical 5-point targets for a 112×112 crop.
+  // Source: insightface/alignment/coordinate_systems — the same coordinates
+  // used to train GhostFaceNet and most ArcFace-family recognition models.
+  // Order: left eye, right eye, nose tip, left mouth corner, right mouth corner.
+  // Each pair is (x, y) in pixel space of the 112×112 output image.
   static const List<double> _dstPoints = <double>[
-    38.2946,
-    51.6963,
-    73.5318,
-    51.5014,
-    56.0252,
-    71.7366,
-    41.5493,
-    92.3655,
-    70.7299,
-    92.2041,
+    38.2946, 51.6963, // left eye
+    73.5318, 51.5014, // right eye
+    56.0252, 71.7366, // nose tip
+    41.5493, 92.3655, // left mouth corner
+    70.7299, 92.2041, // right mouth corner
   ];
 
   final FaceLandmarkPipeline _pipeline = FaceLandmarkPipeline();
@@ -70,16 +52,9 @@ class FaceDetectorService {
     _pipeline.initializeFromBuffers(detector: detector, landmarks: landmarks, blendshapes: blendshapes);
   }
 
-  void resetTracking() {
-    _pipeline.resetTracking();
-  }
+  void resetTracking() => _pipeline.resetTracking();
 
-  void setTrackingCrop(DetectorStageOutput? crop) {
-    _pipeline.setTrackingCrop(crop);
-  }
-
-  /// See [FaceLandmarkPipeline.buildLastLandmarkInputPng].
-  Uint8List? buildLastLandmarkInputPng() => _pipeline.buildLastLandmarkInputPng();
+  void setTrackingCrop(DetectorStageOutput? crop) => _pipeline.setTrackingCrop(crop);
 
   DetectorStageOutput? runDetectorStage(img.Image image, {FaceAlignmentMode mode = FaceAlignmentMode.selfie}) {
     return _pipeline.runDetectorStage(image, mode: mode);
@@ -87,9 +62,7 @@ class FaceDetectorService {
 
   FaceObservation? runLandmarkStage(img.Image image, DetectorStageOutput crop, {bool runBlendshapes = true}) {
     final result = _pipeline.runLandmarkStage(image, crop, runBlendshapes: runBlendshapes);
-    if (result == null || result.landmarks.isEmpty) {
-      return null;
-    }
+    if (result == null || result.landmarks.isEmpty) return null;
     return buildObservation(image, result);
   }
 
@@ -97,6 +70,7 @@ class FaceDetectorService {
     return _pipeline.computeTrackingCrop(result, imgW, imgH);
   }
 
+  /// Convenience method: runs detector + landmark stage and returns an observation.
   FaceObservation? detectPrimaryFace(
     img.Image image, {
     bool runBlendshapes = true,
@@ -119,6 +93,9 @@ class FaceDetectorService {
     return buildObservation(image, result);
   }
 
+  /// Detects the primary face in [image] and returns the aligned 112×112 crop.
+  /// Returns null when no face is found. Resets tracking before and after so
+  /// successive NFC calls do not interfere with the live-camera tracking state.
   img.Image? detectAndCrop(img.Image image) {
     _pipeline.resetTracking();
     final result = detectPrimaryFace(image, runBlendshapes: false, mode: FaceAlignmentMode.nfc);
@@ -126,6 +103,7 @@ class FaceDetectorService {
     return result?.alignedFace112;
   }
 
+  /// Builds a [FaceObservation] from a landmark [result] and its source [image].
   FaceObservation buildObservation(img.Image image, FaceLandmarkerResult result) {
     final landmarks = result.landmarks.first;
     if (landmarks.length <= _idxRightEye) {
@@ -133,33 +111,34 @@ class FaceDetectorService {
     }
 
     final box = _boundsFromLandmarks(landmarks, image.width, image.height);
+    // Clamp denominator to at least 1 to guard against a degenerate 0×0 image.
     final boxAreaRatio = (box.width * box.height) / (image.width * image.height).clamp(1, 1 << 30);
     final center = Offset(
       (box.center.dx / image.width).clamp(0.0, 1.0),
       (box.center.dy / image.height).clamp(0.0, 1.0),
     );
-    final mouthRatio = _mouthOpenRatioFromLandmarks(landmarks);
-    final yaw = matrixYaw(result);
-    final blendshapeScores = _blendshapeMap(result);
-    final aligned = _similarityWarp(image, result);
 
     return FaceObservation(
       result: result,
       boundingBox: box,
       boundingBoxAreaRatio: boxAreaRatio.clamp(0.0, 1.0),
       boundingBoxCenter: center,
-      mouthRatio: mouthRatio,
-      yawDegrees: yaw,
-      blendshapeScores: blendshapeScores,
-      alignedFace112: aligned,
+      mouthRatio: _mouthOpenRatio(landmarks),
+      yawDegrees: matrixYaw(result),
+      blendshapeScores: _blendshapeMap(result),
+      alignedFace112: _similarityWarp(image, result),
     );
   }
 
+  /// Extracts yaw in degrees from the pose matrix stored in [result].
+  /// Returns null when the matrix is absent or shorter than expected.
   double? matrixYaw(FaceLandmarkerResult result) {
     final mats = result.transformMatrices;
     if (mats == null || mats.isEmpty) return null;
     final m = mats.first;
     if (m.length < 3) return null;
+    // m[2] is the X component of the camera-facing normal vector.
+    // asin(-m[2]) converts it to a yaw angle in radians.
     final v = (-m[2]).clamp(-1.0, 1.0);
     return math.asin(v) * 180.0 / math.pi;
   }
@@ -167,8 +146,7 @@ class FaceDetectorService {
   Map<String, double> _blendshapeMap(FaceLandmarkerResult result) {
     final lists = result.blendshapes;
     if (lists == null || lists.isEmpty) return const <String, double>{};
-    final first = lists.first;
-    return <String, double>{for (final c in first) c.categoryName: c.score};
+    return <String, double>{for (final c in lists.first) c.categoryName: c.score};
   }
 
   Rect _boundsFromLandmarks(List<NormalizedLandmark> landmarks, int imgW, int imgH) {
@@ -192,70 +170,62 @@ class FaceDetectorService {
     return Rect.fromLTRB(minX, minY, maxX, maxY);
   }
 
-  double _mouthOpenRatioFromLandmarks(List<NormalizedLandmark> lm) {
+  double _mouthOpenRatio(List<NormalizedLandmark> lm) {
     if (lm.length <= 152) return 0.0;
+    // lm[13]/lm[14] = upper/lower inner lip; lm[10]/lm[152] = chin to crown.
     final gap = _dist(lm[13], lm[14]);
-    final h = _dist(lm[10], lm[152]).clamp(1e-6, 10.0);
-    return gap / h;
+    final faceH = _dist(lm[10], lm[152]).clamp(1e-6, 10.0);
+    return gap / faceH;
   }
 
-  double _dist(NormalizedLandmark a, NormalizedLandmark b) {
-    final dx = a.x - b.x;
-    final dy = a.y - b.y;
-    return math.sqrt(dx * dx + dy * dy);
-  }
-
+  /// Warps [bitmap] so that the 5 detected facial keypoints align with the
+  /// canonical ArcFace positions in a [_targetSize]×[_targetSize] output.
   img.Image _similarityWarp(img.Image bitmap, FaceLandmarkerResult result) {
-    final landmarks = result.landmarks.first;
+    final lm = result.landmarks.first;
     final w = bitmap.width.toDouble();
     final h = bitmap.height.toDouble();
 
-    final eyeAX = landmarks[_idxLeftEye].x * w;
-    final eyeAY = landmarks[_idxLeftEye].y * h;
-    final eyeBX = landmarks[_idxRightEye].x * w;
-    final eyeBY = landmarks[_idxRightEye].y * h;
-    final noseX = landmarks[_idxNose].x * w;
-    final noseY = landmarks[_idxNose].y * h;
-    final mouthAX = landmarks[_idxMouthL].x * w;
-    final mouthAY = landmarks[_idxMouthL].y * h;
-    final mouthBX = landmarks[_idxMouthR].x * w;
-    final mouthBY = landmarks[_idxMouthR].y * h;
+    final eyeA = (x: lm[_idxLeftEye].x * w, y: lm[_idxLeftEye].y * h);
+    final eyeB = (x: lm[_idxRightEye].x * w, y: lm[_idxRightEye].y * h);
+    final mouthA = (x: lm[_idxMouthL].x * w, y: lm[_idxMouthL].y * h);
+    final mouthB = (x: lm[_idxMouthR].x * w, y: lm[_idxMouthR].y * h);
 
-    final leftEyeX = eyeAX <= eyeBX ? eyeAX : eyeBX;
-    final leftEyeY = eyeAX <= eyeBX ? eyeAY : eyeBY;
-    final rightEyeX = eyeAX <= eyeBX ? eyeBX : eyeAX;
-    final rightEyeY = eyeAX <= eyeBX ? eyeBY : eyeAY;
+    // Sort eye and mouth pairs so left always has the smaller X coordinate.
+    final eyes = _sortByX(eyeA, eyeB);
+    final mouth = _sortByX(mouthA, mouthB);
 
-    final leftMouthX = mouthAX <= mouthBX ? mouthAX : mouthBX;
-    final leftMouthY = mouthAX <= mouthBX ? mouthAY : mouthBY;
-    final rightMouthX = mouthAX <= mouthBX ? mouthBX : mouthAX;
-    final rightMouthY = mouthAX <= mouthBX ? mouthBY : mouthAY;
-
+    // Flat [x0, y0, x1, y1, ...] list matching _dstPoints order.
     final src = <double>[
-      leftEyeX,
-      leftEyeY,
-      rightEyeX,
-      rightEyeY,
-      noseX,
-      noseY,
-      leftMouthX,
-      leftMouthY,
-      rightMouthX,
-      rightMouthY,
+      eyes.left.x,
+      eyes.left.y,
+      eyes.right.x,
+      eyes.right.y,
+      lm[_idxNose].x * w,
+      lm[_idxNose].y * h,
+      mouth.left.x,
+      mouth.left.y,
+      mouth.right.x,
+      mouth.right.y,
     ];
 
-    final t = _estimateSimilarityTransform(src, _dstPoints);
-    return _warpAffine(bitmap, t);
+    return _warpAffine(bitmap, _estimateSimilarityTransform(src, _dstPoints));
   }
 
-  // Closed-form Umeyama algorithm: finds the least-squares similarity transform
-  // (uniform scale + rotation + translation) mapping src to dst landmark pairs.
+  /// Sorts two pixel-space points so that the one with smaller X comes first.
+  static ({({double x, double y}) left, ({double x, double y}) right}) _sortByX(
+    ({double x, double y}) a,
+    ({double x, double y}) b,
+  ) {
+    return a.x <= b.x ? (left: a, right: b) : (left: b, right: a);
+  }
+
+  /// Closed-form Umeyama algorithm: finds the least-squares similarity transform
+  /// (uniform scale + rotation + translation) that maps [src] onto [dst].
+  ///
+  /// Both lists are flat [x0, y0, x1, y1, ...] coordinate pairs.
   _SimilarityTransform _estimateSimilarityTransform(List<double> src, List<double> dst) {
     final n = src.length ~/ 2;
-    var srcMx = 0.0;
-    var srcMy = 0.0;
-    var dstMx = 0.0;
-    var dstMy = 0.0;
+    var srcMx = 0.0, srcMy = 0.0, dstMx = 0.0, dstMy = 0.0;
     for (var i = 0; i < n; i++) {
       srcMx += src[i * 2];
       srcMy += src[i * 2 + 1];
@@ -267,9 +237,7 @@ class FaceDetectorService {
     dstMx /= n;
     dstMy /= n;
 
-    var a = 0.0;
-    var b = 0.0;
-    var srcVar = 0.0;
+    var a = 0.0, b = 0.0, srcVar = 0.0;
     for (var i = 0; i < n; i++) {
       final sx = src[i * 2] - srcMx;
       final sy = src[i * 2 + 1] - srcMy;
@@ -287,25 +255,29 @@ class FaceDetectorService {
     final m01 = -scale * sinV;
     final m10 = scale * sinV;
     final m11 = scale * cosV;
-    final tx = dstMx - (m00 * srcMx + m01 * srcMy);
-    final ty = dstMy - (m10 * srcMx + m11 * srcMy);
-    return _SimilarityTransform(m00: m00, m01: m01, m10: m10, m11: m11, tx: tx, ty: ty);
+    return _SimilarityTransform(
+      m00: m00,
+      m01: m01,
+      m10: m10,
+      m11: m11,
+      tx: dstMx - (m00 * srcMx + m01 * srcMy),
+      ty: dstMy - (m10 * srcMx + m11 * srcMy),
+    );
   }
 
-  // Inverse warp: for each destination pixel compute its source coordinate and bilinearly sample.
-  // Forward mapping would scatter source pixels and leave unfilled holes in the output.
+  /// Inverse affine warp: for every destination pixel, compute its source
+  /// coordinate and sample bilinearly. Forward mapping would leave unfilled
+  /// holes in the output and is therefore not used.
   img.Image _warpAffine(img.Image source, _SimilarityTransform t) {
     final det = t.m00 * t.m11 - t.m01 * t.m10;
-    if (det.abs() < 1e-9) {
-      return img.Image(width: _targetSize, height: _targetSize);
-    }
+    if (det.abs() < 1e-9) return img.Image(width: _targetSize, height: _targetSize);
 
     final srcW = source.width, srcH = source.height;
     final srcBytes = source.getBytes(order: img.ChannelOrder.rgb);
     final outBytes = Uint8List(_targetSize * _targetSize * 3);
 
     for (var y = 0; y < _targetSize; y++) {
-      // Precompute per-row values to avoid redundant work in the inner loop.
+      // Precompute per-row offset and shifted Y once to reduce inner-loop work.
       final diRow = y * _targetSize * 3;
       final dy = y - t.ty;
       for (var x = 0; x < _targetSize; x++) {
@@ -318,17 +290,13 @@ class FaceDetectorService {
         final fx = sx - x0, fy = sy - y0;
         final x1 = (x0 + 1).clamp(0, srcW - 1);
         final y1 = (y0 + 1).clamp(0, srcH - 1);
-        // Precompute row byte offsets to avoid two extra multiplications per pixel.
-        final row0 = y0 * srcW * 3;
-        final row1 = y1 * srcW * 3;
-        final i00 = row0 + x0 * 3;
-        final i01 = row0 + x1 * 3;
-        final i10 = row1 + x0 * 3;
-        final i11 = row1 + x1 * 3;
+        // Precompute row byte offsets to avoid redundant multiplications per pixel.
+        final i00 = y0 * srcW * 3 + x0 * 3;
+        final i01 = y0 * srcW * 3 + x1 * 3;
+        final i10 = y1 * srcW * 3 + x0 * 3;
+        final i11 = y1 * srcW * 3 + x1 * 3;
         final di = diRow + x * 3;
-        // Precompute the four bilinear weights once per pixel instead of
-        // recomputing (1-fx) and (1-fy) once per channel.
-        // Bilinear combination of [0,255] values stays in [0,255], so no clamp needed.
+        // Precompute the four bilinear weights once per pixel.
         final w00 = (1.0 - fx) * (1.0 - fy);
         final w01 = fx * (1.0 - fy);
         final w10 = (1.0 - fx) * fy;
@@ -345,11 +313,20 @@ class FaceDetectorService {
     return img.Image.fromBytes(width: _targetSize, height: _targetSize, bytes: outBytes.buffer, numChannels: 3);
   }
 
-  Future<void> close() async {
-    _pipeline.close();
+  /// Euclidean distance between two normalized landmarks (ignores Z).
+  static double _dist(NormalizedLandmark a, NormalizedLandmark b) {
+    final dx = a.x - b.x;
+    final dy = a.y - b.y;
+    return math.sqrt(dx * dx + dy * dy);
   }
+
+  Future<void> close() async => _pipeline.close();
 }
 
+/// 2-D similarity transform: [m00/m01/m10/m11] form a scaled rotation matrix
+/// and [tx/ty] are the translation components.
+///
+/// Applied as: dst = M * src + t, where M = [[m00, m01], [m10, m11]].
 class _SimilarityTransform {
   const _SimilarityTransform({
     required this.m00,
@@ -360,10 +337,10 @@ class _SimilarityTransform {
     required this.ty,
   });
 
-  final double m00;
-  final double m01;
-  final double m10;
-  final double m11;
-  final double tx;
-  final double ty;
+  final double m00; // scale * cos(angle)
+  final double m01; // -scale * sin(angle)
+  final double m10; // scale * sin(angle)
+  final double m11; // scale * cos(angle)
+  final double tx; // X translation
+  final double ty; // Y translation
 }

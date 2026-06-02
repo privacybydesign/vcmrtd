@@ -2,17 +2,26 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtdapp/features/face_verification/detection/face_detector.dart';
-import 'package:vcmrtdapp/features/face_verification/face_verification_diagnostics.dart';
+import 'package:vcmrtdapp/features/face_verification/detection/face_observation.dart';
 import 'package:vcmrtdapp/features/face_verification/face_verification_tuning.dart';
 import 'package:vcmrtdapp/features/face_verification/face_verification_worker.dart';
-import 'package:vcmrtdapp/features/face_verification/liveness/liveness_service.dart';
+import 'package:vcmrtdapp/features/face_verification/liveness/active_liveness_service.dart';
 
 enum LivenessMode { active, passive }
 
+/// Orchestrates a complete face verification session: active/passive liveness,
+/// NFC face matching, anti-spoof, rPPG, and mid-session consistency check.
+///
+/// Usage:
+///   1. Call [initialize].
+///   2. Optionally call [prepareNfcFaceEagerly] to embed the NFC photo in the background.
+///   3. Call [start] when the user taps the start button.
+///   4. Feed camera frames via [processFrame] on each camera callback.
+///   5. Listen to [events] for alignment tips, action prompts, and the final result.
+///   6. Call [dispose] when the widget is removed.
 class FaceVerificationEngine {
   static const int _requiredActions = FaceVerificationTuning.requiredActions;
   static const int _actionsNeededToPass = FaceVerificationTuning.actionsNeededToPass;
@@ -27,19 +36,21 @@ class FaceVerificationEngine {
 
   Stream<Map<String, dynamic>> get events => _events.stream;
 
+  // ---------------------------------------------------------------------------
+  // Session lifecycle state
+  // ---------------------------------------------------------------------------
+
   bool _running = false;
   bool _processing = false;
   bool _sessionFinished = true;
   bool _sessionStopping = false;
   LivenessMode _mode = LivenessMode.active;
-  // Wall-clock timestamp when the passive countdown began. Null until the face
-  // has been held in the oval for the lock-on period. The countdown is a fixed
-  // duration from here.
-  int? _passiveStartMs;
-  // When the face first became (and stayed) in the oval, for the lock-on hold.
-  int? _passiveInOvalSinceMs;
   StreamSubscription<WorkerFrameResult>? _workerFrameSub;
   Future<void> _workerFrameChain = Future<void>.value();
+
+  // ---------------------------------------------------------------------------
+  // Active liveness state
+  // ---------------------------------------------------------------------------
 
   final List<LivenessAction> _pendingActions = <LivenessAction>[];
   int _completedCount = 0;
@@ -47,39 +58,51 @@ class FaceVerificationEngine {
   bool _extraActionMode = false;
   int _framesSinceLastAction = 0;
 
+  // ---------------------------------------------------------------------------
+  // Passive liveness state
+  // ---------------------------------------------------------------------------
+
+  // Wall-clock ms when the countdown started. Null = lock-on phase (not yet counting).
+  int? _passiveStartMs;
+  // Wall-clock ms when the face first entered the oval continuously.
+  // Reset to null whenever the face leaves the oval during lock-on.
+  int? _passiveInOvalSinceMs;
+
+  // ---------------------------------------------------------------------------
+  // NFC face & selfie matching state
+  // ---------------------------------------------------------------------------
+
   bool _nfcFacePrepared = false;
   Future<void>? _nfcPrepareFuture;
   Uint8List? _nfcImageBytes;
   img.Image? _firstSelfie;
   double _bestSelfieYaw = double.infinity;
   int _selfieFrameCount = 0;
+
+  /// How many aligned frames we sample to pick the most frontal selfie.
   static const int _selfieFrameSampleSize = 5;
 
-  // Mid-liveness consistency check — selfie captured at a random neutral-face
-  // moment and compared against _firstSelfie to detect face swaps mid-session.
+  // ---------------------------------------------------------------------------
+  // Mid-session consistency check state
+  // ---------------------------------------------------------------------------
+  //
+  // A second selfie is taken at a random moment mid-liveness and compared to
+  // _firstSelfie. A large score drop indicates a face swap (e.g. photo held up
+  // after alignment, then replaced by a different person for the gestures).
+
   bool _consistencySelfieStored = false;
   bool _consistencyChecked = false;
   bool _consistencyFailed = false;
+  Future<void>? _consistencyCheckFuture;
+  int _consistencyCheckToken = 0;
+  // Active mode: track whether we were already in rest phase to detect entry.
   bool _wasWaitingForRest = false;
+  // Random frame delay (0–14) before sampling the consistency selfie.
+  // Randomisation prevents a sophisticated attacker from predicting the exact frame.
   int _consistencyRestFrameCount = 0;
   int _consistencyRestDelay = -1;
-  // For passive mode: wall-clock ms at which to take the mid-liveness selfie.
+  // Passive mode: wall-clock ms at which to take the consistency selfie.
   int? _consistencyCheckMs;
-  Uint8List? _debugNfcMatchInputPng;
-  Uint8List? _debugSelfieMatchInputPng;
-  Uint8List? _debugNfcAnnotatedPng;
-  Uint8List? _debugNfcAlignedPng;
-  Uint8List? _debugNfcLandmarkInputPng;
-  // Each entry: (label, aligned112png, framePng, landmarkInputPng)
-  // framePng         = annotated frame thumbnail (bbox + landmarks + crop box).
-  // landmarkInputPng = 256×256 model input PNG (what the model actually saw).
-  final List<(String, Uint8List, Uint8List?, Uint8List?)> _debugSelfieStepPngs = [];
-  Uint8List? _latestDebugFramePng;
-  Uint8List? _latestDebugLandmarkInputPng;
-  bool _diagSawFirstPipelineResult = false;
-  bool _diagSawFirstFaceResult = false;
-  bool _diagSawFirstNextAction = false;
-  int _diagAligningFrameCount = 0;
 
   Future<void> initialize() async {
     await _worker.initialize();
@@ -109,14 +132,10 @@ class FaceVerificationEngine {
         throw StateError('Could not decode NFC image');
       }
       final encodedNfc = Uint8List.fromList(img.encodePng(nfcImage));
-      final nfcResult = await _worker.detectAndCropEncoded(encodedNfc);
-      final nfcFace = nfcResult.face;
+      final nfcFace = await _worker.detectAndCropEncoded(encodedNfc);
       if (nfcFace == null) {
         throw StateError('No face found in NFC photo');
       }
-      _debugNfcAnnotatedPng = nfcResult.debugFramePng;
-      _debugNfcAlignedPng = Uint8List.fromList(img.encodePng(nfcFace));
-      _debugNfcLandmarkInputPng = nfcResult.debugLandmarkInputPng;
       await _worker.prepareNfcFace(nfcFace);
       _nfcFacePrepared = true;
     } catch (_) {
@@ -136,6 +155,8 @@ class FaceVerificationEngine {
     _passiveInOvalSinceMs = null;
     _lastAlignTip = null;
 
+    // Passive mode runs no gesture challenges — liveness comes from anti-spoof
+    // and rPPG alone, so the action list stays empty.
     _pendingActions
       ..clear()
       ..addAll(mode == LivenessMode.passive ? const <LivenessAction>[] : _chooseActions());
@@ -147,23 +168,16 @@ class FaceVerificationEngine {
     _firstSelfie = null;
     _bestSelfieYaw = double.infinity;
     _selfieFrameCount = 0;
-    _debugNfcMatchInputPng = null;
 
     _consistencySelfieStored = false;
     _consistencyChecked = false;
     _consistencyFailed = false;
+    _consistencyCheckFuture = null;
+    _consistencyCheckToken++;
     _wasWaitingForRest = false;
     _consistencyRestFrameCount = 0;
     _consistencyRestDelay = -1;
     _consistencyCheckMs = null;
-    _debugSelfieMatchInputPng = null;
-    _debugSelfieStepPngs.clear();
-    _latestDebugFramePng = null;
-    _latestDebugLandmarkInputPng = null;
-    _diagSawFirstPipelineResult = false;
-    _diagSawFirstFaceResult = false;
-    _diagSawFirstNextAction = false;
-    _diagAligningFrameCount = 0;
     _active.reset();
     await _worker.startSession();
 
@@ -185,21 +199,7 @@ class FaceVerificationEngine {
     if (!_running || _processing || _sessionFinished || _sessionStopping) return;
     try {
       _framesSinceLastAction++;
-      if (frameResult.debugFramePng != null) _latestDebugFramePng = frameResult.debugFramePng;
-      if (frameResult.debugLandmarkInputPng != null) _latestDebugLandmarkInputPng = frameResult.debugLandmarkInputPng;
       final face = frameResult.face;
-      if (FaceVerificationDiagnostics.enabled && !_diagSawFirstPipelineResult) {
-        _diagSawFirstPipelineResult = true;
-        FaceVerificationDiagnostics.log('first pipeline result received hasFace=${face != null}');
-      }
-      if (FaceVerificationDiagnostics.enabled && face != null && !_diagSawFirstFaceResult) {
-        _diagSawFirstFaceResult = true;
-        FaceVerificationDiagnostics.log(
-          'first pipeline result with face '
-          'bboxArea=${face.boundingBoxAreaRatio.toStringAsFixed(3)} '
-          'yaw=${_fmt(face.yawDegrees)} mouth=${face.mouthRatio.toStringAsFixed(3)}',
-        );
-      }
       _updateFaceState(face);
 
       if (_mode == LivenessMode.passive) {
@@ -265,70 +265,48 @@ class FaceVerificationEngine {
       _emitAlignTip('holdStill');
     }
     final accepted = _active.processAlignmentFrame(face: face, action: action, timedOut: false);
-    if (FaceVerificationDiagnostics.enabled) {
-      _diagAligningFrameCount++;
-      final stableAfter = accepted ? alignmentDiag.baselineFrames : alignmentDiag.stableFramesAfter;
-      FaceVerificationDiagnostics.log(
-        'align frame #$_diagAligningFrameCount '
-        'bboxArea=${face.boundingBoxAreaRatio.toStringAsFixed(3)} '
-        'yaw=${_fmt(face.yawDegrees)} mouth=${face.mouthRatio.toStringAsFixed(3)} '
-        'rest=${alignmentDiag.atRest} reason=${alignmentDiag.rejectReason ?? 'ok'} '
-        'stable=${alignmentDiag.stableFramesBefore}->$stableAfter/${alignmentDiag.baselineFrames} '
-        'accepted=$accepted',
-      );
-    }
     if (accepted) {
-      if (_selfieFrameCount < _selfieFrameSampleSize) {
-        _selfieFrameCount++;
-        final absYaw = (face.yawDegrees ?? double.infinity).abs();
-        if (absYaw < _bestSelfieYaw) {
-          _bestSelfieYaw = absYaw;
-          _firstSelfie = face.alignedFace112;
-          _debugSelfieStepPngs.add((
-            'Aligned #$_selfieFrameCount yaw=${absYaw.toStringAsFixed(1)}°',
-            Uint8List.fromList(img.encodePng(face.alignedFace112)),
-            _latestDebugFramePng,
-            _latestDebugLandmarkInputPng,
-          ));
-          debugPrint(
-            '[FaceVerification] Selfie candidate updated: yaw=${absYaw.toStringAsFixed(1)}° sample=$_selfieFrameCount/$_selfieFrameSampleSize',
-          );
-        }
-      }
-      // Store reference embedding once, after action 0's alignment completes.
-      if (_currentActionIndex == 0 && !_consistencySelfieStored && _firstSelfie != null) {
-        _consistencySelfieStored = true;
-        unawaited(_worker.storeConsistencySelfie(_firstSelfie!));
-      }
-      _framesSinceLastAction = 0;
-      _sendNextActionEvent(action.wireName);
+      _onAlignmentAccepted(face, action);
     }
+  }
+
+  void _onAlignmentAccepted(FaceObservation face, LivenessAction action) {
+    _tryUpdateBestSelfieCandidate(face);
+    // Store reference embedding once, after action 0's alignment completes.
+    if (_currentActionIndex == 0 && !_consistencySelfieStored && _firstSelfie != null) {
+      _consistencySelfieStored = true;
+      unawaited(_worker.storeConsistencySelfie(_firstSelfie!));
+    }
+    _framesSinceLastAction = 0;
+    _sendNextActionEvent(action.wireName);
   }
 
   Future<void> _processActionFrame(FaceObservation face) async {
     if (!_active.processFrame(face: face)) {
       if (_framesSinceLastAction > _actionTimeoutFrames) await _handleTimeout();
-      if (!_consistencyChecked && _consistencySelfieStored && _active.isWaitingForRest) {
-        // On entering a new rest phase pick a random frame delay (0–14 frames).
-        if (!_wasWaitingForRest) {
-          _consistencyRestFrameCount = 0;
-          _consistencyRestDelay = _random.nextInt(15);
-        }
-        if (_consistencyRestFrameCount >= _consistencyRestDelay) {
-          // Only capture when the face is genuinely neutral — no open mouth,
-          // no head turn, no smile — so the selfie-vs-selfie comparison is fair.
-          if (_active.checkFaceAtRest(face)) {
-            _consistencyChecked = true;
-            unawaited(_runConsistencyCheck(face));
-          }
-        } else {
-          _consistencyRestFrameCount++;
-        }
-      }
+      _maybeRunConsistencyCheck(face);
       _wasWaitingForRest = _active.isWaitingForRest;
       return;
     }
     await _handleActionDetected();
+  }
+
+  void _maybeRunConsistencyCheck(FaceObservation face) {
+    if (_consistencyChecked || !_consistencySelfieStored || !_active.isWaitingForRest) return;
+    // On entering a new rest phase pick a random frame delay (0–14 frames).
+    if (!_wasWaitingForRest) {
+      _consistencyRestFrameCount = 0;
+      _consistencyRestDelay = _random.nextInt(15);
+    }
+    if (_consistencyRestFrameCount >= _consistencyRestDelay) {
+      // Only capture when the face is genuinely neutral — no open mouth,
+      // no head turn, no smile — so the selfie-vs-selfie comparison is fair.
+      if (_active.checkFaceAtRest(face)) {
+        _startConsistencyCheck(face);
+      }
+    } else {
+      _consistencyRestFrameCount++;
+    }
   }
 
   Future<void> _processPassiveFrame(FaceObservation? face) async {
@@ -336,27 +314,9 @@ class FaceVerificationEngine {
     final tip = _passiveCoarseTip(face);
 
     // Before the countdown starts: the face must be held in the oval
-    // continuously for the lock-on period. This shows guidance only (no
-    // countdown card yet) and guarantees the countdown never fires on a single
-    // already-aligned frame, e.g. when the user is still positioned on retry.
+    // continuously for the lock-on period.
     if (_passiveStartMs == null) {
-      if (tip != null) {
-        _passiveInOvalSinceMs = null;
-        _emitAlignTip(tip);
-        _emitPassiveProgress(started: false, elapsedMs: 0);
-        return;
-      }
-      _passiveInOvalSinceMs ??= now;
-      if (now - _passiveInOvalSinceMs! < FaceVerificationTuning.passiveLockOnMs) {
-        _emitAlignTip('holdStill');
-        _emitPassiveProgress(started: false, elapsedMs: 0);
-        return;
-      }
-      _passiveStartMs = now;
-      // Pick a random moment between 30–70% through the countdown to take the
-      // consistency selfie. Set once when the countdown starts.
-      final target = FaceVerificationTuning.passiveTargetMs;
-      _consistencyCheckMs = now + (target * (0.3 + _random.nextDouble() * 0.4)).toInt();
+      if (_handlePassiveLockOn(tip, now)) return;
     }
 
     // Countdown running — fixed wall-clock duration from the start moment.
@@ -365,35 +325,8 @@ class FaceVerificationEngine {
       _emitAlignTip(tip);
     } else {
       _emitAlignTip('holdStill');
-      // Keep the best (most frontal) selfie among aligned frames for matching.
-      if (_selfieFrameCount < _selfieFrameSampleSize && face != null) {
-        _selfieFrameCount++;
-        final absYaw = (face.yawDegrees ?? double.infinity).abs();
-        if (absYaw < _bestSelfieYaw) {
-          _bestSelfieYaw = absYaw;
-          _firstSelfie = face.alignedFace112;
-          _debugSelfieStepPngs.add((
-            'Passive #$_selfieFrameCount yaw=${absYaw.toStringAsFixed(1)}°',
-            Uint8List.fromList(img.encodePng(face.alignedFace112)),
-            _latestDebugFramePng,
-            _latestDebugLandmarkInputPng,
-          ));
-        }
-        // Store reference once we have the first good selfie.
-        if (!_consistencySelfieStored && _firstSelfie != null) {
-          _consistencySelfieStored = true;
-          unawaited(_worker.storeConsistencySelfie(_firstSelfie!));
-        }
-      }
-      // Consistency check: take a second selfie at the random time point.
-      if (face != null &&
-          !_consistencyChecked &&
-          _consistencySelfieStored &&
-          _consistencyCheckMs != null &&
-          now >= _consistencyCheckMs!) {
-        _consistencyChecked = true;
-        unawaited(_runConsistencyCheck(face));
-      }
+      _collectPassiveSelfieIfNeeded(face);
+      _maybePassiveConsistencyCheck(face, now);
     }
 
     final elapsed = now - _passiveStartMs!;
@@ -402,6 +335,75 @@ class FaceVerificationEngine {
     if (elapsed >= FaceVerificationTuning.passiveTargetMs) {
       await _finishSession(true);
     }
+  }
+
+  // Returns true if the caller should return early (still in lock-on phase).
+  bool _handlePassiveLockOn(String? tip, int now) {
+    if (tip != null) {
+      _passiveInOvalSinceMs = null;
+      _emitAlignTip(tip);
+      _emitPassiveProgress(started: false, elapsedMs: 0);
+      return true;
+    }
+    _passiveInOvalSinceMs ??= now;
+    if (now - _passiveInOvalSinceMs! < FaceVerificationTuning.passiveLockOnMs) {
+      _emitAlignTip('holdStill');
+      _emitPassiveProgress(started: false, elapsedMs: 0);
+      return true;
+    }
+    _passiveStartMs = now;
+    // Pick a random moment between 30–70% through the countdown to take the
+    // consistency selfie. Set once when the countdown starts.
+    const target = FaceVerificationTuning.passiveTargetMs;
+    _consistencyCheckMs = now + (target * (0.3 + _random.nextDouble() * 0.4)).toInt();
+    return false;
+  }
+
+  void _collectPassiveSelfieIfNeeded(FaceObservation? face) {
+    if (face == null) return;
+    _tryUpdateBestSelfieCandidate(face);
+    // Store reference once we have the first good selfie.
+    if (!_consistencySelfieStored && _firstSelfie != null) {
+      _consistencySelfieStored = true;
+      unawaited(_worker.storeConsistencySelfie(_firstSelfie!));
+    }
+  }
+
+  /// Increments the selfie sample counter and, if [face] is more frontal than
+  /// the current best, updates [_firstSelfie].
+  void _tryUpdateBestSelfieCandidate(FaceObservation face) {
+    if (_selfieFrameCount >= _selfieFrameSampleSize) return;
+    _selfieFrameCount++;
+    final absYaw = (face.yawDegrees ?? double.infinity).abs();
+    if (absYaw >= _bestSelfieYaw) return;
+    _bestSelfieYaw = absYaw;
+    _firstSelfie = face.alignedFace112;
+  }
+
+  void _maybePassiveConsistencyCheck(FaceObservation? face, int now) {
+    if (face == null || _consistencyChecked || !_consistencySelfieStored) return;
+    if (_consistencyCheckMs == null || now < _consistencyCheckMs!) return;
+    _startConsistencyCheck(face);
+  }
+
+  void _startConsistencyCheck(FaceObservation face) {
+    _consistencyChecked = true;
+    final token = ++_consistencyCheckToken;
+    final future = _runConsistencyCheck(face, token);
+    _consistencyCheckFuture = future;
+    unawaited(
+      future
+          .whenComplete(() {
+            if (identical(_consistencyCheckFuture, future)) {
+              _consistencyCheckFuture = null;
+            }
+          })
+          .then((_) async {
+            if (token == _consistencyCheckToken && _consistencyFailed && !_sessionFinished && !_sessionStopping) {
+              await _finishSession(false);
+            }
+          }),
+    );
   }
 
   // Gate for passive: the face must be inside the oval (centered + right size)
@@ -464,6 +466,7 @@ class FaceVerificationEngine {
     _running = false;
     _sessionStopping = true;
     _processing = false;
+    _consistencyCheckToken++;
     await _worker.stop();
   }
 
@@ -541,6 +544,7 @@ class FaceVerificationEngine {
     _sendEvent({'type': 'processing'});
 
     try {
+      await _consistencyCheckFuture;
       final score = await _computeMatchScore();
       final passive = await _worker.getPassiveResult();
       final antiSpoofScore = passive.antiSpoofScore;
@@ -554,16 +558,7 @@ class FaceVerificationEngine {
         'matchScore': score,
         'antiSpoofScore': antiSpoofScore,
         'antiSpoofPassed': antiSpoofPassed,
-        'debugNfcInputPng': _debugNfcMatchInputPng,
-        'debugNfcAnnotatedPng': _debugNfcAnnotatedPng,
-        'debugNfcAlignedPng': _debugNfcAlignedPng,
-        'debugNfcLandmarkInputPng': _debugNfcLandmarkInputPng,
-        'debugSelfieInputPng': _debugSelfieMatchInputPng,
-        'debugSelfieSteps': _debugSelfieStepPngs
-            .map(
-              (s) => <String, dynamic>{'label': s.$1, 'alignedPng': s.$2, 'framePng': s.$3, 'landmarkInputPng': s.$4},
-            )
-            .toList(growable: false),
+        'consistencyFailed': _consistencyFailed,
         'rppg': {
           'hr': passive.rppgHr,
           'passed': passive.rppgPassed,
@@ -582,11 +577,6 @@ class FaceVerificationEngine {
   }
 
   Future<double> _computeMatchScore() async {
-    debugPrint(
-      '[FaceVerification] Match score start: nfcPrepared=$_nfcFacePrepared '
-      'nfcFuture=${_nfcPrepareFuture != null} nfcBytes=${_nfcImageBytes?.length ?? 0} '
-      'hasSelfie=${_firstSelfie != null}',
-    );
     if (!_nfcFacePrepared) {
       final nfcImageBytes = _nfcImageBytes;
       if (nfcImageBytes == null || nfcImageBytes.isEmpty) {
@@ -605,28 +595,18 @@ class FaceVerificationEngine {
     if (selfie == null) {
       return 0.0;
     }
-    final match = await _worker.matchSelfie(selfie);
-    _debugNfcMatchInputPng = match.nfcInputPng;
-    _debugSelfieMatchInputPng = match.selfieInputPng;
-    final score = match.score;
-    debugPrint('[FaceVerification] Match finished: score=${(score * 100).toStringAsFixed(2)}%');
-    return score;
+    return (await _worker.matchSelfie(selfie)).score;
   }
 
-  Future<void> _runConsistencyCheck(FaceObservation face) async {
+  Future<void> _runConsistencyCheck(FaceObservation face, int token) async {
     try {
       final score = await _worker.checkConsistencySelfie(face.alignedFace112);
-      final threshold = FaceVerificationTuning.consistencyCheckThreshold;
-      if (score < threshold) {
-        debugPrint(
-          '[FaceVerification] Consistency check FAILED: score=${(score * 100).toStringAsFixed(1)}% threshold=${(threshold * 100).toStringAsFixed(0)}%',
-        );
+      if (token != _consistencyCheckToken) return;
+      if (score < FaceVerificationTuning.consistencyCheckThreshold) {
         _consistencyFailed = true;
-      } else {
-        debugPrint('[FaceVerification] Consistency check passed: score=${(score * 100).toStringAsFixed(1)}%');
       }
-    } catch (e) {
-      debugPrint('[FaceVerification] Consistency check error: $e');
+    } catch (_) {
+      // Treat errors as a passed check — don't penalise on transient failures.
     }
   }
 
@@ -635,36 +615,25 @@ class FaceVerificationEngine {
   }
 
   void _sendNextActionEvent(String action) {
-    if (FaceVerificationDiagnostics.enabled && !_diagSawFirstNextAction) {
-      _diagSawFirstNextAction = true;
-      FaceVerificationDiagnostics.log('first nextAction action=$action');
-    }
     _sendEvent({'type': 'nextAction', 'action': action});
   }
-
-  String _fmt(double? value) => value == null ? 'n/a' : value.toStringAsFixed(3);
 
   List<LivenessAction> _chooseActions() {
     final all = LivenessAction.values.toList(growable: true)..shuffle(_random);
     return all.take(_requiredActions).toList(growable: true);
   }
 
+  /// Decodes [bytes] to an image. Falls back to the native JP2 decoder via
+  /// the image_channel method channel when the Dart decoder does not recognise
+  /// the format (JPEG 2000 passport photos on iOS are handled natively by UIKit).
   Future<img.Image?> _decodeNfcImage(Uint8List bytes) async {
     final decoded = img.decodeImage(bytes);
-    if (decoded != null) {
-      return decoded;
-    }
+    if (decoded != null) return decoded;
 
     try {
       final converted = await _imageChannel.invokeMethod<Uint8List>('decodeImage', {'jp2ImageData': bytes});
-      if (converted == null) {
-        return null;
-      }
-      final fallbackDecoded = img.decodeImage(converted);
-      if (fallbackDecoded == null) {
-        return null;
-      }
-      return fallbackDecoded;
+      if (converted == null) return null;
+      return img.decodeImage(converted);
     } catch (e) {
       return null;
     }

@@ -84,6 +84,10 @@
 	<string>passport-issuer.yivi.app</string>
 	<key>DeepLinkMrtdAppHost</key>
 	<string>mrtd.app</string>
+	<key>DeepLinkMrtdValidatePath</key>
+	<string>/validate</string>
+	<key>DeepLinkPassportIssuerStartPath</key>
+	<string>/start-app</string>
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:passport-issuer.yivi.app</string>

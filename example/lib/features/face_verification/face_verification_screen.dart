@@ -1,29 +1,15 @@
 import 'dart:async';
-import 'dart:io';
+import 'dart:io' show Platform;
 import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:vcmrtdapp/features/face_verification/face_verification_diagnostics.dart';
 import 'package:vcmrtdapp/features/face_verification/face_verification_engine.dart';
 
 // ── Enums & helpers ────────────────────────────────────────────────────────
 
 enum VerificationState { idle, activeLiveness, processing, result }
-
-class VerificationDebugStep {
-  final String label;
-  // Aligned 112x112 face exactly as fed into GhostFaceNet.
-  final Uint8List alignedPng;
-  // Annotated frame thumbnail: bbox + landmarks + crop box (yellow) + angle arrow.
-  final Uint8List? framePng;
-  // Exact 256×256 input the landmark model received — shows face orientation before
-  // any landmarks are placed.  Saved as face_debug_*_model.png.
-  final Uint8List? landmarkInputPng;
-  const VerificationDebugStep({required this.label, required this.alignedPng, this.framePng, this.landmarkInputPng});
-}
 
 class _PassiveProgress {
   const _PassiveProgress({required this.started, required this.elapsedMs, required this.targetMs});
@@ -69,12 +55,7 @@ class VerificationResult {
   final double? rppgHr;
   final bool rppgPassed;
   final int rppgSampleCount;
-  final Uint8List? debugNfcInputPng;
-  final Uint8List? debugNfcAnnotatedPng;
-  final Uint8List? debugNfcAlignedPng;
-  final Uint8List? debugNfcLandmarkInputPng;
-  final Uint8List? debugSelfieInputPng;
-  final List<VerificationDebugStep> debugSelfieSteps;
+  final bool consistencyFailed;
   const VerificationResult({
     required this.matchScore,
     required this.isLive,
@@ -83,12 +64,7 @@ class VerificationResult {
     this.rppgHr,
     this.rppgPassed = false,
     this.rppgSampleCount = 0,
-    this.debugNfcInputPng,
-    this.debugNfcAnnotatedPng,
-    this.debugNfcAlignedPng,
-    this.debugNfcLandmarkInputPng,
-    this.debugSelfieInputPng,
-    this.debugSelfieSteps = const [],
+    this.consistencyFailed = false,
   });
 }
 
@@ -151,11 +127,6 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
   bool _isSending = false;
   int _frameToken = 0;
   int _flowToken = 0;
-  bool _diagSawFirstCameraImage = false;
-  bool _diagSawFirstFrameSent = false;
-  bool _diagSawFirstNextActionEvent = false;
-
-  List<String?> _debugFilePaths = [];
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -339,12 +310,6 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
     if (_isDisposed) return;
     if (_state != VerificationState.activeLiveness) return;
     if (_cameraClosing || _activeLivenessStopping) return;
-    if (FaceVerificationDiagnostics.enabled && !_diagSawFirstCameraImage) {
-      _diagSawFirstCameraImage = true;
-      FaceVerificationDiagnostics.log(
-        'first CameraImage ${image.width}x${image.height} format=${image.format.group.name}',
-      );
-    }
     _pendingImage = image;
     if (!_isSending) {
       _isSending = true;
@@ -361,10 +326,6 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
         _pendingImage = null;
         final rotation = _cameraFrameRotation();
         if (rotation == null) continue;
-        if (FaceVerificationDiagnostics.enabled && !_diagSawFirstFrameSent) {
-          _diagSawFirstFrameSent = true;
-          FaceVerificationDiagnostics.log('first frame sent to engine rotation=$rotation');
-        }
         await _engine.processFrame(image, rotation);
       }
     } catch (e) {
@@ -393,10 +354,6 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
       setState(() => _errorMessage = 'Missing NFC image');
       return;
     }
-    FaceVerificationDiagnostics.startSession('start tapped (${mode.name})');
-    _diagSawFirstCameraImage = false;
-    _diagSawFirstFrameSent = false;
-    _diagSawFirstNextActionEvent = false;
     setState(() {
       _startingLiveness = true;
       _selectedMode = mode;
@@ -423,7 +380,6 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
   Future<void> _doStartLiveness(CameraController ctrl, Uint8List nfcImage, LivenessMode mode) async {
     final flowToken = _flowToken;
     final newActions = await _engine.start(nfcImage, mode: mode);
-    FaceVerificationDiagnostics.log('engine.start complete actions=${newActions.join(',')}');
     if (flowToken != _flowToken || !mounted || _isDisposed) return;
     if (mode == LivenessMode.active && newActions.isEmpty) return;
     setState(() {
@@ -439,62 +395,31 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
     if (flowToken != _flowToken || !mounted || _isDisposed) return;
     if (!ctrl.value.isStreamingImages) {
       await ctrl.startImageStream(_onCameraFrame);
-      FaceVerificationDiagnostics.log('image stream started');
-    } else {
-      FaceVerificationDiagnostics.log('image stream already active');
     }
   }
 
   void _onLivenessEvent(Map<String, dynamic> map) {
     if (_handleCommonLivenessEvent(map)) return;
     if (map['type'] != 'complete') return;
-    final rawMatchScore = map['matchScore'];
-    debugPrint(
-      '[FaceVerification] UI complete event: rawMatchScore=$rawMatchScore '
-      'rawMatchScoreType=${rawMatchScore.runtimeType}',
-    );
     final passed = map['passed'] as bool;
     final matchScore = (map['matchScore'] as num?)?.toDouble() ?? 0.0;
     final antiSpoofScore = (map['antiSpoofScore'] as num?)?.toDouble();
     final antiSpoofPassed = (map['antiSpoofPassed'] as bool?) ?? false;
+    final consistencyFailed = (map['consistencyFailed'] as bool?) ?? false;
     final rppg = map['rppg'] as Map<String, dynamic>?;
     final rppgHr = (rppg?['hr'] as num?)?.toDouble();
     final rppgPassed = (rppg?['passed'] as bool?) ?? false;
     final rppgSampleCount = (rppg?['sampleCount'] as num?)?.toInt() ?? 0;
-    final debugNfcInputPng = map['debugNfcInputPng'] as Uint8List?;
-    final debugNfcAnnotatedPng = map['debugNfcAnnotatedPng'] as Uint8List?;
-    final debugNfcAlignedPng = map['debugNfcAlignedPng'] as Uint8List?;
-    final debugNfcLandmarkInputPng = map['debugNfcLandmarkInputPng'] as Uint8List?;
-    final debugSelfieInputPng = map['debugSelfieInputPng'] as Uint8List?;
-    final stepsRaw = map['debugSelfieSteps'] as List?;
-    final debugSelfieSteps = stepsRaw == null
-        ? <VerificationDebugStep>[]
-        : stepsRaw
-              .map<VerificationDebugStep>((dynamic m) {
-                final step = m as Map<String, dynamic>;
-                return VerificationDebugStep(
-                  label: step['label'] as String,
-                  alignedPng: step['alignedPng'] as Uint8List,
-                  framePng: step['framePng'] as Uint8List?,
-                  landmarkInputPng: step['landmarkInputPng'] as Uint8List?,
-                );
-              })
-              .toList(growable: false);
     _onComplete(
       VerificationResult(
         matchScore: matchScore,
         isLive: passed,
         antiSpoofScore: antiSpoofScore,
         antiSpoofPassed: antiSpoofPassed,
+        consistencyFailed: consistencyFailed,
         rppgHr: rppgHr,
         rppgPassed: rppgPassed,
         rppgSampleCount: rppgSampleCount,
-        debugNfcInputPng: debugNfcInputPng,
-        debugNfcAnnotatedPng: debugNfcAnnotatedPng,
-        debugNfcAlignedPng: debugNfcAlignedPng,
-        debugNfcLandmarkInputPng: debugNfcLandmarkInputPng,
-        debugSelfieInputPng: debugSelfieInputPng,
-        debugSelfieSteps: debugSelfieSteps,
       ),
     );
   }
@@ -575,10 +500,6 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
   }
 
   void _handleNextActionEvent(Map<String, dynamic> map) {
-    if (FaceVerificationDiagnostics.enabled && !_diagSawFirstNextActionEvent) {
-      _diagSawFirstNextActionEvent = true;
-      FaceVerificationDiagnostics.log('ui received first nextAction action=${map['action']}');
-    }
     setState(() {
       _currentAction = map['action'] as String;
       _alignTip = null;
@@ -621,41 +542,8 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
     setState(() {
       _state = VerificationState.result;
       _result = result;
-      _debugFilePaths = List.filled(result.debugSelfieSteps.length, null);
     });
-    unawaited(_saveDebugImages(result));
     unawaited(_stopActiveFlow(disposeCamera: false));
-  }
-
-  Future<void> _saveDebugImages(VerificationResult result) async {
-    if (result.debugSelfieSteps.isEmpty) return;
-    try {
-      final dir = await getApplicationDocumentsDirectory();
-      final ts = DateTime.now().millisecondsSinceEpoch;
-      final paths = <String?>[];
-      for (var i = 0; i < result.debugSelfieSteps.length; i++) {
-        final step = result.debugSelfieSteps[i];
-        String? savedPath;
-        try {
-          // _frame.png  : annotated frame (bbox + landmarks + yellow crop box + angle arrow)
-          // _model.png  : 256×256 input the landmark model actually received
-          // _aligned.png: 112×112 face fed to GhostFaceNet
-          final framePng = step.framePng ?? step.alignedPng;
-          final frameFile = File('${dir.path}/face_debug_${ts}_${i}_frame.png');
-          await frameFile.writeAsBytes(framePng);
-          savedPath = frameFile.path;
-
-          if (step.landmarkInputPng != null) {
-            final modelFile = File('${dir.path}/face_debug_${ts}_${i}_model.png');
-            await modelFile.writeAsBytes(step.landmarkInputPng!);
-          }
-          final alignedFile = File('${dir.path}/face_debug_${ts}_${i}_aligned.png');
-          await alignedFile.writeAsBytes(step.alignedPng);
-        } catch (_) {}
-        paths.add(savedPath);
-      }
-      if (mounted && !_isDisposed) setState(() => _debugFilePaths = paths);
-    } catch (_) {}
   }
 
   // ── Navigation ────────────────────────────────────────────────────────────
@@ -1089,14 +977,6 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: passed ? Colors.green : Colors.red),
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              _debugModelInput('NFC input', r.debugNfcInputPng),
-              const SizedBox(width: 12),
-              _debugModelInput('Selfie input', r.debugSelfieInputPng),
-            ],
-          ),
-          const SizedBox(height: 20),
           _scoreRow(
             'Match (≥${(threshold * 100).toStringAsFixed(0)}%)',
             '${(r.matchScore * 100).toStringAsFixed(1)}%',
@@ -1113,103 +993,13 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
             r.rppgPassed,
           ),
           _scoreRow('Liveness actions', r.isLive ? 'passed' : 'failed', r.isLive),
-          if (r.debugNfcAlignedPng != null) ...[
-            const SizedBox(height: 20),
-            const Text('NFC image pipeline', style: TextStyle(fontSize: 12, color: Colors.grey)),
-            const SizedBox(height: 4),
-            const Text(
-              'Left: annotated NFC (bbox + landmarks + crop box)  ·  Right: aligned 112×112 → GhostFaceNet',
-              style: TextStyle(fontSize: 9, color: Colors.grey),
-            ),
-            const SizedBox(height: 8),
-            _debugStepCard(
-              VerificationDebugStep(
-                label: 'NFC face',
-                alignedPng: r.debugNfcAlignedPng!,
-                framePng: r.debugNfcAnnotatedPng,
-                landmarkInputPng: r.debugNfcLandmarkInputPng,
-              ),
-              null,
-            ),
-          ],
-          if (r.debugSelfieSteps.isNotEmpty) ...[
-            const SizedBox(height: 20),
-            const Text('Pipeline steps per selfie candidate', style: TextStyle(fontSize: 12, color: Colors.grey)),
-            const SizedBox(height: 4),
-            const Text(
-              'Left: raw frame (bbox green, landmarks cyan, keypoints red)  ·  Right: aligned 112×112 → GhostFaceNet',
-              style: TextStyle(fontSize: 9, color: Colors.grey),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 210,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: r.debugSelfieSteps.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
-                itemBuilder: (context, i) {
-                  final step = r.debugSelfieSteps[i];
-                  final path = i < _debugFilePaths.length ? _debugFilePaths[i] : null;
-                  return _debugStepCard(step, path);
-                },
-              ),
-            ),
-          ],
+          if (r.consistencyFailed) _scoreRow('Identity consistent', 'face changed mid-session', false),
           const SizedBox(height: 32),
           OutlinedButton(onPressed: _retry, child: const Text('Try Again')),
         ],
       ),
     );
   }
-
-  static Widget _debugStepCard(VerificationDebugStep step, String? filePath) {
-    return SizedBox(
-      width: step.framePng != null ? 248 : 124,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            step.label,
-            style: const TextStyle(fontSize: 10, color: Colors.grey),
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 4),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (step.framePng != null) ...[
-                _debugImageBox(step.framePng!, 'frame', 128, 128),
-                const SizedBox(width: 4),
-              ],
-              _debugImageBox(step.alignedPng, 'aligned', 112, 112),
-            ],
-          ),
-          if (filePath != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              filePath.split('/').last,
-              style: const TextStyle(fontSize: 8, color: Colors.blueGrey),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 2,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  static Widget _debugImageBox(Uint8List bytes, String sublabel, int w, int h) => Column(
-    children: [
-      Text(sublabel, style: const TextStyle(fontSize: 8, color: Colors.grey)),
-      Container(
-        width: w.toDouble(),
-        height: h.toDouble(),
-        decoration: BoxDecoration(border: Border.all(color: Colors.black12)),
-        clipBehavior: Clip.antiAlias,
-        child: Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true),
-      ),
-    ],
-  );
 
   static Widget _scoreRow(String label, String value, bool ok) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 3),
@@ -1223,26 +1013,6 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
             const SizedBox(width: 6),
             Icon(ok ? Icons.check : Icons.close, size: 16, color: ok ? Colors.green : Colors.red),
           ],
-        ),
-      ],
-    ),
-  );
-
-  static Widget _debugModelInput(String label, Uint8List? bytes) => Expanded(
-    child: Column(
-      children: [
-        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-        const SizedBox(height: 6),
-        Container(
-          width: 112,
-          height: 112,
-          decoration: BoxDecoration(border: Border.all(color: Colors.black12)),
-          clipBehavior: Clip.antiAlias,
-          child: bytes == null || bytes.isEmpty
-              ? const Center(
-                  child: Text('n/a', style: TextStyle(color: Colors.grey)),
-                )
-              : Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true),
         ),
       ],
     ),

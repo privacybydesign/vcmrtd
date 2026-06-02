@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:ffi';
 import 'dart:isolate';
-import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui';
 
@@ -13,47 +12,13 @@ import 'package:image/image.dart' as img;
 import 'package:vcmrtdapp/features/face_verification/detection/face_detector.dart';
 import 'package:vcmrtdapp/features/face_verification/detection/face_landmark_pipeline.dart';
 import 'package:vcmrtdapp/features/face_verification/detection/face_landmarker_types.dart';
-import 'package:vcmrtdapp/features/face_verification/face_verification_diagnostics.dart';
 import 'package:vcmrtdapp/features/face_verification/ffi/face_frame_buffer.dart';
-import 'package:vcmrtdapp/features/face_verification/liveness/liveness_service.dart';
+import 'package:vcmrtdapp/features/face_verification/liveness/passive_liveness_service.dart';
 import 'package:vcmrtdapp/features/face_verification/recognition/face_recognizer.dart';
+import 'package:vcmrtdapp/features/face_verification/worker_result_types.dart';
 
-class WorkerFrameResult {
-  const WorkerFrameResult({required this.face, this.debugFramePng, this.debugLandmarkInputPng});
-
-  final FaceObservation? face;
-  // Annotated frame thumbnail: bbox + all 468 landmarks + 5 ArcFace keypoints + crop box.
-  final Uint8List? debugFramePng;
-  // Exact 256×256 float input fed to the landmark model, converted to PNG.
-  // Shows what the model actually sees before placing any landmarks.
-  final Uint8List? debugLandmarkInputPng;
-}
-
-class WorkerPassiveResult {
-  const WorkerPassiveResult({
-    required this.antiSpoofScore,
-    required this.antiSpoofPassed,
-    required this.rppgHr,
-    required this.rppgPassed,
-    required this.rppgSampleCount,
-    required this.rppgDurationMs,
-  });
-
-  final double? antiSpoofScore;
-  final bool antiSpoofPassed;
-  final double? rppgHr;
-  final bool rppgPassed;
-  final int rppgSampleCount;
-  final int rppgDurationMs;
-}
-
-class WorkerMatchResult {
-  const WorkerMatchResult({required this.score, this.nfcInputPng, this.selfieInputPng});
-
-  final double score;
-  final Uint8List? nfcInputPng;
-  final Uint8List? selfieInputPng;
-}
+// Re-export result types so that callers only need to import this file.
+export 'package:vcmrtdapp/features/face_verification/worker_result_types.dart';
 
 class _IsolateClient {
   _IsolateClient(this.entryPoint);
@@ -126,17 +91,40 @@ class _IsolateClient {
   }
 }
 
+/// Manages the three background isolates that run face verification workloads.
+///
+/// ## Architecture
+/// Each camera frame travels through three workers:
+///   1. **Pipeline** — decode + face detect + landmarks + blendshapes.
+///   2. **Passive** — anti-spoof (MiniFASNet) + rPPG (BigSmall).
+///   3. **Match** — GhostFaceNet embedding + cosine similarity.
+///
+/// ## Native frame buffer state machine
+/// To avoid copying raw camera bytes between isolates, frames are written into
+/// a pool of native [FaceFrameBuffer] objects (FFI, shared memory). Each buffer
+/// transitions through the following states:
+///
+///   FREE → (beginWrite) → WRITING → (commitWrite) → READY
+///        → (beginPipelineRead) → PIL_READING → (endPipelineRead, handoff=true) → PASS_READY
+///        → (beginPassiveRead) → PASS_READING → (endPassiveRead) → FREE
+///
+/// At most 3 buffers are occupied simultaneously:
+///   PIL_READING(1) + PASS_READY(queued, 1) + PASS_READING(1)
+///
+/// When the pipeline is busy and a new frame arrives, the queued READY buffer
+/// is evicted (returned to FREE) so the pipeline always processes the latest frame.
+/// If all 10 buffers are occupied (should not happen in practice), the frame is
+/// silently dropped rather than blocking the camera callback.
 class FaceVerificationWorker {
-  // Single pipeline isolate handles decode + detect + landmarks (matches FaceLandmarkPipeline)
   final _pipeline = _IsolateClient(_pipelineWorkerMain);
   final _passive = _IsolateClient(_passiveWorkerMain);
   final _match = _IsolateClient(_matchWorkerMain);
 
-  // Pool of native camera frame buffers — main writes raw camera bytes once,
-  // pipeline and passive each decode independently from the same native memory.
-  // At most PIL_READING(1) + PASS_READY(queued,1) + PASS_READING(1) = 3 occupied at once.
+  // 10 buffers provide headroom above the maximum 3 concurrently occupied.
+  // Each buffer is 12 MB to cover the largest expected camera format (1080p BGRA = ~8 MB)
+  // with room for YUV planes that may be larger than the BGRA equivalent.
   static const int _camPoolSize = 10;
-  static const int _camBufCap = 12 * 1024 * 1024; // 12 MB — covers 1080p BGRA with headroom
+  static const int _camBufCap = 12 * 1024 * 1024;
   late final List<FaceFrameBuffer> _camPool;
 
   final StreamController<WorkerFrameResult> _frames = StreamController<WorkerFrameResult>.broadcast();
@@ -148,9 +136,11 @@ class FaceVerificationWorker {
   bool _passiveBusy = false;
   Completer<void>? _pipelineIdle;
   Completer<void>? _passiveIdle;
+
+  // Incremented on every session start/stop. Results from a previous session
+  // that arrive after the increment are silently discarded.
   int _sessionId = 0;
-  int _diagPipelineFrameSeq = 0;
-  int _diagPipelineResultCount = 0;
+
   Stream<WorkerFrameResult> get frames => _frames.stream;
 
   Future<void> initialize() async {
@@ -209,33 +199,27 @@ class FaceVerificationWorker {
 
   Future<void> startSession() async {
     _sessionId++;
-    _diagPipelineFrameSeq = 0;
-    _diagPipelineResultCount = 0;
+    _evictPipelineQueue();
+    _releasePassiveQueue();
+    await _waitPipelineIdle();
+    await _waitPassiveIdle();
     await Future.wait(<Future<Map<String, dynamic>>>[
       _pipeline.request('start_session'),
       _passive.request('start_session'),
       _match.request('start_session'),
     ]);
-    _pipelineQueue.clear();
-    _passiveQueue.clear();
     _pipelineBusy = false;
     _passiveBusy = false;
     _completePipelineIdle();
     _completePassiveIdle();
   }
 
-  Future<({img.Image? face, Uint8List? debugFramePng, Uint8List? debugLandmarkInputPng})> detectAndCropEncoded(
-    Uint8List encoded,
-  ) async {
+  Future<img.Image?> detectAndCropEncoded(Uint8List encoded) async {
     final res = await _pipeline.request('detect_crop_encoded', payload: <String, dynamic>{'bytes': encoded});
-    if (res['ok'] != true) return (face: null, debugFramePng: null, debugLandmarkInputPng: null);
+    if (res['ok'] != true) return null;
     final png = res['png'] as Uint8List?;
-    if (png == null || png.isEmpty) return (face: null, debugFramePng: null, debugLandmarkInputPng: null);
-    return (
-      face: img.decodeImage(png),
-      debugFramePng: res['debugFramePng'] as Uint8List?,
-      debugLandmarkInputPng: res['debugLandmarkInputPng'] as Uint8List?,
-    );
+    if (png == null || png.isEmpty) return null;
+    return img.decodeImage(png);
   }
 
   Future<void> prepareNfcFace(img.Image face) async {
@@ -253,16 +237,7 @@ class FaceVerificationWorker {
 
   Future<WorkerMatchResult> matchSelfie(img.Image selfie) async {
     final res = await _match.request('match_selfie', payload: _imagePayload(selfie));
-    final rawScore = res['score'];
-    debugPrint(
-      '[FaceVerification] Match worker response: keys=${res.keys.toList()} '
-      'rawScore=$rawScore rawScoreType=${rawScore.runtimeType}',
-    );
-    return WorkerMatchResult(
-      score: (res['score'] as num?)?.toDouble() ?? 0.0,
-      nfcInputPng: res['nfcInputPng'] as Uint8List?,
-      selfieInputPng: res['selfieInputPng'] as Uint8List?,
-    );
+    return WorkerMatchResult(score: (res['score'] as num?)?.toDouble() ?? 0.0);
   }
 
   Future<void> processCameraFrame(CameraImage cameraImage, int rotationDegrees) async {
@@ -281,18 +256,32 @@ class FaceVerificationWorker {
 
     // Copy camera planes into native memory (one write, shared by both isolates).
     final buf = _camPool[freeBufIdx];
+    final totalBytes = cameraImage.planes.fold<int>(0, (int sum, Plane plane) => sum + plane.bytes.length);
+    if (totalBytes > buf.byteCapacity) {
+      buf.abortWrite();
+      debugPrint(
+        '[FaceVerification] Worker: dropping oversized camera frame '
+        '$totalBytes > ${buf.byteCapacity} bytes',
+      );
+      return;
+    }
+
     final dst = buf.dataPtr;
     var planeOffset = 0;
-    for (final Plane plane in cameraImage.planes) {
-      (dst + planeOffset).asTypedList(plane.bytes.length).setAll(0, plane.bytes);
-      planeOffset += plane.bytes.length;
+    try {
+      for (final Plane plane in cameraImage.planes) {
+        (dst + planeOffset).asTypedList(plane.bytes.length).setAll(0, plane.bytes);
+        planeOffset += plane.bytes.length;
+      }
+    } catch (e) {
+      buf.abortWrite();
+      debugPrint('[FaceVerification] Worker: failed to copy camera frame: $e');
+      return;
     }
     buf.commitWrite(cameraImage.width, cameraImage.height, cameraImage.planes.length);
 
-    final diagFrameSeq = ++_diagPipelineFrameSeq;
     _enqueuePipelineFrame(<String, dynamic>{
       'sessionId': _sessionId,
-      'diagFrameSeq': diagFrameSeq,
       'camera': _cameraNativeMetadata(cameraImage, rotationDegrees),
       'camBufIdx': freeBufIdx,
     });
@@ -328,8 +317,6 @@ class FaceVerificationWorker {
 
   Future<void> _runPipelinePayload(Map<String, dynamic> payload) async {
     final sessionId = payload['sessionId'] as int;
-    final diagFrameSeq = payload['diagFrameSeq'] as int?;
-    final diagStartMs = FaceVerificationDiagnostics.enabled ? DateTime.now().millisecondsSinceEpoch : 0;
     final cameraPayload = (payload['camera'] as Map).cast<String, dynamic>();
     final camBufIdx = payload['camBufIdx'] as int;
     try {
@@ -338,33 +325,9 @@ class FaceVerificationWorker {
         payload: <String, dynamic>{...cameraPayload, 'camBufIdx': camBufIdx},
       );
       if (sessionId == _sessionId) {
-        final faceMap = pipelineResult['face'] as Map<String, dynamic>?;
-        if (FaceVerificationDiagnostics.enabled && _diagPipelineResultCount < 8) {
-          final durationMs = DateTime.now().millisecondsSinceEpoch - diagStartMs;
-          FaceVerificationDiagnostics.log(
-            'pipeline result #${_diagPipelineResultCount + 1} seq=$diagFrameSeq '
-            'duration=${durationMs}ms hasFace=${faceMap != null}',
-          );
-        }
-        _diagPipelineResultCount++;
-        final debugFramePng = pipelineResult['debugFramePng'] as Uint8List?;
-        final debugLandmarkInputPng = pipelineResult['debugLandmarkInputPng'] as Uint8List?;
-        if (faceMap != null) {
-          // Pipeline transitioned the buffer to PASS_READY — passive reads the same raw frame.
-          // Send buffer index + camera metadata (no pixel bytes) so passive can decode.
-          _enqueuePassiveFrame(<String, dynamic>{
-            'face': faceMap,
-            'camBufIdx': camBufIdx,
-            ...cameraPayload, // width, height, format, rotation, planes metadata (no bytes)
-          });
-        }
-        _emitFrameResult(
-          WorkerFrameResult(
-            face: faceMap == null ? null : _deserializeFaceMap(faceMap),
-            debugFramePng: faceMap == null ? null : debugFramePng,
-            debugLandmarkInputPng: faceMap == null ? null : debugLandmarkInputPng,
-          ),
-        );
+        _processPipelineResult(pipelineResult, camBufIdx, cameraPayload);
+      } else {
+        _releaseStalePipelineResult(pipelineResult, camBufIdx);
       }
     } catch (e) {
       if (sessionId == _sessionId) _emitFrameError(e);
@@ -376,6 +339,27 @@ class FaceVerificationWorker {
       _pipelineBusy = false;
       _completePipelineIdle();
     }
+  }
+
+  void _processPipelineResult(Map<String, dynamic> result, int camBufIdx, Map<String, dynamic> cameraPayload) {
+    final faceMap = result['face'] as Map<String, dynamic>?;
+    if (faceMap != null) {
+      // Pipeline transitioned the buffer to PASS_READY — passive reads the same raw frame.
+      // Send buffer index + camera metadata (no pixel bytes) so passive can decode.
+      _enqueuePassiveFrame(<String, dynamic>{
+        'face': faceMap,
+        'camBufIdx': camBufIdx,
+        ...cameraPayload, // width, height, format, rotation, planes metadata (no bytes)
+      });
+    }
+    _emitFrameResult(WorkerFrameResult(face: faceMap == null ? null : _deserializeFaceMap(faceMap)));
+  }
+
+  void _releaseStalePipelineResult(Map<String, dynamic> result, int camBufIdx) {
+    final faceMap = result['face'] as Map<String, dynamic>?;
+    if (faceMap == null) return;
+    final buf = _camPool[camBufIdx];
+    if (buf.beginPassiveRead()) buf.endPassiveRead();
   }
 
   void _emitFrameResult(WorkerFrameResult result) {
@@ -403,8 +387,8 @@ class FaceVerificationWorker {
 
   Future<void> stop() async {
     _sessionId++;
-    _pipelineQueue.clear();
-    _passiveQueue.clear();
+    _evictPipelineQueue();
+    _releasePassiveQueue();
     await _waitPipelineIdle();
     await _waitPassiveIdle();
     await _pipeline.request('stop');
@@ -421,12 +405,15 @@ class FaceVerificationWorker {
   }
 
   Future<void> dispose() async {
+    _sessionId++;
+    _evictPipelineQueue();
+    _releasePassiveQueue();
+    await _waitPipelineIdle();
+    await _waitPassiveIdle();
     await _pipeline.dispose();
     await _passive.dispose();
     await _match.dispose();
     await _frames.close();
-    _pipelineQueue.clear();
-    _passiveQueue.clear();
     _pipelineBusy = false;
     _passiveBusy = false;
     _completePipelineIdle();
@@ -443,6 +430,14 @@ class FaceVerificationWorker {
     _passiveBusy = true;
     _passiveIdle ??= Completer<void>();
     unawaited(_runPassivePayload(_passiveQueue.removeFirst()));
+  }
+
+  void _releasePassiveQueue() {
+    while (_passiveQueue.isNotEmpty) {
+      final stale = _passiveQueue.removeFirst();
+      final buf = _camPool[stale['camBufIdx'] as int];
+      if (buf.beginPassiveRead()) buf.endPassiveRead();
+    }
   }
 
   Future<void> _runPassivePayload(Map<String, dynamic> payload) async {
@@ -483,6 +478,10 @@ class FaceVerificationWorker {
   }
 }
 
+/// Shared entry-point boilerplate for all three worker isolates.
+/// Extracts the main [SendPort] and [RootIsolateToken] from the spawn [args],
+/// initializes the binary messenger and plugin registrant so platform channels
+/// work from the isolate, and returns the port to reply on.
 SendPort _initializeWorkerIsolate(List<Object?> args) {
   final mainSendPort = args[0] as SendPort;
   final rootToken = args[1] as RootIsolateToken;
@@ -508,7 +507,6 @@ Future<void> _pipelineWorkerLoop(SendPort mainSendPort) async {
   Future<Map<String, dynamic>> handle(String cmd, Map<String, dynamic> payload) async {
     switch (cmd) {
       case 'init':
-        debugPrint('[FaceVerification] Pipeline worker: initializing from model buffers');
         detector.initializeFromBuffers(
           detector: (payload['detector'] as TransferableTypedData).materialize().asUint8List(),
           landmarks: (payload['landmarks'] as TransferableTypedData).materialize().asUint8List(),
@@ -518,7 +516,6 @@ Future<void> _pipelineWorkerLoop(SendPort mainSendPort) async {
             .cast<int>()
             .map((a) => FaceFrameBuffer.fromAddress(a, payload['camBufCap'] as int))
             .toList(growable: false);
-        debugPrint('[FaceVerification] Pipeline worker: initialized');
         return <String, dynamic>{'ok': true};
       case 'start_session':
         detector.resetTracking();
@@ -539,15 +536,8 @@ Future<void> _pipelineWorkerLoop(SendPort mainSendPort) async {
           detector.resetTracking();
           return <String, dynamic>{'ok': false};
         }
-        final nfcDebugFramePng = _buildDebugFramePng(decoded, nfcFace, nfcCrop);
-        final nfcDebugLandmarkInputPng = detector.buildLastLandmarkInputPng();
         detector.resetTracking();
-        return <String, dynamic>{
-          'ok': true,
-          'png': Uint8List.fromList(img.encodePng(nfcFace.alignedFace112)),
-          'debugFramePng': nfcDebugFramePng,
-          'debugLandmarkInputPng': nfcDebugLandmarkInputPng,
-        };
+        return <String, dynamic>{'ok': true, 'png': Uint8List.fromList(img.encodePng(nfcFace.alignedFace112))};
       case 'process_frame':
         return _handleProcessFrame(detector, payload, camPool!);
       case 'stop':
@@ -605,21 +595,12 @@ Map<String, dynamic> _handleProcessFrame(
 
   detector.setTrackingCrop(detector.computeTrackingCrop(face.result, frame.width, frame.height));
 
-  // Capture debug images while frame + model buffers are still in scope.
-  // debugFramePng  : annotated frame thumbnail with bbox + landmarks + crop box.
-  // debugLandmarkInputPng : exact 256×256 float input the model received → reveals
-  //                          orientation/crop issues before any landmark placement.
-  final debugFramePng = _buildDebugFramePng(frame, face, crop);
-  final debugLandmarkInputPng = detector.buildLastLandmarkInputPng();
-
   // Hand off to passive: PIL_READING → PASS_READY.
   // Native buffer remains valid until passive calls endPassiveRead().
   buf.endPipelineRead(handoffToPassive: true);
 
   return <String, dynamic>{
     'face': _serializeFace(face),
-    'debugFramePng': debugFramePng,
-    'debugLandmarkInputPng': debugLandmarkInputPng,
     // camBufIdx not needed in response — main already has it from the request payload.
   };
 }
@@ -639,7 +620,6 @@ Future<void> _passiveWorkerLoop(SendPort mainSendPort) async {
   Future<Map<String, dynamic>> handle(String cmd, Map<String, dynamic> payload) async {
     switch (cmd) {
       case 'init':
-        debugPrint('[FaceVerification] Passive worker: initializing from model buffers');
         passive.initializeFromBuffers(
           v1: (payload['v1'] as TransferableTypedData).materialize().asUint8List(),
           v2: (payload['v2'] as TransferableTypedData).materialize().asUint8List(),
@@ -653,7 +633,6 @@ Future<void> _passiveWorkerLoop(SendPort mainSendPort) async {
             .cast<int>()
             .map((a) => FaceFrameBuffer.fromAddress(a, payload['camBufCap'] as int))
             .toList(growable: false);
-        debugPrint('[FaceVerification] Passive worker: initialized');
         return <String, dynamic>{'ok': true};
       case 'start_session':
         passive.reset();
@@ -719,15 +698,11 @@ Future<void> _matchWorkerLoop(SendPort mainSendPort) async {
   final recognizer = FaceRecognizer();
   List<double>? nfcEmbedding;
   List<double>? consistencyEmbedding;
-  Uint8List? nfcInputPng;
-  Uint8List? selfieInputPng;
 
   Future<Map<String, dynamic>> handle(String cmd, Map<String, dynamic> payload) async {
     switch (cmd) {
       case 'init':
-        debugPrint('[FaceVerification] Match worker: initializing GhostFaceNet from buffer');
         await recognizer.initializeFromBuffer((payload['ghost'] as TransferableTypedData).materialize().asUint8List());
-        debugPrint('[FaceVerification] Match worker: initialized');
         return <String, dynamic>{'ok': true};
       case 'start_session':
         // nfcEmbedding is preserved across sessions — the NFC image doesn't change
@@ -735,45 +710,31 @@ Future<void> _matchWorkerLoop(SendPort mainSendPort) async {
         consistencyEmbedding = null;
         return <String, dynamic>{'ok': true};
       case 'prepare_nfc_face':
-        debugPrint(
-          '[FaceVerification] Match worker: preparing NFC embedding from ${payload['width']}x${payload['height']} crop',
-        );
         final nfcFace = _imageFromPayload(payload);
-        nfcInputPng = recognizer.modelInputPng(nfcFace);
         nfcEmbedding = recognizer.generateEmbedding(nfcFace);
-        debugPrint('[FaceVerification] Match worker: NFC embedding ready, length=${nfcEmbedding?.length ?? 0}');
         return <String, dynamic>{'ok': true};
       case 'store_consistency_selfie':
         final refFace = _imageFromPayload(payload);
         consistencyEmbedding = recognizer.generateEmbedding(refFace);
-        debugPrint('[FaceVerification] Match worker: consistency reference embedding stored');
         return <String, dynamic>{'ok': true};
       case 'check_consistency_selfie':
         final ref = consistencyEmbedding;
         if (ref == null) {
-          debugPrint('[FaceVerification] Match worker: consistency check skipped, no reference stored');
           return <String, dynamic>{'score': 1.0};
         }
         final checkFace = _imageFromPayload(payload);
         final checkEmb = recognizer.generateEmbedding(checkFace);
         final score = recognizer.cosineSimilarity(ref, checkEmb);
-        debugPrint('[FaceVerification] Match worker: consistency score=${(score * 100).toStringAsFixed(1)}%');
         return <String, dynamic>{'score': score};
       case 'match_selfie':
         final nfc = nfcEmbedding;
         if (nfc == null) {
-          debugPrint('[FaceVerification] Match worker: cannot match selfie, NFC embedding is null');
           return <String, dynamic>{'score': 0.0};
         }
-        debugPrint(
-          '[FaceVerification] Match worker: generating selfie embedding from ${payload['width']}x${payload['height']} crop',
-        );
         final selfieFace = _imageFromPayload(payload);
-        selfieInputPng = recognizer.modelInputPng(selfieFace);
         final emb = recognizer.generateEmbedding(selfieFace);
         final score = recognizer.cosineSimilarity(nfc, emb);
-        debugPrint('[FaceVerification] Match worker: comparison done, score=${(score * 100).toStringAsFixed(2)}%');
-        return <String, dynamic>{'score': score, 'nfcInputPng': nfcInputPng, 'selfieInputPng': selfieInputPng};
+        return <String, dynamic>{'score': score};
       case 'stop':
         return <String, dynamic>{'ok': true};
       case 'dispose':
@@ -960,98 +921,6 @@ img.Image _rotate270CW(img.Image src) {
 img.Image _rotate180(img.Image src) {
   final w = src.width, h = src.height;
   return _transposePixels(src, w, h, (x, y) => (h - 1 - y) * w + (w - 1 - x));
-}
-
-// Generates a small annotated debug thumbnail from the upright camera frame.
-//   Green rect   : face bounding box from all 478 landmarks
-//   Cyan dots    : all 468 mesh landmark positions
-//   Red circles  : 5 ArcFace alignment keypoints (eyes, nose, mouth corners)
-//   Yellow box   : rotated crop window fed to the landmark model (angle encoded by tilt)
-//   Magenta dot  : crop centre of the yellow bounding box, with a short line indicating the angle direction
-// Kept at ≤160 px wide; ~10–30 kB per PNG.
-Uint8List _buildDebugFramePng(img.Image frame, FaceObservation face, DetectorStageOutput crop) {
-  const maxW = 160;
-  final scale = frame.width > maxW ? maxW / frame.width : 1.0;
-  final tw = (frame.width * scale).round().clamp(1, maxW);
-  final th = (frame.height * scale).round().clamp(1, 9999);
-  final thumb = img.copyResize(frame, width: tw, height: th, interpolation: img.Interpolation.nearest);
-
-  final landmarks = face.result.landmarks.isNotEmpty ? face.result.landmarks.first : <NormalizedLandmark>[];
-
-  // All 468 mesh landmarks — tiny cyan dot per point.
-  for (final lm in landmarks) {
-    final px = (lm.x * tw).round().clamp(0, tw - 1);
-    final py = (lm.y * th).round().clamp(0, th - 1);
-    img.fillCircle(thumb, x: px, y: py, radius: 1, color: img.ColorRgb8(0, 220, 220));
-  }
-
-  // Bounding box in green.
-  final box = face.boundingBox;
-  final bx1 = (box.left * scale).round().clamp(0, tw - 1);
-  final by1 = (box.top * scale).round().clamp(0, th - 1);
-  final bx2 = (box.right * scale).round().clamp(0, tw - 1);
-  final by2 = (box.bottom * scale).round().clamp(0, th - 1);
-  img.drawRect(thumb, x1: bx1, y1: by1, x2: bx2, y2: by2, color: img.ColorRgb8(0, 255, 0), thickness: 2);
-
-  // 5 ArcFace alignment keypoints: left eye (468), right eye (473),
-  // nose tip (1), left mouth (61), right mouth (291) — red circles.
-  const kpIndices = <int>[468, 473, 1, 61, 291];
-  for (final idx in kpIndices) {
-    if (idx >= landmarks.length) continue;
-    final lm = landmarks[idx];
-    final px = (lm.x * tw).round().clamp(0, tw - 1);
-    final py = (lm.y * th).round().clamp(0, th - 1);
-    img.fillCircle(thumb, x: px, y: py, radius: 3, color: img.ColorRgb8(255, 50, 50));
-  }
-
-  // Rotated crop box in yellow — shows WHERE and at WHAT ANGLE the landmark
-  // model sampled the frame.  The tilt of the box = crop.angle (face roll).
-  // The crop is a square in pixel space; in normalized coords cropW * imgW == cropH * imgH.
-  final cosA = math.cos(crop.angle);
-  final sinA = math.sin(crop.angle);
-  // Half-size of the crop in thumbnail pixels (same in both axes since crop is square).
-  final halfPx = crop.cropW * tw * 0.5;
-  final cx = (crop.cropX1 + crop.cropW * 0.5) * tw;
-  final cy = (crop.cropY1 + crop.cropH * 0.5) * th;
-  // Four corners: rotate (±h, ±h) around crop centre.
-  final List<List<double>> corners = <List<double>>[
-    <double>[cx + cosA * (-halfPx) - sinA * (-halfPx), cy + sinA * (-halfPx) + cosA * (-halfPx)],
-    <double>[cx + cosA * (halfPx) - sinA * (-halfPx), cy + sinA * (halfPx) + cosA * (-halfPx)],
-    <double>[cx + cosA * (halfPx) - sinA * (halfPx), cy + sinA * (halfPx) + cosA * (halfPx)],
-    <double>[cx + cosA * (-halfPx) - sinA * (halfPx), cy + sinA * (-halfPx) + cosA * (halfPx)],
-  ];
-  final yellow = img.ColorRgb8(255, 200, 0);
-  for (var i = 0; i < 4; i++) {
-    final a = corners[i];
-    final b = corners[(i + 1) % 4];
-    img.drawLine(
-      thumb,
-      x1: a[0].round().clamp(0, tw - 1),
-      y1: a[1].round().clamp(0, th - 1),
-      x2: b[0].round().clamp(0, tw - 1),
-      y2: b[1].round().clamp(0, th - 1),
-      color: yellow,
-    );
-  }
-  // Crop centre (magenta dot) and a short line showing the angle direction.
-  img.fillCircle(
-    thumb,
-    x: cx.round().clamp(0, tw - 1),
-    y: cy.round().clamp(0, th - 1),
-    radius: 2,
-    color: img.ColorRgb8(255, 0, 255),
-  );
-  final arrowLen = halfPx * 0.6;
-  img.drawLine(
-    thumb,
-    x1: cx.round().clamp(0, tw - 1),
-    y1: cy.round().clamp(0, th - 1),
-    x2: (cx + cosA * arrowLen).round().clamp(0, tw - 1),
-    y2: (cy + sinA * arrowLen).round().clamp(0, th - 1),
-    color: img.ColorRgb8(255, 0, 255),
-  );
-
-  return Uint8List.fromList(img.encodePng(thumb));
 }
 
 Map<String, dynamic> _imagePayload(img.Image image) {

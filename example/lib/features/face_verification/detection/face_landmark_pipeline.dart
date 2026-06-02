@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter_litert/flutter_litert.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtdapp/features/face_verification/detection/face_landmarker_types.dart';
+import 'package:vcmrtdapp/features/face_verification/tflite_tensor_utils.dart';
 
 class DetectorStageOutput {
   const DetectorStageOutput({
@@ -257,12 +258,15 @@ class FaceLandmarkPipeline {
   Interpreter? _landmarkInterp;
   Interpreter? _blendshapeInterp;
 
-  dynamic _detRegressors;
-  dynamic _detScores;
-  dynamic _lmOutRaw;
-  dynamic _presenceOutRaw;
+  // Output tensors are nested List<dynamic> with shape [batch][anchor][value].
+  // Using dynamic avoids generating TFLite-specific typed wrapper classes.
+  // Actual shapes are determined at init time via getOutputTensor(i).shape.
+  dynamic _detRegressors; // shape [1][896][16] — box + 6 keypoint offsets
+  dynamic _detScores; // shape [1][896][1]  — raw logit per anchor
+  dynamic _lmOutRaw; // shape [1][1][1434] — 478 landmarks × 3 (x, y, z/size)
+  dynamic _presenceOutRaw; // shape [1][1][1]    — face-presence logit
   List<dynamic> _lmAllOutputs = <dynamic>[];
-  dynamic _blendshapeRaw;
+  dynamic _blendshapeRaw; // shape [1][52] — 52 blendshape scores
   List<int> _blendshapeInputShape = <int>[];
 
   // Pre-allocated per-call buffers — avoids large heap churn on every frame.
@@ -348,13 +352,13 @@ class FaceLandmarkPipeline {
   void _finishInit() {
     final det0 = _detectorInterp!.getOutputTensor(0).shape;
     final det1 = _detectorInterp!.getOutputTensor(1).shape;
-    _detRegressors = _makeTensor(det0);
-    _detScores = _makeTensor(det1);
+    _detRegressors = tfliteMakeTensor(det0);
+    _detScores = tfliteMakeTensor(det1);
 
     final lmOutputCount = _landmarkInterp!.getOutputTensors().length;
     _lmAllOutputs = List<dynamic>.generate(
       lmOutputCount,
-      (i) => _makeTensor(_landmarkInterp!.getOutputTensor(i).shape),
+      (i) => tfliteMakeTensor(_landmarkInterp!.getOutputTensor(i).shape),
     );
     _lmOutRaw = _lmAllOutputs[0];
     _presenceOutRaw = _lmAllOutputs[1];
@@ -362,7 +366,7 @@ class FaceLandmarkPipeline {
     final bsInShape = _blendshapeInterp!.getInputTensor(0).shape;
     final bsOutShape = _blendshapeInterp!.getOutputTensor(0).shape;
     _blendshapeInputShape = bsInShape;
-    _blendshapeRaw = _makeTensor(bsOutShape);
+    _blendshapeRaw = tfliteMakeTensor(bsOutShape);
 
     // Pre-allocate per-frame buffers once to avoid repeated large heap allocations.
     _detectorInputBuf = Float32List(_detectorSize * _detectorSize * 3);
@@ -445,34 +449,18 @@ class FaceLandmarkPipeline {
     return DetectorStageOutput(cropX1: crop[0], cropY1: crop[1], cropW: crop[2], cropH: crop[3], angle: crop[4]);
   }
 
-  /// Returns the last 256×256 input fed to the landmark model as a PNG.
-  /// Each float in [0,1] is mapped to uint8 [0,255].  Useful for debugging:
-  /// shows exactly what orientation/content the model received before any
-  /// landmark placement.  Returns null if the model has not run yet.
-  Uint8List? buildLastLandmarkInputPng() {
-    final buf = _landmarkInputBuf;
-    if (buf == null) return null;
-    const size = _landmarkSize;
-    final rgb = Uint8List(size * size * 3);
-    for (var i = 0; i < rgb.length; i++) {
-      rgb[i] = (buf[i] * 255.0).round().clamp(0, 255);
-    }
-    final image = img.Image.fromBytes(width: size, height: size, bytes: rgb.buffer, numChannels: 3);
-    return Uint8List.fromList(img.encodePng(image));
-  }
-
   FaceLandmarkerResult? runLandmarkStage(img.Image bitmap, DetectorStageOutput crop, {bool runBlendshapes = true}) {
     if (_landmarkInterp == null) return null;
     final landmarkInput = _buildLandmarkInput(bitmap, crop);
     final out = <int, Object>{for (var i = 0; i < _lmAllOutputs.length; i++) i: _lmAllOutputs[i]};
     _landmarkInterp!.runForMultipleInputs(<Object>[landmarkInput], out);
 
-    final rawPresence = _flatFloatArray(_presenceOutRaw);
+    final rawPresence = tfliteFlatFloatArray(_presenceOutRaw);
     if (rawPresence.isEmpty) return null;
     final presence = _sigmoid(rawPresence.first);
     if (presence < _presenceThreshold) return null;
 
-    final raw = _flatFloatArray(_lmOutRaw);
+    final raw = tfliteFlatFloatArray(_lmOutRaw);
     if (raw.length < _numLandmarks * 3) return null;
     final landmarks = _remapLandmarks(raw, crop.cropX1, crop.cropY1, crop.cropW, crop.cropH, crop.angle);
     if (landmarks.length < _numLandmarks) return null;
@@ -517,7 +505,7 @@ class FaceLandmarkPipeline {
     final w = (maxX - minX).clamp(1e-6, 1.0);
     final h = (maxY - minY).clamp(1e-6, 1.0);
     final angle = _computeRotation(lms[33].x, lms[33].y, lms[263].x, lms[263].y, imgW: imgW, imgH: imgH);
-    final crop = _buildSquareCrop(cx, cy, w, h, angle, imgW, imgH, FaceAlignmentMode.selfie);
+    final crop = _buildSquareCrop(cx, cy, w, h, angle, (width: imgW, height: imgH), FaceAlignmentMode.selfie);
     return DetectorStageOutput(cropX1: crop[0], cropY1: crop[1], cropW: crop[2], cropH: crop[3], angle: crop[4]);
   }
 
@@ -743,9 +731,12 @@ class FaceLandmarkPipeline {
     final cx = blended?[0] ?? boxCx;
     final cy = blended?[1] ?? boxCy;
     final angle = box.length >= 9 ? _computeRotation(box[5], box[6], box[7], box[8], imgW: imgW, imgH: imgH) : 0.0;
-    return _buildSquareCrop(cx, cy, boxW, boxH, angle, imgW, imgH, mode);
+    return _buildSquareCrop(cx, cy, boxW, boxH, angle, (width: imgW, height: imgH), mode);
   }
 
+  // Computes a crop centre by blending the detector keypoint centre with the
+  // full bounding-box centre. The 70/30 blend keeps the crop close to the
+  // face features while letting the box ground truth anchor the result.
   List<double>? _keypointBlendedCenter(List<double> box, double boxCx, double boxCy, FaceAlignmentMode mode) {
     if (box.length < 17) return null;
     var minKx = double.infinity;
@@ -767,6 +758,9 @@ class FaceLandmarkPipeline {
     if (count < 4) return null;
     final kpW = math.max(maxKx - minKx, 1e-6);
     final kpH = math.max(maxKy - minKy, 1e-6);
+    // Reject degenerate keypoint clusters where all 6 detections collapsed to
+    // nearly the same point. 0.05 and 0.03 are empirically chosen lower bounds
+    // on the spread (in normalized image coordinates) of a real face's keypoints.
     if (kpW <= 0.05 || kpH <= 0.03) return null;
     final kpCx = (minKx + maxKx) * 0.5;
     final kpCy = (minKy + maxKy) * 0.5;
@@ -789,10 +783,11 @@ class FaceLandmarkPipeline {
     double w,
     double h,
     double angle,
-    int imgW,
-    int imgH,
+    ({int width, int height}) imageSize,
     FaceAlignmentMode mode,
   ) {
+    final imgW = imageSize.width;
+    final imgH = imageSize.height;
     // Cap pxSize at 2× the narrow image dimension so the crop never overflows
     // by more than ~2× in any direction, even for very close-up faces on narrow
     // portrait frames (e.g. 360 × 640 iOS).  Without this cap a close face drives
@@ -856,7 +851,7 @@ class FaceLandmarkPipeline {
       buf[idx++] = lm.y * imgH;
     }
     interp.run(buf.buffer, _blendshapeRaw);
-    final raw = _flatFloatArray(_blendshapeRaw);
+    final raw = tfliteFlatFloatArray(_blendshapeRaw);
     return List<Category>.generate(raw.length, (int i) {
       final name = i < _blendshapeNames.length ? _blendshapeNames[i] : 'blend_$i';
       return Category(name, raw[i]);
@@ -927,7 +922,7 @@ class FaceLandmarkPipeline {
     return _normalizeAngle(a);
   }
 
-  double _normalizeAngle(double angle) {
+  static double _normalizeAngle(double angle) {
     const twoPi = 2.0 * math.pi;
     var a = angle % twoPi;
     if (a > math.pi) a -= twoPi;
@@ -935,30 +930,5 @@ class FaceLandmarkPipeline {
     return a;
   }
 
-  double _sigmoid(double x) => 1.0 / (1.0 + math.exp(-x));
-
-  dynamic _makeTensor(List<int> shape) {
-    if (shape.isEmpty) return 0.0;
-    return _makeTensorRecursive(shape, 0);
-  }
-
-  dynamic _makeTensorRecursive(List<int> shape, int index) {
-    final size = shape[index];
-    if (index == shape.length - 1) {
-      return List<double>.filled(size, 0.0, growable: false);
-    }
-    return List<dynamic>.generate(size, (_) => _makeTensorRecursive(shape, index + 1), growable: false);
-  }
-
-  List<double> _flatFloatArray(dynamic arr) {
-    if (arr is num) return <double>[arr.toDouble()];
-    if (arr is List) {
-      final out = <double>[];
-      for (final item in arr) {
-        out.addAll(_flatFloatArray(item));
-      }
-      return out;
-    }
-    return <double>[];
-  }
+  static double _sigmoid(double x) => 1.0 / (1.0 + math.exp(-x));
 }

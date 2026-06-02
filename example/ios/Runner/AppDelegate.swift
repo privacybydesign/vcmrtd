@@ -9,6 +9,12 @@ import UIKit
     private static var mrtdAppHost: String {
         Bundle.main.object(forInfoDictionaryKey: "DeepLinkMrtdAppHost") as? String ?? ""
     }
+    private static var mrtdValidatePath: String {
+        Bundle.main.object(forInfoDictionaryKey: "DeepLinkMrtdValidatePath") as? String ?? "/validate"
+    }
+    private static var passportIssuerStartPath: String {
+        Bundle.main.object(forInfoDictionaryKey: "DeepLinkPassportIssuerStartPath") as? String ?? "/start-app"
+    }
     
     override func application(
         _ application: UIApplication,
@@ -54,8 +60,8 @@ import UIKit
     ) -> Bool {
         if userActivity.activityType == NSUserActivityTypeBrowsingWeb,
            let url = userActivity.webpageURL,
-           ((url.host == AppDelegate.mrtdAppHost && url.path.hasPrefix("/validate")) ||
-            (url.host == AppDelegate.passportIssuerHost && url.path.hasPrefix("/start-app"))) {
+           ((url.host == AppDelegate.mrtdAppHost && url.path.hasPrefix(AppDelegate.mrtdValidatePath)) ||
+            (url.host == AppDelegate.passportIssuerHost && url.path.hasPrefix(AppDelegate.passportIssuerStartPath))) {
             // The plugin will handle this through its delegate methods
             return super.application(application, continue: userActivity, restorationHandler: restorationHandler)
         }
