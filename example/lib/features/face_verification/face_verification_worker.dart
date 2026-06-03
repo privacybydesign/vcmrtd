@@ -522,6 +522,18 @@ class FaceVerificationWorker {
 
   @visibleForTesting
   static FaceObservation debugDeserializeFaceMap(Map<String, dynamic> map) => _deserializeFaceMap(map);
+
+  /// Spawnable isolate entry points that skip [_initializeWorkerIsolate]
+  /// (which needs RootIsolateToken / plugin registry).  Suitable for unit
+  /// tests that only exercise non-TFLite commands (start_session, stop, dispose).
+  @visibleForTesting
+  static void debugPipelineWorkerEntry(SendPort mainSendPort) => unawaited(_pipelineWorkerLoop(mainSendPort));
+
+  @visibleForTesting
+  static void debugPassiveWorkerEntry(SendPort mainSendPort) => unawaited(_passiveWorkerLoop(mainSendPort));
+
+  @visibleForTesting
+  static void debugMatchWorkerEntry(SendPort mainSendPort) => unawaited(_matchWorkerLoop(mainSendPort));
 }
 
 /// Shared entry-point boilerplate for all three worker isolates.

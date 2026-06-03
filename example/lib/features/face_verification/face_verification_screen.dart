@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:vcmrtdapp/features/face_verification/face_verification_engine.dart';
@@ -75,20 +76,33 @@ class FlutterFaceVerificationScreen extends StatefulWidget {
   final VoidCallback onBackPressed;
   final DateTime? photoIssueDate;
 
+  // Test-only: injects a pre-built engine and skips camera + model bootstrap.
+  @visibleForTesting
+  final FaceVerificationEngine? testEngine;
+
   const FlutterFaceVerificationScreen({
     super.key,
     required this.nfcImageBytes,
     required this.onBackPressed,
     this.photoIssueDate,
-  });
+  }) : testEngine = null;
+
+  @visibleForTesting
+  const FlutterFaceVerificationScreen.withEngine({
+    super.key,
+    required FaceVerificationEngine engine,
+    required this.nfcImageBytes,
+    required this.onBackPressed,
+    this.photoIssueDate,
+  }) : testEngine = engine;
 
   @override
-  State<FlutterFaceVerificationScreen> createState() => _FlutterFaceVerificationScreenState();
+  State<FlutterFaceVerificationScreen> createState() => FlutterFaceVerificationScreenState();
 }
 
 // ── State ──────────────────────────────────────────────────────────────────
 
-class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationScreen> with WidgetsBindingObserver {
+class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationScreen> with WidgetsBindingObserver {
   static const Map<DeviceOrientation, int> _orientations = <DeviceOrientation, int>{
     DeviceOrientation.portraitUp: 0,
     DeviceOrientation.landscapeLeft: 90,
@@ -96,7 +110,7 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
     DeviceOrientation.landscapeRight: 270,
   };
 
-  final FaceVerificationEngine _engine = FaceVerificationEngine();
+  late final FaceVerificationEngine _engine;
   CameraController? _cameraController;
   CameraDescription? _activeCamera;
   StreamSubscription<Map<String, dynamic>>? _eventSub;
@@ -133,9 +147,42 @@ class _FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationS
   @override
   void initState() {
     super.initState();
+    _engine = widget.testEngine ?? FaceVerificationEngine();
     WidgetsBinding.instance.addObserver(this);
-    _bootstrap();
+    if (widget.testEngine != null) {
+      // Test mode: skip camera and model bootstrap, just wire up event listening.
+      _eventSub = _engine.events.listen(_onLivenessEvent);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _engineReady = true);
+      });
+    } else {
+      _bootstrap();
+    }
   }
+
+  // Test-only accessors.
+  @visibleForTesting
+  VerificationState get debugState => _state;
+  @visibleForTesting
+  String? get debugCurrentAction => _currentAction;
+  @visibleForTesting
+  String? get debugAlignTip => _alignTip;
+  @visibleForTesting
+  VerificationResult? get debugResult => _result;
+  @visibleForTesting
+  bool get debugEngineReady => _engineReady;
+  @visibleForTesting
+  Set<String> get debugCompletedActions => _completedActions;
+  @visibleForTesting
+  void debugOnLivenessEvent(Map<String, dynamic> event) => _onLivenessEvent(event);
+
+  @visibleForTesting
+  void debugSetActiveLiveness() => setState(() => _state = VerificationState.activeLiveness);
+
+  /// Pure rotation arithmetic — testable without a real CameraController.
+  @visibleForTesting
+  static int debugBackCameraRotation(int sensorOrientation, int deviceOrientationDegrees) =>
+      (sensorOrientation - deviceOrientationDegrees + 360) % 360;
 
   @override
   void dispose() {

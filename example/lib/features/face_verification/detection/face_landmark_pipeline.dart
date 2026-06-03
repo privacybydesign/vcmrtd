@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_litert/flutter_litert.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtdapp/features/face_verification/detection/face_landmarker_types.dart';
@@ -931,4 +932,108 @@ class FaceLandmarkPipeline {
   }
 
   static double _sigmoid(double x) => 1.0 / (1.0 + math.exp(-x));
+
+  // ---------------------------------------------------------------------------
+  // Test-only debug helpers — expose pure math functions without TFLite.
+  // ---------------------------------------------------------------------------
+
+  @visibleForTesting
+  static double debugNormalizeAngle(double angle) => _normalizeAngle(angle);
+
+  @visibleForTesting
+  static double debugSigmoid(double x) => _sigmoid(x);
+
+  @visibleForTesting
+  static List<List<double>> debugBuildAnchors() => _buildAnchors();
+
+  @visibleForTesting
+  double debugIou(List<double> a, List<double> b) => _iou(a, b);
+
+  @visibleForTesting
+  List<double> debugMergeBoxGroup(List<List<double>> group, int boxSize) => _mergeBoxGroup(group, boxSize);
+
+  @visibleForTesting
+  List<double>? debugSoftNms(List<List<double>> sorted, int boxSize) => _softNms(sorted, boxSize);
+
+  @visibleForTesting
+  List<double>? debugKeypointBlendedCenter(List<double> box, double boxCx, double boxCy, FaceAlignmentMode mode) =>
+      _keypointBlendedCenter(box, boxCx, boxCy, mode);
+
+  @visibleForTesting
+  List<double> debugBuildSquareCrop(
+    double cx,
+    double cy,
+    double w,
+    double h,
+    double angle,
+    ({int width, int height}) imageSize,
+    FaceAlignmentMode mode,
+  ) => _buildSquareCrop(cx, cy, w, h, angle, imageSize, mode);
+
+  @visibleForTesting
+  List<NormalizedLandmark> debugRemapLandmarks(
+    List<double> raw,
+    double cropX1,
+    double cropY1,
+    double cropW,
+    double cropH,
+    double angle,
+  ) => _remapLandmarks(raw, cropX1, cropY1, cropW, cropH, angle);
+
+  @visibleForTesting
+  List<double> debugDeLetterboxDetection(List<double> box, int imgW, int imgH) =>
+      _deLetterboxDetection(box, imgW, imgH);
+
+  @visibleForTesting
+  double debugComputeRotation(
+    double startX,
+    double startY,
+    double endX,
+    double endY, {
+    double targetAngle = 0.0,
+    int imgW = 1,
+    int imgH = 1,
+  }) => _computeRotation(startX, startY, endX, endY, targetAngle: targetAngle, imgW: imgW, imgH: imgH);
+
+  @visibleForTesting
+  List<double>? debugComputePoseMatrix(List<NormalizedLandmark> lm) => _computePoseMatrix(lm);
+
+  /// Allocates the per-frame buffers without loading TFLite models, so that
+  /// [debugBuildDetectorInput], [debugBuildLandmarkInput] and
+  /// [debugDrawDetectorLetterboxed] can be called in unit tests.
+  @visibleForTesting
+  void debugInitTestBuffers() {
+    _detectorInputBuf = Float32List(_detectorSize * _detectorSize * 3);
+    _landmarkInputBuf = Float32List(_landmarkSize * _landmarkSize * 3);
+    _letterboxCanvas = img.Image(width: _detectorSize, height: _detectorSize);
+    // 140 blendshape landmark indices × 2 coordinates (x, y)
+    _blendshapeInputBuf = Float32List(280);
+    _blendshapeInputShape = [1, 140, 2];
+  }
+
+  /// Injects mock TFLite detector output tensors so that [debugDecodeBox] and
+  /// [debugDecodeAndNms] can be exercised without running a real model.
+  ///
+  /// [scores] must have shape [1][numAnchors][1] (raw logits).
+  /// [regressors] must have shape [1][numAnchors][16].
+  @visibleForTesting
+  void debugSetMockDetectorOutputs(dynamic scores, dynamic regressors) {
+    _detScores = scores;
+    _detRegressors = regressors;
+  }
+
+  @visibleForTesting
+  List<double>? debugDecodeBox(int i, double scale, int boxSize) => _decodeBox(i, scale, boxSize);
+
+  @visibleForTesting
+  List<double>? debugDecodeAndNms() => _decodeAndNms();
+
+  @visibleForTesting
+  ByteBuffer debugBuildDetectorInput(img.Image bitmap) => _buildDetectorInput(bitmap);
+
+  @visibleForTesting
+  img.Image debugDrawDetectorLetterboxed(img.Image bitmap) => _drawDetectorLetterboxed(bitmap);
+
+  @visibleForTesting
+  ByteBuffer debugBuildLandmarkInput(img.Image bitmap, DetectorStageOutput crop) => _buildLandmarkInput(bitmap, crop);
 }
