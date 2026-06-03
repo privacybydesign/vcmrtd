@@ -5,7 +5,6 @@ import 'package:camera/camera.dart';
 import 'package:image/image.dart' as img;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:vcmrtdapp/features/face_verification/face_verification_tuning.dart';
 import 'package:vcmrtdapp/features/face_verification/face_verification_worker.dart';
 import 'package:vcmrtdapp/features/face_verification/face_verification_engine.dart';
 import 'package:vcmrtdapp/features/face_verification/worker_result_types.dart';

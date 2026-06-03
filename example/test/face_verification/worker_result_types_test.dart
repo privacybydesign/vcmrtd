@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'dart:ui' show Rect, Offset;
 
 import 'package:flutter_test/flutter_test.dart';
