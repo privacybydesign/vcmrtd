@@ -27,7 +27,7 @@ class FaceVerificationEngine {
   static const int _actionsNeededToPass = FaceVerificationTuning.actionsNeededToPass;
   static const int _actionTimeoutFrames = FaceVerificationTuning.actionTimeoutFrames;
 
-  final FaceVerificationWorker _worker = FaceVerificationWorker();
+  late final FaceVerificationWorker _worker;
   final ActiveLivenessService _active = ActiveLivenessService();
   final StreamController<Map<String, dynamic>> _events = StreamController<Map<String, dynamic>>.broadcast();
   final math.Random _random = math.Random();
@@ -35,6 +35,21 @@ class FaceVerificationEngine {
   static const MethodChannel _imageChannel = MethodChannel('image_channel');
 
   Stream<Map<String, dynamic>> get events => _events.stream;
+
+  /// Default constructor used in production.   
+  FaceVerificationEngine() {
+    _worker = FaceVerificationWorker();
+  }
+
+  /// Test-only constructor that injects a custom worker (for unit tests).
+  /// Keep small and safe: does not change runtime behaviour when not used.
+  FaceVerificationEngine.withWorker(FaceVerificationWorker worker) {
+    _worker = worker;
+  }
+
+  /// Expose the internal worker frame-chain future so tests can await the
+  /// engine's internal pipeline draining without touching private fields.
+  Future<void> get frameChainDrained => _workerFrameChain;
 
   // ---------------------------------------------------------------------------
   // Session lifecycle state

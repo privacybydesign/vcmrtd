@@ -105,6 +105,27 @@ class PassiveLivenessService {
     return _evaluateBvp(_bvpSamples.toList(growable: false), fps);
   }
 
+  // ---------------------------------------------------------------------------
+  // Test-only debug helpers
+  // These helpers are intentionally small and safe; they make it easier to
+  // write unit tests without altering main logic.
+  // ---------------------------------------------------------------------------
+
+  /// Add a synthetic anti-spoof score (for tests).
+  void debugAddAntiSpoofScore(double score) {
+    _scores.add(score);
+    _scoresSum += score;
+  }
+
+  /// Add a BVP sample + timestamp (for tests).
+  void debugAddBvpSample(double sample, int timestampMs) {
+    _bvpSamples.add(sample);
+    _bvpSampleTimes.add(timestampMs);
+  }
+
+  /// Evaluate current BVP samples and return an `RppgResult` (for tests).
+  RppgResult? debugEvaluateBvp() => getRppgResult();
+
   void _sampleAntiSpoof(img.Image frame, FaceObservation face) {
     if (_random.nextDouble() >= _antiSpoofSampleRate) return;
     final yaw = face.yawDegrees;

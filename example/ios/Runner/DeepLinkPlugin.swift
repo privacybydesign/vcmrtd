@@ -10,6 +10,12 @@ import Foundation
     private static let channelName = "deep_link_handler"
     private static let methodGetInitialLink = "getInitialLink"
     private static let methodHandleDeepLink = "handleDeepLink"
+    private static var passportIssuerHost: String {
+        Bundle.main.object(forInfoDictionaryKey: "DeepLinkPassportIssuerHost") as? String ?? ""
+    }
+    private static var passportIssuerStartPath: String {
+        Bundle.main.object(forInfoDictionaryKey: "DeepLinkPassportIssuerStartPath") as? String ?? ""
+    }
     
     private var channel: FlutterMethodChannel?
     private var initialLink: String?
@@ -90,12 +96,14 @@ private extension DeepLinkPlugin {
     func isValidURL(_ url: URL) -> Bool {
         // Require HTTPS
         guard url.scheme == "https" else { return false }
-        
-        // Require host/path to match start-app endpoint
+
+        // Require host/path to match the configured start endpoint.
         let host = url.host ?? ""
         let path = url.path
-        guard host == "passport-issuer.yivi.app",
-              path.hasPrefix("/start-app") else { return false }
+        guard !DeepLinkPlugin.passportIssuerHost.isEmpty,
+              !DeepLinkPlugin.passportIssuerStartPath.isEmpty,
+              host == DeepLinkPlugin.passportIssuerHost,
+              path.hasPrefix(DeepLinkPlugin.passportIssuerStartPath) else { return false }
         
         // Extract query parameters
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),

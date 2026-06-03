@@ -10,12 +10,12 @@ import UIKit
         Bundle.main.object(forInfoDictionaryKey: "DeepLinkMrtdAppHost") as? String ?? ""
     }
     private static var mrtdValidatePath: String {
-        Bundle.main.object(forInfoDictionaryKey: "DeepLinkMrtdValidatePath") as? String ?? "/validate"
+        Bundle.main.object(forInfoDictionaryKey: "DeepLinkMrtdValidatePath") as? String ?? ""
     }
     private static var passportIssuerStartPath: String {
-        Bundle.main.object(forInfoDictionaryKey: "DeepLinkPassportIssuerStartPath") as? String ?? "/start-app"
+        Bundle.main.object(forInfoDictionaryKey: "DeepLinkPassportIssuerStartPath") as? String ?? ""
     }
-    
+
     override func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -52,7 +52,7 @@ import UIKit
         return super.application(app, open: url, options: options)
     }
     
-    // Handle Universal Links (https://mrtd.app/validate)
+    // Handle Universal Links.
     override func application(
         _ application: UIApplication,
         continue userActivity: NSUserActivity,
@@ -60,8 +60,14 @@ import UIKit
     ) -> Bool {
         if userActivity.activityType == NSUserActivityTypeBrowsingWeb,
            let url = userActivity.webpageURL,
-           ((url.host == AppDelegate.mrtdAppHost && url.path.hasPrefix(AppDelegate.mrtdValidatePath)) ||
-            (url.host == AppDelegate.passportIssuerHost && url.path.hasPrefix(AppDelegate.passportIssuerStartPath))) {
+           ((!AppDelegate.mrtdAppHost.isEmpty &&
+             !AppDelegate.mrtdValidatePath.isEmpty &&
+             url.host == AppDelegate.mrtdAppHost &&
+             url.path.hasPrefix(AppDelegate.mrtdValidatePath)) ||
+            (!AppDelegate.passportIssuerHost.isEmpty &&
+             !AppDelegate.passportIssuerStartPath.isEmpty &&
+             url.host == AppDelegate.passportIssuerHost &&
+             url.path.hasPrefix(AppDelegate.passportIssuerStartPath))) {
             // The plugin will handle this through its delegate methods
             return super.application(application, continue: userActivity, restorationHandler: restorationHandler)
         }
