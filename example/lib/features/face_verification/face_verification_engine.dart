@@ -36,7 +36,7 @@ class FaceVerificationEngine {
 
   Stream<Map<String, dynamic>> get events => _events.stream;
 
-  /// Default constructor used in production.   
+  /// Default constructor used in production.
   FaceVerificationEngine() {
     _worker = FaceVerificationWorker();
   }
