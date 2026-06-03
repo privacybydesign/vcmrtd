@@ -61,8 +61,14 @@ jobs:
           fetch-depth: 0
       - name: Setup build environment
         uses: ./.github/actions/setup-build-environment
-      - name: Build
-        run: flutter pub get
+      - name: Run library tests with coverage
+        run: flutter test --coverage
+      - name: Run example tests with coverage
+        working-directory: ./example
+        run: flutter test --coverage
+      - name: Merge coverage reports
+        run: |
+          sed 's|SF:lib/|SF:example/lib/|g' example/coverage/lcov.info >> coverage/lcov.info
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602 # v6
         env:
