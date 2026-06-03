@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtdapp/features/face_verification/face_verification_engine.dart';
 import 'package:vcmrtdapp/features/face_verification/face_verification_entry_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/document_selection_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/driving_licence_data_screen.dart';
@@ -35,7 +36,7 @@ extension CustomRouteExtensions on BuildContext {
 
 final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
 
-GoRouter createRouter() {
+GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEngine? faceVerificationEngine}) {
   return GoRouter(
     initialLocation: '/select_doc_type',
     observers: [routeObserver],
@@ -66,6 +67,7 @@ GoRouter createRouter() {
             },
             onCancel: context.pop,
             onBack: context.pop,
+            scannerBuilder: scannerBuilder,
           );
         },
       ),
@@ -132,6 +134,15 @@ GoRouter createRouter() {
           final extra = state.extra as Map<String, dynamic>;
           final nfcImageBytes = extra['nfcImageBytes'] as Uint8List?;
           final issueDate = extra['issueDate'] as DateTime?;
+
+          if (faceVerificationEngine != null) {
+            return FaceVerificationEntryScreen.withEngine(
+              engine: faceVerificationEngine,
+              nfcImageBytes: nfcImageBytes,
+              onBackPressed: context.pop,
+              photoIssueDate: issueDate,
+            );
+          }
 
           return FaceVerificationEntryScreen(
             nfcImageBytes: nfcImageBytes,

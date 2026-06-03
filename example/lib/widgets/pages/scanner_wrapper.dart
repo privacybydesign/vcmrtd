@@ -9,6 +9,9 @@ import '../../routing.dart';
 import 'scan_screen.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
+typedef ScannerWidgetBuilder =
+    Widget Function({required DocumentType documentType, required ValueChanged<ScannedMRZ> onSuccess});
+
 class MrzReaderRouteParams {
   final DocumentType documentType;
 
@@ -30,6 +33,7 @@ class ScannerWrapper extends StatefulWidget {
   final VoidCallback onCancel;
   final VoidCallback onBack;
   final DocumentType documentType;
+  final ScannerWidgetBuilder? scannerBuilder;
 
   const ScannerWrapper({
     super.key,
@@ -38,6 +42,7 @@ class ScannerWrapper extends StatefulWidget {
     required this.onCancel,
     required this.onBack,
     this.documentType = DocumentType.passport,
+    this.scannerBuilder,
   });
 
   @override
@@ -65,6 +70,8 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
 
   @override
   Widget build(BuildContext context) {
+    final scannerBuilder = widget.scannerBuilder ?? _defaultScannerBuilder;
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Scan ${_getDocumentTypeName()}'),
@@ -72,7 +79,7 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
       ),
       body: Stack(
         children: [
-          ScannerPage(
+          scannerBuilder(
             documentType: widget.documentType,
             onSuccess: (scannedMrz) {
               if (!_hasNavigated) {
@@ -141,4 +148,8 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
   String _getDocumentTypeName() {
     return widget.documentType.displayName;
   }
+}
+
+Widget _defaultScannerBuilder({required DocumentType documentType, required ValueChanged<ScannedMRZ> onSuccess}) {
+  return ScannerPage(documentType: documentType, onSuccess: onSuccess);
 }

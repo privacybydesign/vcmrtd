@@ -1,5 +1,6 @@
 import 'dart:ui' show Offset, Rect;
 
+import 'package:flutter/foundation.dart' as foundation;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtdapp/features/face_verification/detection/face_landmarker_types.dart';
@@ -77,6 +78,16 @@ void main() {
 
       expect(left.processFrame(face: _face(yaw: 35)), isFalse);
       expect(right.processFrame(face: _face(yaw: -35)), isFalse);
+    });
+
+    test('uses inverted pose-yaw sign convention on iOS', () {
+      foundation.debugDefaultTargetPlatformOverride = foundation.TargetPlatform.iOS;
+      addTearDown(() => foundation.debugDefaultTargetPlatformOverride = null);
+      final left = ActiveLivenessService()..startAction(LivenessAction.turnLeft, baseline: _baseline());
+      final right = ActiveLivenessService()..startAction(LivenessAction.turnRight, baseline: _baseline());
+
+      expect(left.processFrame(face: _face(yaw: 35)), isTrue);
+      expect(right.processFrame(face: _face(yaw: -35)), isTrue);
     });
 
     test('detects mouth-open gesture after consecutive frames', () {

@@ -10,6 +10,11 @@ void main() {
         expect(result, isNull);
       });
 
+      test('should return null when all lines trim to empty strings', () {
+        final result = MRZHelper.getFinalListToParse(['  ', '']);
+        expect(result, isNull);
+      });
+
       test('should recognize passport MRZ (P)', () {
         // TD3 format: 2 lines, 44 characters each
         final input = ['P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<', 'L898902C36UTO7408122F1204159ZE184226B<<<<<10'];
@@ -215,6 +220,22 @@ void main() {
         final result = MRZHelper.fixForDocType(DocumentType.passport, [td3Line1, l2]);
         expect(result, isNotNull);
         expect(result![1].substring(13, 19), '7408122'.substring(0, 6));
+      });
+
+      test('auto-corrects P sex marker OCR error to F', () {
+        final l2 = 'L898902C36UTO7408122P1204159ZE184226B<<<<<10';
+        expect(l2.length, 44);
+        final result = MRZHelper.fixForDocType(DocumentType.passport, [td3Line1, l2]);
+        expect(result, isNotNull);
+        expect(result![1].substring(20, 21), 'F');
+      });
+
+      test('leaves unknown sex marker unchanged', () {
+        final l2 = 'L898902C36UTO7408122Z1204159ZE184226B<<<<<10';
+        expect(l2.length, 44);
+        final result = MRZHelper.fixForDocType(DocumentType.passport, [td3Line1, l2]);
+        expect(result, isNotNull);
+        expect(result![1].substring(20, 21), 'Z');
       });
 
       test('returns null for wrong number of lines', () {

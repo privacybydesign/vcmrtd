@@ -109,6 +109,42 @@ void main() {
     });
   });
 
+  group('ScannedIdCardMRZ', () {
+    final testDate1 = DateTime(1990, 6, 8);
+    final testDate2 = DateTime(2025, 12, 31);
+
+    test('constructor defaults to identity card document type', () {
+      final mrz = ScannedIdCardMRZ(
+        documentNumber: 'D23145890',
+        countryCode: 'UTO',
+        dateOfBirth: testDate1,
+        dateOfExpiry: testDate2,
+      );
+
+      expect(mrz.documentType, equals(DocumentType.identityCard));
+      expect(mrz.documentNumber, equals('D23145890'));
+      expect(mrz.countryCode, equals('UTO'));
+      expect(mrz.dateOfBirth, equals(testDate1));
+      expect(mrz.dateOfExpiry, equals(testDate2));
+    });
+
+    test('fromManualEntry preserves supplied fields and type', () {
+      final mrz = ScannedIdCardMRZ.fromManualEntry(
+        documentNumber: 'I12345678',
+        dateOfBirth: testDate1,
+        dateOfExpiry: testDate2,
+        countryCode: 'NLD',
+        documentType: DocumentType.identityCard,
+      );
+
+      expect(mrz.documentType, equals(DocumentType.identityCard));
+      expect(mrz.documentNumber, equals('I12345678'));
+      expect(mrz.countryCode, equals('NLD'));
+      expect(mrz.dateOfBirth, equals(testDate1));
+      expect(mrz.dateOfExpiry, equals(testDate2));
+    });
+  });
+
   group('ScannedDriverLicenseMRZ', () {
     group('constructor', () {
       test('should create with driving licence document type', () {
@@ -126,6 +162,26 @@ void main() {
         expect(mrz.version, equals('1'));
         expect(mrz.randomData, equals('RANDOM123'));
         expect(mrz.configuration, equals('CONFIG'));
+      });
+    });
+
+    group('fromManualEntry', () {
+      test('parses a valid single-line driving licence MRZ', () {
+        final mrz = ScannedDriverLicenseMRZ.fromManualEntry(mrzString: 'D1NLD11234567890ABCDEFGHIJKLM5');
+
+        expect(mrz.documentType, equals(DocumentType.drivingLicence));
+        expect(mrz.documentNumber, equals('1234567890'));
+        expect(mrz.countryCode, equals('NLD'));
+        expect(mrz.version, equals('1'));
+        expect(mrz.randomData, equals('ABCDEFGHIJKLM'));
+        expect(mrz.configuration, equals('1'));
+      });
+
+      test('throws when manual driving licence MRZ cannot be parsed', () {
+        expect(
+          () => ScannedDriverLicenseMRZ.fromManualEntry(mrzString: 'not-a-driving-licence-mrz'),
+          throwsA(isA<Exception>()),
+        );
       });
     });
   });

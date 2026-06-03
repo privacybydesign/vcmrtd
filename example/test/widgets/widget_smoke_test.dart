@@ -1,6 +1,9 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
 import 'package:vcmrtdapp/widgets/pages/document_selection_screen.dart';
@@ -78,6 +81,24 @@ void main() {
       );
       expect(find.byIcon(Icons.person), findsOneWidget);
       expect(find.text('No Photo'), findsOneWidget);
+    });
+
+    testWidgets('renders JPEG photo data with Image.memory', (tester) async {
+      final image = img.Image(width: 2, height: 2);
+      final jpeg = Uint8List.fromList(img.encodeJpg(image));
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ProfilePictureWidget(imageData: jpeg, imageType: ImageType.jpeg),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.byType(Image), findsOneWidget);
+      expect(find.byIcon(Icons.person), findsNothing);
+      expect(find.text('No Photo'), findsNothing);
     });
   });
 

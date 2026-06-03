@@ -3,7 +3,6 @@ import 'dart:io' show Platform;
 import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
-import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:vcmrtdapp/features/face_verification/face_verification_engine.dart';
@@ -87,7 +86,6 @@ class FlutterFaceVerificationScreen extends StatefulWidget {
     this.photoIssueDate,
   }) : testEngine = null;
 
-  @visibleForTesting
   const FlutterFaceVerificationScreen.withEngine({
     super.key,
     required FaceVerificationEngine engine,
