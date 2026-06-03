@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
+import 'package:meta/meta.dart';
 import 'camera_overlay.dart';
 import '../routing.dart';
 
@@ -139,11 +139,15 @@ class MRZCameraView extends StatefulWidget {
     required this.onImage,
     this.initialDirection = CameraLensDirection.back,
     required this.showOverlay,
+    @visibleForTesting this.initializeCamera = true,
   });
 
   final Function(OcrFrame frame) onImage;
   final CameraLensDirection initialDirection;
   final bool showOverlay;
+
+  @visibleForTesting
+  final bool initializeCamera;
 
   @override
   MRZCameraViewState createState() => MRZCameraViewState();
@@ -165,7 +169,9 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
   @override
   void initState() {
     super.initState();
-    _initCamera();
+    if (widget.initializeCamera) {
+      _initCamera();
+    }
   }
 
   @override
@@ -180,7 +186,13 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
   @override
   void dispose() {
     routeObserver.unsubscribe(this);
-    _stopLiveFeed();
+
+    final controller = _controller;
+    _controller = null;
+
+    controller?.stopImageStream();
+    controller?.dispose();
+
     super.dispose();
   }
 
@@ -366,6 +378,12 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
     }
     return nv21;
   }
+
+  @visibleForTesting
+  Rect overlayRectForTesting(Size size) => _overlayRect(size);
+
+  @visibleForTesting
+  Rect previewRectForTesting(Size size) => _previewRect(size);
 
   Rect _overlayRect(Size size) {
     const documentFrameRatio = 1.42;

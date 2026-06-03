@@ -6,7 +6,7 @@ import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:camera/camera.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtdapp/features/face_verification/detection/face_detector.dart';
@@ -476,6 +476,52 @@ class FaceVerificationWorker {
     if (idle != null && !idle.isCompleted) idle.complete();
     _passiveIdle = null;
   }
+
+  // ---------------------------------------------------------------------------
+  // Test-only debug helpers — expose pure module-level functions for unit tests.
+  // ---------------------------------------------------------------------------
+
+  @visibleForTesting
+  Stream<WorkerFrameResult> get debugFrames => _frames.stream;
+
+  @visibleForTesting
+  int get debugSessionId => _sessionId;
+
+  @visibleForTesting
+  Future<void> debugWaitPipelineIdle() => _waitPipelineIdle();
+
+  @visibleForTesting
+  Future<void> debugWaitPassiveIdle() => _waitPassiveIdle();
+
+  @visibleForTesting
+  void debugEmitFrameResult(WorkerFrameResult result) => _emitFrameResult(result);
+
+  @visibleForTesting
+  void debugEmitFrameError(Object error) => _emitFrameError(error);
+
+  @visibleForTesting
+  static img.Image debugBgraToRgbImage(Uint8List bytes, int width, int height, int bytesPerRow) =>
+      _bgraToRgbImage(bytes, width, height, bytesPerRow);
+
+  @visibleForTesting
+  static img.Image debugYuv420ToRgbImage(int width, int height, List<Map<String, dynamic>> planes) =>
+      _yuv420ToRgbImage(width, height, planes);
+
+  @visibleForTesting
+  static img.Image debugRotateToUpright(img.Image image, int rotationDegrees) =>
+      _rotateToUpright(image, rotationDegrees);
+
+  @visibleForTesting
+  static Map<String, dynamic> debugImagePayload(img.Image image) => _imagePayload(image);
+
+  @visibleForTesting
+  static img.Image debugImageFromPayload(Map<String, dynamic> payload) => _imageFromPayload(payload);
+
+  @visibleForTesting
+  static Map<String, dynamic> debugSerializeFace(FaceObservation face) => _serializeFace(face);
+
+  @visibleForTesting
+  static FaceObservation debugDeserializeFaceMap(Map<String, dynamic> map) => _deserializeFaceMap(map);
 }
 
 /// Shared entry-point boilerplate for all three worker isolates.

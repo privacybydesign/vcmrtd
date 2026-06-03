@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -180,6 +181,12 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
     }
     return false;
   }
+
+  @visibleForTesting
+  dynamic debugParseScannedText(List<String> lines) => _parseScannedText(lines);
+
+  @visibleForTesting
+  bool debugTryParseAndNotify(List<String> lines) => _tryParseAndNotify(lines);
 
   dynamic _parseScannedText(List<String> lines) {
     try {

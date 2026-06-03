@@ -1,6 +1,8 @@
 import 'dart:typed_data';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vcmrtdapp/helpers/camera_overlay.dart';
 import 'package:vcmrtdapp/helpers/camera_viewfinder.dart';
 
 void main() {
@@ -299,6 +301,104 @@ void main() {
         expect(cropped.roiWidth, 1.0);
         expect(cropped.roiHeight, 1.0);
       });
+    });
+  });
+
+  group('MRZCameraView', () {
+    testWidgets('builds without overlay when showOverlay is false', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(home: MRZCameraView(showOverlay: false, initializeCamera: false, onImage: (_) {})),
+      );
+
+      expect(find.byType(Scaffold), findsOneWidget);
+      expect(find.byType(MRZCameraOverlay), findsNothing);
+    });
+
+    testWidgets('wraps body in MRZCameraOverlay when showOverlay is true', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(home: MRZCameraView(showOverlay: true, initializeCamera: false, onImage: (_) {})),
+      );
+
+      expect(find.byType(Scaffold), findsOneWidget);
+      expect(find.byType(MRZCameraOverlay), findsOneWidget);
+    });
+
+    testWidgets('renders empty container while camera is not initialized', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(home: MRZCameraView(showOverlay: false, initializeCamera: false, onImage: (_) {})),
+      );
+
+      final container = tester.widget<Container>(find.byType(Container).first);
+      expect(container.child, isNull);
+    });
+  });
+
+  group('MRZCameraViewState geometry', () {
+    testWidgets('overlayRect uses portrait sizing', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(home: MRZCameraView(showOverlay: false, initializeCamera: false, onImage: (_) {})),
+      );
+
+      final state = tester.state<MRZCameraViewState>(find.byType(MRZCameraView));
+
+      const size = Size(400, 800);
+      final rect = state.overlayRectForTesting(size);
+
+      expect(rect.width, 360);
+      expect(rect.height, closeTo(360 / 1.42, 0.001));
+      expect(rect.left, 20);
+      expect(rect.top, closeTo((800 - (360 / 1.42)) / 2 - 60, 0.001));
+    });
+
+    testWidgets('overlayRect uses landscape sizing', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(home: MRZCameraView(showOverlay: false, initializeCamera: false, onImage: (_) {})),
+      );
+
+      final state = tester.state<MRZCameraViewState>(find.byType(MRZCameraView));
+
+      const size = Size(800, 400);
+      final rect = state.overlayRectForTesting(size);
+
+      final expectedHeight = 400 * 0.75;
+      final expectedWidth = expectedHeight * 1.42;
+
+      expect(rect.height, expectedHeight);
+      expect(rect.width, closeTo(expectedWidth, 0.001));
+      expect(rect.left, closeTo((800 - expectedWidth) / 2, 0.001));
+      expect(rect.top, closeTo((400 - expectedHeight) / 2 - 60, 0.001));
+    });
+
+    testWidgets('previewRect centers scaled preview for portrait screen', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(home: MRZCameraView(showOverlay: false, initializeCamera: false, onImage: (_) {})),
+      );
+
+      final state = tester.state<MRZCameraViewState>(find.byType(MRZCameraView));
+
+      const size = Size(400, 800);
+      final rect = state.previewRectForTesting(size);
+
+      expect(rect.width, 400);
+      expect(rect.height, closeTo(711.111, 0.001));
+      expect(rect.left, 0);
+      expect(rect.top, closeTo((800 - 711.111) / 2, 0.001));
+    });
+
+    testWidgets('previewRect centers scaled preview for landscape screen', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(home: MRZCameraView(showOverlay: false, initializeCamera: false, onImage: (_) {})),
+      );
+
+      final state = tester.state<MRZCameraViewState>(find.byType(MRZCameraView));
+
+      const size = Size(800, 400);
+      final rect = state.previewRectForTesting(size);
+
+      expect(rect.width, 225);
+      expect(rect.height, 400);
+      expect(rect.left, closeTo((800 - 225) / 2, 0.001));
+      expect(rect.top, 0);
     });
   });
 }

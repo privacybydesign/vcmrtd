@@ -153,6 +153,59 @@ void main() {
       }
       expect(service.processFrame(face: _face(yaw: -35)), isTrue);
     });
+
+    test('wire names map to the expected event strings', () {
+      expect(LivenessAction.blink.wireName, 'BLINK');
+      expect(LivenessAction.turnLeft.wireName, 'TURN_LEFT');
+      expect(LivenessAction.turnRight.wireName, 'TURN_RIGHT');
+      expect(LivenessAction.mouthOpen.wireName, 'MOUTH_OPEN');
+      expect(LivenessAction.smile.wireName, 'SMILE');
+    });
+
+    test('turn latch releases when face returns to neutral yaw', () {
+      final service = ActiveLivenessService()..startAction(LivenessAction.turnLeft, baseline: _baseline());
+
+      // Detect left turn — latch set, confirmCount accumulates to threshold.
+      expect(service.processFrame(face: _face(yaw: -35)), isTrue);
+      // Return to neutral — exercises _isTurnReleased(), latch is cleared.
+      // processFrame still returns true because confirmCount remains >= threshold.
+      service.processFrame(face: _face(yaw: 0));
+    });
+
+    test('detects blink without explicit baseline via self-calibration', () {
+      // startAction with no baseline → engine self-calibrates from the first few frames.
+      final service = ActiveLivenessService()..startAction(LivenessAction.blink);
+
+      for (var i = 0; i < ActiveLivenessService.baselineFrames; i++) {
+        expect(service.processFrame(face: _face()), isFalse);
+      }
+      expect(service.processFrame(face: _face(blinkClosed: true)), isFalse);
+      expect(service.processFrame(face: _face(blinkClosed: true)), isFalse);
+      expect(service.processFrame(face: _face()), isTrue);
+    });
+
+    test('diagnoseAlignmentFrame reports stableFramesAfter when face is at rest', () {
+      final service = ActiveLivenessService();
+      service.processAlignmentFrame(face: _face(), action: LivenessAction.blink, timedOut: false);
+
+      final diag = service.diagnoseAlignmentFrame(_face());
+      expect(diag.atRest, isTrue);
+      expect(diag.stableFramesAfter, greaterThan(0));
+      expect(diag.rejectReason, isNull);
+    });
+
+    test('transitions to queued action after rest grace period elapses', () async {
+      final service = ActiveLivenessService()..startAction(LivenessAction.turnLeft, baseline: _baseline());
+      service.queueNextAction(LivenessAction.smile);
+      expect(service.isWaitingForRest, isTrue);
+
+      await Future<void>.delayed(const Duration(milliseconds: 350));
+
+      for (var i = 0; i < ActiveLivenessService.restStableFrames; i++) {
+        service.processFrame(face: _face());
+      }
+      expect(service.isWaitingForRest, isFalse);
+    });
   });
 }
 

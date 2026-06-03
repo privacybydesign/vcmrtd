@@ -17,6 +17,18 @@ void main() {
       expect(FaceVerificationTuning.passiveLockOnMs, 600);
     });
 
+    test('uses expected gesture detection and alignment defaults', () {
+      expect(FaceVerificationTuning.antiSpoofMinSamples, 4);
+      expect(FaceVerificationTuning.turnYawThreshold, 28.0);
+      expect(FaceVerificationTuning.mouthOpenThreshold, 0.028);
+      expect(FaceVerificationTuning.alignMinBboxArea, 0.04);
+      expect(FaceVerificationTuning.alignMaxBboxArea, 0.45);
+      expect(FaceVerificationTuning.passiveMaxYawDeg, 22.0);
+      expect(FaceVerificationTuning.passiveCenterMaxOffsetX, 0.18);
+      expect(FaceVerificationTuning.passiveCenterMaxOffsetY, 0.22);
+      expect(FaceVerificationTuning.consistencyCheckThreshold, 0.50);
+    });
+
     test('keeps debug event emission disabled by default', () {
       expect(FaceVerificationTuning.emitDebugEvents, isFalse);
     });

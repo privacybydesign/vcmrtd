@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_litert/flutter_litert.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtdapp/features/face_verification/tflite_tensor_utils.dart';
@@ -88,6 +89,12 @@ class FaceRecognizer {
     if (normA <= 1e-9 || normB <= 1e-9) return 0.0;
     return (dot / (normA * normB)).clamp(0.0, 1.0).toDouble();
   }
+
+  @visibleForTesting
+  List<double> debugNormalize(List<double> embedding) => _normalize(embedding);
+
+  @visibleForTesting
+  img.Image debugModelInputImage(img.Image face) => _modelInputImage(face);
 
   /// L2-normalizes [embedding] so that cosine similarity equals dot product.
   List<double> _normalize(List<double> embedding) {

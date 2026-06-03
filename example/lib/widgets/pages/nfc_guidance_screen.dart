@@ -277,13 +277,16 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
             Row(
               children: [
                 const SizedBox(width: 5),
-                const Text(
-                  'DRIVING LICENCE',
-                  style: TextStyle(
-                    color: Color(0xFF0046AD),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 9,
-                    letterSpacing: 0.4,
+                const Flexible(
+                  child: Text(
+                    'DRIVING LICENCE',
+                    style: TextStyle(
+                      color: Color(0xFF0046AD),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 9,
+                      letterSpacing: 0.4,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 const Spacer(),

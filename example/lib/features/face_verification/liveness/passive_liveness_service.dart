@@ -2,6 +2,7 @@ import 'dart:collection';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_litert/flutter_litert.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtdapp/features/face_verification/detection/face_observation.dart';
@@ -125,6 +126,22 @@ class PassiveLivenessService {
 
   /// Evaluate current BVP samples and return an `RppgResult` (for tests).
   RppgResult? debugEvaluateBvp() => getRppgResult();
+
+  /// Expose softmax for unit testing.
+  @visibleForTesting
+  List<double> debugSoftmax(List<double> logits) => _softmax(logits);
+
+  /// Expose face-box pixel calculation for unit testing.
+  @visibleForTesting
+  List<int>? debugFaceBoxPixels(Map<String, List<double>> rois, int imgW, int imgH) => _faceBoxPixels(rois, imgW, imgH);
+
+  /// Expose scaled crop for unit testing.
+  @visibleForTesting
+  img.Image? debugScaledCrop(img.Image source, List<int> bbox, double scale) => _scaledCrop(source, bbox, scale);
+
+  /// Expose BGR preprocessing for unit testing.
+  @visibleForTesting
+  ByteBuffer debugPreprocess(img.Image image, {required bool nchw}) => _preprocess(image, nchw: nchw);
 
   void _sampleAntiSpoof(img.Image frame, FaceObservation face) {
     if (_random.nextDouble() >= _antiSpoofSampleRate) return;
