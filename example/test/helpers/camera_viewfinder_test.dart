@@ -472,13 +472,7 @@ void main() {
   group('MRZCameraViewState YUV420 to NV21 conversion', () {
     Future<MRZCameraViewState> pumpState(WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: MRZCameraView(
-            showOverlay: false,
-            initializeCamera: false,
-            onImage: (_) {},
-          ),
-        ),
+        MaterialApp(home: MRZCameraView(showOverlay: false, initializeCamera: false, onImage: (_) {})),
       );
 
       return tester.state<MRZCameraViewState>(find.byType(MRZCameraView));
@@ -500,13 +494,7 @@ void main() {
         vBytesPerPixel: 1,
       );
 
-      expect(
-        nv21,
-        Uint8List.fromList(<int>[
-          1, 2, 3, 4, 5, 6, 7, 8,
-          30, 10, 40, 20,
-        ]),
-      );
+      expect(nv21, Uint8List.fromList(<int>[1, 2, 3, 4, 5, 6, 7, 8, 30, 10, 40, 20]));
     });
 
     testWidgets('debugYuv420PlanesToNv21 removes padded Y row stride', (tester) async {
@@ -515,10 +503,7 @@ void main() {
       final nv21 = state.debugYuv420PlanesToNv21(
         width: 2,
         height: 2,
-        yBytes: Uint8List.fromList(<int>[
-          1, 2, 99,
-          3, 4, 99,
-        ]),
+        yBytes: Uint8List.fromList(<int>[1, 2, 99, 3, 4, 99]),
         yBytesPerRow: 3,
         uBytes: Uint8List.fromList(<int>[10]),
         uBytesPerRow: 1,
@@ -528,14 +513,7 @@ void main() {
         vBytesPerPixel: 1,
       );
 
-      expect(
-        nv21,
-        Uint8List.fromList(<int>[
-          1, 2,
-          3, 4,
-          20, 10,
-        ]),
-      );
+      expect(nv21, Uint8List.fromList(<int>[1, 2, 3, 4, 20, 10]));
     });
 
     testWidgets('debugYuv420PlanesToNv21 respects chroma pixel stride of 2', (tester) async {
@@ -554,24 +532,12 @@ void main() {
         vBytesPerPixel: 2,
       );
 
-      expect(
-        nv21,
-        Uint8List.fromList(<int>[
-          1, 2, 3, 4, 5, 6, 7, 8,
-          30, 10, 40, 20,
-        ]),
-      );
+      expect(nv21, Uint8List.fromList(<int>[1, 2, 3, 4, 5, 6, 7, 8, 30, 10, 40, 20]));
     });
 
     testWidgets('route callbacks do not throw when no cameras are initialized', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: MRZCameraView(
-            showOverlay: false,
-            initializeCamera: false,
-            onImage: (_) {},
-          ),
-        ),
+        MaterialApp(home: MRZCameraView(showOverlay: false, initializeCamera: false, onImage: (_) {})),
       );
 
       final state = tester.state<MRZCameraViewState>(find.byType(MRZCameraView));
@@ -590,13 +556,7 @@ void main() {
   group('MRZCameraViewState OCR frame mapping', () {
     Future<MRZCameraViewState> pumpState(WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: MRZCameraView(
-            showOverlay: false,
-            initializeCamera: false,
-            onImage: (_) {},
-          ),
-        ),
+        MaterialApp(home: MRZCameraView(showOverlay: false, initializeCamera: false, onImage: (_) {})),
       );
 
       return tester.state<MRZCameraViewState>(find.byType(MRZCameraView));
@@ -724,7 +684,6 @@ void main() {
       expect(frame.roiHeight, 1.0);
     });
   });
-
 }
 
 OcrFrame _nv21({

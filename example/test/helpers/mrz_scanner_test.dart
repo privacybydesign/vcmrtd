@@ -206,20 +206,14 @@ void main() {
     testWidgets('does nothing when processing has already been disabled', (tester) async {
       var called = false;
 
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
-        _tesseractChannel,
-        (_) async {
-          called = true;
-          return '$_passportLine1\n$_passportLine2';
-        },
-      );
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(_tesseractChannel, (
+        _,
+      ) async {
+        called = true;
+        return '$_passportLine1\n$_passportLine2';
+      });
 
-      await tester.pumpWidget(
-        _scaffold(
-          documentType: DocumentType.passport,
-          onSuccess: (_, __) {},
-        ),
-      );
+      await tester.pumpWidget(_scaffold(documentType: DocumentType.passport, onSuccess: (_, __) {}));
       await tester.pump();
 
       final state = _buildState(tester);

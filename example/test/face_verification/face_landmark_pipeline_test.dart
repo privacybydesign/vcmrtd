@@ -121,14 +121,7 @@ void main() {
     test('debugComputeRotation returns zero for horizontal eyes', () {
       final pipeline = FaceLandmarkPipeline();
 
-      final angle = pipeline.debugComputeRotation(
-        0.25,
-        0.5,
-        0.75,
-        0.5,
-        imgW: 640,
-        imgH: 480,
-      );
+      final angle = pipeline.debugComputeRotation(0.25, 0.5, 0.75, 0.5, imgW: 640, imgH: 480);
 
       expect(angle, closeTo(0, 1e-9));
     });
@@ -136,14 +129,7 @@ void main() {
     test('debugComputeRotation accounts for image aspect ratio', () {
       final pipeline = FaceLandmarkPipeline();
 
-      final angle = pipeline.debugComputeRotation(
-        0.5,
-        0.6,
-        0.5,
-        0.4,
-        imgW: 640,
-        imgH: 480,
-      );
+      final angle = pipeline.debugComputeRotation(0.5, 0.6, 0.5, 0.4, imgW: 640, imgH: 480);
 
       expect(angle, closeTo(-math.pi / 2, 1e-9));
     });
@@ -151,22 +137,13 @@ void main() {
     test('debugIou returns zero for non-overlapping boxes', () {
       final pipeline = FaceLandmarkPipeline();
 
-      expect(
-        pipeline.debugIou(
-          <double>[0.0, 0.0, 0.2, 0.2],
-          <double>[0.8, 0.8, 1.0, 1.0],
-        ),
-        closeTo(0.0, 1e-9),
-      );
+      expect(pipeline.debugIou(<double>[0.0, 0.0, 0.2, 0.2], <double>[0.8, 0.8, 1.0, 1.0]), closeTo(0.0, 1e-9));
     });
 
     test('debugIou returns positive value for overlapping boxes', () {
       final pipeline = FaceLandmarkPipeline();
 
-      final iou = pipeline.debugIou(
-        <double>[0.0, 0.0, 0.6, 0.6],
-        <double>[0.3, 0.3, 0.9, 0.9],
-      );
+      final iou = pipeline.debugIou(<double>[0.0, 0.0, 0.6, 0.6], <double>[0.3, 0.3, 0.9, 0.9]);
 
       expect(iou, greaterThan(0));
       expect(iou, lessThan(1));
@@ -175,13 +152,10 @@ void main() {
     test('debugMergeBoxGroup returns weighted box merge', () {
       final pipeline = FaceLandmarkPipeline();
 
-      final merged = pipeline.debugMergeBoxGroup(
-        <List<double>>[
-          <double>[0.0, 0.0, 0.4, 0.4, 0.8],
-          <double>[0.2, 0.2, 0.6, 0.6, 0.2],
-        ],
-        5,
-      );
+      final merged = pipeline.debugMergeBoxGroup(<List<double>>[
+        <double>[0.0, 0.0, 0.4, 0.4, 0.8],
+        <double>[0.2, 0.2, 0.6, 0.6, 0.2],
+      ], 5);
 
       expect(merged[0], closeTo(0.04, 1e-9));
       expect(merged[1], closeTo(0.04, 1e-9));
@@ -194,13 +168,10 @@ void main() {
       final pipeline = FaceLandmarkPipeline();
 
       final first = <double>[0.1, 0.2, 0.3, 0.4, 0.0];
-      final merged = pipeline.debugMergeBoxGroup(
-        <List<double>>[
-          first,
-          <double>[0.5, 0.6, 0.7, 0.8, 0.0],
-        ],
-        5,
-      );
+      final merged = pipeline.debugMergeBoxGroup(<List<double>>[
+        first,
+        <double>[0.5, 0.6, 0.7, 0.8, 0.0],
+      ], 5);
 
       expect(merged, first);
     });
@@ -208,13 +179,10 @@ void main() {
     test('debugSoftNms merges overlapping boxes', () {
       final pipeline = FaceLandmarkPipeline();
 
-      final result = pipeline.debugSoftNms(
-        <List<double>>[
-          <double>[0.0, 0.0, 0.6, 0.6, 0.9],
-          <double>[0.1, 0.1, 0.7, 0.7, 0.8],
-        ],
-        5,
-      );
+      final result = pipeline.debugSoftNms(<List<double>>[
+        <double>[0.0, 0.0, 0.6, 0.6, 0.9],
+        <double>[0.1, 0.1, 0.7, 0.7, 0.8],
+      ], 5);
 
       expect(result, isNotNull);
       expect(result![4], closeTo(0.9, 1e-9));
@@ -228,13 +196,7 @@ void main() {
   });
 
   group('FaceLandmarkPipeline image input helpers', () {
-    img.Image solidImage({
-      required int width,
-      required int height,
-      required int r,
-      required int g,
-      required int b,
-    }) {
+    img.Image solidImage({required int width, required int height, required int r, required int g, required int b}) {
       final image = img.Image(width: width, height: height);
       for (var y = 0; y < height; y++) {
         for (var x = 0; x < width; x++) {
@@ -248,9 +210,7 @@ void main() {
       final pipeline = FaceLandmarkPipeline();
       pipeline.debugInitTestBuffers();
 
-      final letterboxed = pipeline.debugDrawDetectorLetterboxed(
-        solidImage(width: 80, height: 160, r: 255, g: 0, b: 0),
-      );
+      final letterboxed = pipeline.debugDrawDetectorLetterboxed(solidImage(width: 80, height: 160, r: 255, g: 0, b: 0));
 
       expect(letterboxed.width, 128);
       expect(letterboxed.height, 128);
@@ -260,9 +220,7 @@ void main() {
       final pipeline = FaceLandmarkPipeline();
       pipeline.debugInitTestBuffers();
 
-      final buffer = pipeline.debugBuildDetectorInput(
-        solidImage(width: 128, height: 128, r: 255, g: 127, b: 0),
-      );
+      final buffer = pipeline.debugBuildDetectorInput(solidImage(width: 128, height: 128, r: 255, g: 127, b: 0));
 
       final floats = buffer.asFloat32List();
 
@@ -277,13 +235,7 @@ void main() {
 
       final buffer = pipeline.debugBuildLandmarkInput(
         solidImage(width: 20, height: 20, r: 255, g: 0, b: 0),
-        const DetectorStageOutput(
-          cropX1: 0.0,
-          cropY1: 0.0,
-          cropW: 1.0,
-          cropH: 1.0,
-          angle: 0.0,
-        ),
+        const DetectorStageOutput(cropX1: 0.0, cropY1: 0.0, cropW: 1.0, cropH: 1.0, angle: 0.0),
       );
 
       final floats = buffer.asFloat32List();
@@ -292,7 +244,6 @@ void main() {
       expect(floats.any((v) => v > 0), isTrue);
     });
   });
-
 }
 
 List<NormalizedLandmark> _landmarks() {

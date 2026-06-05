@@ -102,39 +102,32 @@ void main() {
       expect(result[1], closeTo(0.8, 1e-6));
     });
 
-  test('throws when not initialized and no fake generator is provided', () {
-    final rec = FaceRecognizer();
+    test('throws when not initialized and no fake generator is provided', () {
+      final rec = FaceRecognizer();
 
-    expect(
-      () => rec.generateEmbedding(img.Image(width: 112, height: 112)),
-      throwsA(isA<StateError>()),
-    );
-  });
+      expect(() => rec.generateEmbedding(img.Image(width: 112, height: 112)), throwsA(isA<StateError>()));
+    });
 
-  test('passes default output shape to fake generator', () {
-    List<int>? capturedShape;
+    test('passes default output shape to fake generator', () {
+      List<int>? capturedShape;
 
-    final rec = FaceRecognizer.withEmbeddingGenerator(
-      (Float32List input, List<int> outputShape) {
+      final rec = FaceRecognizer.withEmbeddingGenerator((Float32List input, List<int> outputShape) {
         capturedShape = outputShape;
         return <double>[1.0, 0.0];
-      },
-    );
+      });
 
-    rec.generateEmbedding(img.Image(width: 112, height: 112));
+      rec.generateEmbedding(img.Image(width: 112, height: 112));
 
-    expect(capturedShape, <int>[1, 512]);
-  });
+      expect(capturedShape, <int>[1, 512]);
+    });
 
     test('passes normalized RGB input in range -1 to 1', () {
       Float32List? capturedInput;
 
-      final rec = FaceRecognizer.withEmbeddingGenerator(
-        (Float32List input, List<int> outputShape) {
-          capturedInput = input;
-          return <double>[1.0, 0.0];
-        },
-      );
+      final rec = FaceRecognizer.withEmbeddingGenerator((Float32List input, List<int> outputShape) {
+        capturedInput = input;
+        return <double>[1.0, 0.0];
+      });
 
       final image = img.Image(width: 112, height: 112);
       image.setPixelRgb(0, 0, 0, 127, 255);
@@ -150,12 +143,10 @@ void main() {
     test('resizes non-112 image before generating input tensor', () {
       Float32List? capturedInput;
 
-      final rec = FaceRecognizer.withEmbeddingGenerator(
-        (Float32List input, List<int> outputShape) {
-          capturedInput = input;
-          return <double>[1.0, 0.0];
-        },
-      );
+      final rec = FaceRecognizer.withEmbeddingGenerator((Float32List input, List<int> outputShape) {
+        capturedInput = input;
+        return <double>[1.0, 0.0];
+      });
 
       rec.generateEmbedding(img.Image(width: 20, height: 30));
 

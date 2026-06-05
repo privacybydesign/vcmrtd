@@ -20,15 +20,11 @@ import 'package:vcmrtdapp/features/face_verification/worker_result_types.dart';
 // Re-export result types so that callers only need to import this file.
 export 'package:vcmrtdapp/features/face_verification/worker_result_types.dart';
 
-
 @visibleForTesting
 abstract interface class FaceVerificationWorkerClient {
   Future<void> start();
 
-  Future<Map<String, dynamic>> request(
-    String cmd, {
-    Map<String, dynamic>? payload,
-  });
+  Future<Map<String, dynamic>> request(String cmd, {Map<String, dynamic>? payload});
 
   Future<void> dispose();
 }
@@ -77,8 +73,7 @@ class _NativeFaceVerificationCameraBuffer implements FaceVerificationCameraBuffe
   bool beginPipelineRead() => _buffer.beginPipelineRead();
 
   @override
-  void endPipelineRead({required bool handoffToPassive}) =>
-      _buffer.endPipelineRead(handoffToPassive: handoffToPassive);
+  void endPipelineRead({required bool handoffToPassive}) => _buffer.endPipelineRead(handoffToPassive: handoffToPassive);
 
   @override
   bool beginPassiveRead() => _buffer.beginPassiveRead();
@@ -101,7 +96,7 @@ class _NativeFaceVerificationCameraBuffer implements FaceVerificationCameraBuffe
   void dispose() => _buffer.dispose();
 }
 
-class _IsolateClient implements FaceVerificationWorkerClient  {
+class _IsolateClient implements FaceVerificationWorkerClient {
   _IsolateClient(this.entryPoint);
 
   final void Function(List<Object?>) entryPoint;
@@ -198,9 +193,9 @@ class _IsolateClient implements FaceVerificationWorkerClient  {
 /// silently dropped rather than blocking the camera callback.
 class FaceVerificationWorker {
   FaceVerificationWorker()
-      : _pipeline = _IsolateClient(_pipelineWorkerMain),
-        _passive = _IsolateClient(_passiveWorkerMain),
-        _match = _IsolateClient(_matchWorkerMain);
+    : _pipeline = _IsolateClient(_pipelineWorkerMain),
+      _passive = _IsolateClient(_passiveWorkerMain),
+      _match = _IsolateClient(_matchWorkerMain);
 
   @visibleForTesting
   FaceVerificationWorker.withClients({
@@ -208,10 +203,10 @@ class FaceVerificationWorker {
     required FaceVerificationWorkerClient passive,
     required FaceVerificationWorkerClient match,
     List<FaceVerificationCameraBuffer>? cameraBuffers,
-  })  : _pipeline = pipeline,
-        _passive = passive,
-        _match = match,
-        _camPool = cameraBuffers ?? <FaceVerificationCameraBuffer>[];
+  }) : _pipeline = pipeline,
+       _passive = passive,
+       _match = match,
+       _camPool = cameraBuffers ?? <FaceVerificationCameraBuffer>[];
 
   final FaceVerificationWorkerClient _pipeline;
   final FaceVerificationWorkerClient _passive;

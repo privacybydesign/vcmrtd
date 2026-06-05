@@ -173,31 +173,23 @@ class _RouteExtensionHarness extends StatelessWidget {
     return Column(
       children: [
         TextButton(
-          onPressed: () => context.pushMrzReaderScreen(
-            MrzReaderRouteParams(documentType: DocumentType.identityCard),
-          ),
+          onPressed: () => context.pushMrzReaderScreen(MrzReaderRouteParams(documentType: DocumentType.identityCard)),
           child: const Text('push mrz reader'),
         ),
         TextButton(
-          onPressed: () => context.pushManualEntryScreen(
-            ManualEntryRouteParams(documentType: DocumentType.drivingLicence),
-          ),
+          onPressed: () =>
+              context.pushManualEntryScreen(ManualEntryRouteParams(documentType: DocumentType.drivingLicence)),
           child: const Text('push manual entry'),
         ),
         TextButton(
           onPressed: () => context.pushNfcReadingScreen(
-            NfcReadingRouteParams(
-              scannedMRZ: scannedMrz,
-              documentType: DocumentType.passport,
-            ),
+            NfcReadingRouteParams(scannedMRZ: scannedMrz, documentType: DocumentType.passport),
           ),
           child: const Text('push nfc reading'),
         ),
         TextButton(
-          onPressed: () => context.pushFaceVerificationScreen(
-            Uint8List.fromList(<int>[1, 2, 3]),
-            issueDate: DateTime(2024, 2, 1),
-          ),
+          onPressed: () =>
+              context.pushFaceVerificationScreen(Uint8List.fromList(<int>[1, 2, 3]), issueDate: DateTime(2024, 2, 1)),
           child: const Text('push face verification'),
         ),
       ],
@@ -312,29 +304,21 @@ void main() {
           ),
           GoRoute(
             path: '/mrz_reader',
-            builder: (_, __) => const Scaffold(
-              body: SizedBox(key: Key('mrz_reader_page')),
-            ),
+            builder: (_, __) => const Scaffold(body: SizedBox(key: Key('mrz_reader_page'))),
           ),
           GoRoute(
             path: '/manual_entry',
-            builder: (_, __) => const Scaffold(
-              body: SizedBox(key: Key('manual_entry_page')),
-            ),
+            builder: (_, __) => const Scaffold(body: SizedBox(key: Key('manual_entry_page'))),
           ),
           GoRoute(
             path: '/nfc_reading',
-            builder: (_, __) => const Scaffold(
-              body: SizedBox(key: Key('nfc_reading_page')),
-            ),
+            builder: (_, __) => const Scaffold(body: SizedBox(key: Key('nfc_reading_page'))),
           ),
           GoRoute(
             path: '/face_verification',
             builder: (_, state) {
               faceExtra = state.extra as Map<String, dynamic>;
-              return const Scaffold(
-                body: SizedBox(key: Key('face_verification_page')),
-              );
+              return const Scaffold(body: SizedBox(key: Key('face_verification_page')));
             },
           ),
         ],
@@ -402,11 +386,7 @@ void main() {
 
       router.go(
         '/result',
-        extra: {
-          'document': _passportData(),
-          'result': _rawDocument(),
-          'document_type': DocumentType.identityCard,
-        },
+        extra: {'document': _passportData(), 'result': _rawDocument(), 'document_type': DocumentType.identityCard},
       );
 
       await tester.pump();
@@ -414,6 +394,5 @@ void main() {
 
       expect(find.byType(PassportDataScreen), findsOneWidget);
     });
-
   });
 }

@@ -14,9 +14,8 @@ class FaceRecognizer {
   FaceRecognizer() : _debugEmbeddingGenerator = null;
 
   @visibleForTesting
-  FaceRecognizer.withEmbeddingGenerator(
-    List<double> Function(Float32List input, List<int> outputShape) generator,
-  ) : _debugEmbeddingGenerator = generator;
+  FaceRecognizer.withEmbeddingGenerator(List<double> Function(Float32List input, List<int> outputShape) generator)
+    : _debugEmbeddingGenerator = generator;
 
   Interpreter? _interpreter;
 
@@ -85,12 +84,11 @@ class FaceRecognizer {
     return _normalize(trimmed);
   }
 
-
   List<double> _runInterpreter(Interpreter interpreter, Float32List input) {
-  final output = tfliteMakeTensor(_outputShape);
-  interpreter.run(input.buffer, output);
-  return tfliteFlatFloatArray(output);
-}
+    final output = tfliteMakeTensor(_outputShape);
+    interpreter.run(input.buffer, output);
+    return tfliteFlatFloatArray(output);
+  }
 
   /// Cosine similarity between two L2-normalized embeddings, clamped to [0, 1].
   ///
