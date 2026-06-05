@@ -107,6 +107,7 @@ class _IsolateClient implements FaceVerificationWorkerClient {
   int _requestId = 0;
   final Map<int, Completer<Map<String, dynamic>>> _pending = <int, Completer<Map<String, dynamic>>>{};
 
+  @override
   Future<void> start() async {
     if (_isolate != null) return;
     final rootToken = RootIsolateToken.instance;
@@ -127,6 +128,7 @@ class _IsolateClient implements FaceVerificationWorkerClient {
     await ready.future;
   }
 
+  @override
   Future<Map<String, dynamic>> request(String cmd, {Map<String, dynamic>? payload}) {
     final send = _sendPort;
     if (send == null) throw StateError('Worker isolate not initialized');
@@ -137,6 +139,7 @@ class _IsolateClient implements FaceVerificationWorkerClient {
     return completer.future;
   }
 
+  @override
   Future<void> dispose() async {
     if (_isolate == null) return;
     try {
@@ -646,7 +649,6 @@ class FaceVerificationWorker {
   @visibleForTesting
   static void debugMatchWorkerEntry(SendPort mainSendPort) => unawaited(_matchWorkerLoop(mainSendPort));
 
-  @visibleForTesting
   Future<void> _debugProcessPackedCameraFrameForTest({
     required List<Uint8List> planeBytes,
     required int width,

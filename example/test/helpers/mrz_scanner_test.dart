@@ -213,7 +213,7 @@ void main() {
         return '$_passportLine1\n$_passportLine2';
       });
 
-      await tester.pumpWidget(_scaffold(documentType: DocumentType.passport, onSuccess: (_, __) {}));
+      await tester.pumpWidget(_scaffold(documentType: DocumentType.passport, onSuccess: (unused1, unused2) {}));
       await tester.pump();
 
       final state = _buildState(tester);

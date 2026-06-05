@@ -435,11 +435,11 @@ void main() {
 
     tearDown(() => pipeline.close());
 
-    List<dynamic> _mockScores(int anchorCount, {int? highScoreIdx}) => [
+    List<dynamic> mockScores(int anchorCount, {int? highScoreIdx}) => [
       List.generate(anchorCount, (i) => [i == highScoreIdx ? 10.0 : -5.0]),
     ];
 
-    List<dynamic> _mockRegressors(int anchorCount, {double w = 10.0, double h = 10.0}) => [
+    List<dynamic> mockRegressors(int anchorCount, {double w = 10.0, double h = 10.0}) => [
       List.generate(anchorCount, (_) {
         final row = List<double>.filled(16, 0.0);
         row[2] = w;
@@ -450,16 +450,16 @@ void main() {
 
     test('decodeBox returns null when score is below threshold', () {
       pipeline.debugSetMockDetectorOutputs(
-        _mockScores(896), // all low scores (sigmoid(-5) ≈ 0.007)
-        _mockRegressors(896),
+        mockScores(896), // all low scores (sigmoid(-5) ≈ 0.007)
+        mockRegressors(896),
       );
       expect(pipeline.debugDecodeBox(0, scale, boxSize), isNull);
     });
 
     test('decodeBox returns a box when score is above threshold', () {
       pipeline.debugSetMockDetectorOutputs(
-        _mockScores(896, highScoreIdx: 0), // sigmoid(10) ≈ 0.9999
-        _mockRegressors(896),
+        mockScores(896, highScoreIdx: 0), // sigmoid(10) ≈ 0.9999
+        mockRegressors(896),
       );
       final box = pipeline.debugDecodeBox(0, scale, boxSize);
       expect(box, isNotNull);
@@ -469,7 +469,7 @@ void main() {
 
     test('decodeBox clamps box coordinates to [0, 1]', () {
       // Large offsets that would push box outside [0,1]
-      pipeline.debugSetMockDetectorOutputs(_mockScores(896, highScoreIdx: 0), [
+      pipeline.debugSetMockDetectorOutputs(mockScores(896, highScoreIdx: 0), [
         List.generate(896, (_) {
           final row = List<double>.filled(16, 9999.0);
           return row;
@@ -486,14 +486,14 @@ void main() {
 
     test('decodeAndNms returns null when no boxes exceed threshold', () {
       pipeline.debugSetMockDetectorOutputs(
-        _mockScores(896), // all low
-        _mockRegressors(896),
+        mockScores(896), // all low
+        mockRegressors(896),
       );
       expect(pipeline.debugDecodeAndNms(), isNull);
     });
 
     test('decodeAndNms returns a box when one anchor scores high', () {
-      pipeline.debugSetMockDetectorOutputs(_mockScores(896, highScoreIdx: 5), _mockRegressors(896));
+      pipeline.debugSetMockDetectorOutputs(mockScores(896, highScoreIdx: 5), mockRegressors(896));
       final result = pipeline.debugDecodeAndNms();
       expect(result, isNotNull);
       expect(result!.length, boxSize);
@@ -504,7 +504,7 @@ void main() {
       final scores = [
         List.generate(896, (i) => [i < 2 ? 10.0 : -5.0]),
       ];
-      pipeline.debugSetMockDetectorOutputs(scores, _mockRegressors(896));
+      pipeline.debugSetMockDetectorOutputs(scores, mockRegressors(896));
       final result = pipeline.debugDecodeAndNms();
       expect(result, isNotNull);
     });

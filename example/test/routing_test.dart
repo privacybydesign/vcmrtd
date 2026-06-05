@@ -16,7 +16,6 @@ import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
 import 'package:vcmrtdapp/widgets/pages/driving_licence_data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/passport_data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/scanner_wrapper.dart';
-import 'package:vcmrtdapp/features/face_verification/face_verification_entry_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/manual_entry_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_reading_screen.dart';
 
@@ -164,7 +163,7 @@ Widget _routerApp(GoRouter router) {
 }
 
 class _RouteExtensionHarness extends StatelessWidget {
-  const _RouteExtensionHarness({super.key});
+  const _RouteExtensionHarness();
 
   @override
   Widget build(BuildContext context) {
@@ -300,19 +299,19 @@ void main() {
         routes: [
           GoRoute(
             path: '/',
-            builder: (_, __) => const Scaffold(body: _RouteExtensionHarness()),
+            builder: (_, unused) => const Scaffold(body: _RouteExtensionHarness()),
           ),
           GoRoute(
             path: '/mrz_reader',
-            builder: (_, __) => const Scaffold(body: SizedBox(key: Key('mrz_reader_page'))),
+            builder: (_, unused) => const Scaffold(body: SizedBox(key: Key('mrz_reader_page'))),
           ),
           GoRoute(
             path: '/manual_entry',
-            builder: (_, __) => const Scaffold(body: SizedBox(key: Key('manual_entry_page'))),
+            builder: (_, unused) => const Scaffold(body: SizedBox(key: Key('manual_entry_page'))),
           ),
           GoRoute(
             path: '/nfc_reading',
-            builder: (_, __) => const Scaffold(body: SizedBox(key: Key('nfc_reading_page'))),
+            builder: (_, unused) => const Scaffold(body: SizedBox(key: Key('nfc_reading_page'))),
           ),
           GoRoute(
             path: '/face_verification',

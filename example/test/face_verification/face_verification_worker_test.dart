@@ -8,7 +8,6 @@ import 'package:image/image.dart' as img;
 import 'package:vcmrtdapp/features/face_verification/detection/face_landmarker_types.dart';
 import 'package:vcmrtdapp/features/face_verification/detection/face_observation.dart';
 import 'package:vcmrtdapp/features/face_verification/face_verification_worker.dart';
-import 'package:vcmrtdapp/features/face_verification/worker_result_types.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -1164,49 +1163,49 @@ void main() {
   });
 
   group('FaceVerificationWorker — image rotation', () {
-    img.Image _colorImage(int w, int h) {
+    img.Image colorImage(int w, int h) {
       final image = img.Image(width: w, height: h, numChannels: 3);
       image.setPixelRgb(0, 0, 255, 0, 0); // top-left = red
       return image;
     }
 
     test('rotation 0 returns same dimensions', () {
-      final src = _colorImage(4, 6);
+      final src = colorImage(4, 6);
       final out = FaceVerificationWorker.debugRotateToUpright(src, 0);
       expect(out.width, 4);
       expect(out.height, 6);
     });
 
     test('rotation 90 swaps width and height', () {
-      final src = _colorImage(4, 6);
+      final src = colorImage(4, 6);
       final out = FaceVerificationWorker.debugRotateToUpright(src, 90);
       expect(out.width, 6);
       expect(out.height, 4);
     });
 
     test('rotation 180 preserves dimensions', () {
-      final src = _colorImage(4, 6);
+      final src = colorImage(4, 6);
       final out = FaceVerificationWorker.debugRotateToUpright(src, 180);
       expect(out.width, 4);
       expect(out.height, 6);
     });
 
     test('rotation 270 swaps width and height', () {
-      final src = _colorImage(4, 6);
+      final src = colorImage(4, 6);
       final out = FaceVerificationWorker.debugRotateToUpright(src, 270);
       expect(out.width, 6);
       expect(out.height, 4);
     });
 
     test('rotation 360 behaves like rotation 0', () {
-      final src = _colorImage(4, 6);
+      final src = colorImage(4, 6);
       final out = FaceVerificationWorker.debugRotateToUpright(src, 360);
       expect(out.width, 4);
       expect(out.height, 6);
     });
 
     test('non-axis-aligned rotation (45°) produces output image', () {
-      final src = _colorImage(4, 4);
+      final src = colorImage(4, 4);
       final out = FaceVerificationWorker.debugRotateToUpright(src, 45);
       expect(out.width, greaterThan(0));
       expect(out.height, greaterThan(0));

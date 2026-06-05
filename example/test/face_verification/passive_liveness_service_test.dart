@@ -113,7 +113,9 @@ void main() {
 
     test('reset clears anti-spoof scores', () {
       final svc = PassiveLivenessService();
-      for (var i = 0; i < 4; i++) svc.debugAddAntiSpoofScore(0.9);
+      for (var i = 0; i < 4; i++) {
+        svc.debugAddAntiSpoofScore(0.9);
+      }
       svc.reset();
       expect(svc.getAntiSpoofScore(), isNull);
       expect(svc.isAntiSpoofPassed(), isFalse);
@@ -121,8 +123,12 @@ void main() {
 
     test('reset is idempotent and clears anti-spoof plus rPPG state', () {
       final svc = PassiveLivenessService();
-      for (var i = 0; i < 4; i++) svc.debugAddAntiSpoofScore(0.9);
-      for (var i = 0; i < 20; i++) svc.debugAddBvpSample(0.5, 1000 + i * 120);
+      for (var i = 0; i < 4; i++) {
+        svc.debugAddAntiSpoofScore(0.9);
+      }
+      for (var i = 0; i < 20; i++) {
+        svc.debugAddBvpSample(0.5, 1000 + i * 120);
+      }
 
       svc.reset();
       svc.reset();
@@ -136,19 +142,25 @@ void main() {
   group('PassiveLivenessService — rPPG debug helpers', () {
     test('getRppgResult returns null when fewer than 15 samples', () {
       final svc = PassiveLivenessService();
-      for (var i = 0; i < 14; i++) svc.debugAddBvpSample(0.5, 1000 + i * 150);
+      for (var i = 0; i < 14; i++) {
+        svc.debugAddBvpSample(0.5, 1000 + i * 150);
+      }
       expect(svc.getRppgResult(), isNull);
     });
 
     test('getRppgResult returns null when duration is less than 2000ms', () {
       final svc = PassiveLivenessService();
-      for (var i = 0; i < 15; i++) svc.debugAddBvpSample(0.5, 1000 + i * 10);
+      for (var i = 0; i < 15; i++) {
+        svc.debugAddBvpSample(0.5, 1000 + i * 10);
+      }
       expect(svc.getRppgResult(), isNull);
     });
 
     test('15 samples over 2000ms produce a non-null RppgResult', () {
       final svc = PassiveLivenessService();
-      for (var i = 0; i < 15; i++) svc.debugAddBvpSample(0.5 + (i % 3) * 0.01, 1000 + i * 150);
+      for (var i = 0; i < 15; i++) {
+        svc.debugAddBvpSample(0.5 + (i % 3) * 0.01, 1000 + i * 150);
+      }
       final r = svc.debugEvaluateBvp();
       expect(r, isNotNull);
       expect(r!.sampleCount, greaterThanOrEqualTo(15));
@@ -237,7 +249,9 @@ void main() {
 
     test('flat BVP signal produces no detectable heart rate', () {
       final svc = PassiveLivenessService();
-      for (var i = 0; i < 30; i++) svc.debugAddBvpSample(0.5, 1000 + i * 100);
+      for (var i = 0; i < 30; i++) {
+        svc.debugAddBvpSample(0.5, 1000 + i * 100);
+      }
       final r = svc.debugEvaluateBvp();
       expect(r, isNotNull);
       expect(r!.hr, isNull);
@@ -257,7 +271,9 @@ void main() {
 
     test('reset clears BVP buffer so getRppgResult returns null', () {
       final svc = PassiveLivenessService();
-      for (var i = 0; i < 15; i++) svc.debugAddBvpSample(0.5, 1000 + i * 150);
+      for (var i = 0; i < 15; i++) {
+        svc.debugAddBvpSample(0.5, 1000 + i * 150);
+      }
       expect(svc.debugEvaluateBvp(), isNotNull);
       svc.reset();
       expect(svc.debugEvaluateBvp(), isNull);
@@ -670,7 +686,9 @@ void main() {
 
     test('reset after collectPassiveMetrics clears rPPG state', () {
       final svc = PassiveLivenessService();
-      for (var i = 0; i < 3; i++) svc.collectPassiveMetrics(_frame(), _face());
+      for (var i = 0; i < 3; i++) {
+        svc.collectPassiveMetrics(_frame(), _face());
+      }
       svc.reset();
       expect(svc.debugEvaluateBvp(), isNull);
     });
