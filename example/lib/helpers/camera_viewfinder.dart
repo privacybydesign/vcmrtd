@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:meta/meta.dart';
 import 'camera_overlay.dart';
 import '../routing.dart';
 
@@ -139,14 +138,13 @@ class MRZCameraView extends StatefulWidget {
     required this.onImage,
     this.initialDirection = CameraLensDirection.back,
     required this.showOverlay,
-    @visibleForTesting this.initializeCamera = true,
+    this.initializeCamera = true,
   });
 
   final Function(OcrFrame frame) onImage;
   final CameraLensDirection initialDirection;
   final bool showOverlay;
 
-  @visibleForTesting
   final bool initializeCamera;
 
   @override
@@ -347,35 +345,57 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
   }
 
   Uint8List _yuv420ToNv21(CameraImage img) {
-    final int width = img.width;
-    final int height = img.height;
+    final yPlane = img.planes[0];
+    final u = img.planes[1];
+    final v = img.planes[2];
+
+    return _yuv420PlanesToNv21(
+      width: img.width,
+      height: img.height,
+      yBytes: yPlane.bytes,
+      yBytesPerRow: yPlane.bytesPerRow,
+      uBytes: u.bytes,
+      uBytesPerRow: u.bytesPerRow,
+      uBytesPerPixel: u.bytesPerPixel ?? 1,
+      vBytes: v.bytes,
+      vBytesPerRow: v.bytesPerRow,
+      vBytesPerPixel: v.bytesPerPixel ?? 1,
+    );
+  }
+
+  Uint8List _yuv420PlanesToNv21({
+    required int width,
+    required int height,
+    required Uint8List yBytes,
+    required int yBytesPerRow,
+    required Uint8List uBytes,
+    required int uBytesPerRow,
+    required int uBytesPerPixel,
+    required Uint8List vBytes,
+    required int vBytesPerRow,
+    required int vBytesPerPixel,
+  }) {
     final int ySize = width * height;
     final Uint8List nv21 = Uint8List(ySize + width * height ~/ 2);
 
-    final yPlane = img.planes[0];
-    final int yRowStride = yPlane.bytesPerRow;
-    if (yRowStride == width) {
-      nv21.setRange(0, ySize, yPlane.bytes);
+    if (yBytesPerRow == width) {
+      nv21.setRange(0, ySize, yBytes);
     } else {
       for (int row = 0; row < height; row++) {
-        nv21.setRange(row * width, row * width + width, yPlane.bytes, row * yRowStride);
+        nv21.setRange(row * width, row * width + width, yBytes, row * yBytesPerRow);
       }
     }
-
-    final u = img.planes[1];
-    final v = img.planes[2];
-    final int uPixelStride = u.bytesPerPixel ?? 1;
-    final int vPixelStride = v.bytesPerPixel ?? 1;
 
     int uvIndex = ySize;
     for (int row = 0; row < height ~/ 2; row++) {
-      final int uRowStart = row * u.bytesPerRow;
-      final int vRowStart = row * v.bytesPerRow;
+      final int uRowStart = row * uBytesPerRow;
+      final int vRowStart = row * vBytesPerRow;
       for (int col = 0; col < width ~/ 2; col++) {
-        nv21[uvIndex++] = v.bytes[vRowStart + col * vPixelStride];
-        nv21[uvIndex++] = u.bytes[uRowStart + col * uPixelStride];
+        nv21[uvIndex++] = vBytes[vRowStart + col * vBytesPerPixel];
+        nv21[uvIndex++] = uBytes[uRowStart + col * uBytesPerPixel];
       }
     }
+
     return nv21;
   }
 
@@ -384,6 +404,78 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
 
   @visibleForTesting
   Rect previewRectForTesting(Size size) => _previewRect(size);
+
+  @visibleForTesting
+  Uint8List debugYuv420PlanesToNv21({
+    required int width,
+    required int height,
+    required Uint8List yBytes,
+    required int yBytesPerRow,
+    required Uint8List uBytes,
+    required int uBytesPerRow,
+    required int uBytesPerPixel,
+    required Uint8List vBytes,
+    required int vBytesPerRow,
+    required int vBytesPerPixel,
+  }) {
+    return _yuv420PlanesToNv21(
+      width: width,
+      height: height,
+      yBytes: yBytes,
+      yBytesPerRow: yBytesPerRow,
+      uBytes: uBytes,
+      uBytesPerRow: uBytesPerRow,
+      uBytesPerPixel: uBytesPerPixel,
+      vBytes: vBytes,
+      vBytesPerRow: vBytesPerRow,
+      vBytesPerPixel: vBytesPerPixel,
+    );
+  }
+
+  @visibleForTesting
+  void debugSetPreviewScale(double scale) {
+    _previewScale = scale;
+  }
+
+  @visibleForTesting
+  OcrFrame debugBuildOcrFrameFromBytes({
+    required Uint8List bytes,
+    required int width,
+    required int height,
+    required int bytesPerRow,
+    required bool isNv21,
+    required int sensorOrientation,
+    required CameraLensDirection lensDirection,
+    required DeviceOrientation deviceOrientation,
+    required Size viewSize,
+  }) {
+    final rotationComp = _orientations[deviceOrientation] ?? 0;
+
+    final int rotation;
+    if (lensDirection == CameraLensDirection.front) {
+      rotation = (sensorOrientation + rotationComp) % 360;
+    } else {
+      rotation = (sensorOrientation - rotationComp + 360) % 360;
+    }
+
+    final preview = _previewRect(viewSize);
+    final overlay = _overlayRect(viewSize);
+    final roiScreen = overlay.intersect(preview);
+    final safeRoi = roiScreen.isEmpty ? preview : roiScreen;
+
+    return OcrFrame(
+      bytes: bytes,
+      width: width,
+      height: height,
+      bytesPerRow: bytesPerRow,
+      rotation: rotation,
+      roiLeft: ((safeRoi.left - preview.left) / preview.width).clamp(0.0, 1.0),
+      roiTop: ((safeRoi.top - preview.top) / preview.height).clamp(0.0, 1.0),
+      roiWidth: (safeRoi.width / preview.width).clamp(0.0, 1.0),
+      roiHeight: (safeRoi.height / preview.height).clamp(0.0, 1.0),
+      isNv21: isNv21,
+    );
+  }
 
   Rect _overlayRect(Size size) {
     const documentFrameRatio = 1.42;

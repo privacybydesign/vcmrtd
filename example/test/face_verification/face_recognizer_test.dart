@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
+import 'dart:typed_data';
 import 'package:vcmrtdapp/features/face_verification/recognition/face_recognizer.dart';
 
 void main() {
@@ -86,6 +87,100 @@ void main() {
       final rec = FaceRecognizer();
       await rec.dispose();
       await rec.dispose();
+    });
+  });
+
+  group('FaceRecognizer generateEmbedding with fake generator', () {
+    test('normalizes embedding returned by fake generator', () {
+      final rec = FaceRecognizer.withEmbeddingGenerator(
+        (Float32List input, List<int> outputShape) => <double>[3.0, 4.0],
+      );
+
+      final result = rec.generateEmbedding(img.Image(width: 112, height: 112));
+
+      expect(result[0], closeTo(0.6, 1e-6));
+      expect(result[1], closeTo(0.8, 1e-6));
+    });
+
+  test('throws when not initialized and no fake generator is provided', () {
+    final rec = FaceRecognizer();
+
+    expect(
+      () => rec.generateEmbedding(img.Image(width: 112, height: 112)),
+      throwsA(isA<StateError>()),
+    );
+  });
+
+  test('passes default output shape to fake generator', () {
+    List<int>? capturedShape;
+
+    final rec = FaceRecognizer.withEmbeddingGenerator(
+      (Float32List input, List<int> outputShape) {
+        capturedShape = outputShape;
+        return <double>[1.0, 0.0];
+      },
+    );
+
+    rec.generateEmbedding(img.Image(width: 112, height: 112));
+
+    expect(capturedShape, <int>[1, 512]);
+  });
+
+    test('passes normalized RGB input in range -1 to 1', () {
+      Float32List? capturedInput;
+
+      final rec = FaceRecognizer.withEmbeddingGenerator(
+        (Float32List input, List<int> outputShape) {
+          capturedInput = input;
+          return <double>[1.0, 0.0];
+        },
+      );
+
+      final image = img.Image(width: 112, height: 112);
+      image.setPixelRgb(0, 0, 0, 127, 255);
+
+      rec.generateEmbedding(image);
+
+      expect(capturedInput, isNotNull);
+      expect(capturedInput![0], closeTo(-1.0, 1e-6));
+      expect(capturedInput![1], closeTo((127 - 127.5) / 127.5, 1e-6));
+      expect(capturedInput![2], closeTo(1.0, 1e-6));
+    });
+
+    test('resizes non-112 image before generating input tensor', () {
+      Float32List? capturedInput;
+
+      final rec = FaceRecognizer.withEmbeddingGenerator(
+        (Float32List input, List<int> outputShape) {
+          capturedInput = input;
+          return <double>[1.0, 0.0];
+        },
+      );
+
+      rec.generateEmbedding(img.Image(width: 20, height: 30));
+
+      expect(capturedInput, isNotNull);
+      expect(capturedInput!.length, 112 * 112 * 3);
+    });
+
+    test('trims fake embedding to debug embedding size before normalizing', () {
+      final rec = FaceRecognizer.withEmbeddingGenerator(
+        (Float32List input, List<int> outputShape) => List<double>.filled(600, 1.0),
+      );
+
+      final result = rec.generateEmbedding(img.Image(width: 112, height: 112));
+
+      expect(result.length, 512);
+    });
+
+    test('returns zero vector unchanged when fake generator returns zeros', () {
+      final rec = FaceRecognizer.withEmbeddingGenerator(
+        (Float32List input, List<int> outputShape) => <double>[0.0, 0.0, 0.0],
+      );
+
+      final result = rec.generateEmbedding(img.Image(width: 112, height: 112));
+
+      expect(result, <double>[0.0, 0.0, 0.0]);
     });
   });
 }

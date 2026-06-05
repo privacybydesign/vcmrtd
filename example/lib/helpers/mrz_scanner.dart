@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:camera/camera.dart';
-import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,12 +19,15 @@ class MRZScanner extends ConsumerStatefulWidget {
     this.initialDirection = CameraLensDirection.back,
     this.showOverlay = true,
     this.documentType = DocumentType.passport,
+    @visibleForTesting this.initializeCamera = true,
   }) : super(key: controller);
 
   final Function(dynamic mrzResult, List<String> lines) onSuccess;
   final CameraLensDirection initialDirection;
   final bool showOverlay;
   final DocumentType documentType;
+  @visibleForTesting
+  final bool initializeCamera;
 
   @override
   MRZScannerState createState() => MRZScannerState();
@@ -71,6 +73,7 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
     return MRZCameraView(
       showOverlay: widget.showOverlay,
       initialDirection: widget.initialDirection,
+      initializeCamera: widget.initializeCamera,
       onImage: (frame) => _processFrame(frame, selectedEngine),
     );
   }
@@ -187,6 +190,18 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
 
   @visibleForTesting
   bool debugTryParseAndNotify(List<String> lines) => _tryParseAndNotify(lines);
+
+  @visibleForTesting
+  Future<void> debugProcessFrame(OcrFrame frame, OcrEngine engine) => _processFrame(frame, engine);
+
+  @visibleForTesting
+  Future<void> debugProcessTesseractFrame(OcrFrame frame) => _processTesseractFrame(frame);
+
+  @visibleForTesting
+  bool get debugCanProcess => _canProcess;
+
+  @visibleForTesting
+  bool get debugIsBusy => _isBusy;
 
   dynamic _parseScannedText(List<String> lines) {
     try {

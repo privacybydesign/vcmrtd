@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtdapp/features/face_verification/detection/face_detector.dart';
@@ -31,6 +32,7 @@ class FaceVerificationEngine {
   final ActiveLivenessService _active = ActiveLivenessService();
   final StreamController<Map<String, dynamic>> _events = StreamController<Map<String, dynamic>>.broadcast();
   final math.Random _random = math.Random();
+  int Function()? _debugNowMs;
 
   static const MethodChannel _imageChannel = MethodChannel('image_channel');
 
@@ -324,8 +326,10 @@ class FaceVerificationEngine {
     }
   }
 
+  int _currentTimeMs() => _debugNowMs?.call() ?? DateTime.now().millisecondsSinceEpoch;
+
   Future<void> _processPassiveFrame(FaceObservation? face) async {
-    final now = DateTime.now().millisecondsSinceEpoch;
+    final now = _currentTimeMs();
     final tip = _passiveCoarseTip(face);
 
     // Before the countdown starts: the face must be held in the oval
@@ -492,6 +496,121 @@ class FaceVerificationEngine {
     await _events.close();
   }
 
+  @visibleForTesting
+  void debugPrimeExtraScenario({
+    required List<LivenessAction> pendingActions,
+    required int currentActionIndex,
+    required int completedCount,
+    bool extraActionMode = false,
+  }) {
+    _pendingActions
+      ..clear()
+      ..addAll(pendingActions);
+    _currentActionIndex = currentActionIndex;
+    _completedCount = completedCount;
+    _extraActionMode = extraActionMode;
+  }
+
+  @visibleForTesting
+  void debugPrimeActionScenario({
+    required List<LivenessAction> pendingActions,
+    required int currentActionIndex,
+    int completedCount = 0,
+    bool extraActionMode = false,
+  }) {
+    debugPrimeExtraScenario(
+      pendingActions: pendingActions,
+      currentActionIndex: currentActionIndex,
+      completedCount: completedCount,
+      extraActionMode: extraActionMode,
+    );
+    _running = true;
+    _processing = false;
+    _sessionFinished = false;
+    _sessionStopping = false;
+    _mode = LivenessMode.active;
+    _framesSinceLastAction = 0;
+    _active.reset();
+    if (currentActionIndex >= 0 && currentActionIndex < _pendingActions.length) {
+      _active.startAction(_pendingActions[currentActionIndex]);
+    }
+  }
+
+  @visibleForTesting
+  void debugPrimePassiveCountdown({
+    required int startMs,
+    int? consistencyCheckMs,
+    bool consistencySelfieStored = false,
+  }) {
+    _running = true;
+    _processing = false;
+    _sessionFinished = false;
+    _sessionStopping = false;
+    _mode = LivenessMode.passive;
+    _passiveStartMs = startMs;
+    _passiveInOvalSinceMs = startMs;
+    _consistencyCheckMs = consistencyCheckMs;
+    _consistencySelfieStored = consistencySelfieStored;
+  }
+
+  @visibleForTesting
+  void debugSetNowProvider(int Function()? nowMs) {
+    _debugNowMs = nowMs;
+  }
+
+  @visibleForTesting
+  bool debugShouldStartExtra() => _shouldStartExtra();
+
+  @visibleForTesting
+  void debugStartExtra() => _startExtra();
+
+  @visibleForTesting
+  List<String> get debugPendingActionWireNames =>
+      _pendingActions.map((LivenessAction action) => action.wireName).toList(growable: false);
+
+  @visibleForTesting
+  bool get debugExtraActionMode => _extraActionMode;
+
+  @visibleForTesting
+  String? debugPassiveCoarseTip(FaceObservation? face) => _passiveCoarseTip(face);
+
+  @visibleForTesting
+  String? debugBboxSizeTip(FaceObservation face) => _bboxSizeTip(face);
+
+  @visibleForTesting
+  String debugMapRejectReason(String? reason) => _mapRejectReason(reason);
+
+  @visibleForTesting
+  Future<double> debugComputeMatchScore() => _computeMatchScore();
+
+  @visibleForTesting
+  Future<img.Image?> debugDecodeNfcImage(Uint8List bytes) => _decodeNfcImage(bytes);
+
+  @visibleForTesting
+  Future<void> debugFinishSession(bool passed) => _finishSession(passed);
+
+  @visibleForTesting
+  Future<void> debugRunConsistencyCheck(FaceObservation face, int token) => _runConsistencyCheck(face, token);
+
+  @visibleForTesting
+  int get debugConsistencyCheckToken => _consistencyCheckToken;
+
+  @visibleForTesting
+  bool get debugConsistencyFailed => _consistencyFailed;
+
+  @visibleForTesting
+  void debugSetRunningState({
+    required bool running,
+    required bool processing,
+    required bool sessionFinished,
+    required bool sessionStopping,
+  }) {
+    _running = running;
+    _processing = processing;
+    _sessionFinished = sessionFinished;
+    _sessionStopping = sessionStopping;
+  }
+
   Future<void> _handleActionDetected() async {
     final completed = _pendingActions[_currentActionIndex];
     _completedCount++;
@@ -642,7 +761,12 @@ class FaceVerificationEngine {
   /// the image_channel method channel when the Dart decoder does not recognise
   /// the format (JPEG 2000 passport photos on iOS are handled natively by UIKit).
   Future<img.Image?> _decodeNfcImage(Uint8List bytes) async {
-    final decoded = img.decodeImage(bytes);
+    img.Image? decoded;
+    try {
+      decoded = img.decodeImage(bytes);
+    } catch (_) {
+      decoded = null;
+    }
     if (decoded != null) return decoded;
 
     try {

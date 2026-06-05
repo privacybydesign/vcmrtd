@@ -42,6 +42,21 @@ FaceObservation _face({double yaw = 0}) {
 
 img.Image _frame() => img.Image(width: 100, height: 100);
 
+class _FixedRandom implements math.Random {
+  const _FixedRandom(this.value);
+
+  final double value;
+
+  @override
+  bool nextBool() => value >= 0.5;
+
+  @override
+  double nextDouble() => value;
+
+  @override
+  int nextInt(int max) => (value * max).floor().clamp(0, max - 1).toInt();
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -68,6 +83,26 @@ void main() {
       expect(svc.isAntiSpoofPassed(), isTrue);
     });
 
+    test('anti-spoof score at threshold passes with enough samples', () {
+      final svc = PassiveLivenessService();
+      for (var i = 0; i < 4; i++) {
+        svc.debugAddAntiSpoofScore(PassiveLivenessService.antiSpoofMinScore);
+      }
+
+      expect(svc.getAntiSpoofScore(), closeTo(PassiveLivenessService.antiSpoofMinScore, 1e-9));
+      expect(svc.isAntiSpoofPassed(), isTrue);
+    });
+
+    test('anti-spoof average just below threshold fails with enough samples', () {
+      final svc = PassiveLivenessService();
+      for (var i = 0; i < 4; i++) {
+        svc.debugAddAntiSpoofScore(PassiveLivenessService.antiSpoofMinScore - 0.01);
+      }
+
+      expect(svc.getAntiSpoofScore(), lessThan(PassiveLivenessService.antiSpoofMinScore));
+      expect(svc.isAntiSpoofPassed(), isFalse);
+    });
+
     test('low anti-spoof scores produce a failing result', () {
       final svc = PassiveLivenessService();
       for (var i = 0; i < 4; i++) {
@@ -82,6 +117,19 @@ void main() {
       svc.reset();
       expect(svc.getAntiSpoofScore(), isNull);
       expect(svc.isAntiSpoofPassed(), isFalse);
+    });
+
+    test('reset is idempotent and clears anti-spoof plus rPPG state', () {
+      final svc = PassiveLivenessService();
+      for (var i = 0; i < 4; i++) svc.debugAddAntiSpoofScore(0.9);
+      for (var i = 0; i < 20; i++) svc.debugAddBvpSample(0.5, 1000 + i * 120);
+
+      svc.reset();
+      svc.reset();
+
+      expect(svc.getAntiSpoofScore(), isNull);
+      expect(svc.isAntiSpoofPassed(), isFalse);
+      expect(svc.debugEvaluateBvp(), isNull);
     });
   });
 
@@ -105,6 +153,71 @@ void main() {
       expect(r, isNotNull);
       expect(r!.sampleCount, greaterThanOrEqualTo(15));
       expect(r.durationMs, greaterThanOrEqualTo(2000));
+    });
+
+    test('samples at exact minimum duration can produce an rPPG result', () {
+      final svc = PassiveLivenessService();
+      for (var i = 0; i < 21; i++) {
+        svc.debugAddBvpSample(math.sin(i * 2 * math.pi / 10.0), 1000 + i * 100);
+      }
+
+      final r = svc.debugEvaluateBvp();
+
+      expect(r, isNotNull);
+      expect(r!.sampleCount, 21);
+      expect(r.durationMs, 2000);
+    });
+
+    test('debugEvaluateBvpSamples reports sample count and duration', () {
+      final svc = PassiveLivenessService();
+
+      final result = svc.debugEvaluateBvpSamples(
+        List<double>.generate(31, (i) => math.sin(i * 2 * math.pi / 10.0)),
+        10,
+      );
+
+      expect(result.sampleCount, 31);
+      expect(result.durationMs, 3000);
+    });
+
+    test('debugEvaluateBvpSamples passes heart rate inside threshold range', () {
+      final svc = PassiveLivenessService();
+      final samples = List<double>.filled(30, 0.0)
+        ..[1] = 1.0
+        ..[13] = 1.0
+        ..[25] = 1.0;
+
+      final result = svc.debugEvaluateBvpSamples(samples, 10);
+
+      expect(result.hr, closeTo(50.0, 1e-6));
+      expect(result.passed, isTrue);
+    });
+
+    test('debugEvaluateBvpSamples fails heart rate below threshold range', () {
+      final svc = PassiveLivenessService();
+      final samples = List<double>.filled(35, 0.0)
+        ..[1] = 1.0
+        ..[16] = 1.0
+        ..[31] = 1.0;
+
+      final result = svc.debugEvaluateBvpSamples(samples, 10);
+
+      expect(result.hr, closeTo(40.0, 1e-6));
+      expect(result.passed, isFalse);
+    });
+
+    test('debugEvaluateBvpSamples fails heart rate above threshold range', () {
+      final svc = PassiveLivenessService();
+      final samples = List<double>.filled(20, 0.0)
+        ..[1] = 1.0
+        ..[5] = 1.0
+        ..[9] = 1.0
+        ..[13] = 1.0;
+
+      final result = svc.debugEvaluateBvpSamples(samples, 10);
+
+      expect(result.hr, closeTo(150.0, 1e-6));
+      expect(result.passed, isFalse);
     });
 
     test('sinusoidal BVP at ~70 BPM produces a valid passing heart rate', () {
@@ -250,6 +363,28 @@ void main() {
       expect(cropped, isNull);
     });
 
+    test('_scaledCrop repositions crops that extend past the top-left edge', () {
+      final svc = PassiveLivenessService();
+      final image = img.Image(width: 100, height: 100);
+
+      final cropped = svc.debugScaledCrop(image, [0, 0, 20, 20], 2.7);
+
+      expect(cropped, isNotNull);
+      expect(cropped!.width, greaterThan(0));
+      expect(cropped.height, greaterThan(0));
+    });
+
+    test('_scaledCrop repositions crops that extend past the bottom-right edge', () {
+      final svc = PassiveLivenessService();
+      final image = img.Image(width: 100, height: 100);
+
+      final cropped = svc.debugScaledCrop(image, [80, 80, 20, 20], 2.7);
+
+      expect(cropped, isNotNull);
+      expect(cropped!.width, greaterThan(0));
+      expect(cropped.height, greaterThan(0));
+    });
+
     test('_preprocess NHWC produces buffer of correct size', () {
       final svc = PassiveLivenessService();
       final image = img.Image(width: 80, height: 80);
@@ -292,6 +427,127 @@ void main() {
     });
   });
 
+  group('PassiveLivenessService — ROI and crop helpers', () {
+    test('debugExtractRois returns null when landmarks are empty', () {
+      final svc = PassiveLivenessService();
+
+      final result = FaceLandmarkerResult(
+        landmarks: const <List<NormalizedLandmark>>[],
+        blendshapes: const <List<Category>>[],
+      );
+
+      expect(svc.debugExtractRois(result), isNull);
+    });
+
+    test('debugExtractRois returns all expected ROI keys', () {
+      final svc = PassiveLivenessService();
+
+      final rois = svc.debugExtractRois(_face().result);
+
+      expect(rois, isNotNull);
+      expect(rois!.keys, containsAll(<String>['forehead', 'right_cheek', 'left_cheek', 'nose', 'lips']));
+    });
+
+    test('debugCropFaceForBigSmall returns appearance and motion crops', () {
+      final svc = PassiveLivenessService();
+      final rois = <String, List<double>>{
+        'forehead': <double>[0.5, 0.2, 0.05],
+        'right_cheek': <double>[0.35, 0.6, 0.05],
+        'left_cheek': <double>[0.65, 0.6, 0.05],
+        'nose': <double>[0.5, 0.5, 0.04],
+        'lips': <double>[0.5, 0.75, 0.05],
+      };
+
+      final crops = svc.debugCropFaceForBigSmall(img.Image(width: 100, height: 100), rois);
+
+      expect(crops, isNotNull);
+      expect(crops!.$1.width, 144);
+      expect(crops.$1.height, 144);
+      expect(crops.$2.width, 9);
+      expect(crops.$2.height, 9);
+    });
+
+    test('debugCropFaceForBigSmall returns null when required ROI keys are missing', () {
+      final svc = PassiveLivenessService();
+
+      expect(svc.debugCropFaceForBigSmall(img.Image(width: 100, height: 100), <String, List<double>>{}), isNull);
+    });
+
+    test('debugCropFaceForBigSmall returns null for degenerate crop', () {
+      final svc = PassiveLivenessService();
+      final rois = <String, List<double>>{
+        'forehead': <double>[0.5, 0.5, 0.0],
+        'right_cheek': <double>[0.5, 0.5, 0.0],
+        'left_cheek': <double>[0.5, 0.5, 0.0],
+        'nose': <double>[0.5, 0.5, 0.0],
+        'lips': <double>[0.5, 0.5, 0.0],
+      };
+
+      expect(svc.debugCropFaceForBigSmall(img.Image(width: 100, height: 100), rois), isNull);
+    });
+  });
+
+  group('PassiveLivenessService — direct BVP helpers', () {
+    test('debugEvaluateBvpSamples returns empty failing result for empty samples', () {
+      final svc = PassiveLivenessService();
+
+      final result = svc.debugEvaluateBvpSamples(const <double>[], 30);
+
+      expect(result.hr, isNull);
+      expect(result.passed, isFalse);
+      expect(result.sampleCount, 0);
+      expect(result.durationMs, 0);
+    });
+
+    test('debugEvaluateBvpSamples returns empty failing result when fps is zero', () {
+      final svc = PassiveLivenessService();
+
+      final result = svc.debugEvaluateBvpSamples(<double>[1.0, 0.0, 1.0], 0);
+
+      expect(result.hr, isNull);
+      expect(result.passed, isFalse);
+      expect(result.sampleCount, 0);
+      expect(result.durationMs, 0);
+    });
+
+    test('debugEstimateHeartRate returns null for fewer than three samples', () {
+      final svc = PassiveLivenessService();
+
+      expect(svc.debugEstimateHeartRate(<double>[1.0, 0.0], 30), isNull);
+    });
+
+    test('debugEstimateHeartRate returns null when there are not enough peaks', () {
+      final svc = PassiveLivenessService();
+
+      expect(svc.debugEstimateHeartRate(<double>[0.0, 1.0, 0.0, 0.0, 0.0], 30), isNull);
+    });
+
+    test('debugEstimateHeartRate returns null when peak intervals are outside valid range', () {
+      final svc = PassiveLivenessService();
+      final signal = List<double>.filled(70, 0.0)
+        ..[1] = 1.0
+        ..[60] = 1.0;
+
+      expect(svc.debugEstimateHeartRate(signal, 30), isNull);
+    });
+
+    test('debugFindPeaks finds local maxima respecting min distance', () {
+      final svc = PassiveLivenessService();
+
+      final peaks = svc.debugFindPeaks(<double>[0.0, 1.0, 0.0, 0.5, 0.0, 1.2, 0.0], 3);
+
+      expect(peaks, <int>[1, 5]);
+    });
+
+    test('debugFindPeaks replaces nearby lower peak with stronger peak', () {
+      final svc = PassiveLivenessService();
+
+      final peaks = svc.debugFindPeaks(<double>[0.0, 0.8, 0.0, 1.2, 0.0], 3);
+
+      expect(peaks, <int>[3]);
+    });
+  });
+
   group('PassiveLivenessService — collectPassiveMetrics (no TFLite)', () {
     // Without initialize(), TFLite interpreters are null.
     // _scoreFrame() hits the null guard and returns immediately.
@@ -305,12 +561,58 @@ void main() {
       }
     });
 
+    test('does not crash for empty landmark data', () {
+      final svc = PassiveLivenessService();
+      final face = FaceObservation(
+        result: FaceLandmarkerResult(
+          landmarks: const <List<NormalizedLandmark>>[],
+          blendshapes: const <List<Category>>[],
+        ),
+        boundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+        boundingBoxAreaRatio: 0.0,
+        boundingBoxCenter: const Offset(0.5, 0.5),
+        mouthRatio: 0.0,
+        yawDegrees: 0.0,
+        blendshapeScores: const <String, double>{},
+        alignedFace112: img.Image(width: 112, height: 112),
+      );
+
+      svc.collectPassiveMetrics(_frame(), face);
+
+      expect(svc.getAntiSpoofScore(), isNull);
+      expect(svc.debugEvaluateBvp(), isNull);
+    });
+
     test('high-yaw face causes rPPG sampling to be skipped', () {
       final svc = PassiveLivenessService();
       for (var i = 0; i < 5; i++) {
         svc.collectPassiveMetrics(_frame(), _face(yaw: 20));
       }
       expect(svc.debugEvaluateBvp(), isNull);
+    });
+
+    test('injected anti-spoof score is collected for sampled frontal faces', () {
+      final svc = PassiveLivenessService(random: const _FixedRandom(0.0), antiSpoofScoreOverride: (_, _) => 0.82);
+
+      svc.collectPassiveMetrics(_frame(), _face());
+
+      expect(svc.getAntiSpoofScore(), closeTo(0.82, 1e-9));
+    });
+
+    test('high-yaw faces skip the injected anti-spoof scorer', () {
+      var calls = 0;
+      final svc = PassiveLivenessService(
+        random: const _FixedRandom(0.0),
+        antiSpoofScoreOverride: (_, _) {
+          calls++;
+          return 0.9;
+        },
+      );
+
+      svc.collectPassiveMetrics(_frame(), _face(yaw: 30));
+
+      expect(calls, 0);
+      expect(svc.getAntiSpoofScore(), isNull);
     });
 
     test('frontal frames fill rPPG buffer without crashing', () {
@@ -322,6 +624,50 @@ void main() {
       }
     });
 
+    test('injected BigSmall BVP samples are added after a four-frame batch', () {
+      var now = 1000;
+      final svc = PassiveLivenessService(
+        nowMs: () => now,
+        bigSmallBvpOverride: (batchLength) => List<double>.generate(batchLength - 1, (i) => math.sin(i * math.pi / 2)),
+      );
+
+      for (var i = 0; i < 20; i++) {
+        now = 1000 + i * 150;
+        svc.collectPassiveMetrics(_frame(), _face());
+      }
+
+      final result = svc.debugEvaluateBvp();
+      expect(result, isNotNull);
+      expect(result!.sampleCount, greaterThanOrEqualTo(15));
+    });
+
+    test('rPPG frame buffer is cleared after a long frame gap', () {
+      var now = 1000;
+      var inferenceCalls = 0;
+      final svc = PassiveLivenessService(
+        nowMs: () => now,
+        bigSmallBvpOverride: (batchLength) {
+          inferenceCalls++;
+          return List<double>.filled(batchLength - 1, 0.0);
+        },
+      );
+
+      svc.collectPassiveMetrics(_frame(), _face());
+      now = 1100;
+      svc.collectPassiveMetrics(_frame(), _face());
+      now = 2500;
+      svc.collectPassiveMetrics(_frame(), _face());
+
+      expect(inferenceCalls, 0);
+
+      for (var i = 0; i < 3; i++) {
+        now += 100;
+        svc.collectPassiveMetrics(_frame(), _face());
+      }
+
+      expect(inferenceCalls, 1);
+    });
+
     test('reset after collectPassiveMetrics clears rPPG state', () {
       final svc = PassiveLivenessService();
       for (var i = 0; i < 3; i++) svc.collectPassiveMetrics(_frame(), _face());
@@ -331,6 +677,120 @@ void main() {
 
     test('dispose does not crash when interpreters were never initialised', () async {
       await PassiveLivenessService().dispose();
+    });
+
+    test('dispose is idempotent when interpreters were never initialised', () async {
+      final svc = PassiveLivenessService();
+
+      await svc.dispose();
+      await svc.dispose();
+    });
+
+    group('PassiveLivenessService — BigSmall preprocessing helpers', () {
+      img.Image solidImage({required int width, required int height, required int r, required int g, required int b}) {
+        final image = img.Image(width: width, height: height);
+        for (var y = 0; y < height; y++) {
+          for (var x = 0; x < width; x++) {
+            image.setPixelRgb(x, y, r, g, b);
+          }
+        }
+        return image;
+      }
+
+      test('debugBuildBigSmallAppearanceBuffer has expected length', () {
+        final svc = PassiveLivenessService();
+
+        final frames = List<img.Image>.generate(4, (_) => solidImage(width: 144, height: 144, r: 255, g: 128, b: 0));
+
+        final buf = svc.debugBuildBigSmallAppearanceBuffer(frames);
+
+        expect(buf.length, 3 * 3 * 144 * 144);
+      });
+
+      test('debugBuildBigSmallAppearanceBuffer packs frames 1..3 as planar RGB normalized values', () {
+        final svc = PassiveLivenessService();
+
+        final frames = <img.Image>[
+          solidImage(width: 144, height: 144, r: 0, g: 0, b: 0),
+          solidImage(width: 144, height: 144, r: 255, g: 0, b: 0),
+          solidImage(width: 144, height: 144, r: 0, g: 255, b: 0),
+          solidImage(width: 144, height: 144, r: 0, g: 0, b: 255),
+        ];
+
+        final buf = svc.debugBuildBigSmallAppearanceBuffer(frames);
+        const planeSize = 144 * 144;
+
+        // Frame 1, R plane starts at 0.
+        expect(buf[0], closeTo(1.0, 1e-6));
+        expect(buf[planeSize], closeTo(0.0, 1e-6));
+        expect(buf[2 * planeSize], closeTo(0.0, 1e-6));
+
+        // Frame 2 starts after 3 planes.
+        final frame2Offset = 3 * planeSize;
+        expect(buf[frame2Offset], closeTo(0.0, 1e-6));
+        expect(buf[frame2Offset + planeSize], closeTo(1.0, 1e-6));
+        expect(buf[frame2Offset + 2 * planeSize], closeTo(0.0, 1e-6));
+      });
+
+      test('debugBuildBigSmallMotionBuffer has expected length', () {
+        final svc = PassiveLivenessService();
+
+        final frames = List<img.Image>.generate(4, (_) => solidImage(width: 9, height: 9, r: 10, g: 20, b: 30));
+
+        final buf = svc.debugBuildBigSmallMotionBuffer(frames);
+
+        expect(buf.length, 3 * 3 * 9 * 9);
+      });
+
+      test('debugBuildBigSmallMotionBuffer is zero for identical consecutive frames', () {
+        final svc = PassiveLivenessService();
+
+        final frames = List<img.Image>.generate(4, (_) => solidImage(width: 9, height: 9, r: 50, g: 50, b: 50));
+
+        final buf = svc.debugBuildBigSmallMotionBuffer(frames);
+
+        expect(buf.every((v) => v.abs() < 1e-6), isTrue);
+      });
+
+      test('debugBuildBigSmallMotionBuffer computes normalized frame difference', () {
+        final svc = PassiveLivenessService();
+
+        final frames = <img.Image>[
+          solidImage(width: 9, height: 9, r: 10, g: 10, b: 10),
+          solidImage(width: 9, height: 9, r: 30, g: 30, b: 30),
+          solidImage(width: 9, height: 9, r: 30, g: 30, b: 30),
+          solidImage(width: 9, height: 9, r: 30, g: 30, b: 30),
+        ];
+
+        final buf = svc.debugBuildBigSmallMotionBuffer(frames);
+
+        // (30 - 10) / (30 + 10 + eps) ~= 0.5
+        expect(buf.first, closeTo(0.5, 1e-5));
+      });
+
+      test('debugBigSmallRunInferenceWithImages returns null for wrong batch length', () {
+        final svc = PassiveLivenessService();
+
+        final result = svc.debugBigSmallRunInferenceWithImages(
+          appearances: <img.Image>[solidImage(width: 144, height: 144, r: 0, g: 0, b: 0)],
+          motions: <img.Image>[solidImage(width: 9, height: 9, r: 0, g: 0, b: 0)],
+          timestampsMs: const <int>[0],
+        );
+
+        expect(result, isNull);
+      });
+
+      test('debugBigSmallRunInferenceWithImages returns null when no interpreters are loaded', () {
+        final svc = PassiveLivenessService();
+
+        final result = svc.debugBigSmallRunInferenceWithImages(
+          appearances: List<img.Image>.generate(4, (_) => solidImage(width: 144, height: 144, r: 0, g: 0, b: 0)),
+          motions: List<img.Image>.generate(4, (_) => solidImage(width: 9, height: 9, r: 0, g: 0, b: 0)),
+          timestampsMs: const <int>[0, 1, 2, 3],
+        );
+
+        expect(result, isNull);
+      });
     });
   });
 }

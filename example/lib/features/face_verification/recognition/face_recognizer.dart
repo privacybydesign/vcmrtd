@@ -11,7 +11,16 @@ import 'package:vcmrtdapp/features/face_verification/tflite_tensor_utils.dart';
 /// Call [initializeFromBuffer] once, then [generateEmbedding] per face crop,
 /// and [cosineSimilarity] to compare two embeddings.
 class FaceRecognizer {
+  FaceRecognizer() : _debugEmbeddingGenerator = null;
+
+  @visibleForTesting
+  FaceRecognizer.withEmbeddingGenerator(
+    List<double> Function(Float32List input, List<int> outputShape) generator,
+  ) : _debugEmbeddingGenerator = generator;
+
   Interpreter? _interpreter;
+
+  final List<double> Function(Float32List input, List<int> outputShape)? _debugEmbeddingGenerator;
 
   // Actual input/output dimensions are read from the model at init time.
   // These are safe fallbacks that match GhostFaceNet_fp32_V2.
@@ -50,7 +59,9 @@ class FaceRecognizer {
   /// the standard preprocessing expected by ArcFace-family models including GhostFaceNet.
   List<double> generateEmbedding(img.Image face) {
     final interpreter = _interpreter;
-    if (interpreter == null) throw StateError('FaceRecognizer is not initialized');
+    if (interpreter == null && _debugEmbeddingGenerator == null) {
+      throw StateError('FaceRecognizer is not initialized');
+    }
 
     final resized = _modelInputImage(face);
     final bytes = resized.getBytes(order: img.ChannelOrder.rgb);
@@ -61,14 +72,25 @@ class FaceRecognizer {
       buf[i * 3 + 1] = (bytes[i * 3 + 1] - 127.5) / 127.5;
       buf[i * 3 + 2] = (bytes[i * 3 + 2] - 127.5) / 127.5;
     }
-    final output = tfliteMakeTensor(_outputShape);
-    interpreter.run(buf.buffer, output);
-    final embedding = tfliteFlatFloatArray(output);
+    final debugGenerator = _debugEmbeddingGenerator;
+    final List<double> embedding;
+    if (debugGenerator != null) {
+      embedding = debugGenerator(buf, _outputShape);
+    } else {
+      embedding = _runInterpreter(interpreter!, buf);
+    }
     // The model output should always match _embeddingSize, but guard against
     // unexpected shapes so we never index out of bounds.
     final trimmed = embedding.length > _embeddingSize ? embedding.sublist(0, _embeddingSize) : embedding;
     return _normalize(trimmed);
   }
+
+
+  List<double> _runInterpreter(Interpreter interpreter, Float32List input) {
+  final output = tfliteMakeTensor(_outputShape);
+  interpreter.run(input.buffer, output);
+  return tfliteFlatFloatArray(output);
+}
 
   /// Cosine similarity between two L2-normalized embeddings, clamped to [0, 1].
   ///

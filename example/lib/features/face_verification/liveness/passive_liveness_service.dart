@@ -33,7 +33,20 @@ class PassiveLivenessService {
   static const double _rppgFrontalMaxYaw = 15.0;
   static const int _rppgMaxGapMs = 1000;
 
-  final math.Random _random = math.Random();
+  PassiveLivenessService({
+    math.Random? random,
+    int Function()? nowMs,
+    double? Function(img.Image frame, FaceLandmarkerResult result)? antiSpoofScoreOverride,
+    List<double>? Function(int batchLength)? bigSmallBvpOverride,
+  }) : _random = random ?? math.Random(),
+       _nowMs = nowMs,
+       _antiSpoofScoreOverride = antiSpoofScoreOverride,
+       _bigSmallBvpOverride = bigSmallBvpOverride;
+
+  final math.Random _random;
+  final int Function()? _nowMs;
+  final double? Function(img.Image frame, FaceLandmarkerResult result)? _antiSpoofScoreOverride;
+  final List<double>? Function(int batchLength)? _bigSmallBvpOverride;
 
   Interpreter? _v1;
   Interpreter? _v2;
@@ -85,6 +98,8 @@ class PassiveLivenessService {
     _sampleAntiSpoof(frame, face);
     _sampleRppg(frame, face);
   }
+
+  int _currentTimeMs() => _nowMs?.call() ?? DateTime.now().millisecondsSinceEpoch;
 
   double? getAntiSpoofScore() {
     if (_scores.isEmpty) return null;
@@ -143,6 +158,46 @@ class PassiveLivenessService {
   @visibleForTesting
   ByteBuffer debugPreprocess(img.Image image, {required bool nchw}) => _preprocess(image, nchw: nchw);
 
+  @visibleForTesting
+  Map<String, List<double>>? debugExtractRois(FaceLandmarkerResult result) => _extractRois(result);
+
+  @visibleForTesting
+  (img.Image, img.Image)? debugCropFaceForBigSmall(img.Image bitmap, Map<String, List<double>> rois) =>
+      _cropFaceForBigSmall(bitmap, rois);
+
+  @visibleForTesting
+  RppgResult debugEvaluateBvpSamples(List<double> samples, int fps) => _evaluateBvp(samples, fps);
+
+  @visibleForTesting
+  double? debugEstimateHeartRate(List<double> signal, int fps) => _estimateHeartRate(signal, fps);
+
+  @visibleForTesting
+  List<int> debugFindPeaks(List<double> signal, int minDist) => _findPeaks(signal, minDist);
+
+  @visibleForTesting
+  Float32List debugBuildBigSmallAppearanceBuffer(List<img.Image> appearances) =>
+      _bigSmall.debugBuildAppearanceBuffer(appearances);
+
+  @visibleForTesting
+  Float32List debugBuildBigSmallMotionBuffer(List<img.Image> motions) => _bigSmall.debugBuildMotionBuffer(motions);
+
+  @visibleForTesting
+  List<double>? debugBigSmallRunInferenceWithImages({
+    required List<img.Image> appearances,
+    required List<img.Image> motions,
+    required List<int> timestampsMs,
+  }) {
+    final count = math.min(appearances.length, math.min(motions.length, timestampsMs.length));
+
+    final batch = List<_RppgFrame>.generate(
+      count,
+      (i) => _RppgFrame(appearance: appearances[i], motion: motions[i], timestampMs: timestampsMs[i]),
+      growable: false,
+    );
+
+    return _bigSmall.runInference(batch);
+  }
+
   void _sampleAntiSpoof(img.Image frame, FaceObservation face) {
     if (_random.nextDouble() >= _antiSpoofSampleRate) return;
     final yaw = face.yawDegrees;
@@ -156,6 +211,9 @@ class PassiveLivenessService {
   }
 
   double? _scoreFrame(img.Image frame, FaceLandmarkerResult result) {
+    final override = _antiSpoofScoreOverride;
+    if (override != null) return override(frame, result);
+
     final v1 = _v1;
     final v2 = _v2;
     if (v1 == null || v2 == null) return null;
@@ -199,7 +257,7 @@ class PassiveLivenessService {
 
     final crops = _cropFaceForBigSmall(frame, rois);
     if (crops == null) return;
-    final now = DateTime.now().millisecondsSinceEpoch;
+    final now = _currentTimeMs();
 
     if (_rppgFrameBuffer.isNotEmpty && now - _lastFrameBufferedMs > _rppgMaxGapMs) {
       _rppgFrameBuffer.clear();
@@ -211,7 +269,7 @@ class PassiveLivenessService {
     if (_rppgFrameBuffer.length >= _BigSmallService.bufferFrames) {
       final batch = List<_RppgFrame>.from(_rppgFrameBuffer);
       _rppgFrameBuffer.clear();
-      final bvp = _bigSmall.runInference(batch);
+      final bvp = _bigSmallBvpOverride?.call(batch.length) ?? _bigSmall.runInference(batch);
       if (bvp != null) {
         final count = math.min(bvp.length, batch.length - 1);
         for (var i = 0; i < count; i++) {
@@ -486,6 +544,36 @@ class _BigSmallService {
       _interpreters[i]?.close();
       _interpreters[i] = null;
     }
+  }
+
+  @visibleForTesting
+  Float32List debugBuildAppearanceBuffer(List<img.Image> appearances) {
+    final batch = List<_RppgFrame>.generate(
+      bufferFrames,
+      (i) => _RppgFrame(
+        appearance: appearances[i],
+        motion: img.Image(width: motionSize, height: motionSize),
+        timestampMs: i,
+      ),
+      growable: false,
+    );
+
+    return _buildAppearanceBuf(batch);
+  }
+
+  @visibleForTesting
+  Float32List debugBuildMotionBuffer(List<img.Image> motions) {
+    final batch = List<_RppgFrame>.generate(
+      bufferFrames,
+      (i) => _RppgFrame(
+        appearance: img.Image(width: appearanceSize, height: appearanceSize),
+        motion: motions[i],
+        timestampMs: i,
+      ),
+      growable: false,
+    );
+
+    return _buildMotionBuf(batch);
   }
 
   // Packs frames as planar channels (all R pixels, then G, then B) as required by the

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtdapp/providers/active_authenticiation_provider.dart';
 import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
 import 'package:vcmrtdapp/widgets/pages/document_selection_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_guidance_screen.dart';
@@ -127,6 +128,18 @@ void main() {
       expect(selected, DocumentType.passport);
     });
 
+    testWidgets('tapping identity card calls onDocumentTypeSelected with identityCard', (tester) async {
+      DocumentType? selected;
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(home: DocumentTypeSelectionScreen(onDocumentTypeSelected: (t) => selected = t)),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.text('Identity Card'));
+      expect(selected, DocumentType.identityCard);
+    });
+
     testWidgets('tapping driving licence calls onDocumentTypeSelected with drivingLicence', (tester) async {
       DocumentType? selected;
       await tester.pumpWidget(
@@ -139,6 +152,23 @@ void main() {
       await tester.scrollUntilVisible(find.text('Driving Licence'), 200);
       await tester.tap(find.text('Driving Licence'));
       expect(selected, DocumentType.drivingLicence);
+    });
+
+    testWidgets('active authentication switch updates provider state', (tester) async {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(home: DocumentTypeSelectionScreen(onDocumentTypeSelected: (_) {})),
+        ),
+      );
+      await tester.pump();
+
+      expect(container.read(activeAuthenticationProvider), isTrue);
+      await tester.tap(find.byType(Switch));
+      await tester.pump();
+      expect(container.read(activeAuthenticationProvider), isFalse);
     });
   });
 

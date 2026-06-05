@@ -20,7 +20,88 @@ import 'package:vcmrtdapp/features/face_verification/worker_result_types.dart';
 // Re-export result types so that callers only need to import this file.
 export 'package:vcmrtdapp/features/face_verification/worker_result_types.dart';
 
-class _IsolateClient {
+
+@visibleForTesting
+abstract interface class FaceVerificationWorkerClient {
+  Future<void> start();
+
+  Future<Map<String, dynamic>> request(
+    String cmd, {
+    Map<String, dynamic>? payload,
+  });
+
+  Future<void> dispose();
+}
+
+@visibleForTesting
+abstract interface class FaceVerificationCameraBuffer {
+  int get byteCapacity;
+  int get address;
+
+  bool beginWrite();
+  void abortWrite();
+  void commitWrite(int width, int height, int channels);
+
+  bool beginPipelineRead();
+  void endPipelineRead({required bool handoffToPassive});
+
+  bool beginPassiveRead();
+  void endPassiveRead();
+
+  bool writePlaneBytes(List<Uint8List> planesData);
+
+  void dispose();
+}
+
+class _NativeFaceVerificationCameraBuffer implements FaceVerificationCameraBuffer {
+  _NativeFaceVerificationCameraBuffer(this._buffer);
+
+  final FaceFrameBuffer _buffer;
+
+  @override
+  int get byteCapacity => _buffer.byteCapacity;
+
+  @override
+  int get address => _buffer.address;
+
+  @override
+  bool beginWrite() => _buffer.beginWrite();
+
+  @override
+  void abortWrite() => _buffer.abortWrite();
+
+  @override
+  void commitWrite(int width, int height, int channels) => _buffer.commitWrite(width, height, channels);
+
+  @override
+  bool beginPipelineRead() => _buffer.beginPipelineRead();
+
+  @override
+  void endPipelineRead({required bool handoffToPassive}) =>
+      _buffer.endPipelineRead(handoffToPassive: handoffToPassive);
+
+  @override
+  bool beginPassiveRead() => _buffer.beginPassiveRead();
+
+  @override
+  void endPassiveRead() => _buffer.endPassiveRead();
+
+  @override
+  bool writePlaneBytes(List<Uint8List> planesData) {
+    final dst = _buffer.dataPtr;
+    var offset = 0;
+    for (final plane in planesData) {
+      (dst + offset).asTypedList(plane.length).setAll(0, plane);
+      offset += plane.length;
+    }
+    return true;
+  }
+
+  @override
+  void dispose() => _buffer.dispose();
+}
+
+class _IsolateClient implements FaceVerificationWorkerClient  {
   _IsolateClient(this.entryPoint);
 
   final void Function(List<Object?>) entryPoint;
@@ -116,16 +197,32 @@ class _IsolateClient {
 /// If all 10 buffers are occupied (should not happen in practice), the frame is
 /// silently dropped rather than blocking the camera callback.
 class FaceVerificationWorker {
-  final _pipeline = _IsolateClient(_pipelineWorkerMain);
-  final _passive = _IsolateClient(_passiveWorkerMain);
-  final _match = _IsolateClient(_matchWorkerMain);
+  FaceVerificationWorker()
+      : _pipeline = _IsolateClient(_pipelineWorkerMain),
+        _passive = _IsolateClient(_passiveWorkerMain),
+        _match = _IsolateClient(_matchWorkerMain);
+
+  @visibleForTesting
+  FaceVerificationWorker.withClients({
+    required FaceVerificationWorkerClient pipeline,
+    required FaceVerificationWorkerClient passive,
+    required FaceVerificationWorkerClient match,
+    List<FaceVerificationCameraBuffer>? cameraBuffers,
+  })  : _pipeline = pipeline,
+        _passive = passive,
+        _match = match,
+        _camPool = cameraBuffers ?? <FaceVerificationCameraBuffer>[];
+
+  final FaceVerificationWorkerClient _pipeline;
+  final FaceVerificationWorkerClient _passive;
+  final FaceVerificationWorkerClient _match;
 
   // 10 buffers provide headroom above the maximum 3 concurrently occupied.
   // Each buffer is 12 MB to cover the largest expected camera format (1080p BGRA = ~8 MB)
   // with room for YUV planes that may be larger than the BGRA equivalent.
   static const int _camPoolSize = 10;
   static const int _camBufCap = 12 * 1024 * 1024;
-  late final List<FaceFrameBuffer> _camPool;
+  List<FaceVerificationCameraBuffer> _camPool = <FaceVerificationCameraBuffer>[];
 
   final StreamController<WorkerFrameResult> _frames = StreamController<WorkerFrameResult>.broadcast();
 
@@ -144,7 +241,10 @@ class FaceVerificationWorker {
   Stream<WorkerFrameResult> get frames => _frames.stream;
 
   Future<void> initialize() async {
-    _camPool = List.generate(_camPoolSize, (_) => FaceFrameBuffer.create(_camBufCap));
+    _camPool = List.generate(
+      _camPoolSize,
+      (_) => _NativeFaceVerificationCameraBuffer(FaceFrameBuffer.create(_camBufCap)),
+    );
     final camBufAddrs = _camPool.map((b) => b.address).toList(growable: false);
 
     // Start isolates while loading bytes — both are non-blocking.
@@ -241,8 +341,24 @@ class FaceVerificationWorker {
   }
 
   Future<void> processCameraFrame(CameraImage cameraImage, int rotationDegrees) async {
-    if (_camPoolDisposed) return;
-    // Find the first FREE native buffer — never block, just drop the frame if all are busy.
+    final planeBytes = cameraImage.planes.map((Plane plane) => plane.bytes).toList(growable: false);
+
+    await _processPackedCameraFrame(
+      planeBytes: planeBytes,
+      width: cameraImage.width,
+      height: cameraImage.height,
+      cameraMetadata: _cameraNativeMetadata(cameraImage, rotationDegrees),
+    );
+  }
+
+  Future<void> _processPackedCameraFrame({
+    required List<Uint8List> planeBytes,
+    required int width,
+    required int height,
+    required Map<String, dynamic> cameraMetadata,
+  }) async {
+    if (_camPoolDisposed || _camPool.isEmpty) return;
+
     int? freeBufIdx;
     for (var i = 0; i < _camPool.length; i++) {
       if (_camPool[i].beginWrite()) {
@@ -250,13 +366,14 @@ class FaceVerificationWorker {
         break;
       }
     }
+
     if (freeBufIdx == null) {
-      return; // all buffers in use — drop frame
+      return;
     }
 
-    // Copy camera planes into native memory (one write, shared by both isolates).
     final buf = _camPool[freeBufIdx];
-    final totalBytes = cameraImage.planes.fold<int>(0, (int sum, Plane plane) => sum + plane.bytes.length);
+    final totalBytes = planeBytes.fold<int>(0, (sum, plane) => sum + plane.length);
+
     if (totalBytes > buf.byteCapacity) {
       buf.abortWrite();
       debugPrint(
@@ -266,23 +383,22 @@ class FaceVerificationWorker {
       return;
     }
 
-    final dst = buf.dataPtr;
-    var planeOffset = 0;
     try {
-      for (final Plane plane in cameraImage.planes) {
-        (dst + planeOffset).asTypedList(plane.bytes.length).setAll(0, plane.bytes);
-        planeOffset += plane.bytes.length;
+      if (!buf.writePlaneBytes(planeBytes)) {
+        buf.abortWrite();
+        return;
       }
     } catch (e) {
       buf.abortWrite();
       debugPrint('[FaceVerification] Worker: failed to copy camera frame: $e');
       return;
     }
-    buf.commitWrite(cameraImage.width, cameraImage.height, cameraImage.planes.length);
+
+    buf.commitWrite(width, height, planeBytes.length);
 
     _enqueuePipelineFrame(<String, dynamic>{
       'sessionId': _sessionId,
-      'camera': _cameraNativeMetadata(cameraImage, rotationDegrees),
+      'camera': cameraMetadata,
       'camBufIdx': freeBufIdx,
     });
   }
@@ -534,6 +650,67 @@ class FaceVerificationWorker {
 
   @visibleForTesting
   static void debugMatchWorkerEntry(SendPort mainSendPort) => unawaited(_matchWorkerLoop(mainSendPort));
+
+  @visibleForTesting
+  Future<void> _debugProcessPackedCameraFrameForTest({
+    required List<Uint8List> planeBytes,
+    required int width,
+    required int height,
+    required String format,
+    required int rotationDegrees,
+    required List<int> bytesPerRow,
+    required List<int?> bytesPerPixel,
+  }) {
+    var offset = 0;
+    final planes = <Map<String, dynamic>>[];
+
+    for (var i = 0; i < planeBytes.length; i++) {
+      final byteCount = planeBytes[i].length;
+      planes.add(<String, dynamic>{
+        'offset': offset,
+        'byteCount': byteCount,
+        'bytesPerRow': bytesPerRow[i],
+        'bytesPerPixel': bytesPerPixel[i] ?? 1,
+      });
+      offset += byteCount;
+    }
+
+    return _processPackedCameraFrame(
+      planeBytes: planeBytes,
+      width: width,
+      height: height,
+      cameraMetadata: <String, dynamic>{
+        'width': width,
+        'height': height,
+        'format': format,
+        'rotation': rotationDegrees,
+        'planes': planes,
+      },
+    );
+  }
+}
+
+@visibleForTesting
+extension FaceVerificationWorkerTestAccess on FaceVerificationWorker {
+  Future<void> debugProcessPackedCameraFrame({
+    required List<Uint8List> planeBytes,
+    required int width,
+    required int height,
+    required String format,
+    required int rotationDegrees,
+    required List<int> bytesPerRow,
+    required List<int?> bytesPerPixel,
+  }) {
+    return _debugProcessPackedCameraFrameForTest(
+      planeBytes: planeBytes,
+      width: width,
+      height: height,
+      format: format,
+      rotationDegrees: rotationDegrees,
+      bytesPerRow: bytesPerRow,
+      bytesPerPixel: bytesPerPixel,
+    );
+  }
 }
 
 /// Shared entry-point boilerplate for all three worker isolates.

@@ -129,6 +129,7 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
   bool _activeLivenessStopping = false;
   bool _startingLiveness = false;
   bool _engineReady = false;
+  bool _debugReadyOverride = false;
   String? _alignTip;
   LivenessMode _selectedMode = LivenessMode.active;
   _PassiveProgress? _passive;
@@ -177,10 +178,42 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
   @visibleForTesting
   void debugSetActiveLiveness() => setState(() => _state = VerificationState.activeLiveness);
 
+  @visibleForTesting
+  void debugSetActions(List<String> actions) => setState(() => _actions = actions);
+
+  @visibleForTesting
+  void debugSetSelectedMode(LivenessMode mode) => setState(() => _selectedMode = mode);
+
+  @visibleForTesting
+  void debugSetResultState(VerificationResult result) => setState(() {
+    _result = result;
+    _errorMessage = 'previous error';
+    _state = VerificationState.result;
+    _actions = <String>['BLINK', 'SMILE'];
+    _currentAction = 'SMILE';
+    _completedActions = <String>{'BLINK'};
+    _extraActionMode = true;
+    _actionFlash = true;
+    _passive = const _PassiveProgress(started: true, elapsedMs: 1200, targetMs: 5000);
+    _passiveAt = DateTime.now();
+    _alignTip = 'holdStill';
+  });
+
+  @visibleForTesting
+  void debugResetForRetry() => _resetForRetry();
+
   /// Pure rotation arithmetic — testable without a real CameraController.
   @visibleForTesting
   static int debugBackCameraRotation(int sensorOrientation, int deviceOrientationDegrees) =>
       (sensorOrientation - deviceOrientationDegrees + 360) % 360;
+
+  @visibleForTesting
+  void debugSetReadyForTesting() {
+    setState(() {
+      _debugReadyOverride = true;
+      _engineReady = true;
+    });
+  }
 
   @override
   void dispose() {
@@ -598,6 +631,11 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
     if (_isDisposed || !mounted) return;
     _passiveTicker?.cancel();
     _passiveTicker = null;
+    _resetForRetry();
+    await _openCamera();
+  }
+
+  void _resetForRetry() {
     setState(() {
       _result = null;
       _errorMessage = null;
@@ -611,7 +649,6 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
       _passiveAt = null;
       _alignTip = null;
     });
-    await _openCamera();
   }
 
   Future<void> _handleBack() async {
@@ -633,7 +670,7 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
     );
   }
 
-  bool get _isReady => _engineReady && _cameraController?.value.isInitialized == true;
+  bool get _isReady => _debugReadyOverride || (_engineReady && _cameraController?.value.isInitialized == true);
 
   Widget _buildBody() {
     if (_errorMessage != null) return _buildErrorScreen();
@@ -764,7 +801,7 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
   Widget _buildOvalOverlay() => const Positioned.fill(child: CustomPaint(painter: _FaceOvalPainter()));
 
   Widget _buildIdleScreen() {
-    final ready = _cameraController?.value.isInitialized == true && _engineReady;
+    final ready = _debugReadyOverride || (_cameraController?.value.isInitialized == true && _engineReady);
     return Stack(
       fit: StackFit.expand,
       children: [

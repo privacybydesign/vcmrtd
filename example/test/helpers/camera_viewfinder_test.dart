@@ -1,5 +1,6 @@
 import 'dart:typed_data';
-
+import 'package:camera/camera.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vcmrtdapp/helpers/camera_overlay.dart';
@@ -167,6 +168,53 @@ void main() {
         // NV21 _withCrop passes w as bytesPerRow
         expect(cropped.bytesPerRow, cropped.width);
       });
+
+      test('odd NV21 crop coordinates are aligned to even chroma boundaries', () {
+        final frame = _nv21(width: 6, height: 4, roiLeft: 0.2, roiTop: 0.0, roiWidth: 0.5, roiHeight: 1.0);
+        final cropped = frame.cropToRoi();
+
+        expect(cropped.width.isEven, isTrue);
+        expect(cropped.width, 4);
+        expect(cropped.height, 4);
+        expect(cropped.bytesPerRow, 4);
+      });
+
+      test('tiny NV21 ROI is clamped to the minimum chroma-safe crop size', () {
+        final frame = _nv21(width: 4, height: 4, roiLeft: 0.75, roiTop: 0.5, roiWidth: 0.01, roiHeight: 0.01);
+        final cropped = frame.cropToRoi();
+
+        expect(cropped.width, 2);
+        expect(cropped.height, 2);
+        expect(cropped.bytes.length, 2 * 2 + 2 * 2 ~/ 2);
+      });
+
+      test('partial NV21 crop copies matching UV rows', () {
+        final bytes = Uint8List(4 * 4 + 4 * 4 ~/ 2);
+        for (var i = 0; i < 16; i++) {
+          bytes[i] = i;
+        }
+        for (var i = 16; i < bytes.length; i++) {
+          bytes[i] = 100 + i;
+        }
+
+        final frame = OcrFrame(
+          bytes: bytes,
+          width: 4,
+          height: 4,
+          bytesPerRow: 4,
+          rotation: 0,
+          roiLeft: 0,
+          roiTop: 0.5,
+          roiWidth: 1,
+          roiHeight: 0.5,
+          isNv21: true,
+        );
+
+        final cropped = frame.cropToRoi();
+
+        expect(cropped.bytes.sublist(0, 8), Uint8List.fromList(<int>[8, 9, 10, 11, 12, 13, 14, 15]));
+        expect(cropped.bytes.sublist(8), Uint8List.fromList(<int>[120, 121, 122, 123]));
+      });
     });
 
     group('BGRA cropToRoi (iOS)', () {
@@ -301,6 +349,25 @@ void main() {
         expect(cropped.roiWidth, 1.0);
         expect(cropped.roiHeight, 1.0);
       });
+
+      test('BGRA crop clamps ROI that extends beyond the image bounds', () {
+        final frame = _bgra(width: 4, height: 4, roiLeft: 0.75, roiTop: 0.75, roiWidth: 1, roiHeight: 1);
+        final cropped = frame.cropToRoi();
+
+        expect(cropped.width, 1);
+        expect(cropped.height, 1);
+        expect(cropped.bytesPerRow, 4);
+        expect(cropped.bytes.length, 4);
+      });
+
+      test('BGRA crop with tiny ROI still returns a single pixel crop', () {
+        final frame = _bgra(width: 4, height: 4, roiLeft: 0.5, roiTop: 0.5, roiWidth: 0.01, roiHeight: 0.01);
+        final cropped = frame.cropToRoi();
+
+        expect(cropped.width, 1);
+        expect(cropped.height, 1);
+        expect(cropped.bytes.length, 4);
+      });
     });
   });
 
@@ -401,6 +468,263 @@ void main() {
       expect(rect.top, 0);
     });
   });
+
+  group('MRZCameraViewState YUV420 to NV21 conversion', () {
+    Future<MRZCameraViewState> pumpState(WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MRZCameraView(
+            showOverlay: false,
+            initializeCamera: false,
+            onImage: (_) {},
+          ),
+        ),
+      );
+
+      return tester.state<MRZCameraViewState>(find.byType(MRZCameraView));
+    }
+
+    testWidgets('debugYuv420PlanesToNv21 copies tight Y plane and interleaves VU chroma', (tester) async {
+      final state = await pumpState(tester);
+
+      final nv21 = state.debugYuv420PlanesToNv21(
+        width: 4,
+        height: 2,
+        yBytes: Uint8List.fromList(<int>[1, 2, 3, 4, 5, 6, 7, 8]),
+        yBytesPerRow: 4,
+        uBytes: Uint8List.fromList(<int>[10, 20]),
+        uBytesPerRow: 2,
+        uBytesPerPixel: 1,
+        vBytes: Uint8List.fromList(<int>[30, 40]),
+        vBytesPerRow: 2,
+        vBytesPerPixel: 1,
+      );
+
+      expect(
+        nv21,
+        Uint8List.fromList(<int>[
+          1, 2, 3, 4, 5, 6, 7, 8,
+          30, 10, 40, 20,
+        ]),
+      );
+    });
+
+    testWidgets('debugYuv420PlanesToNv21 removes padded Y row stride', (tester) async {
+      final state = await pumpState(tester);
+
+      final nv21 = state.debugYuv420PlanesToNv21(
+        width: 2,
+        height: 2,
+        yBytes: Uint8List.fromList(<int>[
+          1, 2, 99,
+          3, 4, 99,
+        ]),
+        yBytesPerRow: 3,
+        uBytes: Uint8List.fromList(<int>[10]),
+        uBytesPerRow: 1,
+        uBytesPerPixel: 1,
+        vBytes: Uint8List.fromList(<int>[20]),
+        vBytesPerRow: 1,
+        vBytesPerPixel: 1,
+      );
+
+      expect(
+        nv21,
+        Uint8List.fromList(<int>[
+          1, 2,
+          3, 4,
+          20, 10,
+        ]),
+      );
+    });
+
+    testWidgets('debugYuv420PlanesToNv21 respects chroma pixel stride of 2', (tester) async {
+      final state = await pumpState(tester);
+
+      final nv21 = state.debugYuv420PlanesToNv21(
+        width: 4,
+        height: 2,
+        yBytes: Uint8List.fromList(<int>[1, 2, 3, 4, 5, 6, 7, 8]),
+        yBytesPerRow: 4,
+        uBytes: Uint8List.fromList(<int>[10, 99, 20, 99]),
+        uBytesPerRow: 4,
+        uBytesPerPixel: 2,
+        vBytes: Uint8List.fromList(<int>[30, 99, 40, 99]),
+        vBytesPerRow: 4,
+        vBytesPerPixel: 2,
+      );
+
+      expect(
+        nv21,
+        Uint8List.fromList(<int>[
+          1, 2, 3, 4, 5, 6, 7, 8,
+          30, 10, 40, 20,
+        ]),
+      );
+    });
+
+    testWidgets('route callbacks do not throw when no cameras are initialized', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MRZCameraView(
+            showOverlay: false,
+            initializeCamera: false,
+            onImage: (_) {},
+          ),
+        ),
+      );
+
+      final state = tester.state<MRZCameraViewState>(find.byType(MRZCameraView));
+
+      state.didPush();
+      state.didPushNext();
+      state.didPopNext();
+      state.didPop();
+
+      await tester.pump();
+
+      expect(find.byType(MRZCameraView), findsOneWidget);
+    });
+  });
+
+  group('MRZCameraViewState OCR frame mapping', () {
+    Future<MRZCameraViewState> pumpState(WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MRZCameraView(
+            showOverlay: false,
+            initializeCamera: false,
+            onImage: (_) {},
+          ),
+        ),
+      );
+
+      return tester.state<MRZCameraViewState>(find.byType(MRZCameraView));
+    }
+
+    testWidgets('debugBuildOcrFrameFromBytes computes back-camera rotation', (tester) async {
+      final state = await pumpState(tester);
+
+      final frame = state.debugBuildOcrFrameFromBytes(
+        bytes: Uint8List(4),
+        width: 2,
+        height: 2,
+        bytesPerRow: 2,
+        isNv21: true,
+        sensorOrientation: 90,
+        lensDirection: CameraLensDirection.back,
+        deviceOrientation: DeviceOrientation.landscapeLeft,
+        viewSize: const Size(400, 800),
+      );
+
+      expect(frame.rotation, 0);
+      expect(frame.isNv21, isTrue);
+      expect(frame.bytesPerRow, 2);
+    });
+
+    testWidgets('debugBuildOcrFrameFromBytes computes front-camera rotation', (tester) async {
+      final state = await pumpState(tester);
+
+      final frame = state.debugBuildOcrFrameFromBytes(
+        bytes: Uint8List(4),
+        width: 2,
+        height: 2,
+        bytesPerRow: 8,
+        isNv21: false,
+        sensorOrientation: 90,
+        lensDirection: CameraLensDirection.front,
+        deviceOrientation: DeviceOrientation.landscapeLeft,
+        viewSize: const Size(400, 800),
+      );
+
+      expect(frame.rotation, 180);
+      expect(frame.isNv21, isFalse);
+      expect(frame.bytesPerRow, 8);
+    });
+
+    testWidgets('debugBuildOcrFrameFromBytes clamps ROI fractions into valid range', (tester) async {
+      final state = await pumpState(tester);
+
+      state.debugSetPreviewScale(0.1);
+
+      final frame = state.debugBuildOcrFrameFromBytes(
+        bytes: Uint8List(4),
+        width: 2,
+        height: 2,
+        bytesPerRow: 2,
+        isNv21: true,
+        sensorOrientation: 90,
+        lensDirection: CameraLensDirection.back,
+        deviceOrientation: DeviceOrientation.portraitUp,
+        viewSize: const Size(400, 800),
+      );
+
+      expect(frame.roiLeft, inInclusiveRange(0.0, 1.0));
+      expect(frame.roiTop, inInclusiveRange(0.0, 1.0));
+      expect(frame.roiWidth, inInclusiveRange(0.0, 1.0));
+      expect(frame.roiHeight, inInclusiveRange(0.0, 1.0));
+    });
+
+    testWidgets('debugBuildOcrFrameFromBytes maps back camera portraitDown rotation', (tester) async {
+      final state = await pumpState(tester);
+
+      final frame = state.debugBuildOcrFrameFromBytes(
+        bytes: Uint8List(4),
+        width: 2,
+        height: 2,
+        bytesPerRow: 2,
+        isNv21: true,
+        sensorOrientation: 90,
+        lensDirection: CameraLensDirection.back,
+        deviceOrientation: DeviceOrientation.portraitDown,
+        viewSize: const Size(400, 800),
+      );
+
+      expect(frame.rotation, 270);
+    });
+
+    testWidgets('debugBuildOcrFrameFromBytes maps front camera landscapeRight rotation', (tester) async {
+      final state = await pumpState(tester);
+
+      final frame = state.debugBuildOcrFrameFromBytes(
+        bytes: Uint8List(4),
+        width: 2,
+        height: 2,
+        bytesPerRow: 2,
+        isNv21: false,
+        sensorOrientation: 90,
+        lensDirection: CameraLensDirection.front,
+        deviceOrientation: DeviceOrientation.landscapeRight,
+        viewSize: const Size(400, 800),
+      );
+
+      expect(frame.rotation, 0);
+    });
+
+    testWidgets('debugBuildOcrFrameFromBytes uses preview fallback when overlay misses scaled preview', (tester) async {
+      final state = await pumpState(tester);
+
+      state.debugSetPreviewScale(0.05);
+
+      final frame = state.debugBuildOcrFrameFromBytes(
+        bytes: Uint8List(4),
+        width: 2,
+        height: 2,
+        bytesPerRow: 2,
+        isNv21: true,
+        sensorOrientation: 90,
+        lensDirection: CameraLensDirection.back,
+        deviceOrientation: DeviceOrientation.portraitUp,
+        viewSize: const Size(400, 800),
+      );
+
+      expect(frame.roiLeft, 0.0);
+      expect(frame.roiTop, 0.0);
+      expect(frame.roiWidth, 1.0);
+      expect(frame.roiHeight, 1.0);
+    });
+  });
+
 }
 
 OcrFrame _nv21({

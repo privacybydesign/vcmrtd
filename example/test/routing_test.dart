@@ -16,6 +16,9 @@ import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
 import 'package:vcmrtdapp/widgets/pages/driving_licence_data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/passport_data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/scanner_wrapper.dart';
+import 'package:vcmrtdapp/features/face_verification/face_verification_entry_screen.dart';
+import 'package:vcmrtdapp/widgets/pages/manual_entry_screen.dart';
+import 'package:vcmrtdapp/widgets/pages/nfc_reading_screen.dart';
 
 class _FakeScanner extends StatelessWidget {
   const _FakeScanner({required this.documentType, required this.onSuccess});
@@ -160,6 +163,48 @@ Widget _routerApp(GoRouter router) {
   return ProviderScope(child: MaterialApp.router(routerConfig: router));
 }
 
+class _RouteExtensionHarness extends StatelessWidget {
+  const _RouteExtensionHarness({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final scannedMrz = _scannedPassport(DocumentType.passport);
+
+    return Column(
+      children: [
+        TextButton(
+          onPressed: () => context.pushMrzReaderScreen(
+            MrzReaderRouteParams(documentType: DocumentType.identityCard),
+          ),
+          child: const Text('push mrz reader'),
+        ),
+        TextButton(
+          onPressed: () => context.pushManualEntryScreen(
+            ManualEntryRouteParams(documentType: DocumentType.drivingLicence),
+          ),
+          child: const Text('push manual entry'),
+        ),
+        TextButton(
+          onPressed: () => context.pushNfcReadingScreen(
+            NfcReadingRouteParams(
+              scannedMRZ: scannedMrz,
+              documentType: DocumentType.passport,
+            ),
+          ),
+          child: const Text('push nfc reading'),
+        ),
+        TextButton(
+          onPressed: () => context.pushFaceVerificationScreen(
+            Uint8List.fromList(<int>[1, 2, 3]),
+            issueDate: DateTime(2024, 2, 1),
+          ),
+          child: const Text('push face verification'),
+        ),
+      ],
+    );
+  }
+}
+
 void main() {
   group('routeObserver', () {
     test('is a RouteObserver instance', () {
@@ -254,5 +299,121 @@ void main() {
       expect(screen.photoIssueDate, issueDate);
       expect(screen.nfcImageBytes, Uint8List.fromList([1]));
     });
+
+    testWidgets('BuildContext route extensions push expected pages', (tester) async {
+      Map<String, dynamic>? faceExtra;
+
+      final router = GoRouter(
+        initialLocation: '/',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, __) => const Scaffold(body: _RouteExtensionHarness()),
+          ),
+          GoRoute(
+            path: '/mrz_reader',
+            builder: (_, __) => const Scaffold(
+              body: SizedBox(key: Key('mrz_reader_page')),
+            ),
+          ),
+          GoRoute(
+            path: '/manual_entry',
+            builder: (_, __) => const Scaffold(
+              body: SizedBox(key: Key('manual_entry_page')),
+            ),
+          ),
+          GoRoute(
+            path: '/nfc_reading',
+            builder: (_, __) => const Scaffold(
+              body: SizedBox(key: Key('nfc_reading_page')),
+            ),
+          ),
+          GoRoute(
+            path: '/face_verification',
+            builder: (_, state) {
+              faceExtra = state.extra as Map<String, dynamic>;
+              return const Scaffold(
+                body: SizedBox(key: Key('face_verification_page')),
+              );
+            },
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(_routerApp(router));
+      await tester.pump();
+
+      await tester.tap(find.widgetWithText(TextButton, 'push mrz reader'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('mrz_reader_page')), findsOneWidget);
+
+      router.go('/');
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(TextButton, 'push manual entry'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('manual_entry_page')), findsOneWidget);
+
+      router.go('/');
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(TextButton, 'push nfc reading'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('nfc_reading_page')), findsOneWidget);
+
+      router.go('/');
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(TextButton, 'push face verification'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('face_verification_page')), findsOneWidget);
+      expect(faceExtra, isNotNull);
+      expect(faceExtra!['nfcImageBytes'], Uint8List.fromList(<int>[1, 2, 3]));
+      expect(faceExtra!['issueDate'], DateTime(2024, 2, 1));
+    });
+
+    testWidgets('builds manual entry route from query params', (tester) async {
+      final router = createRouter(scannerBuilder: _scannerBuilder());
+      addTearDown(router.dispose);
+
+      final params = ManualEntryRouteParams(documentType: DocumentType.drivingLicence);
+      final uri = Uri(path: '/manual_entry', queryParameters: params.toQueryParams());
+
+      await tester.pumpWidget(_routerApp(router));
+      router.go(uri.toString());
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byType(ManualEntryScreen), findsOneWidget);
+    });
+
+    testWidgets('builds result route for identity card using passport data screen', (tester) async {
+      tester.view.physicalSize = const Size(1200, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final router = createRouter(scannerBuilder: _scannerBuilder());
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(_routerApp(router));
+
+      router.go(
+        '/result',
+        extra: {
+          'document': _passportData(),
+          'result': _rawDocument(),
+          'document_type': DocumentType.identityCard,
+        },
+      );
+
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byType(PassportDataScreen), findsOneWidget);
+    });
+
   });
 }

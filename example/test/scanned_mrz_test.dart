@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mrz_parser/mrz_parser.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
 
@@ -107,6 +108,37 @@ void main() {
         expect(scanned.documentType, equals(DocumentType.identityCard));
       });
     });
+
+    group('fromMRZResult', () {
+      test('creates passport MRZ from parser result', () {
+        final parsed = PassportMrzParser().parse([
+          'P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<',
+          'L898902C36UTO7408122F1204159ZE184226B<<<<<10',
+        ]);
+
+        final scanned = ScannedPassportMRZ.fromMRZResult(parsed);
+
+        expect(scanned.documentType, DocumentType.passport);
+        expect(scanned.documentNumber, 'L898902C3');
+        expect(scanned.countryCode, 'UTO');
+        expect(scanned.dateOfBirth, DateTime(1974, 8, 12));
+        expect(scanned.dateOfExpiry, DateTime(2012, 4, 15));
+      });
+
+      test('can create identity-card-shaped result with identityCard document type', () {
+        final parsed = IdCardMrzParser().parse([
+          'I<UTOD231458907<<<<<<<<<<<<<<<',
+          '7408122F1204159UTO<<<<<<<<<<<6',
+          'ERIKSSON<<ANNA<MARIA<<<<<<<<<<',
+        ]);
+
+        final scanned = ScannedPassportMRZ.fromMRZResult(parsed, documentType: DocumentType.identityCard);
+
+        expect(scanned.documentType, DocumentType.identityCard);
+        expect(scanned.documentNumber, 'D23145890');
+        expect(scanned.countryCode, 'UTO');
+      });
+    });
   });
 
   group('ScannedIdCardMRZ', () {
@@ -143,6 +175,22 @@ void main() {
       expect(mrz.dateOfBirth, equals(testDate1));
       expect(mrz.dateOfExpiry, equals(testDate2));
     });
+
+    test('fromMRZResult creates id card MRZ from parser result', () {
+      final parsed = IdCardMrzParser().parse([
+        'I<UTOD231458907<<<<<<<<<<<<<<<',
+        '7408122F1204159UTO<<<<<<<<<<<6',
+        'ERIKSSON<<ANNA<MARIA<<<<<<<<<<',
+      ]);
+
+      final mrz = ScannedIdCardMRZ.fromMRZResult(parsed);
+
+      expect(mrz.documentType, equals(DocumentType.identityCard));
+      expect(mrz.documentNumber, equals('D23145890'));
+      expect(mrz.countryCode, equals('UTO'));
+      expect(mrz.dateOfBirth, equals(DateTime(1974, 8, 12)));
+      expect(mrz.dateOfExpiry, equals(DateTime(2012, 4, 15)));
+    });
   });
 
   group('ScannedDriverLicenseMRZ', () {
@@ -175,6 +223,19 @@ void main() {
         expect(mrz.version, equals('1'));
         expect(mrz.randomData, equals('ABCDEFGHIJKLM'));
         expect(mrz.configuration, equals('1'));
+      });
+
+      test('fromMRZResult preserves parsed driving licence fields', () {
+        final parsed = DrivingLicenceMrzParser().parse(['D<NLD11234567890ABCDEFGHIJ<<<9']);
+
+        final mrz = ScannedDriverLicenseMRZ.fromMRZResult(parsed);
+
+        expect(mrz.documentType, equals(DocumentType.drivingLicence));
+        expect(mrz.documentNumber, equals('1234567890'));
+        expect(mrz.countryCode, equals('NLD'));
+        expect(mrz.version, equals('1'));
+        expect(mrz.randomData, equals('ABCDEFGHIJ'));
+        expect(mrz.configuration, equals(''));
       });
 
       test('throws when manual driving licence MRZ cannot be parsed', () {
