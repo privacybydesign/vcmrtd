@@ -38,12 +38,7 @@ class PassiveLivenessService {
     int Function()? nowMs,
     double? Function(img.Image frame, FaceLandmarkerResult result)? antiSpoofScoreOverride,
     List<double>? Function(int batchLength)? bigSmallBvpOverride,
-    List<double>? Function(
-      int modelIndex,
-      Float32List appearanceBuf,
-      Float32List motionBuf,
-      List<int> outputShape,
-    )?
+    List<double>? Function(int modelIndex, Float32List appearanceBuf, Float32List motionBuf, List<int> outputShape)?
     bigSmallModelOutputOverride,
   }) : _random = random ?? math.Random(),
        _nowMs = nowMs,
@@ -486,12 +481,7 @@ class _RppgFrame {
 
 class _BigSmallService {
   _BigSmallService({
-    List<double>? Function(
-      int modelIndex,
-      Float32List appearanceBuf,
-      Float32List motionBuf,
-      List<int> outputShape,
-    )?
+    List<double>? Function(int modelIndex, Float32List appearanceBuf, Float32List motionBuf, List<int> outputShape)?
     debugRunOverride,
   }) : _debugRunOverride = debugRunOverride;
 
@@ -509,12 +499,7 @@ class _BigSmallService {
   final List<List<int>?> _appearanceShapes = List<List<int>?>.filled(_modelFiles.length, null);
   final List<List<int>?> _motionShapes = List<List<int>?>.filled(_modelFiles.length, null);
   final List<List<int>?> _outputShapes = List<List<int>?>.filled(_modelFiles.length, null);
-  final List<double>? Function(
-    int modelIndex,
-    Float32List appearanceBuf,
-    Float32List motionBuf,
-    List<int> outputShape,
-  )?
+  final List<double>? Function(int modelIndex, Float32List appearanceBuf, Float32List motionBuf, List<int> outputShape)?
   _debugRunOverride;
 
   Future<void> initialize() async {

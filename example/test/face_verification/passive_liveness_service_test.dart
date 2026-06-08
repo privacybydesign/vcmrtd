@@ -840,9 +840,7 @@ void main() {
       });
 
       test('debugBigSmallRunInferenceWithImages returns null when every debug model output is empty', () {
-        final svc = PassiveLivenessService(
-          bigSmallModelOutputOverride: (_, __, ___, ____) => <double>[],
-        );
+        final svc = PassiveLivenessService(bigSmallModelOutputOverride: (_, __, ___, ____) => <double>[]);
         svc.debugSetBigSmallOutputShapes(<List<int>?>[
           <int>[1, 3],
           <int>[1, 3],

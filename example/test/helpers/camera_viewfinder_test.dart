@@ -558,7 +558,11 @@ void main() {
         height: 2,
         bytesPerRow: 2,
         isNv21: true,
-        cameraInfo: (sensorOrientation: 90, lensDirection: CameraLensDirection.back, deviceOrientation: DeviceOrientation.landscapeLeft),
+        cameraInfo: (
+          sensorOrientation: 90,
+          lensDirection: CameraLensDirection.back,
+          deviceOrientation: DeviceOrientation.landscapeLeft,
+        ),
         viewSize: const Size(400, 800),
       );
 
@@ -576,7 +580,11 @@ void main() {
         height: 2,
         bytesPerRow: 8,
         isNv21: false,
-        cameraInfo: (sensorOrientation: 90, lensDirection: CameraLensDirection.front, deviceOrientation: DeviceOrientation.landscapeLeft),
+        cameraInfo: (
+          sensorOrientation: 90,
+          lensDirection: CameraLensDirection.front,
+          deviceOrientation: DeviceOrientation.landscapeLeft,
+        ),
         viewSize: const Size(400, 800),
       );
 
@@ -596,7 +604,11 @@ void main() {
         height: 2,
         bytesPerRow: 2,
         isNv21: true,
-        cameraInfo: (sensorOrientation: 90, lensDirection: CameraLensDirection.back, deviceOrientation: DeviceOrientation.portraitUp),
+        cameraInfo: (
+          sensorOrientation: 90,
+          lensDirection: CameraLensDirection.back,
+          deviceOrientation: DeviceOrientation.portraitUp,
+        ),
         viewSize: const Size(400, 800),
       );
 
@@ -615,7 +627,11 @@ void main() {
         height: 2,
         bytesPerRow: 2,
         isNv21: true,
-        cameraInfo: (sensorOrientation: 90, lensDirection: CameraLensDirection.back, deviceOrientation: DeviceOrientation.portraitDown),
+        cameraInfo: (
+          sensorOrientation: 90,
+          lensDirection: CameraLensDirection.back,
+          deviceOrientation: DeviceOrientation.portraitDown,
+        ),
         viewSize: const Size(400, 800),
       );
 
@@ -631,7 +647,11 @@ void main() {
         height: 2,
         bytesPerRow: 2,
         isNv21: false,
-        cameraInfo: (sensorOrientation: 90, lensDirection: CameraLensDirection.front, deviceOrientation: DeviceOrientation.landscapeRight),
+        cameraInfo: (
+          sensorOrientation: 90,
+          lensDirection: CameraLensDirection.front,
+          deviceOrientation: DeviceOrientation.landscapeRight,
+        ),
         viewSize: const Size(400, 800),
       );
 
@@ -649,7 +669,11 @@ void main() {
         height: 2,
         bytesPerRow: 2,
         isNv21: true,
-        cameraInfo: (sensorOrientation: 90, lensDirection: CameraLensDirection.back, deviceOrientation: DeviceOrientation.portraitUp),
+        cameraInfo: (
+          sensorOrientation: 90,
+          lensDirection: CameraLensDirection.back,
+          deviceOrientation: DeviceOrientation.portraitUp,
+        ),
         viewSize: const Size(400, 800),
       );
 

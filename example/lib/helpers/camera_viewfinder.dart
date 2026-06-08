@@ -354,7 +354,6 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
     );
   }
 
-
   Uint8List _yuv420ToNv21(CameraImage img) {
     final yPlane = img.planes[0];
     final uPlane = img.planes[1];
@@ -460,7 +459,8 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
     required int height,
     required int bytesPerRow,
     required bool isNv21,
-    required ({int sensorOrientation, CameraLensDirection lensDirection, DeviceOrientation deviceOrientation}) cameraInfo,
+    required ({int sensorOrientation, CameraLensDirection lensDirection, DeviceOrientation deviceOrientation})
+    cameraInfo,
     required Size viewSize,
   }) {
     final rotationComp = _orientations[cameraInfo.deviceOrientation] ?? 0;
