@@ -38,10 +38,18 @@ class PassiveLivenessService {
     int Function()? nowMs,
     double? Function(img.Image frame, FaceLandmarkerResult result)? antiSpoofScoreOverride,
     List<double>? Function(int batchLength)? bigSmallBvpOverride,
+    List<double>? Function(
+      int modelIndex,
+      Float32List appearanceBuf,
+      Float32List motionBuf,
+      List<int> outputShape,
+    )?
+    bigSmallModelOutputOverride,
   }) : _random = random ?? math.Random(),
        _nowMs = nowMs,
        _antiSpoofScoreOverride = antiSpoofScoreOverride,
-       _bigSmallBvpOverride = bigSmallBvpOverride;
+       _bigSmallBvpOverride = bigSmallBvpOverride,
+       _bigSmall = _BigSmallService(debugRunOverride: bigSmallModelOutputOverride);
 
   final math.Random _random;
   final int Function()? _nowMs;
@@ -56,7 +64,7 @@ class PassiveLivenessService {
   final List<double> _scores = <double>[];
   double _scoresSum = 0.0;
 
-  final _BigSmallService _bigSmall = _BigSmallService();
+  final _BigSmallService _bigSmall;
   final List<_RppgFrame> _rppgFrameBuffer = <_RppgFrame>[];
   final Queue<double> _bvpSamples = Queue<double>();
   final Queue<int> _bvpSampleTimes = Queue<int>();
@@ -196,6 +204,11 @@ class PassiveLivenessService {
     );
 
     return _bigSmall.runInference(batch);
+  }
+
+  @visibleForTesting
+  void debugSetBigSmallOutputShapes(List<List<int>?> outputShapes) {
+    _bigSmall.debugSetOutputShapes(outputShapes);
   }
 
   void _sampleAntiSpoof(img.Image frame, FaceObservation face) {
@@ -472,6 +485,16 @@ class _RppgFrame {
 }
 
 class _BigSmallService {
+  _BigSmallService({
+    List<double>? Function(
+      int modelIndex,
+      Float32List appearanceBuf,
+      Float32List motionBuf,
+      List<int> outputShape,
+    )?
+    debugRunOverride,
+  }) : _debugRunOverride = debugRunOverride;
+
   static const List<String> _modelFiles = <String>[
     'assets/face_verification/bigsmall_1.tflite',
     'assets/face_verification/bigsmall_2.tflite',
@@ -486,6 +509,13 @@ class _BigSmallService {
   final List<List<int>?> _appearanceShapes = List<List<int>?>.filled(_modelFiles.length, null);
   final List<List<int>?> _motionShapes = List<List<int>?>.filled(_modelFiles.length, null);
   final List<List<int>?> _outputShapes = List<List<int>?>.filled(_modelFiles.length, null);
+  final List<double>? Function(
+    int modelIndex,
+    Float32List appearanceBuf,
+    Float32List motionBuf,
+    List<int> outputShape,
+  )?
+  _debugRunOverride;
 
   Future<void> initialize() async {
     for (var i = 0; i < _modelFiles.length; i++) {
@@ -509,9 +539,17 @@ class _BigSmallService {
     _outputShapes[i] = _interpreters[i]!.getOutputTensor(0).shape;
   }
 
+  @visibleForTesting
+  void debugSetOutputShapes(List<List<int>?> outputShapes) {
+    for (var i = 0; i < _outputShapes.length; i++) {
+      _outputShapes[i] = i < outputShapes.length ? outputShapes[i] : null;
+    }
+  }
+
   List<double>? runInference(List<_RppgFrame> framesBatch) {
     if (framesBatch.length != bufferFrames) return null;
-    if (_interpreters.every((Interpreter? i) => i == null)) return null;
+    final debugRunOverride = _debugRunOverride;
+    if (_interpreters.every((Interpreter? i) => i == null) && debugRunOverride == null) return null;
 
     final appearanceBuf = _buildAppearanceBuf(framesBatch);
     final motionBuf = _buildMotionBuf(framesBatch);
@@ -522,11 +560,17 @@ class _BigSmallService {
     for (var i = 0; i < _interpreters.length; i++) {
       final interp = _interpreters[i];
       final oShape = _outputShapes[i];
-      if (interp == null || oShape == null) continue;
+      if (oShape == null) continue;
 
-      final outTensor = tfliteMakeTensor(oShape);
-      interp.runForMultipleInputs(<Object>[appearanceBuf.buffer, motionBuf.buffer], <int, Object>{0: outTensor});
-      final out = tfliteFlatFloatArray(outTensor);
+      final List<double> out;
+      if (debugRunOverride != null) {
+        out = debugRunOverride(i, appearanceBuf, motionBuf, oShape) ?? const <double>[];
+      } else {
+        if (interp == null) continue;
+        final outTensor = tfliteMakeTensor(oShape);
+        interp.runForMultipleInputs(<Object>[appearanceBuf.buffer, motionBuf.buffer], <int, Object>{0: outTensor});
+        out = tfliteFlatFloatArray(outTensor);
+      }
       if (out.isEmpty) continue;
       final take = math.min(frames, out.length);
       for (var f = 0; f < take; f++) {

@@ -354,22 +354,19 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
     );
   }
 
+
   Uint8List _yuv420ToNv21(CameraImage img) {
     final yPlane = img.planes[0];
-    final u = img.planes[1];
-    final v = img.planes[2];
+    final uPlane = img.planes[1];
+    final vPlane = img.planes[2];
 
     return _yuv420PlanesToNv21(
       width: img.width,
       height: img.height,
       yBytes: yPlane.bytes,
       yBytesPerRow: yPlane.bytesPerRow,
-      uBytes: u.bytes,
-      uBytesPerRow: u.bytesPerRow,
-      uBytesPerPixel: u.bytesPerPixel ?? 1,
-      vBytes: v.bytes,
-      vBytesPerRow: v.bytesPerRow,
-      vBytesPerPixel: v.bytesPerPixel ?? 1,
+      u: (bytes: uPlane.bytes, bytesPerRow: uPlane.bytesPerRow, bytesPerPixel: uPlane.bytesPerPixel ?? 1),
+      v: (bytes: vPlane.bytes, bytesPerRow: vPlane.bytesPerRow, bytesPerPixel: vPlane.bytesPerPixel ?? 1),
     );
   }
 
@@ -378,12 +375,8 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
     required int height,
     required Uint8List yBytes,
     required int yBytesPerRow,
-    required Uint8List uBytes,
-    required int uBytesPerRow,
-    required int uBytesPerPixel,
-    required Uint8List vBytes,
-    required int vBytesPerRow,
-    required int vBytesPerPixel,
+    required ({Uint8List bytes, int bytesPerRow, int bytesPerPixel}) u,
+    required ({Uint8List bytes, int bytesPerRow, int bytesPerPixel}) v,
   }) {
     final int ySize = width * height;
     final Uint8List nv21 = Uint8List(ySize + width * height ~/ 2);
@@ -398,11 +391,11 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
 
     int uvIndex = ySize;
     for (int row = 0; row < height ~/ 2; row++) {
-      final int uRowStart = row * uBytesPerRow;
-      final int vRowStart = row * vBytesPerRow;
+      final int uRowStart = row * u.bytesPerRow;
+      final int vRowStart = row * v.bytesPerRow;
       for (int col = 0; col < width ~/ 2; col++) {
-        nv21[uvIndex++] = vBytes[vRowStart + col * vBytesPerPixel];
-        nv21[uvIndex++] = uBytes[uRowStart + col * uBytesPerPixel];
+        nv21[uvIndex++] = v.bytes[vRowStart + col * v.bytesPerPixel];
+        nv21[uvIndex++] = u.bytes[uRowStart + col * u.bytesPerPixel];
       }
     }
 
@@ -423,25 +416,10 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
     required int height,
     required Uint8List yBytes,
     required int yBytesPerRow,
-    required Uint8List uBytes,
-    required int uBytesPerRow,
-    required int uBytesPerPixel,
-    required Uint8List vBytes,
-    required int vBytesPerRow,
-    required int vBytesPerPixel,
+    required ({Uint8List bytes, int bytesPerRow, int bytesPerPixel}) u,
+    required ({Uint8List bytes, int bytesPerRow, int bytesPerPixel}) v,
   }) {
-    return _yuv420PlanesToNv21(
-      width: width,
-      height: height,
-      yBytes: yBytes,
-      yBytesPerRow: yBytesPerRow,
-      uBytes: uBytes,
-      uBytesPerRow: uBytesPerRow,
-      uBytesPerPixel: uBytesPerPixel,
-      vBytes: vBytes,
-      vBytesPerRow: vBytesPerRow,
-      vBytesPerPixel: vBytesPerPixel,
-    );
+    return _yuv420PlanesToNv21(width: width, height: height, yBytes: yBytes, yBytesPerRow: yBytesPerRow, u: u, v: v);
   }
 
   @visibleForTesting
@@ -482,18 +460,16 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
     required int height,
     required int bytesPerRow,
     required bool isNv21,
-    required int sensorOrientation,
-    required CameraLensDirection lensDirection,
-    required DeviceOrientation deviceOrientation,
+    required ({int sensorOrientation, CameraLensDirection lensDirection, DeviceOrientation deviceOrientation}) cameraInfo,
     required Size viewSize,
   }) {
-    final rotationComp = _orientations[deviceOrientation] ?? 0;
+    final rotationComp = _orientations[cameraInfo.deviceOrientation] ?? 0;
 
     final int rotation;
-    if (lensDirection == CameraLensDirection.front) {
-      rotation = (sensorOrientation + rotationComp) % 360;
+    if (cameraInfo.lensDirection == CameraLensDirection.front) {
+      rotation = (cameraInfo.sensorOrientation + rotationComp) % 360;
     } else {
-      rotation = (sensorOrientation - rotationComp + 360) % 360;
+      rotation = (cameraInfo.sensorOrientation - rotationComp + 360) % 360;
     }
 
     final preview = _previewRect(viewSize);

@@ -328,7 +328,9 @@ void main() {
       expect(find.byType(DrivingLicenceDataScreen), findsOneWidget);
     });
 
-    testWidgets('result route callbacks navigate back and to face verification', (tester) async {
+    testWidgets('result route callbacks navigate back and to face verification for passport and driving licence', (
+      tester,
+    ) async {
       final engine = FaceVerificationEngine.withWorker(_FakeWorker());
       final router = createRouter(scannerBuilder: _scannerBuilder(), faceVerificationEngine: engine);
       addTearDown(router.dispose);
@@ -357,6 +359,26 @@ void main() {
           .widgetList<PassportDataScreen>(find.byType(PassportDataScreen))
           .last
           .onFaceVerification(Uint8List.fromList([9]), issueDate);
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(FlutterFaceVerificationScreen), findsOneWidget);
+
+      router.go(
+        '/result',
+        extra: {
+          'document': _drivingLicenceData(),
+          'result': _rawDocument(),
+          'document_type': DocumentType.drivingLicence,
+        },
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final drivingIssueDate = DateTime(2024, 4, 5);
+      tester
+          .widgetList<DrivingLicenceDataScreen>(find.byType(DrivingLicenceDataScreen))
+          .last
+          .onFaceVerification(Uint8List.fromList([7, 8]), drivingIssueDate);
       await tester.pump();
       await tester.pump();
       expect(find.byType(FlutterFaceVerificationScreen), findsOneWidget);
@@ -465,11 +487,11 @@ void main() {
       expect(faceExtra!['issueDate'], DateTime(2024, 2, 1));
     });
 
-    testWidgets('builds manual entry route from query params', (tester) async {
+    testWidgets('manual entry callback navigates to NFC reading with the selected document type', (tester) async {
       final router = createRouter(scannerBuilder: _scannerBuilder());
       addTearDown(router.dispose);
 
-      final params = ManualEntryRouteParams(documentType: DocumentType.drivingLicence);
+      final params = ManualEntryRouteParams(documentType: DocumentType.passport);
       final uri = Uri(path: '/manual_entry', queryParameters: params.toQueryParams());
 
       await tester.pumpWidget(_routerApp(router));
@@ -478,6 +500,14 @@ void main() {
       await tester.pump();
 
       expect(find.byType(ManualEntryScreen), findsOneWidget);
+
+      tester
+          .widget<ManualEntryScreen>(find.byType(ManualEntryScreen))
+          .onManualEntryComplete(_scannedPassport(DocumentType.passport));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byType(NfcReadingScreen), findsOneWidget);
     });
 
     testWidgets('builds result route for identity card using passport data screen', (tester) async {

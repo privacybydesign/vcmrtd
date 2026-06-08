@@ -809,6 +809,71 @@ void main() {
 
         expect(result, isNull);
       });
+
+      test('debugBigSmallRunInferenceWithImages averages non-empty debug model outputs', () {
+        final svc = PassiveLivenessService(
+          bigSmallModelOutputOverride: (modelIndex, appearanceBuf, motionBuf, outputShape) {
+            expect(outputShape, <int>[1, 3]);
+            expect(appearanceBuf.length, 3 * 3 * 144 * 144);
+            expect(motionBuf.length, 3 * 3 * 9 * 9);
+
+            return switch (modelIndex) {
+              0 => <double>[1.0, 2.0, 3.0],
+              1 => <double>[4.0, 5.0, 6.0],
+              _ => <double>[],
+            };
+          },
+        );
+        svc.debugSetBigSmallOutputShapes(<List<int>?>[
+          <int>[1, 3],
+          <int>[1, 3],
+          <int>[1, 3],
+        ]);
+
+        final result = svc.debugBigSmallRunInferenceWithImages(
+          appearances: List<img.Image>.generate(4, (_) => solidImage(width: 144, height: 144, r: 0, g: 0, b: 0)),
+          motions: List<img.Image>.generate(4, (_) => solidImage(width: 9, height: 9, r: 0, g: 0, b: 0)),
+          timestampsMs: const <int>[0, 1, 2, 3],
+        );
+
+        expect(result, <double>[2.5, 3.5, 4.5]);
+      });
+
+      test('debugBigSmallRunInferenceWithImages returns null when every debug model output is empty', () {
+        final svc = PassiveLivenessService(
+          bigSmallModelOutputOverride: (_, __, ___, ____) => <double>[],
+        );
+        svc.debugSetBigSmallOutputShapes(<List<int>?>[
+          <int>[1, 3],
+          <int>[1, 3],
+          <int>[1, 3],
+        ]);
+
+        final result = svc.debugBigSmallRunInferenceWithImages(
+          appearances: List<img.Image>.generate(4, (_) => solidImage(width: 144, height: 144, r: 0, g: 0, b: 0)),
+          motions: List<img.Image>.generate(4, (_) => solidImage(width: 9, height: 9, r: 0, g: 0, b: 0)),
+          timestampsMs: const <int>[0, 1, 2, 3],
+        );
+
+        expect(result, isNull);
+      });
+
+      test('collectPassiveMetrics trims retained BVP samples to 900', () {
+        var now = 1000;
+        final svc = PassiveLivenessService(
+          nowMs: () => now,
+          bigSmallBvpOverride: (batchLength) => List<double>.filled(batchLength - 1, 0.25),
+        );
+
+        for (var i = 0; i < 1400; i++) {
+          now = 1000 + i * 150;
+          svc.collectPassiveMetrics(_frame(), _face());
+        }
+
+        final result = svc.debugEvaluateBvp();
+        expect(result, isNotNull);
+        expect(result!.sampleCount, 900);
+      });
     });
   });
 }
