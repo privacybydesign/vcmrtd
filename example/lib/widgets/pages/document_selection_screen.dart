@@ -9,7 +9,14 @@ import 'package:vcmrtdapp/theme/text_styles.dart';
 class DocumentTypeSelectionScreen extends StatelessWidget {
   final Function(DocumentType) onDocumentTypeSelected;
 
-  const DocumentTypeSelectionScreen({super.key, required this.onDocumentTypeSelected});
+  const DocumentTypeSelectionScreen({
+    super.key,
+    required this.onDocumentTypeSelected,
+    @visibleForTesting this.showOcrEngineForTesting,
+  });
+
+  @visibleForTesting
+  final bool? showOcrEngineForTesting;
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +38,7 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _Header(),
+                  _Header(showOcrEngineForTesting: showOcrEngineForTesting),
                   const SizedBox(height: 24),
                   _OptionCard(
                     context: context,
@@ -72,6 +79,10 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
 }
 
 class _Header extends ConsumerWidget {
+  const _Header({this.showOcrEngineForTesting});
+
+  final bool? showOcrEngineForTesting;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Card(
@@ -110,7 +121,7 @@ class _Header extends ConsumerWidget {
                 ),
               ],
             ),
-            if (Platform.isAndroid) ...[
+            if (showOcrEngineForTesting ?? Platform.isAndroid) ...[
               const SizedBox(height: 8),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,

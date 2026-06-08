@@ -19,6 +19,7 @@ Widget _scaffold({
   void Function(dynamic, List<String>)? onSuccess,
   bool showOverlay = true,
   CameraLensDirection initialDirection = CameraLensDirection.back,
+  Future<List<String>?> Function(OcrFrame frame)? googleMlKitOcrForTesting,
 }) {
   return ProviderScope(
     child: MaterialApp(
@@ -28,6 +29,7 @@ Widget _scaffold({
           initialDirection: initialDirection,
           showOverlay: showOverlay,
           initializeCamera: false,
+          googleMlKitOcrForTesting: googleMlKitOcrForTesting,
           onSuccess: onSuccess ?? (result, lines) {},
         ),
       ),
@@ -86,6 +88,20 @@ void main() {
       expect(view.showOverlay, isFalse);
       expect(view.initialDirection, CameraLensDirection.front);
       expect(view.initializeCamera, isFalse);
+    });
+
+    testWidgets('didPopNext re-enables processing after a successful scan', (tester) async {
+      await tester.pumpWidget(_scaffold(documentType: DocumentType.passport));
+      await tester.pump();
+      final state = _buildState(tester);
+
+      expect(state.debugTryParseAndNotify([_passportLine1, _passportLine2]), isTrue);
+      expect(state.debugCanProcess, isFalse);
+
+      state.didPopNext();
+
+      expect(state.debugCanProcess, isTrue);
+      expect(state.debugIsBusy, isFalse);
     });
   });
 
@@ -224,6 +240,25 @@ void main() {
       await state.debugProcessFrame(_frame(), OcrEngine.tesseract4android);
 
       expect(called, isFalse);
+      expect(state.debugCanProcess, isFalse);
+      expect(state.debugIsBusy, isFalse);
+    });
+
+    testWidgets('google ML Kit path uses injected OCR lines and clears busy flag', (tester) async {
+      List<String>? capturedLines;
+      await tester.pumpWidget(
+        _scaffold(
+          documentType: DocumentType.passport,
+          onSuccess: (_, lines) => capturedLines = lines,
+          googleMlKitOcrForTesting: (_) async => <String>[_passportLine1, _passportLine2],
+        ),
+      );
+      await tester.pump();
+      final state = _buildState(tester);
+
+      await state.debugProcessFrame(_frame(), OcrEngine.googleMlKit);
+
+      expect(capturedLines, <String>[_passportLine1, _passportLine2]);
       expect(state.debugCanProcess, isFalse);
       expect(state.debugIsBusy, isFalse);
     });

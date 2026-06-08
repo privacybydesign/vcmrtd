@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtdapp/features/face_verification/detection/face_landmarker_types.dart';
 import 'package:vcmrtdapp/features/face_verification/detection/face_observation.dart';
+import 'package:vcmrtdapp/features/face_verification/ffi/face_frame_buffer.dart';
 import 'package:vcmrtdapp/features/face_verification/face_verification_worker.dart';
 
 // ---------------------------------------------------------------------------
@@ -292,11 +293,103 @@ class _DebugWorkerHarness {
   }
 }
 
+void _debugEchoIsolateEntry(List<Object?> args) {
+  final mainSendPort = args[0] as SendPort;
+  final commandPort = ReceivePort();
+  mainSendPort.send('noise-before-ready');
+  mainSendPort.send(commandPort.sendPort);
+  commandPort.listen((dynamic message) {
+    if (message is! Map) return;
+    final id = message['id'] as int?;
+    final cmd = message['cmd'] as String?;
+    final payload = (message['payload'] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{};
+
+    switch (cmd) {
+      case 'error':
+        mainSendPort.send(<String, dynamic>{'id': id, 'error': 'echo boom'});
+        break;
+      case 'empty':
+        mainSendPort.send(<String, dynamic>{'id': id});
+        break;
+      case 'never':
+        break;
+      case 'dispose':
+        mainSendPort.send(<String, dynamic>{
+          'id': id,
+          'result': <String, dynamic>{'ok': true},
+        });
+        commandPort.close();
+        break;
+      default:
+        mainSendPort.send(<String, dynamic>{
+          'id': id,
+          'result': <String, dynamic>{'cmd': cmd, 'payload': payload},
+        });
+        break;
+    }
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  group('FaceFrameBuffer — address wrapper metadata', () {
+    test('fromAddress preserves address and byte capacity without native calls', () {
+      final buffer = FaceFrameBuffer.fromAddress(0x1234, 4096);
+
+      expect(buffer.address, 0x1234);
+      expect(buffer.byteCapacity, 4096);
+    });
+  });
+
+  group('FaceVerificationWorker — isolate client', () {
+    test('request before start throws', () {
+      final client = FaceVerificationWorker.debugCreateIsolateClient(_debugEchoIsolateEntry);
+
+      expect(() => client.request('echo'), throwsStateError);
+    });
+
+    test('start is idempotent and request returns mapped result payload', () async {
+      final client = FaceVerificationWorker.debugCreateIsolateClient(_debugEchoIsolateEntry);
+      addTearDown(client.dispose);
+
+      await client.start();
+      await client.start();
+
+      final result = await client.request('echo', payload: <String, dynamic>{'value': 7});
+
+      expect(result['cmd'], 'echo');
+      expect(result['payload'], <String, dynamic>{'value': 7});
+    });
+
+    test('error and missing result messages are mapped safely', () async {
+      final client = FaceVerificationWorker.debugCreateIsolateClient(_debugEchoIsolateEntry);
+      addTearDown(client.dispose);
+      await client.start();
+
+      await expectLater(client.request('error'), throwsStateError);
+      expect(await client.request('empty'), isEmpty);
+    });
+
+    test('dispose is safe before start and completes abandoned pending requests', () async {
+      final unused = FaceVerificationWorker.debugCreateIsolateClient(_debugEchoIsolateEntry);
+      await unused.dispose();
+
+      final client = FaceVerificationWorker.debugCreateIsolateClient(_debugEchoIsolateEntry);
+      await client.start();
+      final pending = client.request('never');
+
+      await client.dispose();
+
+      await expectLater(pending, throwsStateError);
+      await client.dispose();
+    });
+  });
+
   group('FaceVerificationWorker — client orchestration', () {
     late _FakeWorkerClient pipeline;
     late _FakeWorkerClient passive;

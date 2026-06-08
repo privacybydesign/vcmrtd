@@ -649,6 +649,10 @@ class FaceVerificationWorker {
   @visibleForTesting
   static void debugMatchWorkerEntry(SendPort mainSendPort) => unawaited(_matchWorkerLoop(mainSendPort));
 
+  @visibleForTesting
+  static FaceVerificationWorkerClient debugCreateIsolateClient(void Function(List<Object?>) entryPoint) =>
+      _IsolateClient(entryPoint);
+
   Future<void> _debugProcessPackedCameraFrameForTest({
     required List<Uint8List> planeBytes,
     required int width,

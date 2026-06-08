@@ -157,6 +157,9 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
   List<CameraDescription> _cameras = [];
   Size? _viewSize;
   double _previewScale = 1.0;
+  CameraDescription? _debugCameraForTesting;
+  DeviceOrientation? _debugDeviceOrientationForTesting;
+  bool? _debugIsAndroidForTesting;
   final _orientations = const {
     DeviceOrientation.portraitUp: 0,
     DeviceOrientation.landscapeLeft: 90,
@@ -242,7 +245,7 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
       _cameras[_cameraIndex],
       ResolutionPreset.high,
       enableAudio: false,
-      imageFormatGroup: Platform.isAndroid ? ImageFormatGroup.yuv420 : ImageFormatGroup.bgra8888,
+      imageFormatGroup: _isAndroid ? ImageFormatGroup.yuv420 : ImageFormatGroup.bgra8888,
     );
 
     await _controller!.initialize();
@@ -293,13 +296,20 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
   }
 
   Future<void> _processCameraImage(CameraImage image) async {
-    if (_controller == null || _viewSize == null) return;
-    // Android: 3-plane YUV420. iOS: 1-plane BGRA8888.
-    if (Platform.isAndroid && image.planes.length < 3) return;
-    if (!Platform.isAndroid && image.planes.isEmpty) return;
+    final controller = _controller;
+    final debugCamera = _debugCameraForTesting;
+    final debugOrientation = _debugDeviceOrientationForTesting;
+    if (_viewSize == null) return;
+    if (controller == null && (debugCamera == null || debugOrientation == null)) return;
 
-    final camera = _cameras[_cameraIndex];
-    final rotationComp = _orientations[_controller!.value.deviceOrientation] ?? 0;
+    final isAndroid = _isAndroid;
+    // Android: 3-plane YUV420. iOS: 1-plane BGRA8888.
+    if (isAndroid && image.planes.length < 3) return;
+    if (!isAndroid && image.planes.isEmpty) return;
+
+    final camera = debugCamera ?? _cameras[_cameraIndex];
+    final deviceOrientation = debugOrientation ?? controller!.value.deviceOrientation;
+    final rotationComp = _orientations[deviceOrientation] ?? 0;
 
     final int rotation;
     if (camera.lensDirection == CameraLensDirection.front) {
@@ -318,7 +328,7 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
     final int bytesPerRow;
     final bool isNv21;
 
-    if (Platform.isAndroid) {
+    if (isAndroid) {
       bytes = _yuv420ToNv21(image);
       bytesPerRow = image.width;
       isNv21 = true;
@@ -399,6 +409,8 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
     return nv21;
   }
 
+  bool get _isAndroid => _debugIsAndroidForTesting ?? Platform.isAndroid;
+
   @visibleForTesting
   Rect overlayRectForTesting(Size size) => _overlayRect(size);
 
@@ -435,6 +447,32 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
   @visibleForTesting
   void debugSetPreviewScale(double scale) {
     _previewScale = scale;
+  }
+
+  @visibleForTesting
+  Future<void> debugProcessCameraImageForTesting({
+    required CameraImage image,
+    required CameraDescription camera,
+    required DeviceOrientation deviceOrientation,
+    required Size viewSize,
+    required bool isAndroid,
+  }) async {
+    final previousCamera = _debugCameraForTesting;
+    final previousOrientation = _debugDeviceOrientationForTesting;
+    final previousIsAndroid = _debugIsAndroidForTesting;
+    final previousViewSize = _viewSize;
+    _debugCameraForTesting = camera;
+    _debugDeviceOrientationForTesting = deviceOrientation;
+    _debugIsAndroidForTesting = isAndroid;
+    _viewSize = viewSize;
+    try {
+      await _processCameraImage(image);
+    } finally {
+      _debugCameraForTesting = previousCamera;
+      _debugDeviceOrientationForTesting = previousOrientation;
+      _debugIsAndroidForTesting = previousIsAndroid;
+      _viewSize = previousViewSize;
+    }
   }
 
   @visibleForTesting

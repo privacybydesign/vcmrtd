@@ -682,6 +682,56 @@ void main() {
       expect(frame.roiWidth, 1.0);
       expect(frame.roiHeight, 1.0);
     });
+
+    testWidgets('processCameraImage builds Android NV21 OCR frame from camera planes', (tester) async {
+      OcrFrame? captured;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MRZCameraView(showOverlay: false, initializeCamera: false, onImage: (frame) => captured = frame),
+        ),
+      );
+      final state = tester.state<MRZCameraViewState>(find.byType(MRZCameraView));
+
+      final image = _cameraImage(
+        width: 4,
+        height: 2,
+        planes: <Map<String, Object?>>[
+          <String, Object?>{
+            'bytes': Uint8List.fromList(<int>[1, 2, 3, 4, 5, 6, 7, 8]),
+            'bytesPerRow': 4,
+            'bytesPerPixel': 1,
+          },
+          <String, Object?>{
+            'bytes': Uint8List.fromList(<int>[10, 20]),
+            'bytesPerRow': 2,
+            'bytesPerPixel': null,
+          },
+          <String, Object?>{
+            'bytes': Uint8List.fromList(<int>[30, 40]),
+            'bytesPerRow': 2,
+            'bytesPerPixel': null,
+          },
+        ],
+      );
+
+      await state.debugProcessCameraImageForTesting(
+        image: image,
+        camera: const CameraDescription(name: 'front', lensDirection: CameraLensDirection.front, sensorOrientation: 90),
+        deviceOrientation: DeviceOrientation.landscapeLeft,
+        viewSize: const Size(400, 800),
+        isAndroid: true,
+      );
+
+      expect(captured, isNotNull);
+      expect(captured!.isNv21, isTrue);
+      expect(captured!.rotation, 180);
+      expect(captured!.bytesPerRow, 4);
+      expect(captured!.bytes, Uint8List.fromList(<int>[1, 2, 3, 4, 5, 6, 7, 8, 30, 10, 40, 20]));
+      expect(captured!.roiLeft, inInclusiveRange(0.0, 1.0));
+      expect(captured!.roiTop, inInclusiveRange(0.0, 1.0));
+      expect(captured!.roiWidth, inInclusiveRange(0.0, 1.0));
+      expect(captured!.roiHeight, inInclusiveRange(0.0, 1.0));
+    });
   });
 }
 
@@ -730,4 +780,17 @@ OcrFrame _bgra({
     roiHeight: roiHeight,
     isNv21: false,
   );
+}
+
+CameraImage _cameraImage({required int width, required int height, required List<Map<String, Object?>> planes}) {
+  // ignore: deprecated_member_use
+  return CameraImage.fromPlatformData(<dynamic, dynamic>{
+    'width': width,
+    'height': height,
+    'format': 35,
+    'lensAperture': null,
+    'sensorExposureTime': null,
+    'sensorSensitivity': null,
+    'planes': planes,
+  });
 }

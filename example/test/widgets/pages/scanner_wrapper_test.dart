@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtdapp/routing.dart';
 import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
 import 'package:vcmrtdapp/widgets/pages/scanner_wrapper.dart';
 
@@ -116,6 +117,44 @@ void main() {
       expect(scanned, hasLength(1));
       expect(scanned.single.documentType, DocumentType.identityCard);
       expect(scanned.single.documentNumber, 'L898902C3');
+    });
+
+    testWidgets('allows another scan after returning from a pushed route', (tester) async {
+      final scanned = <ScannedMRZ>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          navigatorObservers: [routeObserver],
+          home: ScannerWrapper(
+            documentType: DocumentType.passport,
+            onMrzScanned: scanned.add,
+            onManualEntry: () {},
+            onCancel: () {},
+            onBack: () {},
+            scannerBuilder: ({required documentType, required onSuccess}) {
+              return _FakeScanner(documentType: documentType, onSuccess: onSuccess);
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('fake scanner ${DocumentType.passport.name}'));
+      await tester.pump();
+      await tester.tap(find.text('fake scanner ${DocumentType.passport.name}'));
+      await tester.pump();
+      expect(scanned, hasLength(1));
+
+      final pushFuture = Navigator.of(
+        tester.element(find.byType(ScannerWrapper)),
+      ).push<void>(MaterialPageRoute<void>(builder: (_) => const Scaffold(body: Text('details'))));
+      await tester.pumpAndSettle();
+      Navigator.of(tester.element(find.text('details'))).pop();
+      await tester.pumpAndSettle();
+      await pushFuture;
+
+      await tester.tap(find.text('fake scanner ${DocumentType.passport.name}'));
+      await tester.pump();
+
+      expect(scanned, hasLength(2));
     });
   });
 }

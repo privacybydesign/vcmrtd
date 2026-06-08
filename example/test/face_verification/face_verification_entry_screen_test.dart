@@ -76,33 +76,58 @@ class _FakeWorker implements FaceVerificationWorker {
 }
 
 void main() {
-  testWidgets('FaceVerificationEntryScreen wraps FlutterFaceVerificationScreen with injected engine', (tester) async {
-    var backCount = 0;
-    final engine = FaceVerificationEngine.withWorker(_FakeWorker());
-    final issueDate = DateTime(2022, 1, 2);
+  group('FaceVerificationEntryScreen', () {
+    testWidgets('wraps FlutterFaceVerificationScreen with injected engine', (tester) async {
+      var backCount = 0;
+      final engine = FaceVerificationEngine.withWorker(_FakeWorker());
+      final issueDate = DateTime(2022, 1, 2);
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: FaceVerificationEntryScreen.withEngine(
-          engine: engine,
-          nfcImageBytes: Uint8List.fromList([1, 2, 3]),
-          onBackPressed: () => backCount++,
-          photoIssueDate: issueDate,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: FaceVerificationEntryScreen.withEngine(
+            engine: engine,
+            nfcImageBytes: Uint8List.fromList([1, 2, 3]),
+            onBackPressed: () => backCount++,
+            photoIssueDate: issueDate,
+          ),
         ),
-      ),
-    );
-    await tester.pump();
-    await tester.pump();
+      );
+      await tester.pump();
+      await tester.pump();
 
-    final screen = tester.widget<FlutterFaceVerificationScreen>(find.byType(FlutterFaceVerificationScreen));
-    expect(screen.nfcImageBytes, Uint8List.fromList([1, 2, 3]));
-    expect(screen.photoIssueDate, issueDate);
-    expect(
-      tester.state<FlutterFaceVerificationScreenState>(find.byType(FlutterFaceVerificationScreen)).debugEngineReady,
-      isTrue,
-    );
+      final screen = tester.widget<FlutterFaceVerificationScreen>(find.byType(FlutterFaceVerificationScreen));
+      expect(screen.nfcImageBytes, Uint8List.fromList([1, 2, 3]));
+      expect(screen.photoIssueDate, issueDate);
+      expect(
+        tester.state<FlutterFaceVerificationScreenState>(find.byType(FlutterFaceVerificationScreen)).debugEngineReady,
+        isTrue,
+      );
 
-    screen.onBackPressed();
-    expect(backCount, 1);
+      screen.onBackPressed();
+      expect(backCount, 1);
+    });
+
+    testWidgets('default build branch returns a face verification screen without mounting it', (tester) async {
+      final bytes = Uint8List.fromList(<int>[1, 2, 3]);
+      final issueDate = DateTime(2024, 2, 1);
+      Widget? built;
+
+      final screen = FaceVerificationEntryScreen(nfcImageBytes: bytes, onBackPressed: () {}, photoIssueDate: issueDate);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) {
+              built = screen.build(context);
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
+
+      final faceScreen = built as FlutterFaceVerificationScreen;
+      expect(faceScreen.nfcImageBytes, bytes);
+      expect(faceScreen.photoIssueDate, issueDate);
+    });
   });
 }

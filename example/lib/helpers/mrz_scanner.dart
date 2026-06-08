@@ -20,6 +20,7 @@ class MRZScanner extends ConsumerStatefulWidget {
     this.showOverlay = true,
     this.documentType = DocumentType.passport,
     @visibleForTesting this.initializeCamera = true,
+    @visibleForTesting this.googleMlKitOcrForTesting,
   }) : super(key: controller);
 
   final Function(dynamic mrzResult, List<String> lines) onSuccess;
@@ -28,6 +29,8 @@ class MRZScanner extends ConsumerStatefulWidget {
   final DocumentType documentType;
   @visibleForTesting
   final bool initializeCamera;
+  @visibleForTesting
+  final Future<List<String>?> Function(OcrFrame frame)? googleMlKitOcrForTesting;
 
   @override
   MRZScannerState createState() => MRZScannerState();
@@ -99,6 +102,13 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
 
   Future<void> _runGoogleMlKitOcr(OcrFrame frame) async {
     try {
+      final googleMlKitOcrForTesting = widget.googleMlKitOcrForTesting;
+      if (googleMlKitOcrForTesting != null) {
+        final finalLines = await googleMlKitOcrForTesting(frame);
+        if (finalLines != null) _tryParseAndNotify(finalLines);
+        return;
+      }
+
       final inputImage = InputImage.fromBytes(
         bytes: frame.bytes,
         metadata: InputImageMetadata(

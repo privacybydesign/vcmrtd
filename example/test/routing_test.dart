@@ -13,6 +13,7 @@ import 'package:vcmrtdapp/features/face_verification/face_verification_screen.da
 import 'package:vcmrtdapp/features/face_verification/face_verification_worker.dart';
 import 'package:vcmrtdapp/routing.dart';
 import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
+import 'package:vcmrtdapp/widgets/pages/document_selection_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/driving_licence_data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/passport_data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/scanner_wrapper.dart';
@@ -239,6 +240,64 @@ void main() {
       expect(find.text('fake route scanner ${DocumentType.identityCard.name}'), findsOneWidget);
     });
 
+    testWidgets('document selection callback navigates to MRZ reader', (tester) async {
+      final router = createRouter(scannerBuilder: _scannerBuilder());
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(_routerApp(router));
+      await tester.pumpAndSettle();
+
+      tester
+          .widget<DocumentTypeSelectionScreen>(find.byType(DocumentTypeSelectionScreen))
+          .onDocumentTypeSelected(DocumentType.identityCard);
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byType(ScannerWrapper), findsOneWidget);
+    });
+
+    testWidgets('MRZ reader callbacks navigate to NFC reading and manual entry', (tester) async {
+      final router = createRouter(scannerBuilder: _scannerBuilder());
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(_routerApp(router));
+      router.go(
+        Uri(
+          path: '/mrz_reader',
+          queryParameters: MrzReaderRouteParams(documentType: DocumentType.passport).toQueryParams(),
+        ).toString(),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      tester.widget<ScannerWrapper>(find.byType(ScannerWrapper)).onMrzScanned(_scannedPassport(DocumentType.passport));
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(NfcReadingScreen), findsOneWidget);
+
+      tester
+          .widgetList<NfcReadingScreen>(find.byType(NfcReadingScreen))
+          .last
+          .onSuccess(_passportData(), _rawDocument());
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(PassportDataScreen), findsOneWidget);
+
+      router.go(
+        Uri(
+          path: '/mrz_reader',
+          queryParameters: MrzReaderRouteParams(documentType: DocumentType.drivingLicence).toQueryParams(),
+        ).toString(),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      tester.widgetList<ScannerWrapper>(find.byType(ScannerWrapper)).last.onManualEntry();
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(ManualEntryScreen), findsOneWidget);
+    });
+
     testWidgets('builds result route for passport and driving licence documents', (tester) async {
       tester.view.physicalSize = const Size(1200, 1600);
       tester.view.devicePixelRatio = 1.0;
@@ -267,6 +326,55 @@ void main() {
       await tester.pump();
       await tester.pump();
       expect(find.byType(DrivingLicenceDataScreen), findsOneWidget);
+    });
+
+    testWidgets('result route callbacks navigate back and to face verification', (tester) async {
+      final engine = FaceVerificationEngine.withWorker(_FakeWorker());
+      final router = createRouter(scannerBuilder: _scannerBuilder(), faceVerificationEngine: engine);
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(_routerApp(router));
+      router.go(
+        '/result',
+        extra: {'document': _passportData(), 'result': _rawDocument(), 'document_type': DocumentType.passport},
+      );
+      await tester.pump();
+      await tester.pump();
+
+      tester.widgetList<PassportDataScreen>(find.byType(PassportDataScreen)).last.onBackPressed();
+      await tester.pump();
+      await tester.pump();
+      expect(router.routeInformationProvider.value.uri.path, '/select_doc_type');
+
+      router.go(
+        '/result',
+        extra: {'document': _passportData(), 'result': _rawDocument(), 'document_type': DocumentType.identityCard},
+      );
+      await tester.pump();
+      await tester.pump();
+      final issueDate = DateTime(2024, 3, 4);
+      tester
+          .widgetList<PassportDataScreen>(find.byType(PassportDataScreen))
+          .last
+          .onFaceVerification(Uint8List.fromList([9]), issueDate);
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(FlutterFaceVerificationScreen), findsOneWidget);
+
+      router.go(
+        '/result',
+        extra: {
+          'document': _drivingLicenceData(),
+          'result': _rawDocument(),
+          'document_type': DocumentType.drivingLicence,
+        },
+      );
+      await tester.pump();
+      await tester.pump();
+      tester.widgetList<DrivingLicenceDataScreen>(find.byType(DrivingLicenceDataScreen)).last.onBackPressed();
+      await tester.pump();
+      await tester.pump();
+      expect(router.routeInformationProvider.value.uri.path, '/select_doc_type');
     });
 
     testWidgets('builds face verification route with injected engine', (tester) async {
