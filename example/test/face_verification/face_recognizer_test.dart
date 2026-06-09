@@ -174,4 +174,60 @@ void main() {
       expect(result, <double>[0.0, 0.0, 0.0]);
     });
   });
+
+  group('FaceRecognizer interpreter hooks', () {
+    test('initializeFromBuffer applies provided input and output shapes once', () async {
+      Uint8List? capturedBytes;
+      var initializeCalls = 0;
+
+      final rec = FaceRecognizer.withInterpreterHooks(
+        onInitialize: (Uint8List modelBytes, dynamic options) {
+          capturedBytes = modelBytes;
+          initializeCalls++;
+        },
+        inputShape: <int>[1, 4, 2, 3],
+        outputShape: <int>[1, 3],
+        onRunInterpreter: (_, __) {},
+      );
+
+      final modelBytes = Uint8List.fromList(<int>[1, 2, 3, 4]);
+      await rec.initializeFromBuffer(modelBytes);
+      await rec.initializeFromBuffer(Uint8List.fromList(<int>[9, 9, 9]));
+
+      final resized = rec.debugModelInputImage(img.Image(width: 1, height: 1));
+      expect(capturedBytes, modelBytes);
+      expect(initializeCalls, 1);
+      expect(resized.width, 2);
+      expect(resized.height, 4);
+    });
+
+    test('generateEmbedding uses interpreter run hook and flattens tensor output', () async {
+      Float32List? capturedInput;
+
+      final rec = FaceRecognizer.withInterpreterHooks(
+        inputShape: <int>[1, 2, 2, 3],
+        outputShape: <int>[1, 4],
+        onInitialize: (_, __) {},
+        onRunInterpreter: (Float32List input, dynamic outputTensor) {
+          capturedInput = input;
+          final row = (outputTensor as List<dynamic>).single as List<double>;
+          row[0] = 0.0;
+          row[1] = 3.0;
+          row[2] = 4.0;
+          row[3] = 0.0;
+        },
+      );
+
+      await rec.initializeFromBuffer(Uint8List.fromList(<int>[7, 8, 9]));
+      final result = rec.generateEmbedding(img.Image(width: 5, height: 5));
+
+      expect(capturedInput, isNotNull);
+      expect(capturedInput!.length, 2 * 2 * 3);
+      expect(result.length, 4);
+      expect(result[0], 0.0);
+      expect(result[1], closeTo(0.6, 1e-6));
+      expect(result[2], closeTo(0.8, 1e-6));
+      expect(result[3], 0.0);
+    });
+  });
 }

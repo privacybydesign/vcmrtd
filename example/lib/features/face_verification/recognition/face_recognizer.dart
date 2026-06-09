@@ -11,15 +11,41 @@ import 'package:vcmrtdapp/features/face_verification/tflite_tensor_utils.dart';
 /// Call [initializeFromBuffer] once, then [generateEmbedding] per face crop,
 /// and [cosineSimilarity] to compare two embeddings.
 class FaceRecognizer {
-  FaceRecognizer() : _debugEmbeddingGenerator = null;
+  FaceRecognizer()
+    : _debugEmbeddingGenerator = null,
+      _debugInitOverride = null,
+      _debugRunInterpreterOverride = null,
+      _debugInputShapeOverride = null,
+      _debugOutputShapeOverride = null;
 
   @visibleForTesting
   FaceRecognizer.withEmbeddingGenerator(List<double> Function(Float32List input, List<int> outputShape) generator)
-    : _debugEmbeddingGenerator = generator;
+    : _debugEmbeddingGenerator = generator,
+      _debugInitOverride = null,
+      _debugRunInterpreterOverride = null,
+      _debugInputShapeOverride = null,
+      _debugOutputShapeOverride = null;
+
+  @visibleForTesting
+  FaceRecognizer.withInterpreterHooks({
+    void Function(Uint8List modelBytes, InterpreterOptions options)? onInitialize,
+    void Function(Float32List input, dynamic outputTensor)? onRunInterpreter,
+    required List<int> inputShape,
+    required List<int> outputShape,
+  }) : _debugEmbeddingGenerator = null,
+       _debugInitOverride = onInitialize,
+       _debugRunInterpreterOverride = onRunInterpreter,
+       _debugInputShapeOverride = inputShape,
+       _debugOutputShapeOverride = outputShape;
 
   Interpreter? _interpreter;
+  bool _debugInitialized = false;
 
   final List<double> Function(Float32List input, List<int> outputShape)? _debugEmbeddingGenerator;
+  final void Function(Uint8List modelBytes, InterpreterOptions options)? _debugInitOverride;
+  final void Function(Float32List input, dynamic outputTensor)? _debugRunInterpreterOverride;
+  final List<int>? _debugInputShapeOverride;
+  final List<int>? _debugOutputShapeOverride;
 
   // Actual input/output dimensions are read from the model at init time.
   // These are safe fallbacks that match GhostFaceNet_fp32_V2.
@@ -33,14 +59,22 @@ class FaceRecognizer {
   InterpreterOptions _buildOptions() => InterpreterOptions()..threads = 4;
 
   Future<void> initializeFromBuffer(Uint8List modelBytes) async {
-    if (_interpreter != null) return;
+    if (_interpreter != null || _debugInitialized) return;
+    final debugInputShape = _debugInputShapeOverride;
+    final debugOutputShape = _debugOutputShapeOverride;
+    if (debugInputShape != null && debugOutputShape != null) {
+      _debugInitOverride?.call(modelBytes, _buildOptions());
+      _readShapes(inputShapeOverride: debugInputShape, outputShapeOverride: debugOutputShape);
+      _debugInitialized = true;
+      return;
+    }
     _interpreter = Interpreter.fromBuffer(modelBytes, options: _buildOptions());
     _readShapes();
   }
 
-  void _readShapes() {
-    final inputShape = _interpreter!.getInputTensor(0).shape;
-    final outputShape = _interpreter!.getOutputTensor(0).shape;
+  void _readShapes({List<int>? inputShapeOverride, List<int>? outputShapeOverride}) {
+    final inputShape = inputShapeOverride ?? _interpreter!.getInputTensor(0).shape;
+    final outputShape = outputShapeOverride ?? _interpreter!.getOutputTensor(0).shape;
     _outputShape = outputShape;
     if (inputShape.length == 4) {
       _inputH = inputShape[1];
@@ -58,7 +92,7 @@ class FaceRecognizer {
   /// the standard preprocessing expected by ArcFace-family models including GhostFaceNet.
   List<double> generateEmbedding(img.Image face) {
     final interpreter = _interpreter;
-    if (interpreter == null && _debugEmbeddingGenerator == null) {
+    if (interpreter == null && _debugEmbeddingGenerator == null && _debugRunInterpreterOverride == null) {
       throw StateError('FaceRecognizer is not initialized');
     }
 
@@ -76,7 +110,7 @@ class FaceRecognizer {
     if (debugGenerator != null) {
       embedding = debugGenerator(buf, _outputShape);
     } else {
-      embedding = _runInterpreter(interpreter!, buf);
+      embedding = _runInterpreter(interpreter, buf);
     }
     // The model output should always match _embeddingSize, but guard against
     // unexpected shapes so we never index out of bounds.
@@ -84,9 +118,14 @@ class FaceRecognizer {
     return _normalize(trimmed);
   }
 
-  List<double> _runInterpreter(Interpreter interpreter, Float32List input) {
+  List<double> _runInterpreter(Interpreter? interpreter, Float32List input) {
     final output = tfliteMakeTensor(_outputShape);
-    interpreter.run(input.buffer, output);
+    final debugRunInterpreter = _debugRunInterpreterOverride;
+    if (debugRunInterpreter != null) {
+      debugRunInterpreter(input, output);
+    } else {
+      interpreter!.run(input.buffer, output);
+    }
     return tfliteFlatFloatArray(output);
   }
 
@@ -134,5 +173,6 @@ class FaceRecognizer {
   Future<void> dispose() async {
     _interpreter?.close();
     _interpreter = null;
+    _debugInitialized = false;
   }
 }

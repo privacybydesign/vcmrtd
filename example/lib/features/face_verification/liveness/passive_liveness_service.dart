@@ -543,20 +543,8 @@ class _BigSmallService {
     var count = 0;
 
     for (var i = 0; i < _interpreters.length; i++) {
-      final interp = _interpreters[i];
-      final oShape = _outputShapes[i];
-      if (oShape == null) continue;
-
-      final List<double> out;
-      if (debugRunOverride != null) {
-        out = debugRunOverride(i, appearanceBuf, motionBuf, oShape) ?? const <double>[];
-      } else {
-        if (interp == null) continue;
-        final outTensor = tfliteMakeTensor(oShape);
-        interp.runForMultipleInputs(<Object>[appearanceBuf.buffer, motionBuf.buffer], <int, Object>{0: outTensor});
-        out = tfliteFlatFloatArray(outTensor);
-      }
-      if (out.isEmpty) continue;
+      final out = _runModel(i, appearanceBuf, motionBuf, debugRunOverride);
+      if (out == null || out.isEmpty) continue;
       final take = math.min(frames, out.length);
       for (var f = 0; f < take; f++) {
         sum[f] += out[f];
@@ -566,6 +554,28 @@ class _BigSmallService {
 
     if (count == 0) return null;
     return List<double>.generate(frames, (int i) => sum[i] / count, growable: false);
+  }
+
+  List<double>? _runModel(
+    int modelIndex,
+    Float32List appearanceBuf,
+    Float32List motionBuf,
+    List<double>? Function(int modelIndex, Float32List appearanceBuf, Float32List motionBuf, List<int> outputShape)?
+    debugRunOverride,
+  ) {
+    final oShape = _outputShapes[modelIndex];
+    if (oShape == null) return null;
+
+    if (debugRunOverride != null) {
+      return debugRunOverride(modelIndex, appearanceBuf, motionBuf, oShape) ?? const <double>[];
+    }
+
+    final interp = _interpreters[modelIndex];
+    if (interp == null) return null;
+
+    final outTensor = tfliteMakeTensor(oShape);
+    interp.runForMultipleInputs(<Object>[appearanceBuf.buffer, motionBuf.buffer], <int, Object>{0: outTensor});
+    return tfliteFlatFloatArray(outTensor);
   }
 
   void close() {

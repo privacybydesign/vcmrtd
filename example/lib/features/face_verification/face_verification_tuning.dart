@@ -97,6 +97,12 @@ class FaceVerificationTuning {
   /// new face produces a completely different embedding.
   static final double consistencyCheckThreshold = _doubleEnv('FV_CONSISTENCY_THRESHOLD', 0.50);
 
+  /// Maximum smile blendshape score allowed when capturing the consistency selfie.
+  /// Stricter than the general rest-phase gate (0.35) because residual smile after
+  /// a SMILE action still passes that gate but produces a noticeably different
+  /// embedding than the neutral reference, causing false consistency failures.
+  static final double consistencyMaxSmile = _doubleEnv('FV_CONSISTENCY_MAX_SMILE', 0.15);
+
   // ---------------------------------------------------------------------------
   // Debug
   // ---------------------------------------------------------------------------

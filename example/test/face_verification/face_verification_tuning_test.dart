@@ -27,6 +27,7 @@ void main() {
       expect(FaceVerificationTuning.passiveCenterMaxOffsetX, 0.18);
       expect(FaceVerificationTuning.passiveCenterMaxOffsetY, 0.22);
       expect(FaceVerificationTuning.consistencyCheckThreshold, 0.50);
+      expect(FaceVerificationTuning.consistencyMaxSmile, 0.15);
     });
 
     test('keeps debug event emission disabled by default', () {

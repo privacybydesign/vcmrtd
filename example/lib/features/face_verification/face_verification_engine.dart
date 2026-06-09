@@ -302,6 +302,13 @@ class FaceVerificationEngine {
     if (!_active.processFrame(face: face)) {
       if (_framesSinceLastAction > _actionTimeoutFrames) await _handleTimeout();
       _maybeRunConsistencyCheck(face);
+      // Guarantee: if the rest phase just ended without a check (smile never
+      // dropped below the strict threshold), force one now. The frame that
+      // triggers stable-rest completion is guaranteed neutral (it passed
+      // checkFaceAtRest to increment the stable counter).
+      if (_wasWaitingForRest && !_active.isWaitingForRest && !_consistencyChecked && _consistencySelfieStored) {
+        _startConsistencyCheck(face);
+      }
       _wasWaitingForRest = _active.isWaitingForRest;
       return;
     }
@@ -309,17 +316,25 @@ class FaceVerificationEngine {
   }
 
   void _maybeRunConsistencyCheck(FaceObservation face) {
-    if (_consistencyChecked || !_consistencySelfieStored || !_active.isWaitingForRest) return;
-    // On entering a new rest phase pick a random frame delay (0–14 frames).
+    if (!_consistencySelfieStored || !_active.isWaitingForRest) return;
+    // New rest phase: reset so each rest phase gets its own check.
+    // This allows multiple consistency checks across the session.
     if (!_wasWaitingForRest) {
+      _consistencyChecked = false;
       _consistencyRestFrameCount = 0;
       _consistencyRestDelay = _random.nextInt(15);
     }
+    if (_consistencyChecked) return;
     if (_consistencyRestFrameCount >= _consistencyRestDelay) {
-      // Only capture when the face is genuinely neutral — no open mouth,
-      // no head turn, no smile — so the selfie-vs-selfie comparison is fair.
+      // Prefer a clearly neutral frame: stricter smile threshold than the
+      // general rest-phase gate (0.35) to avoid residual post-smile embeddings.
       if (_active.checkFaceAtRest(face)) {
-        _startConsistencyCheck(face);
+        final smile =
+            ((face.blendshapeScores['mouthSmileLeft'] ?? 0.0) + (face.blendshapeScores['mouthSmileRight'] ?? 0.0)) /
+            2.0;
+        if (smile <= FaceVerificationTuning.consistencyMaxSmile) {
+          _startConsistencyCheck(face);
+        }
       }
     } else {
       _consistencyRestFrameCount++;
