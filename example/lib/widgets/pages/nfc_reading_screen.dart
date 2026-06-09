@@ -8,8 +8,8 @@ import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
 import 'package:vcmrtdapp/widgets/common/animated_nfc_status_widget.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_guidance_screen.dart';
 
-import '../../providers/reader_providers.dart';
-import '../common/scanned_mrz.dart';
+import 'package:vcmrtdapp/providers/reader_providers.dart';
+import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
 
 class NfcReadingRouteParams {
   final ScannedMRZ scannedMRZ;

@@ -39,6 +39,10 @@ dependencies:
       ref: master
   diffie_hellman: ^0.1.2
   logger: ^2.3.0
+  camera: ^0.10.0+4
+  image: ^4.5.4
+  flutter_litert: ^2.8.3
+  native_toolchain_c: ^0.18.0
 
 dev_dependencies:
   json_serializable: ^6.6.1
@@ -48,3 +52,25 @@ dev_dependencies:
     sdk: flutter
   test: ^1.16.5
   lints: ^6.0.0
+  vcmrtdapp:
+    path: example
+  go_router: ^16.3.0
+  mrz_parser:
+    git:
+      url: https://github.com/privacybydesign/mrz_parser.git
+      ref: v3.0.0
+  google_mlkit_text_recognition: ^0.15.0
+  flutter_platform_widgets: ^9.0.0
+  url_launcher: ^6.2.4
+
+flutter:
+  assets:
+    - lib/src/face_verification/Models/face_detector.tflite
+    - lib/src/face_verification/Models/face_landmarks_detector.tflite
+    - lib/src/face_verification/Models/face_blendshapes.tflite
+    - lib/src/face_verification/Models/minifasnet_v1se.tflite
+    - lib/src/face_verification/Models/minifasnet_v2.tflite
+    - lib/src/face_verification/Models/bigsmall_1.tflite
+    - lib/src/face_verification/Models/bigsmall_2.tflite
+    - lib/src/face_verification/Models/bigsmall_3.tflite
+    - lib/src/face_verification/Models/GhostFaceNet_fp32_V2.tflite
