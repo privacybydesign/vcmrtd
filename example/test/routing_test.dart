@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
@@ -8,10 +8,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtd/vcmrtd.dart';
-import 'package:vcmrtd/src/face_verification/face_verification_engine.dart';
+import 'package:vcmrtd/face_verification.dart';
 import 'package:vcmrtdapp/widgets/pages/face_verification_screen.dart';
-import 'package:vcmrtd/src/face_verification/face_verification_worker.dart';
-import 'package:vcmrtd/src/face_verification/worker_result_types.dart';
 import 'package:vcmrtdapp/routing.dart';
 import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
 import 'package:vcmrtdapp/widgets/pages/document_selection_screen.dart';

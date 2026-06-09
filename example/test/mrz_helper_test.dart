@@ -1,6 +1,6 @@
-﻿import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:vcmrtd/vcmrtd.dart' show DocumentType;
-import '../example/lib/helpers/mrz_helper.dart';
+import 'package:vcmrtdapp/helpers/mrz_helper.dart';
 
 void main() {
   group('MRZHelper', () {
