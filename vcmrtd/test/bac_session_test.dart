@@ -16,7 +16,6 @@ import 'package:vcmrtd/src/proto/bac.dart';
 import 'package:vcmrtd/src/proto/dba_key.dart';
 import 'package:vcmrtd/src/proto/iso7816/icc.dart';
 import 'package:vcmrtd/src/proto/iso7816/iso7816.dart';
-import 'package:vcmrtd/src/proto/iso7816/command_apdu.dart';
 import 'package:vcmrtd/src/proto/iso7816/response_apdu.dart';
 
 /// Emulates a passport chip performing BAC. It answers GET CHALLENGE with a

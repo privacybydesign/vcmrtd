@@ -71,7 +71,6 @@ class FakeNfcProvider extends NfcProvider {
 class _Step {
   final Uint8List? bytes;
   final Object? error;
-  _Step.ok(this.bytes) : error = null;
   _Step.fail(this.error) : bytes = null;
 }
 

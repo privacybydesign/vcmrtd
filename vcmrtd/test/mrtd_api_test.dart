@@ -5,7 +5,6 @@ import 'dart:typed_data';
 
 import 'package:test/test.dart';
 import 'package:vcmrtd/extensions.dart';
-import 'package:vcmrtd/src/com/com_provider.dart';
 import 'package:vcmrtd/src/proto/mrtd_api.dart';
 
 import 'fake_com_provider.dart';

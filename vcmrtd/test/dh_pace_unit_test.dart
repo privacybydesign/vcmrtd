@@ -1,8 +1,6 @@
 // Unit tests for DHPace (lib/src/proto/dh_pace.dart) using the ICAO 9303 p11
 // Appendix G.2 DH worked-example vectors. Exercises mapping math, key
 // agreement, ephemeral key handling, getters and error branches directly.
-import 'dart:typed_data';
-
 import 'package:test/test.dart';
 import 'package:vcmrtd/extensions.dart';
 import 'package:vcmrtd/src/proto/dh_pace.dart';

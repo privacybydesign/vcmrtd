@@ -2,9 +2,6 @@
 // public_key_pace_test.dart: fromHex / fromECPoint constructors, toBytes,
 // toRelavantBytes, getters, toString, and the entire PublicKeyPACEdH (DH) class.
 
-import 'dart:typed_data';
-
-import 'package:pointycastle/ecc/api.dart';
 import 'package:pointycastle/ecc/curves/brainpoolp256r1.dart';
 import 'package:test/test.dart';
 import 'package:vcmrtd/extensions.dart';
