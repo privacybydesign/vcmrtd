@@ -15,11 +15,11 @@ runs:
       env:
         SEGMENT_DOWNLOAD_TIMEOUT_MINS: "1"
       with:
-        path: vcmrtd/vcmrtd/example/rubyvendor/
-        key: ruby-${{ runner.os }}-${{ hashFiles('vcmrtd/vcmrtd/example/Gemfile.lock') }}
+        path: vcmrtd/example/rubyvendor/
+        key: ruby-${{ runner.os }}-${{ hashFiles('vcmrtd/example/Gemfile.lock') }}
     - run: bundle install
       shell: bash
-      working-directory: ./vcmrtd/vcmrtd/example
+      working-directory: ./vcmrtd/example
     - name: Set environment variables
       run: |
         ANDROID_HOME=~/android-sdk
@@ -41,10 +41,10 @@ runs:
         key: ci_scripts-${{ runner.os }}-${{ hashFiles('vcmrtd/ci_scripts/*') }}
     - name: Ensure Android SDK is installed
       if: runner.os == 'Linux'
-      run: ./vcmrtd/vcmrtd/ci_scripts/install_android_sdk.sh
+      run: ./vcmrtd/ci_scripts/install_android_sdk.sh
       shell: bash
     - name: Ensure Flutter is installed
-      run: ./vcmrtd/vcmrtd/ci_scripts/install_flutter.sh
+      run: ./vcmrtd/ci_scripts/install_flutter.sh
       shell: bash
     - name: Use correct Xcode version
       if: runner.os == 'macOS'
@@ -57,12 +57,12 @@ runs:
       env:
         SEGMENT_DOWNLOAD_TIMEOUT_MINS: "1"
       with:
-        path: vcmrtd/vcmrtd/example/ios/Pods
-        key: cocoapods-${{ runner.os }}-${{ hashFiles('vcmrtd/vcmrtd/example/Gemfile.lock', 'vcmrtd/vcmrtd/example/pubspec.lock', 'vcmrtd/vcmrtd/example/ios/Podfile.lock') }}
+        path: vcmrtd/example/ios/Pods
+        key: cocoapods-${{ runner.os }}-${{ hashFiles('vcmrtd/example/Gemfile.lock', 'vcmrtd/example/pubspec.lock', 'vcmrtd/example/ios/Podfile.lock') }}
     - name: Pre-install Cocoapods to fill cache
       if: runner.os == 'macOS' && steps.cocoapods-cache.outputs.cache-hit != 'true'
       run: |
         flutter pub get
         cd ios && pod install
       shell: bash
-      working-directory: ./vcmrtd/vcmrtd/example
+      working-directory: ./vcmrtd/example
