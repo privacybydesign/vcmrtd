@@ -26,12 +26,12 @@ dev_dependencies:
 
 flutter:
   assets:
-    - lib/src/face_verification/Models/face_detector.tflite
-    - lib/src/face_verification/Models/face_landmarks_detector.tflite
-    - lib/src/face_verification/Models/face_blendshapes.tflite
-    - lib/src/face_verification/Models/minifasnet_v1se.tflite
-    - lib/src/face_verification/Models/minifasnet_v2.tflite
-    - lib/src/face_verification/Models/bigsmall_1.tflite
-    - lib/src/face_verification/Models/bigsmall_2.tflite
-    - lib/src/face_verification/Models/bigsmall_3.tflite
-    - lib/src/face_verification/Models/GhostFaceNet_fp32_V2.tflite
+    - lib/src/Models/face_detector.tflite
+    - lib/src/Models/face_landmarks_detector.tflite
+    - lib/src/Models/face_blendshapes.tflite
+    - lib/src/Models/minifasnet_v1se.tflite
+    - lib/src/Models/minifasnet_v2.tflite
+    - lib/src/Models/bigsmall_1.tflite
+    - lib/src/Models/bigsmall_2.tflite
+    - lib/src/Models/bigsmall_3.tflite
+    - lib/src/Models/GhostFaceNet_fp32_V2.tflite

@@ -5,10 +5,10 @@ import 'dart:ui' show Offset, Rect;
 import 'package:camera/camera.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
-import 'package:face_verification/src/face_verification/detection/face_landmarker_types.dart';
-import 'package:face_verification/src/face_verification/detection/face_observation.dart';
-import 'package:face_verification/src/face_verification/ffi/face_frame_buffer.dart';
-import 'package:face_verification/src/face_verification/face_verification_worker.dart';
+import 'package:face_verification/src/detection/face_landmarker_types.dart';
+import 'package:face_verification/src/detection/face_observation.dart';
+import 'package:face_verification/src/ffi/face_frame_buffer.dart';
+import 'package:face_verification/src/face_verification_worker.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers

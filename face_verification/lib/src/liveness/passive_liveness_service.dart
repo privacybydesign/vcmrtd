@@ -64,11 +64,11 @@ class PassiveLivenessService {
 
   Future<void> initialize() async {
     _v1 = await Interpreter.fromAsset(
-      'packages/face_verification/lib/src/face_verification/Models/minifasnet_v1se.tflite',
+      'packages/face_verification/lib/src/Models/minifasnet_v1se.tflite',
       options: _cpuOptions(2),
     );
     _v2 = await Interpreter.fromAsset(
-      'packages/face_verification/lib/src/face_verification/Models/minifasnet_v2.tflite',
+      'packages/face_verification/lib/src/Models/minifasnet_v2.tflite',
       options: _cpuOptions(2),
     );
 
@@ -489,9 +489,9 @@ class _BigSmallService {
   }) : _debugRunOverride = debugRunOverride;
 
   static const List<String> _modelFiles = <String>[
-    'packages/face_verification/lib/src/face_verification/Models/bigsmall_1.tflite',
-    'packages/face_verification/lib/src/face_verification/Models/bigsmall_2.tflite',
-    'packages/face_verification/lib/src/face_verification/Models/bigsmall_3.tflite',
+    'packages/face_verification/lib/src/Models/bigsmall_1.tflite',
+    'packages/face_verification/lib/src/Models/bigsmall_2.tflite',
+    'packages/face_verification/lib/src/Models/bigsmall_3.tflite',
   ];
   static const int frames = 3;
   static const int bufferFrames = frames + 1;

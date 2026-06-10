@@ -1,7 +1,7 @@
 ﻿import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'dart:typed_data';
-import 'package:face_verification/src/face_verification/recognition/face_recognizer.dart';
+import 'package:face_verification/src/recognition/face_recognizer.dart';
 
 void main() {
   group('FaceRecognizer cosineSimilarity', () {

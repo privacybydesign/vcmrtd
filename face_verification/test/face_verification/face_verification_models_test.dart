@@ -2,9 +2,9 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
-import 'package:face_verification/src/face_verification/detection/face_landmarker_types.dart';
-import 'package:face_verification/src/face_verification/detection/face_observation.dart';
-import 'package:face_verification/src/face_verification/worker_result_types.dart';
+import 'package:face_verification/src/detection/face_landmarker_types.dart';
+import 'package:face_verification/src/detection/face_observation.dart';
+import 'package:face_verification/src/worker_result_types.dart';
 
 void main() {
   test('FaceObservation stores detector outputs used by liveness and matching', () {

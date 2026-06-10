@@ -1,5 +1,5 @@
 ﻿import 'package:flutter_test/flutter_test.dart';
-import 'package:face_verification/src/face_verification/face_verification_tuning.dart';
+import 'package:face_verification/src/face_verification_tuning.dart';
 
 void main() {
   group('FaceVerificationTuning', () {

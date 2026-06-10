@@ -1,5 +1,5 @@
 ﻿import 'package:flutter_test/flutter_test.dart';
-import 'package:face_verification/src/face_verification/ffi/face_frame_buffer.dart';
+import 'package:face_verification/src/ffi/face_frame_buffer.dart';
 
 void main() {
   group('FaceFrameBuffer.fromAddress', () {

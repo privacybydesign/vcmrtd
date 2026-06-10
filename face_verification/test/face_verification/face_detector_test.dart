@@ -1,7 +1,7 @@
 ﻿import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
-import 'package:face_verification/src/face_verification/detection/face_detector.dart';
-import 'package:face_verification/src/face_verification/detection/face_landmarker_types.dart';
+import 'package:face_verification/src/detection/face_detector.dart';
+import 'package:face_verification/src/detection/face_landmarker_types.dart';
 
 void main() {
   group('FaceDetectorService pure observation helpers', () {

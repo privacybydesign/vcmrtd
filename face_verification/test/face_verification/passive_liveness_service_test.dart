@@ -3,9 +3,9 @@ import 'dart:ui' show Offset, Rect;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
-import 'package:face_verification/src/face_verification/detection/face_landmarker_types.dart';
-import 'package:face_verification/src/face_verification/detection/face_observation.dart';
-import 'package:face_verification/src/face_verification/liveness/passive_liveness_service.dart';
+import 'package:face_verification/src/detection/face_landmarker_types.dart';
+import 'package:face_verification/src/detection/face_observation.dart';
+import 'package:face_verification/src/liveness/passive_liveness_service.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers

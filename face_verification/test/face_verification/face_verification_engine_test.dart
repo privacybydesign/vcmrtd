@@ -4,13 +4,13 @@ import 'package:camera/camera.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
-import 'package:face_verification/src/face_verification/detection/face_landmarker_types.dart';
-import 'package:face_verification/src/face_verification/detection/face_observation.dart';
-import 'package:face_verification/src/face_verification/face_verification_engine.dart';
-import 'package:face_verification/src/face_verification/face_verification_tuning.dart';
-import 'package:face_verification/src/face_verification/face_verification_worker.dart';
-import 'package:face_verification/src/face_verification/liveness/active_liveness_service.dart';
-import 'package:face_verification/src/face_verification/worker_result_types.dart';
+import 'package:face_verification/src/detection/face_landmarker_types.dart';
+import 'package:face_verification/src/detection/face_observation.dart';
+import 'package:face_verification/src/face_verification_engine.dart';
+import 'package:face_verification/src/face_verification_tuning.dart';
+import 'package:face_verification/src/face_verification_worker.dart';
+import 'package:face_verification/src/liveness/active_liveness_service.dart';
+import 'package:face_verification/src/worker_result_types.dart';
 
 // ---------------------------------------------------------------------------
 // Fake worker

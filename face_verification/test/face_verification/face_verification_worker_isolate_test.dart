@@ -2,7 +2,7 @@
 import 'dart:isolate';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:face_verification/src/face_verification/face_verification_worker.dart';
+import 'package:face_verification/src/face_verification_worker.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers

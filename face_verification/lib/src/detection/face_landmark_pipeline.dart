@@ -283,29 +283,29 @@ class FaceLandmarkPipeline {
 
     try {
       _detectorInterp = await Interpreter.fromAsset(
-        'packages/face_verification/lib/src/face_verification/Models/face_detector.tflite',
+        'packages/face_verification/lib/src/Models/face_detector.tflite',
         options: _makeInterpOptions(numThreads, useGpu: true),
       );
       _landmarkInterp = await Interpreter.fromAsset(
-        'packages/face_verification/lib/src/face_verification/Models/face_landmarks_detector.tflite',
+        'packages/face_verification/lib/src/Models/face_landmarks_detector.tflite',
         options: _makeInterpOptions(numThreads, useGpu: true),
       );
       _blendshapeInterp = await Interpreter.fromAsset(
-        'packages/face_verification/lib/src/face_verification/Models/face_blendshapes.tflite',
+        'packages/face_verification/lib/src/Models/face_blendshapes.tflite',
         options: _makeInterpOptions(numThreads, useGpu: true),
       );
     } catch (_) {
       close();
       _detectorInterp = await Interpreter.fromAsset(
-        'packages/face_verification/lib/src/face_verification/Models/face_detector.tflite',
+        'packages/face_verification/lib/src/Models/face_detector.tflite',
         options: _makeInterpOptions(numThreads, useGpu: false),
       );
       _landmarkInterp = await Interpreter.fromAsset(
-        'packages/face_verification/lib/src/face_verification/Models/face_landmarks_detector.tflite',
+        'packages/face_verification/lib/src/Models/face_landmarks_detector.tflite',
         options: _makeInterpOptions(numThreads, useGpu: false),
       );
       _blendshapeInterp = await Interpreter.fromAsset(
-        'packages/face_verification/lib/src/face_verification/Models/face_blendshapes.tflite',
+        'packages/face_verification/lib/src/Models/face_blendshapes.tflite',
         options: _makeInterpOptions(numThreads, useGpu: false),
       );
     }

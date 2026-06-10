@@ -1,8 +1,8 @@
 ﻿import 'dart:math' as math;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
-import 'package:face_verification/src/face_verification/detection/face_landmarker_types.dart';
-import 'package:face_verification/src/face_verification/detection/face_landmark_pipeline.dart';
+import 'package:face_verification/src/detection/face_landmarker_types.dart';
+import 'package:face_verification/src/detection/face_landmark_pipeline.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers

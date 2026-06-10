@@ -244,15 +244,15 @@ class FaceVerificationWorker {
 
     // Load all model bytes asynchronously via platform channel — pure I/O, does not block UI.
     const assets = <String>[
-      'packages/face_verification/lib/src/face_verification/Models/face_detector.tflite',
-      'packages/face_verification/lib/src/face_verification/Models/face_landmarks_detector.tflite',
-      'packages/face_verification/lib/src/face_verification/Models/face_blendshapes.tflite',
-      'packages/face_verification/lib/src/face_verification/Models/minifasnet_v1se.tflite',
-      'packages/face_verification/lib/src/face_verification/Models/minifasnet_v2.tflite',
-      'packages/face_verification/lib/src/face_verification/Models/bigsmall_1.tflite',
-      'packages/face_verification/lib/src/face_verification/Models/bigsmall_2.tflite',
-      'packages/face_verification/lib/src/face_verification/Models/bigsmall_3.tflite',
-      'packages/face_verification/lib/src/face_verification/Models/GhostFaceNet_fp32_V2.tflite',
+      'packages/face_verification/lib/src/Models/face_detector.tflite',
+      'packages/face_verification/lib/src/Models/face_landmarks_detector.tflite',
+      'packages/face_verification/lib/src/Models/face_blendshapes.tflite',
+      'packages/face_verification/lib/src/Models/minifasnet_v1se.tflite',
+      'packages/face_verification/lib/src/Models/minifasnet_v2.tflite',
+      'packages/face_verification/lib/src/Models/bigsmall_1.tflite',
+      'packages/face_verification/lib/src/Models/bigsmall_2.tflite',
+      'packages/face_verification/lib/src/Models/bigsmall_3.tflite',
+      'packages/face_verification/lib/src/Models/GhostFaceNet_fp32_V2.tflite',
     ];
     final bytes = await Future.wait(assets.map(_loadModelBytes));
     debugPrint('[FaceVerification] Worker: all ${bytes.length} model assets loaded');

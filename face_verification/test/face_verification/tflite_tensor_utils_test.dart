@@ -1,5 +1,5 @@
 ﻿import 'package:flutter_test/flutter_test.dart';
-import 'package:face_verification/src/face_verification/tflite_tensor_utils.dart';
+import 'package:face_verification/src/tflite_tensor_utils.dart';
 
 void main() {
   group('tfliteMakeTensor', () {

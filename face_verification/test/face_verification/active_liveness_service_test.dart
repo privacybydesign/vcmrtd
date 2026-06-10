@@ -3,9 +3,9 @@
 import 'package:flutter/foundation.dart' as foundation;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
-import 'package:face_verification/src/face_verification/detection/face_landmarker_types.dart';
-import 'package:face_verification/src/face_verification/detection/face_observation.dart';
-import 'package:face_verification/src/face_verification/liveness/active_liveness_service.dart';
+import 'package:face_verification/src/detection/face_landmarker_types.dart';
+import 'package:face_verification/src/detection/face_observation.dart';
+import 'package:face_verification/src/liveness/active_liveness_service.dart';
 
 void main() {
   group('ActiveLivenessService', () {
