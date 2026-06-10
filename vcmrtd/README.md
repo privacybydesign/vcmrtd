@@ -31,10 +31,10 @@ VCMRTD is designed as a client-side library that handles NFC communication and d
 - Masterlist support for Dutch and German Certificate Authorities
 
 ```
-┌─────────────────┐      ┌─────────────────────┐      ┌─────────────────┐
-│   Mobile App    │      │  go-passport-issuer │      │   IRMA Server   │
-│   (VCMRTD)      │────▶│  (GMRTD)            │────▶ │   (Optional)    │
-└─────────────────┘      └─────────────────────┘      └─────────────────┘
+┌─────────────────┐     ┌─────────────────────┐     ┌─────────────────┐
+│   Mobile App    │     │  go-passport-issuer │     │   IRMA Server   │
+│   (VCMRTD)      │────▶│  (GMRTD)            │────▶│   (Optional)    │
+└─────────────────┘     └─────────────────────┘     └─────────────────┘
         │
         │ NFC
         ▼
@@ -128,12 +128,6 @@ final verification = await issuer.verifyPassport(result.rawData);
 | eID Cards    | ✓   | ✓    | ✓           |
 | eDriving Licenses (NL) | ✓ | ✓ | ✓       |
 
-## Roadmap
-
-- [ ] **Face Verification**: Biometric face matching against DG2 facial image (planned)
-- [x] PACE-CAM (Chip Authentication Mapping) support
-- [x] Extended Access Control (EAC) support
-
 ## Documentation
 
 Full documentation is available at [privacybydesign.github.io/vcmrtd](https://privacybydesign.github.io/vcmrtd)
@@ -148,11 +142,11 @@ The repository includes a complete example application demonstrating:
 - Verifiable Credential issuance
 
 <p float="left">
-<img src="vcmrtd/docs/static/images/home.jpg?raw=true" width="180px" alt="Home screen" />
-<img src="vcmrtd/docs/static/images/scan.jpg?raw=true" width="180px" alt="MRZ scanning" />
-<img src="vcmrtd/docs/static/images/info.jpg?raw=true" width="180px" alt="NFC positioning" />
-<img src="vcmrtd/docs/static/images/read.jpg?raw=true" width="180px" alt="Reading progress" />
-<img src="vcmrtd/docs/static/images/result.png?raw=true" width="180px" alt="Results" />
+<img src="/docs/static/images/home.jpg?raw=true" width="180px" alt="Home screen" />
+<img src="/docs/static/images/scan.jpg?raw=true" width="180px" alt="MRZ scanning" />
+<img src="/docs/static/images/info.jpg?raw=true" width="180px" alt="NFC positioning" />
+<img src="/docs/static/images/read.jpg?raw=true" width="180px" alt="Reading progress" />
+<img src="/docs/static/images/result.png?raw=true" width="180px" alt="Results" />
 </p>
 
 ## Development
@@ -180,6 +174,10 @@ keytool -list -v -alias androiddebugkey \
   -keystore ~/.android/debug.keystore \
   -storepass android -keypass android
 ```
+
+## Related Packages
+
+- [face_verification](../face_verification) — Face verification and liveness detection, for matching a live selfie against the DG2 facial image from the NFC chip
 
 ## Related Projects
 
