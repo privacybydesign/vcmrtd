@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:collection';
 import 'dart:ffi';
 import 'dart:isolate';
@@ -244,15 +244,15 @@ class FaceVerificationWorker {
 
     // Load all model bytes asynchronously via platform channel — pure I/O, does not block UI.
     const assets = <String>[
-      'packages/face_verification/lib/src/Models/face_detector.tflite',
-      'packages/face_verification/lib/src/Models/face_landmarks_detector.tflite',
-      'packages/face_verification/lib/src/Models/face_blendshapes.tflite',
-      'packages/face_verification/lib/src/Models/minifasnet_v1se.tflite',
-      'packages/face_verification/lib/src/Models/minifasnet_v2.tflite',
-      'packages/face_verification/lib/src/Models/bigsmall_1.tflite',
-      'packages/face_verification/lib/src/Models/bigsmall_2.tflite',
-      'packages/face_verification/lib/src/Models/bigsmall_3.tflite',
-      'packages/face_verification/lib/src/Models/GhostFaceNet_fp32_V2.tflite',
+      'packages/face_verification/lib/src/models/face_detector.tflite',
+      'packages/face_verification/lib/src/models/face_landmarks_detector.tflite',
+      'packages/face_verification/lib/src/models/face_blendshapes.tflite',
+      'packages/face_verification/lib/src/models/minifasnet_v1se.tflite',
+      'packages/face_verification/lib/src/models/minifasnet_v2.tflite',
+      'packages/face_verification/lib/src/models/bigsmall_1.tflite',
+      'packages/face_verification/lib/src/models/bigsmall_2.tflite',
+      'packages/face_verification/lib/src/models/bigsmall_3.tflite',
+      'packages/face_verification/lib/src/models/GhostFaceNet_fp32_V2.tflite',
     ];
     final bytes = await Future.wait(assets.map(_loadModelBytes));
     debugPrint('[FaceVerification] Worker: all ${bytes.length} model assets loaded');
@@ -980,7 +980,7 @@ Future<void> _matchWorkerLoop(SendPort mainSendPort) async {
 
 Future<Uint8List> _loadModelBytes(String asset) async {
   final data = await rootBundle.load(asset);
-  return data.buffer.asUint8List();
+  return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
 }
 
 Future<void> _serve(
@@ -1165,7 +1165,7 @@ img.Image _imageFromPayload(Map<String, dynamic> payload) {
   return img.Image.fromBytes(
     width: (payload['width'] as num).toInt(),
     height: (payload['height'] as num).toInt(),
-    bytes: (payload['rgb'] as Uint8List).buffer,
+    bytes: Uint8List.fromList(payload['rgb'] as Uint8List).buffer,
     numChannels: 3,
   );
 }
@@ -1222,7 +1222,12 @@ FaceObservation _deserializeFaceMap(Map<String, dynamic> map) {
 
   final alignedRgb = map['alignedRgb'] as Uint8List?;
   if (alignedRgb == null) throw StateError('Worker face payload missing aligned image');
-  final aligned = img.Image.fromBytes(width: 112, height: 112, bytes: alignedRgb.buffer, numChannels: 3);
+  final aligned = img.Image.fromBytes(
+    width: 112,
+    height: 112,
+    bytes: Uint8List.fromList(alignedRgb).buffer,
+    numChannels: 3,
+  );
 
   final center = (map['bboxCenter'] as List?)?.cast<num>();
   return FaceObservation(

@@ -16,7 +16,7 @@ import 'package:face_verification/src/detection/face_landmarker_types.dart';
 // ---------------------------------------------------------------------------
 
 Future<Uint8List> _load(String name) async {
-  final data = await rootBundle.load('packages/face_verification/lib/src/Models/$name');
+  final data = await rootBundle.load('packages/face_verification/lib/src/models/$name');
   return data.buffer.asUint8List();
 }
 

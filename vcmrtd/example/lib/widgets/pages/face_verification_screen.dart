@@ -664,7 +664,7 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
     return Scaffold(
       appBar: AppBar(
         title: const Text('Face Verification'),
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: _handleBack),
+        leading: IconButton(tooltip: 'Back', icon: const Icon(Icons.arrow_back), onPressed: _handleBack),
       ),
       body: SafeArea(child: _buildBody()),
     );
