@@ -44,8 +44,9 @@ runs:
       run: ./vcmrtd/ci_scripts/install_android_sdk.sh
       shell: bash
     - name: Ensure Flutter is installed
-      run: ./vcmrtd/ci_scripts/install_flutter.sh
+      run: ./ci_scripts/install_flutter.sh
       shell: bash
+      working-directory: ./vcmrtd
     - name: Use correct Xcode version
       if: runner.os == 'macOS'
       run: sudo xcode-select --switch /Applications/Xcode_16.4.app
