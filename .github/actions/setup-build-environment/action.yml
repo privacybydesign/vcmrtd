@@ -15,11 +15,11 @@ runs:
       env:
         SEGMENT_DOWNLOAD_TIMEOUT_MINS: "1"
       with:
-        path: example/rubyvendor/
-        key: ruby-${{ runner.os }}-${{ hashFiles('example/Gemfile.lock') }}
+        path: vcmrtd/example/rubyvendor/
+        key: ruby-${{ runner.os }}-${{ hashFiles('vcmrtd/example/Gemfile.lock') }}
     - run: bundle install
       shell: bash
-      working-directory: ./example
+      working-directory: ./vcmrtd/example
     - name: Set environment variables
       run: |
         ANDROID_HOME=~/android-sdk
@@ -32,22 +32,21 @@ runs:
       shell: bash
     - name: Check ci_scripts cache
       uses: actions/cache@v4
-      # If we cannot download the cached content from GitHub within 5 minutes, then
-      # we continue like there was no cache hit.
       env:
         SEGMENT_DOWNLOAD_TIMEOUT_MINS: "5"
       with:
         path: |
           ${{ env.ANDROID_HOME }}
           ${{ env.FLUTTER_HOME }}
-        key: ci_scripts-${{ runner.os }}-${{ hashFiles('ci_scripts/*') }}
+        key: ci_scripts-${{ runner.os }}-${{ hashFiles('vcmrtd/ci_scripts/*') }}
     - name: Ensure Android SDK is installed
       if: runner.os == 'Linux'
-      run: ./ci_scripts/install_android_sdk.sh
+      run: ./vcmrtd/ci_scripts/install_android_sdk.sh
       shell: bash
     - name: Ensure Flutter is installed
       run: ./ci_scripts/install_flutter.sh
       shell: bash
+      working-directory: ./vcmrtd
     - name: Use correct Xcode version
       if: runner.os == 'macOS'
       run: sudo xcode-select --switch /Applications/Xcode_16.4.app
@@ -59,13 +58,12 @@ runs:
       env:
         SEGMENT_DOWNLOAD_TIMEOUT_MINS: "1"
       with:
-        path: example/ios/Pods
-        # Cocoapods depends on Ruby and our Podfile needs the Flutter dependencies to be present.
-        key: cocoapods-${{ runner.os }}-${{ hashFiles('example/Gemfile.lock', 'example/pubspec.lock', 'example/ios/Podfile.lock') }}
+        path: vcmrtd/example/ios/Pods
+        key: cocoapods-${{ runner.os }}-${{ hashFiles('vcmrtd/example/Gemfile.lock', 'vcmrtd/example/pubspec.lock', 'vcmrtd/example/ios/Podfile.lock') }}
     - name: Pre-install Cocoapods to fill cache
       if: runner.os == 'macOS' && steps.cocoapods-cache.outputs.cache-hit != 'true'
       run: |
         flutter pub get
         cd ios && pod install
       shell: bash
-      working-directory: ./example
+      working-directory: ./vcmrtd/example

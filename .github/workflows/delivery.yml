@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./example
+        working-directory: ./vcmrtd/example
     outputs:
       version-changed: ${{ steps.detection.outcome == 'success' }}
     steps:
@@ -31,7 +31,7 @@ jobs:
     runs-on: macos-15 # MacOS version is pinned, because it determines which XCode version is used.
     defaults:
       run:
-        working-directory: ./example
+        working-directory: ./vcmrtd/example
     needs: version-check
     if: needs.version-check.outputs.version-changed == 'true'
     steps:
@@ -59,13 +59,13 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: app-beta-ios
-          path: ./example/fastlane/build/*.ipa
+          path: ./vcmrtd/example/fastlane/build/*.ipa
   build-app-android-beta:
     # The Android builds are only signed with a development key. Signing needs to be done manually still.
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./example
+        working-directory: ./vcmrtd/example
     needs: version-check
     if: needs.version-check.outputs.version-changed == 'true'
     steps:
@@ -92,8 +92,8 @@ jobs:
         with:
           name: app-beta-android
           path: |
-            ./example/fastlane/build/*.apk
-            ./example/fastlane/build/*.aab
+            ./vcmrtd/example/fastlane/build/*.apk
+            ./vcmrtd/example/fastlane/build/*.aab
   bundle-app-beta:
     runs-on: ubuntu-latest
     needs:
