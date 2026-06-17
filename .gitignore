@@ -1,10 +1,10 @@
 rubyvendor/
 twentyface_flutter/
 
-example/fastlane/.env.default
-example/fastlane/build
-example/fastlane/profiles
-example/fastlane/report.xml
+vcmrtd/example/fastlane/.env.default
+vcmrtd/example/fastlane/build
+vcmrtd/example/fastlane/profiles
+vcmrtd/example/fastlane/report.xml
 
 # ---
 # Flutter generated excludes below:
@@ -40,8 +40,8 @@ example/fastlane/report.xml
 .packages
 .pub-cache/
 .pub/
-/build/
-/coverage/
+**/build/
+**/coverage/
 
 # Project related
 android/irmagobridge/.project
@@ -101,7 +101,7 @@ android/irmagobridge/irmagobridge-sources.jar
 devtools_options.yaml
 
 # Android build output
-example/android/app/.cxx/
+vcmrtd/example/android/app/.cxx/
 
 # Web related
 lib/generated_plugin_registrant.dart
@@ -153,4 +153,4 @@ docs/build/
 .dart-tool/CLIENT_ID
 AGENTS.md
 .dart-tool/dart-flutter-telemetry.config
-example/android/build/reports/problems/problems-report.html
+vcmrtd/example/android/build/
