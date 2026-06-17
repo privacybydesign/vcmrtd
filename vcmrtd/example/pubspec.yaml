@@ -23,6 +23,7 @@ dependencies:
     path: ../
   face_verification:
     path: ../../face_verification
+  image: ^4.5.4
   flutter:
     sdk: flutter
   flutter_localizations:
