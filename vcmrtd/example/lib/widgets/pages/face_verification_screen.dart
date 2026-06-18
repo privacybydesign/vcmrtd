@@ -8,24 +8,30 @@ import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:face_verification/face_verification.dart';
 import 'package:vcmrtdapp/helpers/face_alignment_camera.dart';
+import 'package:vcmrtdapp/models/face_verification_args.dart';
+import 'package:vcmrtdapp/services/face_verification_client.dart';
 
 // ── Screen flow ──────────────────────────────────────────────────────────────
 //
-// Face-alignment only. The verification/matching and liveness logic has been
-// removed; this screen demonstrates the two alignment outputs of the
-// `face_verification` package:
-//   • NFC route   — the document photo (nfcImageBytes) is aligned in the
-//     background as soon as the models load.
-//   • Selfie route — the live front-camera feed is aligned frame by frame; the
-//     most frontal aligned crop is kept.
-// The result screen shows both aligned 112×112 faces side by side.
+// Remote face verification with on-device positioning:
+//   • MediaPipe (the `face_verification` package) runs locally on each camera
+//     frame purely to *position* the face — it tells the user to centre and
+//     face the camera, and gates which frames are worth sending.
+//   • The actual recognition + liveness/anti-spoofing run on the remote
+//     face-verification-service. Selected frames are JPEG-encoded and streamed
+//     over a signed WebSocket; the service replies with per-frame scores and a
+//     final verification result.
+//
+// The binding key that authenticates the stream is derived from the raw DG2
+// bytes read over NFC, so only the wallet that read the chip can stream against
+// the session the issuer created.
 
-enum AlignmentState { idle, capturing, processing, result }
+enum VerifyState { idle, connecting, verifying, result }
 
 // ── Widget ───────────────────────────────────────────────────────────────────
 
 class FlutterFaceVerificationScreen extends StatefulWidget {
-  final Uint8List? nfcImageBytes;
+  final FaceVerificationArgs args;
   final VoidCallback onBackPressed;
 
   // Test-only: skips camera + model bootstrap so the widget can be driven
@@ -33,11 +39,11 @@ class FlutterFaceVerificationScreen extends StatefulWidget {
   @visibleForTesting
   final bool skipBootstrapForTesting;
 
-  const FlutterFaceVerificationScreen({super.key, required this.nfcImageBytes, required this.onBackPressed})
+  const FlutterFaceVerificationScreen({super.key, required this.args, required this.onBackPressed})
     : skipBootstrapForTesting = false;
 
   @visibleForTesting
-  const FlutterFaceVerificationScreen.test({super.key, this.nfcImageBytes, required this.onBackPressed})
+  const FlutterFaceVerificationScreen.test({super.key, required this.args, required this.onBackPressed})
     : skipBootstrapForTesting = true;
 
   @override
@@ -54,14 +60,19 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
     DeviceOrientation.landscapeRight: 270,
   };
 
-  // Number of accepted aligned frames sampled before picking the most frontal.
-  static const int _selfieSampleTarget = 6;
+  // Maximum absolute yaw (degrees) for a frame to be considered frontal enough
+  // to bother sending to the verification service.
+  static const double _maxYawDegrees = 25.0;
+
+  // JPEG quality for streamed frames — high enough for the SDK, small enough to
+  // keep the per-frame round trip quick.
+  static const int _frameJpegQuality = 80;
 
   final FaceDetectorService _detector = FaceDetectorService();
   CameraController? _cameraController;
   CameraDescription? _activeCamera;
 
-  AlignmentState _state = AlignmentState.idle;
+  VerifyState _state = VerifyState.idle;
   String? _errorMessage;
   String? _alignTip;
 
@@ -70,20 +81,19 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
   bool _cameraOpening = false;
   bool _cameraClosing = false;
 
-  // Background alignment of the document (NFC) photo.
-  bool _nfcAligning = false;
-  Uint8List? _alignedNfcPng;
-
-  // Best (most frontal) aligned selfie collected during capture.
-  Uint8List? _alignedSelfiePng;
-  img.Image? _bestSelfie;
-  double _bestSelfieYaw = double.infinity;
-  int _selfieSampleCount = 0;
+  // Remote verification stream + live progress.
+  FaceVerificationStream? _stream;
+  FaceVerificationComplete? _completion;
+  int _framesProcessed = 0;
+  double? _lastMatchScore;
+  double? _lastLivenessScore;
 
   // Frame pipeline (single-flight: drop frames while one is being processed).
   CameraImage? _pendingImage;
   bool _isProcessingFrame = false;
   int _frameToken = 0;
+
+  bool get _canVerify => widget.args.canVerifyRemotely;
 
   // ── Lifecycle ───────────────────────────────────────────────────────────────
 
@@ -116,7 +126,7 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
       return;
     }
     if (state == AppLifecycleState.resumed &&
-        _state == AlignmentState.idle &&
+        _state == VerifyState.idle &&
         (_cameraController == null || _cameraController?.value.isInitialized != true)) {
       _openCamera();
     }
@@ -131,37 +141,15 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
       await _detector.initialize();
       if (!mounted) return;
       setState(() => _modelsReady = true);
-      // Align the document photo eagerly so it is ready on the result screen.
-      final nfc = widget.nfcImageBytes;
-      if (nfc != null && nfc.isNotEmpty) {
-        unawaited(_alignNfcPhoto(nfc));
-      }
     } catch (e) {
-      if (mounted) setState(() => _errorMessage = 'Could not initialize face alignment: $e');
+      if (mounted) setState(() => _errorMessage = 'Could not initialize face detection: $e');
     }
-  }
-
-  Future<void> _alignNfcPhoto(Uint8List bytes) async {
-    if (mounted) setState(() => _nfcAligning = true);
-    Uint8List? png;
-    try {
-      final decoded = await decodeNfcImage(bytes);
-      if (decoded != null) {
-        final aligned = _detector.detectAndCrop(decoded);
-        if (aligned != null) png = Uint8List.fromList(img.encodePng(aligned));
-      }
-    } catch (_) {
-      png = null;
-    }
-    if (!mounted) return;
-    setState(() {
-      _alignedNfcPng = png;
-      _nfcAligning = false;
-    });
   }
 
   Future<void> _disposeEverything() async {
     await _stopCapture(disposeCamera: true);
+    await _stream?.dispose();
+    _stream = null;
     await _detector.close();
   }
 
@@ -238,29 +226,74 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
     return (camera.sensorOrientation - rotationComp + 360) % 360;
   }
 
-  // ── Selfie capture & alignment ──────────────────────────────────────────────
+  // ── Verification ─────────────────────────────────────────────────────────────
 
-  Future<void> _startCapture() async {
-    if (!_isReady || _state != AlignmentState.idle) return;
-    final ctrl = _cameraController;
-    if (ctrl == null || !ctrl.value.isInitialized) return;
-    _detector.resetTracking();
-    _bestSelfie = null;
-    _alignedSelfiePng = null;
-    _bestSelfieYaw = double.infinity;
-    _selfieSampleCount = 0;
+  Future<void> _start() async {
+    if (!_isReady || _state != VerifyState.idle) return;
+    final args = widget.args;
+    final session = args.faceSession;
+    if (session == null || args.referencePhotoBytes == null) return;
+
+    final wsUrl = session.resolvedWebsocketUrl;
+    if (wsUrl == null) {
+      setState(() => _errorMessage = 'Verification session has no stream URL');
+      return;
+    }
+
     setState(() {
-      _state = AlignmentState.capturing;
+      _state = VerifyState.connecting;
+      _errorMessage = null;
       _alignTip = null;
     });
+
+    final bindingKey = deriveBindingKey(session.faceSessionId, args.referencePhotoBytes!);
+    final stream = FaceVerificationStream(
+      websocketUrl: wsUrl,
+      sessionId: session.faceSessionId,
+      bindingKey: bindingKey,
+    );
+
     try {
-      if (!ctrl.value.isStreamingImages) {
+      await stream.connect();
+    } catch (e) {
+      await stream.dispose();
+      if (mounted && !_isDisposed) {
+        setState(() {
+          _state = VerifyState.idle;
+          _errorMessage = 'Could not connect to verification service: $e';
+        });
+      }
+      return;
+    }
+
+    if (!mounted || _isDisposed) {
+      await stream.dispose();
+      return;
+    }
+
+    _stream = stream;
+    _detector.resetTracking();
+    _framesProcessed = 0;
+    _lastMatchScore = null;
+    _lastLivenessScore = null;
+
+    unawaited(
+      stream.onComplete
+          .then(_onVerificationComplete)
+          .catchError((Object e) => _onStreamError(e)),
+    );
+
+    setState(() => _state = VerifyState.verifying);
+
+    final ctrl = _cameraController;
+    try {
+      if (ctrl != null && ctrl.value.isInitialized && !ctrl.value.isStreamingImages) {
         await ctrl.startImageStream(_onCameraFrame);
       }
     } catch (e) {
       if (mounted && !_isDisposed) {
         setState(() {
-          _state = AlignmentState.idle;
+          _state = VerifyState.idle;
           _errorMessage = 'Could not start camera stream: $e';
         });
       }
@@ -268,7 +301,7 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
   }
 
   void _onCameraFrame(CameraImage image) {
-    if (_isDisposed || _state != AlignmentState.capturing || _cameraClosing) return;
+    if (_isDisposed || _state != VerifyState.verifying || _cameraClosing) return;
     _pendingImage = image;
     if (!_isProcessingFrame) {
       _isProcessingFrame = true;
@@ -278,39 +311,47 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
 
   Future<void> _processFrames(int token) async {
     try {
-      while (_state == AlignmentState.capturing && token == _frameToken && !_isDisposed) {
+      while (_state == VerifyState.verifying &&
+          token == _frameToken &&
+          !_isDisposed &&
+          _stream != null &&
+          !_stream!.isCompleted) {
         final image = _pendingImage;
         if (image == null) break;
         _pendingImage = null;
+
         final rotation = _cameraFrameRotation();
         if (rotation == null) continue;
-
         final upright = cameraImageToUpright(image, rotation);
         if (upright == null) continue;
-        final face = _detector.detectPrimaryFace(upright, mode: FaceAlignmentMode.selfie);
 
+        // MediaPipe positioning: only send frontal, well-positioned faces.
+        final face = _detector.detectPrimaryFace(upright, mode: FaceAlignmentMode.selfie);
         if (face == null) {
-          if (mounted && _alignTip != 'noFace') setState(() => _alignTip = 'noFace');
+          _setTip('noFace');
           continue;
         }
-        if (mounted && _alignTip != 'holdStill') setState(() => _alignTip = 'holdStill');
-
-        // Keep the most frontal crop (smallest absolute yaw).
         final yaw = (face.yawDegrees ?? 90.0).abs();
-        if (yaw < _bestSelfieYaw) {
-          _bestSelfieYaw = yaw;
-          _bestSelfie = face.alignedFace112;
+        if (yaw > _maxYawDegrees) {
+          _setTip('turnToCamera');
+          continue;
         }
-        _selfieSampleCount++;
-        if (_selfieSampleCount >= _selfieSampleTarget && _bestSelfie != null) {
-          await _finalizeCapture();
-          return;
+        _setTip('holdStill');
+
+        final jpeg = Uint8List.fromList(img.encodeJpg(upright, quality: _frameJpegQuality));
+        final result = await _stream?.sendFrame(jpeg);
+        if (result != null && mounted && !_isDisposed) {
+          setState(() {
+            _framesProcessed = result.framesProcessed;
+            _lastMatchScore = result.matchScore;
+            _lastLivenessScore = result.livenessScore;
+          });
         }
       }
     } catch (e) {
       if (!_isDisposed && mounted) {
         setState(() {
-          _state = AlignmentState.idle;
+          _state = VerifyState.idle;
           _errorMessage = 'Frame processing error: $e';
         });
       }
@@ -319,16 +360,24 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
     }
   }
 
-  Future<void> _finalizeCapture() async {
-    final best = _bestSelfie;
-    if (best == null) return;
-    if (mounted) setState(() => _state = AlignmentState.processing);
+  void _setTip(String tip) {
+    if (mounted && _alignTip != tip) setState(() => _alignTip = tip);
+  }
+
+  Future<void> _onVerificationComplete(FaceVerificationComplete completion) async {
     await _stopCapture(disposeCamera: false);
-    final png = Uint8List.fromList(img.encodePng(best));
     if (!mounted || _isDisposed) return;
     setState(() {
-      _alignedSelfiePng = png;
-      _state = AlignmentState.result;
+      _completion = completion;
+      _state = VerifyState.result;
+    });
+  }
+
+  void _onStreamError(Object e) {
+    if (!mounted || _isDisposed) return;
+    setState(() {
+      _state = VerifyState.idle;
+      _errorMessage = 'Verification failed: $e';
     });
   }
 
@@ -336,21 +385,25 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
 
   Future<void> _retry() async {
     await _stopCapture(disposeCamera: true);
+    await _stream?.dispose();
+    _stream = null;
     if (_isDisposed || !mounted) return;
     setState(() {
-      _state = AlignmentState.idle;
+      _state = VerifyState.idle;
       _errorMessage = null;
       _alignTip = null;
-      _alignedSelfiePng = null;
-      _bestSelfie = null;
-      _bestSelfieYaw = double.infinity;
-      _selfieSampleCount = 0;
+      _completion = null;
+      _framesProcessed = 0;
+      _lastMatchScore = null;
+      _lastLivenessScore = null;
     });
     await _openCamera();
   }
 
   Future<void> _handleBack() async {
     await _stopCapture(disposeCamera: true);
+    await _stream?.dispose();
+    _stream = null;
     if (_isDisposed) return;
     widget.onBackPressed();
   }
@@ -358,21 +411,19 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
   // ── Test hooks ──────────────────────────────────────────────────────────────
 
   @visibleForTesting
-  AlignmentState get debugState => _state;
+  VerifyState get debugState => _state;
   @visibleForTesting
   String? get debugAlignTip => _alignTip;
   @visibleForTesting
   bool get debugModelsReady => _modelsReady;
 
-  // Jumps straight to the result screen with the supplied aligned PNGs so the
-  // result UI can be verified without a camera or TFLite runtime.
+  // Jumps straight to the result screen with a supplied completion so the result
+  // UI can be verified without a camera, TFLite runtime, or network.
   @visibleForTesting
-  void debugShowResult({Uint8List? selfiePng, Uint8List? nfcPng}) {
+  void debugShowResult(FaceVerificationComplete completion) {
     setState(() {
-      _alignedSelfiePng = selfiePng;
-      _alignedNfcPng = nfcPng;
-      _nfcAligning = false;
-      _state = AlignmentState.result;
+      _completion = completion;
+      _state = VerifyState.result;
     });
   }
 
@@ -382,7 +433,7 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Face Alignment'),
+        title: const Text('Face Verification'),
         leading: IconButton(tooltip: 'Back', icon: const Icon(Icons.arrow_back), onPressed: _handleBack),
       ),
       body: SafeArea(child: _buildBody()),
@@ -395,12 +446,12 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
 
   Widget _buildBody() {
     if (_errorMessage != null) return _buildErrorScreen();
-    if (_state == AlignmentState.idle && !_isReady) return _buildLoadingScreen();
+    if (_state == VerifyState.idle && !_isReady) return _buildLoadingScreen();
     return switch (_state) {
-      AlignmentState.idle => _buildIdleScreen(),
-      AlignmentState.capturing => _buildCapturingScreen(),
-      AlignmentState.processing => _buildProcessingScreen(),
-      AlignmentState.result => _buildResultScreen(),
+      VerifyState.idle => _buildIdleScreen(),
+      VerifyState.connecting => _buildConnectingScreen(),
+      VerifyState.verifying => _buildVerifyingScreen(),
+      VerifyState.result => _buildResultScreen(),
     };
   }
 
@@ -417,7 +468,7 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
               const Icon(Icons.face_retouching_natural, size: 64, color: Colors.white70),
               const SizedBox(height: 16),
               const Text(
-                'Setting up face alignment',
+                'Setting up face verification',
                 style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 6),
@@ -470,6 +521,7 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
   Widget _buildOvalOverlay() => const Positioned.fill(child: CustomPaint(painter: _FaceOvalPainter()));
 
   Widget _buildIdleScreen() {
+    if (!_canVerify) return _buildUnavailableScreen();
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -497,7 +549,7 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
                     SizedBox(height: 4),
                     _FaceStepRow(number: '2', text: 'Tap the button below'),
                     SizedBox(height: 4),
-                    _FaceStepRow(number: '3', text: 'Hold still while we align your face'),
+                    _FaceStepRow(number: '3', text: 'Look at the camera and hold still'),
                   ],
                 ),
               ),
@@ -505,7 +557,7 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: _isReady ? _startCapture : null,
+                  onPressed: _isReady ? _start : null,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     backgroundColor: Colors.green[600],
@@ -513,7 +565,7 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                   icon: const Icon(Icons.face),
-                  label: const Text('Align my face'),
+                  label: const Text('Verify my face'),
                 ),
               ),
             ],
@@ -523,20 +575,90 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
     );
   }
 
-  Widget _buildCapturingScreen() {
+  Widget _buildUnavailableScreen() => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.info_outline, size: 48, color: Colors.blueGrey),
+          const SizedBox(height: 16),
+          const Text(
+            'Face verification is not available',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'No verification session was started for this document. This requires '
+            'a passport with a chip portrait and the issuer to have face verification enabled.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(onPressed: _handleBack, child: const Text('Go Back')),
+        ],
+      ),
+    ),
+  );
+
+  Widget _buildConnectingScreen() => const Center(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        CircularProgressIndicator(),
+        SizedBox(height: 24),
+        Text('Connecting to verification service…', style: TextStyle(fontSize: 16)),
+      ],
+    ),
+  );
+
+  Widget _buildVerifyingScreen() {
     return Stack(
       fit: StackFit.expand,
       children: [
         _buildCameraPreview(),
         _buildOvalOverlay(),
         if (_buildTipCard() != null) Positioned(top: 16, left: 16, right: 16, child: _buildTipCard()!),
+        Positioned(bottom: 24, left: 20, right: 20, child: _buildProgressCard()),
       ],
+    );
+  }
+
+  Widget _buildProgressCard() {
+    String fmt(double? v) => v == null ? '—' : '${(v * 100).clamp(0, 100).toStringAsFixed(0)}%';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+              SizedBox(width: 10),
+              Text('Verifying…', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _ProgressStat(label: 'Frames', value: '$_framesProcessed'),
+              _ProgressStat(label: 'Match', value: fmt(_lastMatchScore)),
+              _ProgressStat(label: 'Liveness', value: fmt(_lastLivenessScore)),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
   Widget? _buildTipCard() {
     final message = switch (_alignTip) {
       'noFace' => 'Position your face in the oval',
+      'turnToCamera' => 'Look straight at the camera',
       'holdStill' => 'Hold still…',
       _ => null,
     };
@@ -555,17 +677,6 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
       ),
     );
   }
-
-  Widget _buildProcessingScreen() => const Center(
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        CircularProgressIndicator(),
-        SizedBox(height: 24),
-        Text('Aligning face...', style: TextStyle(fontSize: 16)),
-      ],
-    ),
-  );
 
   Widget _buildErrorScreen() => Center(
     child: Padding(
@@ -586,35 +697,53 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
   );
 
   Widget _buildResultScreen() {
+    final completion = _completion;
+    final success = completion?.isSuccess ?? false;
+    final livenessPassed = completion?.livenessPassed;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Icon(Icons.face_retouching_natural, size: 64, color: Colors.green),
+          Icon(
+            success ? Icons.verified_user : Icons.gpp_bad,
+            size: 72,
+            color: success ? Colors.green : Colors.red,
+          ),
           const SizedBox(height: 16),
-          const Text(
-            'Aligned faces',
+          Text(
+            success ? 'Face verified' : 'Verification failed',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 6),
-          const Text(
-            'Both faces aligned to the 112×112 ArcFace template',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey, fontSize: 13),
+          const SizedBox(height: 24),
+          _ResultRow(
+            label: 'Result',
+            value: completion?.result ?? 'unknown',
+            ok: success,
           ),
-          const SizedBox(height: 32),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _AlignedFaceTile(label: 'Document (NFC)', png: _alignedNfcPng, loading: _nfcAligning),
-              _AlignedFaceTile(label: 'Selfie', png: _alignedSelfiePng, loading: false),
-            ],
-          ),
+          if (completion?.matchConfidence != null)
+            _ResultRow(
+              label: 'Match confidence',
+              value: '${(completion!.matchConfidence! * 100).clamp(0, 100).toStringAsFixed(0)}%',
+            ),
+          if (livenessPassed != null)
+            _ResultRow(
+              label: 'Liveness',
+              value: livenessPassed ? 'Passed' : 'Failed',
+              ok: livenessPassed,
+            ),
+          _ResultRow(label: 'Frames processed', value: '${completion?.framesProcessed ?? 0}'),
+          if ((completion?.verificationDurationMs ?? 0) > 0)
+            _ResultRow(
+              label: 'Duration',
+              value: '${((completion!.verificationDurationMs) / 1000).toStringAsFixed(1)}s',
+            ),
           const SizedBox(height: 32),
           OutlinedButton(onPressed: _retry, child: const Text('Try Again')),
+          const SizedBox(height: 12),
+          ElevatedButton(onPressed: _handleBack, child: const Text('Done')),
         ],
       ),
     );
@@ -623,47 +752,49 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
 
 // ── Supporting widgets ─────────────────────────────────────────────────────
 
-class _AlignedFaceTile extends StatelessWidget {
-  const _AlignedFaceTile({required this.label, required this.png, required this.loading});
-
+class _ProgressStat extends StatelessWidget {
+  const _ProgressStat({required this.label, required this.value});
   final String label;
-  final Uint8List? png;
-  final bool loading;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
-    const double size = 140;
-    Widget content;
-    if (png != null) {
-      content = ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Image.memory(png!, width: size, height: size, fit: BoxFit.cover, gaplessPlayback: true),
-      );
-    } else {
-      content = Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade400),
-        ),
-        alignment: Alignment.center,
-        child: loading
-            ? const CircularProgressIndicator()
-            : const Padding(
-                padding: EdgeInsets.all(8),
-                child: Text('No face found', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
-              ),
-      );
-    }
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        content,
-        const SizedBox(height: 8),
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+        Text(value, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 2),
+        Text(label, style: const TextStyle(color: Colors.white60, fontSize: 12)),
       ],
+    );
+  }
+}
+
+class _ResultRow extends StatelessWidget {
+  const _ResultRow({required this.label, required this.value, this.ok});
+  final String label;
+  final String value;
+  final bool? ok;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
+          Row(
+            children: [
+              if (ok != null) ...[
+                Icon(ok! ? Icons.check_circle : Icons.cancel, size: 18, color: ok! ? Colors.green : Colors.red),
+                const SizedBox(width: 6),
+              ],
+              Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

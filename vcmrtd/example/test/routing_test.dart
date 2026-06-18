@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtdapp/models/face_verification_args.dart';
 import 'package:vcmrtdapp/widgets/pages/face_verification_screen.dart';
 import 'package:vcmrtdapp/routing.dart';
 import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
@@ -128,8 +129,12 @@ class _RouteExtensionHarness extends StatelessWidget {
           child: const Text('push nfc reading'),
         ),
         TextButton(
-          onPressed: () =>
-              context.pushFaceVerificationScreen(Uint8List.fromList(<int>[1, 2, 3]), issueDate: DateTime(2024, 2, 1)),
+          onPressed: () => context.pushFaceVerificationScreen(
+            FaceVerificationArgs(
+              portraitImageBytes: Uint8List.fromList(<int>[1, 2, 3]),
+              issueDate: DateTime(2024, 2, 1),
+            ),
+          ),
           child: const Text('push face verification'),
         ),
       ],
@@ -298,7 +303,7 @@ void main() {
       tester
           .widgetList<PassportDataScreen>(find.byType(PassportDataScreen))
           .last
-          .onFaceVerification(Uint8List.fromList([9]), issueDate);
+          .onFaceVerification(FaceVerificationArgs(portraitImageBytes: Uint8List.fromList([9]), issueDate: issueDate));
       await tester.pump();
       await tester.pump();
       expect(find.byType(FlutterFaceVerificationScreen), findsOneWidget);
@@ -318,7 +323,9 @@ void main() {
       tester
           .widgetList<DrivingLicenceDataScreen>(find.byType(DrivingLicenceDataScreen))
           .last
-          .onFaceVerification(Uint8List.fromList([7, 8]), drivingIssueDate);
+          .onFaceVerification(
+            FaceVerificationArgs(portraitImageBytes: Uint8List.fromList([7, 8]), issueDate: drivingIssueDate),
+          );
       await tester.pump();
       await tester.pump();
       expect(find.byType(FlutterFaceVerificationScreen), findsOneWidget);
@@ -339,24 +346,22 @@ void main() {
       expect(router.routeInformationProvider.value.uri.path, '/select_doc_type');
     });
 
-    testWidgets('builds face verification route and forwards nfcImageBytes', (tester) async {
+    testWidgets('builds face verification route and forwards args', (tester) async {
       _mockNoCamera();
       final router = createRouter(scannerBuilder: _scannerBuilder());
       addTearDown(router.dispose);
 
-      await tester.pumpWidget(_routerApp(router));
-      router.go(
-        '/face_verification',
-        extra: {
-          'nfcImageBytes': Uint8List.fromList([1]),
-          'issueDate': DateTime(2024, 2, 1),
-        },
+      final args = FaceVerificationArgs(
+        portraitImageBytes: Uint8List.fromList([1]),
+        issueDate: DateTime(2024, 2, 1),
       );
+      await tester.pumpWidget(_routerApp(router));
+      router.go('/face_verification', extra: {'args': args});
       await tester.pump();
       await tester.pump();
 
       final screen = tester.widget<FlutterFaceVerificationScreen>(find.byType(FlutterFaceVerificationScreen));
-      expect(screen.nfcImageBytes, Uint8List.fromList([1]));
+      expect(screen.args, same(args));
     });
 
     testWidgets('BuildContext route extensions push expected pages', (tester) async {
@@ -421,8 +426,9 @@ void main() {
 
       expect(find.byKey(const Key('face_verification_page')), findsOneWidget);
       expect(faceExtra, isNotNull);
-      expect(faceExtra!['nfcImageBytes'], Uint8List.fromList(<int>[1, 2, 3]));
-      expect(faceExtra!['issueDate'], DateTime(2024, 2, 1));
+      final forwardedArgs = faceExtra!['args'] as FaceVerificationArgs;
+      expect(forwardedArgs.portraitImageBytes, Uint8List.fromList(<int>[1, 2, 3]));
+      expect(forwardedArgs.issueDate, DateTime(2024, 2, 1));
     });
 
     testWidgets('manual entry callback navigates to NFC reading with the selected document type', (tester) async {

@@ -1,9 +1,9 @@
-﻿import 'dart:typed_data';
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtdapp/models/face_verification_args.dart';
 import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
 
 import '../../widgets/pages/data_screen_widgets/personal_data_section.dart';
@@ -19,7 +19,7 @@ class PassportDataScreen extends ConsumerStatefulWidget {
   final RawDocumentData passportDataResult;
   final VoidCallback onBackPressed;
   final DocumentType documentType;
-  final void Function(Uint8List, DateTime?) onFaceVerification;
+  final void Function(FaceVerificationArgs) onFaceVerification;
 
   const PassportDataScreen({
     super.key,
@@ -36,6 +36,7 @@ class PassportDataScreen extends ConsumerStatefulWidget {
 
 class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
   VerificationResponse? _verificationResponse;
+  bool _startingFaceVerification = false;
 
   @override
   Widget build(BuildContext context) {
@@ -57,18 +58,21 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
               SecurityContent(passport: widget.document as PassportData),
               const SizedBox(height: 20),
               ElevatedButton.icon(
-                onPressed: () {
-                  final passport = widget.document as PassportData;
-                  widget.onFaceVerification(passport.photoImageData, passport.dateOfIssue);
-                },
+                onPressed: _startingFaceVerification ? null : _startFaceVerification,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   backgroundColor: Colors.green[600],
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-                icon: const Icon(Icons.face),
-                label: const Text('Start Face Verification'),
+                icon: _startingFaceVerification
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.face),
+                label: Text(_startingFaceVerification ? 'Starting…' : 'Start Face Verification'),
               ),
               if (widget.passportDataResult.sessionId != null) ...[
                 const SizedBox(height: 20),
@@ -91,6 +95,43 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // Starts a face verification: ensures we have a verification response (which
+  // carries the face_session the issuer started from the DG2 portrait), then
+  // navigates to the face screen with the raw DG2 bytes needed to derive the
+  // binding key. Verification still works when no face session is configured —
+  // the face screen then falls back to local alignment only.
+  Future<void> _startFaceVerification() async {
+    final passport = widget.document as PassportData;
+    setState(() => _startingFaceVerification = true);
+
+    var response = _verificationResponse;
+    try {
+      if (response?.faceSession == null) {
+        response = await ref.read(passportIssuerProvider).verifyPassport(widget.passportDataResult);
+        if (!mounted) return;
+        setState(() => _verificationResponse = response);
+      }
+    } catch (e) {
+      // Non-fatal: continue to the face screen for local alignment.
+      if (mounted) _showReturnErrorDialog(e.toString());
+    } finally {
+      if (mounted) setState(() => _startingFaceVerification = false);
+    }
+    if (!mounted) return;
+
+    final dg2Hex = widget.passportDataResult.dataGroups['DG2'];
+    final referencePhoto = dg2Hex == null ? null : const Uint8ListConverter().fromJson(dg2Hex);
+
+    widget.onFaceVerification(
+      FaceVerificationArgs(
+        portraitImageBytes: passport.photoImageData,
+        referencePhotoBytes: referencePhoto,
+        faceSession: response?.faceSession,
+        issueDate: passport.dateOfIssue,
       ),
     );
   }

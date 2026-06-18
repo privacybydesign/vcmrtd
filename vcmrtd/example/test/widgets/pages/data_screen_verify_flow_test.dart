@@ -88,7 +88,7 @@ Widget _passportScreen(_FakeIssuer issuer) {
         document: _passportData(),
         passportDataResult: _rawDocument(sessionId: 'session-1'),
         onBackPressed: () {},
-        onFaceVerification: (_, __) {},
+        onFaceVerification: (_) {},
       ),
     ),
   );
@@ -102,7 +102,7 @@ Widget _licenceScreen(_FakeIssuer issuer) {
         drivingLicence: _drivingLicenceData(),
         drivingLicenceDataResult: _rawDocument(sessionId: 'session-2'),
         onBackPressed: () {},
-        onFaceVerification: (_, __) {},
+        onFaceVerification: (_) {},
       ),
     ),
   );

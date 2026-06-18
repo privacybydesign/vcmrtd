@@ -1,7 +1,7 @@
-﻿import 'dart:typed_data';
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtdapp/models/face_verification_args.dart';
 import 'package:vcmrtdapp/widgets/pages/document_selection_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/face_verification_entry_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/driving_licence_data_screen.dart';
@@ -28,8 +28,8 @@ extension CustomRouteExtensions on BuildContext {
     push(path.toString());
   }
 
-  void pushFaceVerificationScreen(Uint8List nfcImageBytes, {DateTime? issueDate}) {
-    push(_faceVerificationPath, extra: {'nfcImageBytes': nfcImageBytes, 'issueDate': issueDate});
+  void pushFaceVerificationScreen(FaceVerificationArgs args) {
+    push(_faceVerificationPath, extra: {'args': args});
   }
 }
 
@@ -114,15 +114,13 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder}) {
               passportDataResult: result,
               documentType: ty,
               onBackPressed: () => context.go('/select_doc_type'),
-              onFaceVerification: (nfcImageBytes, issueDate) =>
-                  context.pushFaceVerificationScreen(nfcImageBytes, issueDate: issueDate),
+              onFaceVerification: (args) => context.pushFaceVerificationScreen(args),
             ),
             DocumentType.drivingLicence => DrivingLicenceDataScreen(
               drivingLicence: s['document'] as DrivingLicenceData,
               drivingLicenceDataResult: result,
               onBackPressed: () => context.go('/select_doc_type'),
-              onFaceVerification: (nfcImageBytes, issueDate) =>
-                  context.pushFaceVerificationScreen(nfcImageBytes, issueDate: issueDate),
+              onFaceVerification: (args) => context.pushFaceVerificationScreen(args),
             ),
           };
         },
@@ -131,9 +129,9 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder}) {
         path: _faceVerificationPath,
         builder: (context, state) {
           final extra = state.extra as Map<String, dynamic>;
-          final nfcImageBytes = extra['nfcImageBytes'] as Uint8List?;
+          final args = extra['args'] as FaceVerificationArgs;
 
-          return FaceVerificationEntryScreen(nfcImageBytes: nfcImageBytes, onBackPressed: context.pop);
+          return FaceVerificationEntryScreen(args: args, onBackPressed: context.pop);
         },
       ),
     ],

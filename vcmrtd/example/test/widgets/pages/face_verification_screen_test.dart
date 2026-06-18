@@ -1,22 +1,38 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:image/image.dart' as img;
+import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtdapp/models/face_verification_args.dart';
+import 'package:vcmrtdapp/services/face_verification_client.dart';
 import 'package:vcmrtdapp/widgets/pages/face_verification_screen.dart';
 
-// Face-alignment-only screen tests. The verification/liveness engine has been
-// removed, so these drive the screen through its UI states using the
-// test-only constructor and debug hooks (no camera or TFLite runtime needed).
-
-Uint8List _png() => Uint8List.fromList(img.encodePng(img.Image(width: 4, height: 4)));
+// Remote face-verification screen tests. The recognition + liveness run on the
+// remote service; these drive the screen through its UI states using the
+// test-only constructor and debug hooks (no camera, TFLite runtime, or network).
 
 FlutterFaceVerificationScreenState _state(WidgetTester tester) =>
     tester.state<FlutterFaceVerificationScreenState>(find.byType(FlutterFaceVerificationScreen));
 
-Widget _app({VoidCallback? onBack}) => MaterialApp(
-  home: FlutterFaceVerificationScreen.test(nfcImageBytes: Uint8List(1), onBackPressed: onBack ?? () {}),
+FaceVerificationArgs _verifiableArgs() => FaceVerificationArgs(
+  portraitImageBytes: Uint8List.fromList([1, 2, 3]),
+  referencePhotoBytes: Uint8List.fromList([4, 5, 6]),
+  faceSession: FaceSession(
+    faceSessionId: 'fs_test',
+    websocketUrl: 'wss://example.test/stream/fs_test',
+    bindingKeyReady: true,
+  ),
+);
+
+Widget _app({VoidCallback? onBack, FaceVerificationArgs? args}) => MaterialApp(
+  home: FlutterFaceVerificationScreen.test(args: args ?? _verifiableArgs(), onBackPressed: onBack ?? () {}),
+);
+
+FaceVerificationComplete _completion({bool success = true}) => FaceVerificationComplete(
+  result: success ? 'success' : 'failed',
+  matchConfidence: 0.92,
+  livenessPassed: success,
+  framesProcessed: 7,
+  verificationDurationMs: 2500,
 );
 
 void main() {
@@ -41,50 +57,56 @@ void main() {
     await tester.pumpWidget(_app());
     await tester.pump(); // post-frame callback marks models ready
 
-    expect(_state(tester).debugState, AlignmentState.idle);
-    expect(find.text('Align my face'), findsOneWidget);
+    expect(_state(tester).debugState, VerifyState.idle);
+    expect(find.text('Verify my face'), findsOneWidget);
     expect(find.text('How it works'), findsOneWidget);
   });
 
-  testWidgets('result screen shows both aligned faces', (tester) async {
-    await tester.pumpWidget(_app());
+  testWidgets('shows the unavailable screen when no session is present', (tester) async {
+    await tester.pumpWidget(_app(args: const FaceVerificationArgs()));
     await tester.pump();
 
-    _state(tester).debugShowResult(selfiePng: _png(), nfcPng: _png());
-    await tester.pump();
-
-    expect(_state(tester).debugState, AlignmentState.result);
-    expect(find.text('Aligned faces'), findsOneWidget);
-    expect(find.text('Document (NFC)'), findsOneWidget);
-    expect(find.text('Selfie'), findsOneWidget);
-    expect(find.byType(Image), findsNWidgets(2));
+    expect(find.text('Face verification is not available'), findsOneWidget);
+    expect(find.text('Verify my face'), findsNothing);
   });
 
-  testWidgets('result screen shows a placeholder when a face is missing', (tester) async {
+  testWidgets('result screen shows a successful verification', (tester) async {
     await tester.pumpWidget(_app());
     await tester.pump();
 
-    _state(tester).debugShowResult(selfiePng: _png(), nfcPng: null);
+    _state(tester).debugShowResult(_completion(success: true));
     await tester.pump();
 
-    expect(find.byType(Image), findsOneWidget);
-    expect(find.text('No face found'), findsOneWidget);
+    expect(_state(tester).debugState, VerifyState.result);
+    expect(find.text('Face verified'), findsOneWidget);
+    expect(find.text('92%'), findsOneWidget);
+    expect(find.text('Passed'), findsOneWidget);
+  });
+
+  testWidgets('result screen shows a failed verification', (tester) async {
+    await tester.pumpWidget(_app());
+    await tester.pump();
+
+    _state(tester).debugShowResult(_completion(success: false));
+    await tester.pump();
+
+    expect(find.text('Verification failed'), findsOneWidget);
   });
 
   testWidgets('Try Again returns to the idle state', (tester) async {
     await tester.pumpWidget(_app());
     await tester.pump();
 
-    _state(tester).debugShowResult(selfiePng: _png(), nfcPng: _png());
+    _state(tester).debugShowResult(_completion());
     await tester.pump();
-    expect(_state(tester).debugState, AlignmentState.result);
+    expect(_state(tester).debugState, VerifyState.result);
 
     await tester.tap(find.text('Try Again'));
     // pump (not pumpAndSettle): the idle camera-preview placeholder spins forever.
     await tester.pump();
     await tester.pump();
 
-    expect(_state(tester).debugState, AlignmentState.idle);
+    expect(_state(tester).debugState, VerifyState.idle);
   });
 
   testWidgets('back button invokes the onBackPressed callback', (tester) async {

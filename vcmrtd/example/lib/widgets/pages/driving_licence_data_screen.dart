@@ -5,6 +5,7 @@ import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtdapp/models/face_verification_args.dart';
 import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
 import '../../widgets/pages/data_screen_widgets/web_banner.dart';
 import '../../widgets/pages/data_screen_widgets/return_to_web.dart';
@@ -15,7 +16,7 @@ class DrivingLicenceDataScreen extends ConsumerStatefulWidget {
   final DrivingLicenceData drivingLicence;
   final RawDocumentData drivingLicenceDataResult;
   final VoidCallback onBackPressed;
-  final void Function(Uint8List, DateTime?) onFaceVerification;
+  final void Function(FaceVerificationArgs) onFaceVerification;
 
   const DrivingLicenceDataScreen({
     super.key,
@@ -72,8 +73,10 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
               const SizedBox(height: 20),
               ElevatedButton.icon(
                 onPressed: () => widget.onFaceVerification(
-                  widget.drivingLicence.photoImageData,
-                  _parseDrivingLicenceDate(widget.drivingLicence.dateOfIssue),
+                  FaceVerificationArgs(
+                    portraitImageBytes: widget.drivingLicence.photoImageData,
+                    issueDate: _parseDrivingLicenceDate(widget.drivingLicence.dateOfIssue),
+                  ),
                 ),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
