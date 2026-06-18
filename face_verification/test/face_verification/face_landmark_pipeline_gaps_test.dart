@@ -1,18 +1,14 @@
-import 'dart:typed_data';
-
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:face_verification/src/detection/face_landmark_pipeline.dart';
-import 'package:face_verification/src/detection/face_landmarker_types.dart';
 
 // ---------------------------------------------------------------------------
 // These tests load the real TFLite model assets via Interpreter.fromBuffer
 // (which works in the flutter_test VM) and drive the full detector → landmark
-// → blendshape pipeline on a deterministic synthetic face image. This exercises
-// the initialize / warm-up / inference / crop / close paths that the existing
-// math-only and mock-output suites never reach. The native face_frame_buffer
-// FFI is NOT used here, so everything stays test-VM safe.
+// pipeline on a deterministic synthetic face image. This exercises the
+// initialize / warm-up / inference / crop / close paths that the existing
+// math-only and mock-output suites never reach.
 // ---------------------------------------------------------------------------
 
 Future<Uint8List> _load(String name) async {
@@ -71,7 +67,6 @@ void main() {
       pipeline.initializeFromBuffers(
         detector: await _load('face_detector.tflite'),
         landmarks: await _load('face_landmarks_detector.tflite'),
-        blendshapes: await _load('face_blendshapes.tflite'),
       );
       face = _faceImage();
     });
@@ -84,7 +79,6 @@ void main() {
       pipeline.initializeFromBuffers(
         detector: Uint8List.fromList(<int>[0, 1, 2]),
         landmarks: Uint8List.fromList(<int>[0, 1, 2]),
-        blendshapes: Uint8List.fromList(<int>[0, 1, 2]),
       );
       // Still functional after the no-op call.
       final crop = pipeline.runDetectorStage(face);
@@ -108,28 +102,18 @@ void main() {
       expect(crop.cropH, greaterThan(0));
     });
 
-    test('runLandmarkStage produces 478 landmarks, blendshapes and a pose matrix', () {
+    test('runLandmarkStage produces 478 landmarks and a pose matrix', () {
       final crop = pipeline.runDetectorStage(face)!;
-      final result = pipeline.runLandmarkStage(face, crop, runBlendshapes: true);
+      final result = pipeline.runLandmarkStage(face, crop);
       expect(result, isNotNull);
       expect(result!.landmarks.first.length, 478);
-      expect(result.blendshapes, isNotNull);
-      expect(result.blendshapes!.first.length, 52);
       expect(result.transformMatrices, isNotNull);
       expect(result.transformMatrices!.first.length, 16);
     });
 
-    test('runLandmarkStage with runBlendshapes:false skips blendshapes', () {
-      final crop = pipeline.runDetectorStage(face)!;
-      final result = pipeline.runLandmarkStage(face, crop, runBlendshapes: false);
-      expect(result, isNotNull);
-      expect(result!.landmarks.first.length, 478);
-      expect(result.blendshapes, isNull);
-    });
-
     test('selfie-mode tracking crop is cached and reused on the next detector call', () {
       final first = pipeline.runDetectorStage(face)!;
-      final result = pipeline.runLandmarkStage(face, first, runBlendshapes: false)!;
+      final result = pipeline.runLandmarkStage(face, first)!;
       pipeline.updateTrackingCrop(result, face.width, face.height);
 
       // Next selfie detector call returns the cached tracking crop without
@@ -142,7 +126,7 @@ void main() {
     });
 
     test('resetTracking forces the detector to re-run instead of reusing the cache', () {
-      final result = pipeline.runLandmarkStage(face, pipeline.runDetectorStage(face)!, runBlendshapes: false)!;
+      final result = pipeline.runLandmarkStage(face, pipeline.runDetectorStage(face)!)!;
       pipeline.updateTrackingCrop(result, face.width, face.height);
       pipeline.resetTracking();
 

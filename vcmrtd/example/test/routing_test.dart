@@ -1,14 +1,10 @@
-﻿import 'dart:async';
-import 'dart:typed_data';
-
-import 'package:camera/camera.dart';
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtd/vcmrtd.dart';
-import 'package:face_verification/face_verification.dart';
 import 'package:vcmrtdapp/widgets/pages/face_verification_screen.dart';
 import 'package:vcmrtdapp/routing.dart';
 import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
@@ -34,69 +30,14 @@ class _FakeScanner extends StatelessWidget {
   }
 }
 
-class _FakeWorker implements FaceVerificationWorker {
-  final StreamController<WorkerFrameResult> _frames = StreamController<WorkerFrameResult>.broadcast(sync: true);
-
-  @override
-  Stream<WorkerFrameResult> get frames => _frames.stream;
-
-  @override
-  Stream<WorkerFrameResult> get debugFrames => _frames.stream;
-
-  @override
-  int get debugSessionId => 0;
-
-  @override
-  Future<void> initialize() async {}
-
-  @override
-  Future<void> dispose() async => _frames.close();
-
-  @override
-  Future<void> startSession() async {}
-
-  @override
-  Future<void> stop() async {}
-
-  @override
-  Future<void> processCameraFrame(CameraImage c, int r) async {}
-
-  @override
-  Future<img.Image?> detectAndCropEncoded(Uint8List e) async => null;
-
-  @override
-  Future<void> prepareNfcFace(img.Image f) async {}
-
-  @override
-  Future<void> storeConsistencySelfie(img.Image s) async {}
-
-  @override
-  Future<double> checkConsistencySelfie(img.Image s) async => 1.0;
-
-  @override
-  Future<WorkerMatchResult> matchSelfie(img.Image s) async => const WorkerMatchResult(score: 0.9);
-
-  @override
-  Future<WorkerPassiveResult> getPassiveResult() async => const WorkerPassiveResult(
-    antiSpoofScore: 0.9,
-    antiSpoofPassed: true,
-    rppgHr: 70.0,
-    rppgPassed: true,
-    rppgSampleCount: 30,
-    rppgDurationMs: 3000,
+// The face-alignment screen opens a camera during bootstrap. There is no camera
+// in the test environment, so return an empty device list — the screen then
+// handles "no camera" gracefully without throwing.
+void _mockNoCamera() {
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+    const MethodChannel('plugins.flutter.io/camera'),
+    (call) async => call.method == 'availableCameras' ? <dynamic>[] : null,
   );
-
-  @override
-  Future<void> debugWaitPipelineIdle() async {}
-
-  @override
-  Future<void> debugWaitPassiveIdle() async {}
-
-  @override
-  void debugEmitFrameResult(WorkerFrameResult r) {}
-
-  @override
-  void debugEmitFrameError(Object e) {}
 }
 
 Uint8List _jpeg() {
@@ -330,8 +271,8 @@ void main() {
     testWidgets('result route callbacks navigate back and to face verification for passport and driving licence', (
       tester,
     ) async {
-      final engine = FaceVerificationEngine.withWorker(_FakeWorker());
-      final router = createRouter(scannerBuilder: _scannerBuilder(), faceVerificationEngine: engine);
+      _mockNoCamera();
+      final router = createRouter(scannerBuilder: _scannerBuilder());
       addTearDown(router.dispose);
 
       await tester.pumpWidget(_routerApp(router));
@@ -398,25 +339,23 @@ void main() {
       expect(router.routeInformationProvider.value.uri.path, '/select_doc_type');
     });
 
-    testWidgets('builds face verification route with injected engine', (tester) async {
-      final engine = FaceVerificationEngine.withWorker(_FakeWorker());
-      final router = createRouter(scannerBuilder: _scannerBuilder(), faceVerificationEngine: engine);
+    testWidgets('builds face verification route and forwards nfcImageBytes', (tester) async {
+      _mockNoCamera();
+      final router = createRouter(scannerBuilder: _scannerBuilder());
       addTearDown(router.dispose);
-      final issueDate = DateTime(2024, 2, 1);
 
       await tester.pumpWidget(_routerApp(router));
       router.go(
         '/face_verification',
         extra: {
           'nfcImageBytes': Uint8List.fromList([1]),
-          'issueDate': issueDate,
+          'issueDate': DateTime(2024, 2, 1),
         },
       );
       await tester.pump();
       await tester.pump();
 
       final screen = tester.widget<FlutterFaceVerificationScreen>(find.byType(FlutterFaceVerificationScreen));
-      expect(screen.photoIssueDate, issueDate);
       expect(screen.nfcImageBytes, Uint8List.fromList([1]));
     });
 

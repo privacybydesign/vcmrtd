@@ -48,215 +48,10 @@ class FaceLandmarkPipeline {
   static const double _nfcCropShiftY = -0.10;
   static const double _presenceThreshold = 0.5;
 
-  static const List<String> _blendshapeNames = <String>[
-    '_neutral',
-    'browDownLeft',
-    'browDownRight',
-    'browInnerUp',
-    'browOuterUpLeft',
-    'browOuterUpRight',
-    'cheekPuff',
-    'cheekSquintLeft',
-    'cheekSquintRight',
-    'eyeBlinkLeft',
-    'eyeBlinkRight',
-    'eyeLookDownLeft',
-    'eyeLookDownRight',
-    'eyeLookInLeft',
-    'eyeLookInRight',
-    'eyeLookOutLeft',
-    'eyeLookOutRight',
-    'eyeLookUpLeft',
-    'eyeLookUpRight',
-    'eyeSquintLeft',
-    'eyeSquintRight',
-    'eyeWideLeft',
-    'eyeWideRight',
-    'jawForward',
-    'jawLeft',
-    'jawOpen',
-    'jawRight',
-    'mouthClose',
-    'mouthDimpleLeft',
-    'mouthDimpleRight',
-    'mouthFrownLeft',
-    'mouthFrownRight',
-    'mouthFunnel',
-    'mouthLeft',
-    'mouthLowerDownLeft',
-    'mouthLowerDownRight',
-    'mouthPressLeft',
-    'mouthPressRight',
-    'mouthPucker',
-    'mouthRight',
-    'mouthRollLower',
-    'mouthRollUpper',
-    'mouthShrugLower',
-    'mouthShrugUpper',
-    'mouthSmileLeft',
-    'mouthSmileRight',
-    'mouthStretchLeft',
-    'mouthStretchRight',
-    'mouthUpperUpLeft',
-    'mouthUpperUpRight',
-    'noseSneerLeft',
-    'noseSneerRight',
-  ];
-
-  static const List<int> _blendshapeLandmarkIndices = <int>[
-    0,
-    1,
-    4,
-    5,
-    6,
-    7,
-    8,
-    10,
-    13,
-    14,
-    17,
-    21,
-    33,
-    37,
-    39,
-    40,
-    46,
-    52,
-    53,
-    54,
-    55,
-    58,
-    61,
-    63,
-    65,
-    66,
-    67,
-    70,
-    78,
-    80,
-    81,
-    82,
-    84,
-    87,
-    88,
-    91,
-    93,
-    95,
-    103,
-    105,
-    107,
-    109,
-    127,
-    132,
-    133,
-    136,
-    144,
-    145,
-    146,
-    148,
-    149,
-    150,
-    152,
-    153,
-    154,
-    155,
-    157,
-    158,
-    159,
-    160,
-    161,
-    162,
-    163,
-    168,
-    172,
-    173,
-    176,
-    178,
-    181,
-    185,
-    191,
-    195,
-    197,
-    234,
-    246,
-    249,
-    251,
-    263,
-    267,
-    269,
-    270,
-    276,
-    282,
-    283,
-    284,
-    285,
-    288,
-    291,
-    293,
-    295,
-    296,
-    297,
-    300,
-    308,
-    310,
-    311,
-    312,
-    314,
-    317,
-    318,
-    321,
-    323,
-    324,
-    332,
-    334,
-    336,
-    338,
-    356,
-    361,
-    362,
-    365,
-    373,
-    374,
-    375,
-    377,
-    378,
-    379,
-    380,
-    381,
-    382,
-    384,
-    385,
-    386,
-    387,
-    388,
-    389,
-    390,
-    397,
-    398,
-    400,
-    402,
-    405,
-    409,
-    415,
-    454,
-    466,
-    468,
-    469,
-    470,
-    471,
-    472,
-    473,
-    474,
-    475,
-    476,
-    477,
-  ];
-
   static final List<List<double>> _anchors = _buildAnchors();
 
   Interpreter? _detectorInterp;
   Interpreter? _landmarkInterp;
-  Interpreter? _blendshapeInterp;
 
   // Output tensors are nested List<dynamic> with shape [batch][anchor][value].
   // Using dynamic avoids generating TFLite-specific typed wrapper classes.
@@ -266,13 +61,10 @@ class FaceLandmarkPipeline {
   dynamic _lmOutRaw; // shape [1][1][1434] — 478 landmarks × 3 (x, y, z/size)
   dynamic _presenceOutRaw; // shape [1][1][1]    — face-presence logit
   List<dynamic> _lmAllOutputs = <dynamic>[];
-  dynamic _blendshapeRaw; // shape [1][52] — 52 blendshape scores
-  List<int> _blendshapeInputShape = <int>[];
 
   // Pre-allocated per-call buffers — avoids large heap churn on every frame.
   Float32List? _detectorInputBuf;
   Float32List? _landmarkInputBuf;
-  Float32List? _blendshapeInputBuf;
   img.Image? _letterboxCanvas;
 
   DetectorStageOutput? _lastCrop;
@@ -290,10 +82,6 @@ class FaceLandmarkPipeline {
         'packages/face_verification/lib/src/models/face_landmarks_detector.tflite',
         options: _makeInterpOptions(numThreads, useGpu: true),
       );
-      _blendshapeInterp = await Interpreter.fromAsset(
-        'packages/face_verification/lib/src/models/face_blendshapes.tflite',
-        options: _makeInterpOptions(numThreads, useGpu: true),
-      );
     } catch (_) {
       close();
       _detectorInterp = await Interpreter.fromAsset(
@@ -304,10 +92,6 @@ class FaceLandmarkPipeline {
         'packages/face_verification/lib/src/models/face_landmarks_detector.tflite',
         options: _makeInterpOptions(numThreads, useGpu: false),
       );
-      _blendshapeInterp = await Interpreter.fromAsset(
-        'packages/face_verification/lib/src/models/face_blendshapes.tflite',
-        options: _makeInterpOptions(numThreads, useGpu: false),
-      );
     }
 
     _finishInit();
@@ -316,7 +100,6 @@ class FaceLandmarkPipeline {
   void initializeFromBuffers({
     required Uint8List detector,
     required Uint8List landmarks,
-    required Uint8List blendshapes,
   }) {
     if (_detectorInterp != null) return;
     final numThreads = (Platform.numberOfProcessors ~/ 2).clamp(1, 4);
@@ -324,12 +107,10 @@ class FaceLandmarkPipeline {
     try {
       _detectorInterp = Interpreter.fromBuffer(detector, options: _makeInterpOptions(numThreads, useGpu: true));
       _landmarkInterp = Interpreter.fromBuffer(landmarks, options: _makeInterpOptions(numThreads, useGpu: true));
-      _blendshapeInterp = Interpreter.fromBuffer(blendshapes, options: _makeInterpOptions(numThreads, useGpu: true));
     } catch (_) {
       close();
       _detectorInterp = Interpreter.fromBuffer(detector, options: _makeInterpOptions(numThreads, useGpu: false));
       _landmarkInterp = Interpreter.fromBuffer(landmarks, options: _makeInterpOptions(numThreads, useGpu: false));
-      _blendshapeInterp = Interpreter.fromBuffer(blendshapes, options: _makeInterpOptions(numThreads, useGpu: false));
     }
 
     _finishInit();
@@ -363,15 +144,9 @@ class FaceLandmarkPipeline {
     _lmOutRaw = _lmAllOutputs[0];
     _presenceOutRaw = _lmAllOutputs[1];
 
-    final bsInShape = _blendshapeInterp!.getInputTensor(0).shape;
-    final bsOutShape = _blendshapeInterp!.getOutputTensor(0).shape;
-    _blendshapeInputShape = bsInShape;
-    _blendshapeRaw = tfliteMakeTensor(bsOutShape);
-
     // Pre-allocate per-frame buffers once to avoid repeated large heap allocations.
     _detectorInputBuf = Float32List(_detectorSize * _detectorSize * 3);
     _landmarkInputBuf = Float32List(_landmarkSize * _landmarkSize * 3);
-    _blendshapeInputBuf = Float32List(bsInShape.fold<int>(1, (p, v) => p * v));
     _letterboxCanvas = img.Image(width: _detectorSize, height: _detectorSize);
 
     _runWarmUp();
@@ -383,9 +158,6 @@ class FaceLandmarkPipeline {
     } catch (_) {}
     try {
       _warmUpLandmarker();
-    } catch (_) {}
-    try {
-      _warmUpBlendshapes();
     } catch (_) {}
   }
 
@@ -402,30 +174,19 @@ class FaceLandmarkPipeline {
     _landmarkInterp!.runForMultipleInputs(<Object>[buf.buffer], out);
   }
 
-  void _warmUpBlendshapes() {
-    if (_blendshapeInterp == null || _blendshapeInputShape.isEmpty) return;
-    final total = _blendshapeInputShape.fold<int>(1, (p, v) => p * v);
-    final buf = Float32List(total);
-    _blendshapeInterp!.run(buf.buffer, _blendshapeRaw);
-  }
-
   void close() {
     _lastCrop = null;
     _detectorInterp?.close();
     _landmarkInterp?.close();
-    _blendshapeInterp?.close();
     _detectorInterp = null;
     _landmarkInterp = null;
-    _blendshapeInterp = null;
     _detRegressors = null;
     _detScores = null;
     _lmOutRaw = null;
     _presenceOutRaw = null;
     _lmAllOutputs = <dynamic>[];
-    _blendshapeRaw = null;
     _detectorInputBuf = null;
     _landmarkInputBuf = null;
-    _blendshapeInputBuf = null;
     _letterboxCanvas = null;
   }
 
@@ -449,7 +210,7 @@ class FaceLandmarkPipeline {
     return DetectorStageOutput(cropX1: crop[0], cropY1: crop[1], cropW: crop[2], cropH: crop[3], angle: crop[4]);
   }
 
-  FaceLandmarkerResult? runLandmarkStage(img.Image bitmap, DetectorStageOutput crop, {bool runBlendshapes = true}) {
+  FaceLandmarkerResult? runLandmarkStage(img.Image bitmap, DetectorStageOutput crop) {
     if (_landmarkInterp == null) return null;
     final landmarkInput = _buildLandmarkInput(bitmap, crop);
     final out = <int, Object>{for (var i = 0; i < _lmAllOutputs.length; i++) i: _lmAllOutputs[i]};
@@ -465,12 +226,10 @@ class FaceLandmarkPipeline {
     final landmarks = _remapLandmarks(raw, crop.cropX1, crop.cropY1, crop.cropW, crop.cropH, crop.angle);
     if (landmarks.length < _numLandmarks) return null;
 
-    final blendshapes = runBlendshapes ? _runBlendshapes(landmarks, bitmap.width, bitmap.height) : null;
     final matrix = _computePoseMatrix(landmarks);
 
     return FaceLandmarkerResult(
       landmarks: <List<NormalizedLandmark>>[landmarks],
-      blendshapes: blendshapes == null ? null : <List<Category>>[blendshapes],
       transformMatrices: matrix == null ? null : <List<double>>[matrix],
     );
   }
@@ -838,26 +597,6 @@ class FaceLandmarkPipeline {
     return result;
   }
 
-  List<Category>? _runBlendshapes(List<NormalizedLandmark> landmarks, int imgW, int imgH) {
-    final interp = _blendshapeInterp;
-    if (interp == null || _blendshapeInputShape.isEmpty) return null;
-    final buf = _blendshapeInputBuf!;
-    final total = buf.length;
-    var idx = 0;
-    for (final lmIdx in _blendshapeLandmarkIndices) {
-      if (idx + 1 >= total) break;
-      final lm = landmarks[lmIdx];
-      buf[idx++] = lm.x * imgW;
-      buf[idx++] = lm.y * imgH;
-    }
-    interp.run(buf.buffer, _blendshapeRaw);
-    final raw = tfliteFlatFloatArray(_blendshapeRaw);
-    return List<Category>.generate(raw.length, (int i) {
-      final name = i < _blendshapeNames.length ? _blendshapeNames[i] : 'blend_$i';
-      return Category(name, raw[i]);
-    }, growable: false);
-  }
-
   // Builds a 4×4 rotation matrix via Gram-Schmidt: right axis from ear-to-ear landmarks,
   // up axis orthogonalized against right, normal = right × up (all unit vectors).
   List<double>? _computePoseMatrix(List<NormalizedLandmark> lm) {
@@ -1005,9 +744,6 @@ class FaceLandmarkPipeline {
     _detectorInputBuf = Float32List(_detectorSize * _detectorSize * 3);
     _landmarkInputBuf = Float32List(_landmarkSize * _landmarkSize * 3);
     _letterboxCanvas = img.Image(width: _detectorSize, height: _detectorSize);
-    // 140 blendshape landmark indices × 2 coordinates (x, y)
-    _blendshapeInputBuf = Float32List(280);
-    _blendshapeInputShape = [1, 140, 2];
   }
 
   // Injects mock TFLite detector output tensors so that [debugDecodeBox] and
