@@ -3,7 +3,10 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
+import 'package:logging/logging.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+
+final _log = Logger('FaceVerificationStream');
 
 // Client for the privacybydesign/face-verification-service session streaming
 // protocol. The passport issuer creates a session bound to the chip's DG2
@@ -155,17 +158,26 @@ class FaceVerificationStream {
     final uri = Uri.parse(websocketUrl);
     _handshakeCompleter = Completer<void>();
 
+    _log.info('Connecting to face verification stream: $uri (session $sessionId)');
     try {
       _channel = WebSocketChannel.connect(uri);
       await _channel!.ready.timeout(timeout);
+      _log.info('WebSocket open, sending handshake');
     } catch (e) {
+      _log.warning('Could not open stream to $uri: $e');
       throw FaceVerificationException('Could not open stream: $e');
     }
 
     _subscription = _channel!.stream.listen(
       _onMessage,
-      onError: (Object e) => _failPending('Stream error: $e'),
-      onDone: () => _failPending('Stream closed'),
+      onError: (Object e) {
+        _log.warning('Stream error: $e');
+        _failPending('Stream error: $e');
+      },
+      onDone: () {
+        _log.info('Stream closed (code ${_channel?.closeCode}, reason ${_channel?.closeReason})');
+        _failPending('Stream closed');
+      },
     );
 
     // Send handshake: { type, session_id, signature = base64(HMAC(key, session_id)) }
@@ -178,7 +190,9 @@ class FaceVerificationStream {
 
     try {
       await _handshakeCompleter!.future.timeout(timeout);
+      _log.info('Handshake acknowledged');
     } on TimeoutException {
+      _log.warning('Handshake timed out after ${timeout.inSeconds}s');
       throw FaceVerificationException('Handshake timed out');
     }
   }
@@ -228,10 +242,15 @@ class FaceVerificationStream {
         }
         break;
       case 'verification_complete':
-        _maybeComplete(FaceVerificationComplete.fromJson(message));
+        final completion = FaceVerificationComplete.fromJson(message);
+        _log.info('Verification complete: result=${completion.result} '
+            'match=${completion.matchConfidence} liveness=${completion.livenessPassed} '
+            'frames=${completion.framesProcessed}');
+        _maybeComplete(completion);
         break;
       case 'error':
         final err = message['error']?.toString() ?? 'unknown error';
+        _log.warning('Server error message: $err');
         if (!(_handshakeCompleter?.isCompleted ?? true)) {
           _handshakeCompleter!.completeError(FaceVerificationException(err));
         }

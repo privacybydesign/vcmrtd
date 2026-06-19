@@ -41,8 +41,15 @@ class _FakeIssuer extends DefaultPassportIssuer {
 
   _FakeIssuer({this.pointer, this.error}) : super(hostName: 'https://test.local');
 
+  String? capturedFaceSessionId;
+
   @override
-  Future<IrmaSessionPointer> startIrmaIssuanceSession(RawDocumentData result, DocumentType docType) async {
+  Future<IrmaSessionPointer> startIrmaIssuanceSession(
+    RawDocumentData result,
+    DocumentType docType, {
+    String? faceSessionId,
+  }) async {
+    capturedFaceSessionId = faceSessionId;
     if (error != null) throw error!;
     return pointer!;
   }

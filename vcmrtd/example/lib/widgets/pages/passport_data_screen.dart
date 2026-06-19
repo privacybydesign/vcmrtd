@@ -153,7 +153,14 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
     final issuer = ref.read(passportIssuerProvider);
 
     try {
-      final response = await issuer.startIrmaIssuanceSession(widget.passportDataResult, widget.documentType);
+      // When face verification is enabled the issuer gates issuance on a
+      // successful face verification; pass the face_session_id from the verify
+      // response so it can correlate the authoritative result.
+      final response = await issuer.startIrmaIssuanceSession(
+        widget.passportDataResult,
+        widget.documentType,
+        faceSessionId: _verificationResponse?.faceSession?.faceSessionId,
+      );
       await launchUrl(response.toUniversalLink(), mode: LaunchMode.externalApplication);
       _showReturnSuccessDialog();
     } catch (e) {

@@ -6,10 +6,13 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
+import 'package:logging/logging.dart';
 import 'package:face_verification/face_verification.dart';
 import 'package:vcmrtdapp/helpers/face_alignment_camera.dart';
 import 'package:vcmrtdapp/models/face_verification_args.dart';
 import 'package:vcmrtdapp/services/face_verification_client.dart';
+
+final _log = Logger('FaceVerificationScreen');
 
 // ── Screen flow ──────────────────────────────────────────────────────────────
 //
@@ -100,6 +103,19 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
   @override
   void initState() {
     super.initState();
+    final s = widget.args.faceSession;
+    _log.info(
+      'Face verification screen opened: canVerifyRemotely=${widget.args.canVerifyRemotely}, '
+      'faceSessionId=${s?.faceSessionId}, '
+      'hasReferencePhoto=${widget.args.referencePhotoBytes?.isNotEmpty ?? false}, '
+      'wsUrl=${s?.resolvedWebsocketUrl}',
+    );
+    if (!widget.args.canVerifyRemotely) {
+      _log.warning(
+        'Remote face verification unavailable — no face session was started for this document '
+        '(e.g. a driving licence has no DG2 portrait, or the issuer has face verification disabled).',
+      );
+    }
     WidgetsBinding.instance.addObserver(this);
     if (widget.skipBootstrapForTesting) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -232,13 +248,21 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
     if (!_isReady || _state != VerifyState.idle) return;
     final args = widget.args;
     final session = args.faceSession;
-    if (session == null || args.referencePhotoBytes == null) return;
+    if (session == null || args.referencePhotoBytes == null) {
+      _log.warning(
+        'Cannot start remote verification: faceSession=${session?.faceSessionId}, '
+        'hasReferencePhoto=${args.referencePhotoBytes != null}',
+      );
+      return;
+    }
 
     final wsUrl = session.resolvedWebsocketUrl;
     if (wsUrl == null) {
+      _log.warning('Verification session ${session.faceSessionId} has no stream URL');
       setState(() => _errorMessage = 'Verification session has no stream URL');
       return;
     }
+    _log.info('Starting remote verification: session=${session.faceSessionId}, wsUrl=$wsUrl');
 
     setState(() {
       _state = VerifyState.connecting;

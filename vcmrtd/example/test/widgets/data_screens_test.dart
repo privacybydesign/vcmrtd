@@ -18,6 +18,9 @@ class _FakeIssuer extends DefaultPassportIssuer {
 
   @override
   Future<VerificationResponse> verifyPassport(RawDocumentData passportDataResult) async => response;
+
+  @override
+  Future<VerificationResponse> verifyDrivingLicence(RawDocumentData drivingLicenceDataResult) async => response;
 }
 
 Uint8List _jpeg() {
@@ -134,8 +137,22 @@ void main() {
     FaceVerificationArgs? captured;
     var backCount = 0;
 
+    final issuer = _FakeIssuer(
+      VerificationResponse(
+        isExpired: false,
+        authenticChip: true,
+        authenticContent: true,
+        faceSession: FaceSession(
+          faceSessionId: 'fs_2',
+          websocketUrl: 'wss://test.local/stream/fs_2',
+          bindingKeyReady: true,
+        ),
+      ),
+    );
+
     await tester.pumpWidget(
       ProviderScope(
+        overrides: [passportIssuerProvider.overrideWithValue(issuer)],
         child: MaterialApp(
           home: DrivingLicenceDataScreen(
             drivingLicence: licence,
@@ -157,11 +174,12 @@ void main() {
 
     await tester.scrollUntilVisible(find.text('Start Face Verification'), 300);
     await tester.tap(find.text('Start Face Verification'));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(captured, isNotNull);
     expect(captured!.portraitImageBytes, same(licence.photoImageData));
     expect(captured!.issueDate, DateTime(2024, 2, 1));
+    expect(captured!.faceSession?.faceSessionId, 'fs_2');
 
     await tester.tap(find.byType(IconButton).first);
     expect(backCount, 1);
