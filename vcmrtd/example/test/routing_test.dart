@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtdapp/models/face_verification_args.dart';
-import 'package:vcmrtdapp/widgets/pages/face_verification_screen.dart';
+import 'package:vcmrtdapp/widgets/pages/face_verification_entry_screen.dart';
 import 'package:vcmrtdapp/routing.dart';
 import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
 import 'package:vcmrtdapp/widgets/pages/document_selection_screen.dart';
@@ -306,7 +306,7 @@ void main() {
           .onFaceVerification(FaceVerificationArgs(portraitImageBytes: Uint8List.fromList([9]), issueDate: issueDate));
       await tester.pump();
       await tester.pump();
-      expect(find.byType(FlutterFaceVerificationScreen), findsOneWidget);
+      expect(find.byType(FaceVerificationEntryScreen), findsOneWidget);
 
       router.go(
         '/result',
@@ -328,7 +328,7 @@ void main() {
           );
       await tester.pump();
       await tester.pump();
-      expect(find.byType(FlutterFaceVerificationScreen), findsOneWidget);
+      expect(find.byType(FaceVerificationEntryScreen), findsOneWidget);
 
       router.go(
         '/result',
@@ -360,7 +360,7 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      final screen = tester.widget<FlutterFaceVerificationScreen>(find.byType(FlutterFaceVerificationScreen));
+      final screen = tester.widget<FaceVerificationEntryScreen>(find.byType(FaceVerificationEntryScreen));
       expect(screen.args, same(args));
     });
 

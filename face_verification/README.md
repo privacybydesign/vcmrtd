@@ -9,40 +9,113 @@
 
 # face_verification
 
-A Flutter package for **face detection and alignment**. It detects the primary face in an image, runs the MediaPipe-style landmark model, and produces an ArcFace-aligned 112×112 crop suitable for feeding into a downstream face SDK (e.g. for recognition or matching).
-
-> **Note:** Liveness detection (active/passive), anti-spoofing, rPPG, and on-device face recognition have been removed from this package. It now does alignment only; matching/liveness is expected to be handled by an external SDK consuming the aligned crop.
+A Flutter package for face verification and liveness detection. Supports both active liveness (gesture-based) and passive liveness (anti-spoofing + rPPG heart rate), plus face matching against a reference photo from an NFC chip.
 
 ## Features
 
-- **Face detection** — bounding box for the primary face
-- **478-point landmarks** — full MediaPipe face-mesh landmark set
-- **ArcFace alignment** — 112×112 RGB crop warped to the 5 canonical ArcFace keypoints
-- **Pose** — yaw (degrees) derived from the landmark pose matrix, plus normalized bounding-box position/size
-- Selfie (live-camera, tracked) and NFC/document photo alignment modes
-- TFLite models bundled — no separate download needed
+- **Active liveness** - detects gestures: blink, turn left/right, mouth open, smile
+- **Passive liveness** - anti-spoofing (MiniFASNet) and heart rate detection (rPPG/BigSmall)
+- **Face recognition** - 512-dim embeddings via GhostFaceNet, cosine similarity matching
+- **NFC photo matching** - compare live selfie against a reference image from `vcmrtd`
+- Runs in a background isolate - no UI
+- All TFLite models bundled - no separate download needed
 
-## Pipeline
+## Architecture
 
 ```
-image (img.Image, RGB)
-        │
-        ▼
-[1] Face detector  ──▶ bounding box + 6 keypoints   (face_detector.tflite)
-        │
-        ▼
-[2] Landmark model ──▶ 478 landmarks + pose matrix  (face_landmarks_detector.tflite)
-        │
-        ▼
-[3] Similarity warp ─▶ aligned 112×112 crop (Umeyama → ArcFace canonical points)
-        │
-        ▼
-   FaceObservation { boundingBox, boundingBoxAreaRatio, boundingBoxCenter,
-                     yawDegrees, alignedFace112, result }
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│  CAMERA (YUV420 / BGRA8888)                                                                 │
+└─────────────────────────────────────────────┬───────────────────────────────────────────────┘
+                                              │
+                                              ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│  MAIN ISOLATE — FaceVerificationEngine                                                      │
+│                                                                                             │
+│  processFrame() → writes frame into FFI buffer pool (10 × 12 MB, zero-copy)                 │
+│  dispatches buffer to PIPELINE                                                              │
+│                                                                                             │
+│  holds session state: gestures requested/completed, liveness mode,                          │
+│  alignment state, countdown timer                                                           │
+│                                                                                             │
+│  on FaceObservation received from PIPELINE:                                                 │
+│                                                                                             │
+│  ┌──────────────────────────────────────┐   ┌──────────────────────────────────────┐        │
+│  │  ACTIVE mode                         │   │  PASSIVE mode                        │        │
+│  │                                      │   │                                      │        │
+│  │  reads blendshape scores             │   │  reads face position + orientation   │        │
+│  │  checks against thresholds           │   │  emits align events:                 │        │
+│  │  detects: blink / turn L+R /         │   │  tooFar / tooClose /                 │        │
+│  │           mouth open / smile         │   │  lookStraight / holdStill            │        │
+│  │  emits: nextAction /                 │   │  once locked: countdown timer        │        │
+│  │         actionDetected               │   │  emits passiveProgress events        │        │
+│  │  accumulates completed challenges    │   │                                      │        │
+│  └──────────────────────────────────────┘   └──────────────────────────────────────┘        │
+│                                                                                             │
+│  mid-session (random frame): sends face crop to MATCH → consistency check                   │
+│  session end: sends final face crop to MATCH → NFC comparison                               │
+└───────────────┬─────────────────────────────────────────────────────────┬───────────────────┘
+                │                                                         │
+                │ dispatches FFI buffer                                   │ sends face crop
+                │                                                         │ (mid-session +
+                ▼                                                         │  session end)
+┌───────────────────────────────┐                                         │
+│  PIPELINE ISOLATE             │                                         │
+│                               │                                         │
+│  reads FFI buffer             │                                         │
+│                               │                                         │
+│  [1] Face detector            │                                         │
+│       └─ bounding box         │                                         │
+│                               │                                         │
+│  [2] Landmark pipeline        │                                         │
+│       ├─ 468 landmarks        │                                         │
+│       ├─ blendshape scores    │                                         │
+│       └─ aligned face crop    │                                         │
+│                               │                                         │
+│  → FaceObservation            │                                         │
+│    sent to main isolate       │                                         │
+│                               │                                         │
+│  if face found:               │                                         │
+│  buffer handoff to PASSIVE    │                                         │
+│  (PIL_READING → PASS_READY)   │                                         │
+│  does not free buffer         │                                         │
+└───────┬───────────────┬───────┘                                         │
+        │               │                                                 │
+        │ FaceObser-    │ FFI buffer handoff                              │
+        │ vation        │ + FaceObservation                               │
+        │ (per frame)   │ (face region)                                   │
+        │               ▼                                                 ▼
+        │  ┌────────────────────────────┐             ┌───────────────────────────────┐
+        │  │  PASSIVE ISOLATE           │             │  MATCH ISOLATE                │
+        │  │                            │             │                               │
+        │  │  receives FFI buffer       │             │  never reads FFI buffer       │
+        │  │  + FaceObservation         │             │  receives face crop from      │
+        │  │                            │             │  engine only                  │
+        │  │  MiniFASNet                │             │                               │
+        │  │  · anti-spoof score        │             │  GhostFaceNet                 │
+        │  │                            │             │  · 512-dim face embedding     │
+        │  │  BigSmall                  │             │  · cosine similarity          │
+        │  │  · rPPG signal             │             │                               │
+        │  │  · heart rate estimation   │             │  mid-session: store/compare   │
+        │  │                            │             │  embedding → face-swap check  │
+        │  │  both accumulate across    │             │                               │
+        │  │  frames throughout session │             │  session end: compare against │
+        │  │                            │             │  embedded NFC photo           │
+        │  │  while PASSIVE handles     │             │                               │
+        │  │  frame N, PIPELINE is      │             │  → match score                │
+        │  │  already on frame N+1      │             │                               │
+        │  └────────────┬───────────────┘             └───────────────┬───────────────┘
+        │               │                                             │
+        │               │ anti-spoof score                            │ match score
+        │               │ rPPG / heart rate                           │
+        ▼               ▼                                             ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│  MAIN ISOLATE — score fusion (session end)                                                  │
+│                                                                                             │
+│  complete event:                                                                            │
+│  passed · matchScore · antiSpoofScore · antiSpoofPassed · consistencyFailed                 │
+│  rppg { hr · passed · sampleCount · durationMs }                                            │
+└─────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
-
-In selfie mode the detector crop is cached and reused as a tracking hint between
-frames; call `resetTracking()` to force a full re-detect.
 
 ## Installation
 
@@ -73,44 +146,118 @@ Android does not require any manual changes — the `camera` plugin adds the `CA
 ## Basic usage
 
 ```dart
-import 'package:image/image.dart' as img;
+import 'dart:async';
 import 'package:face_verification/face_verification.dart';
 
-final detector = FaceDetectorService();
+final engine = FaceVerificationEngine();
+await engine.initialize();
 
-// Loads the bundled detector + landmark TFLite models.
-await detector.initialize();
+// Set up the event listener before calling start() — events fire as soon as frames arrive.
+engine.events.listen((event) {
+  switch (event['type']) {
+    case 'align':
+      // Tip to show the user while they position their face.
+      // event['tip'] is one of:
+      //   'noFace'       - no face detected
+      //   'tooFar'       - face too small, move closer
+      //   'tooClose'     - face too large, move back
+      //   'centerFace'   - face off-center (passive mode)
+      //   'lookStraight' - face turned too far
+      //   'holdStill'    - waiting for face to settle
+      //   'openEyes'     - eyes too closed
+      //   'closeMouth'   - mouth too open at rest
+      //   'relaxFace'    - smiling too much at rest
+      print('Tip: ${event['tip']}');
+    case 'nextAction':
+      // Active mode only: the gesture the user must perform next.
+      // event['action'] is one of: 'BLINK', 'TURN_LEFT', 'TURN_RIGHT', 'MOUTH_OPEN', 'SMILE'
+      print('Perform: ${event['action']}');
+    case 'actionDetected':
+      // Active mode only: a gesture was successfully detected.
+      print('Completed: ${event['action']}');
+    case 'extraAction':
+      // Active mode only: an extra challenge was added (triggered when the user barely passed).
+      print('Extra challenge: ${event['action']}');
+    case 'timeout':
+      // Active mode only: the user did not perform the gesture in time; moving to next action.
+      print('Timed out on: ${event['action']}');
+    case 'passiveProgress':
+      // Passive mode only: emitted every frame.
+      // event['started']   (bool) - false during lock-on phase, true once countdown begins
+      // event['elapsedMs'] (int)  - ms elapsed since countdown started
+      // event['targetMs']  (int)  - total ms required
+      final pct = (event['started'] as bool) ? (event['elapsedMs'] as int) / (event['targetMs'] as int) : 0.0;
+      print('Passive progress: ${(pct * 100).round()}%');
+    case 'processing':
+      // Final scoring is running; stop feeding camera frames.
+      print('Processing...');
+    case 'complete':
+      // event['passed']            (bool)    - overall pass/fail
+      // event['matchScore']        (double)  - cosine similarity vs NFC photo (0–1); 0 if no NFC photo
+      // event['antiSpoofScore']    (double?) - anti-spoof confidence score
+      // event['antiSpoofPassed']   (bool)    - whether anti-spoof check passed
+      // event['consistencyFailed'] (bool)    - true if a face-swap was detected mid-session
+      // event['rppg']              (Map)     - rPPG heart-rate result:
+      //   'hr'          (double?) - estimated heart rate in BPM
+      //   'passed'      (bool)    - whether rPPG check passed
+      //   'sampleCount' (int)     - number of frames used
+      //   'durationMs'  (int)     - duration of the rPPG measurement in ms
+      print('Passed: ${event['passed']}, score: ${event['matchScore']}');
+    case 'error':
+      print('Error: ${event['message']}');
+  }
+});
 
-// One-shot: detect + align the primary face in a still image (e.g. an NFC/document photo).
-final img.Image? aligned = detector.detectAndCrop(decodedImage); // 112×112, or null if no face
-
-// Full observation (bounding box, yaw, aligned crop, raw landmarks):
-final FaceObservation? face = detector.detectPrimaryFace(
-  decodedImage,
-  mode: FaceAlignmentMode.selfie, // or FaceAlignmentMode.nfc
-);
-if (face != null) {
-  final img.Image crop = face.alignedFace112; // hand this to your face SDK
-  final double? yaw = face.yawDegrees;
+// Optional but recommended: embed the NFC photo in the background right after
+// initialize(), so it is ready before the user taps Start.
+if (nfcImageBytes != null && nfcImageBytes.isNotEmpty) {
+  unawaited(engine.prepareNfcFaceEagerly(nfcImageBytes).catchError((_) {}));
 }
 
-await detector.close();
+// When the user taps Start:
+final actions = await engine.start(
+  nfcImageBytes,  // Uint8List from NFC chip; pass Uint8List(0) if unavailable (match score will be 0)
+  mode: LivenessMode.active,
+);
+// actions is a List<String> of wire-name strings the user must perform,
+// for example ['BLINK', 'TURN_LEFT', 'SMILE']
+
+// Feed camera frames from your camera image stream callback:
+engine.processFrame(cameraImage, rotationDegrees);
+
+// Clean up when done:
+await engine.dispose();
 ```
 
-For a live camera feed, call `detectPrimaryFace(frame, mode: FaceAlignmentMode.selfie)`
-on each frame (it caches a tracking crop between frames), and pick the most frontal
-`alignedFace112` (smallest `|yawDegrees|`) to forward to the downstream SDK.
-
-If you run the detector in a background isolate, use `initializeFromBuffers(detector:, landmarks:)`
-with model bytes loaded on the main isolate (TFLite `Interpreter.fromBuffer` is isolate-safe;
-asset loading is not).
-
-## Alignment modes
+## Liveness modes
 
 | Mode | Description |
 |------|-------------|
-| `FaceAlignmentMode.selfie` | Live-camera faces. Caches the detector crop as a per-frame tracking hint. |
-| `FaceAlignmentMode.nfc` | Document/passport photos. No tracking; tuned crop policy for portrait stills. |
+| `LivenessMode.active` | User performs gesture challenges (blink, turn, smile, etc.). Anti-spoof and rPPG run in parallel. |
+| `LivenessMode.passive` | User holds still for a fixed duration. Liveness is determined by anti-spoof and rPPG only. |
+
+## Example app
+
+A complete working implementation is included in the [`vcmrtd` example app](../vcmrtd/example). The relevant files are:
+
+- [`lib/widgets/pages/face_verification_screen.dart`](../vcmrtd/example/lib/widgets/pages/face_verification_screen.dart) — full UI: camera preview, alignment coaching, gesture prompts, passive countdown, result display
+- [`lib/widgets/pages/face_verification_entry_screen.dart`](../vcmrtd/example/lib/widgets/pages/face_verification_entry_screen.dart) — entry point that wires the engine to the screen
+
+The example demonstrates:
+- Initializing the engine and eagerly preparing the NFC photo
+- Handling all event types (`align`, `nextAction`, `passiveProgress`, `complete`, etc.)
+- Displaying alignment tips and gesture instructions with icons
+- Rendering a passive liveness countdown progress bar
+- Showing the final result with match score, anti-spoof score, and rPPG heart rate
+- Age-adjusted match threshold (`faceMatchThreshold`) based on the passport photo issue date
+
+To run it:
+
+```sh
+cd vcmrtd/example
+flutter pub get
+flutter run
+```
 
 ## Related packages
 

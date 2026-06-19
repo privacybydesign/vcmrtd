@@ -12,7 +12,7 @@ export 'package:face_verification/face_verification.dart' show FaceObservation;
 // Detects and aligns faces using the [FaceLandmarkPipeline].
 //
 // Wraps the pipeline with ArcFace-style similarity warping to produce
-// consistent 112×112 aligned crops for downstream face SDKs.
+// consistent 112×112 crops for the face recognizer.
 class FaceDetectorService {
   static const int _targetSize = 112;
 
@@ -45,8 +45,9 @@ class FaceDetectorService {
   void initializeFromBuffers({
     required Uint8List detector,
     required Uint8List landmarks,
+    required Uint8List blendshapes,
   }) {
-    _pipeline.initializeFromBuffers(detector: detector, landmarks: landmarks);
+    _pipeline.initializeFromBuffers(detector: detector, landmarks: landmarks, blendshapes: blendshapes);
   }
 
   void resetTracking() => _pipeline.resetTracking();
@@ -57,8 +58,8 @@ class FaceDetectorService {
     return _pipeline.runDetectorStage(image, mode: mode);
   }
 
-  FaceObservation? runLandmarkStage(img.Image image, DetectorStageOutput crop) {
-    final result = _pipeline.runLandmarkStage(image, crop);
+  FaceObservation? runLandmarkStage(img.Image image, DetectorStageOutput crop, {bool runBlendshapes = true}) {
+    final result = _pipeline.runLandmarkStage(image, crop, runBlendshapes: runBlendshapes);
     if (result == null || result.landmarks.isEmpty) return null;
     return buildObservation(image, result);
   }
@@ -70,6 +71,7 @@ class FaceDetectorService {
   // Convenience method: runs detector + landmark stage and returns an observation.
   FaceObservation? detectPrimaryFace(
     img.Image image, {
+    bool runBlendshapes = true,
     FaceAlignmentMode mode = FaceAlignmentMode.selfie,
   }) {
     final crop = _pipeline.runDetectorStage(image, mode: mode);
@@ -77,7 +79,7 @@ class FaceDetectorService {
       _pipeline.resetTracking();
       return null;
     }
-    final result = _pipeline.runLandmarkStage(image, crop);
+    final result = _pipeline.runLandmarkStage(image, crop, runBlendshapes: runBlendshapes);
     if (result == null || result.landmarks.isEmpty) {
       _pipeline.resetTracking();
       return null;
@@ -94,7 +96,7 @@ class FaceDetectorService {
   // successive NFC calls do not interfere with the live-camera tracking state.
   img.Image? detectAndCrop(img.Image image) {
     _pipeline.resetTracking();
-    final result = detectPrimaryFace(image, mode: FaceAlignmentMode.nfc);
+    final result = detectPrimaryFace(image, runBlendshapes: false, mode: FaceAlignmentMode.nfc);
     _pipeline.resetTracking();
     return result?.alignedFace112;
   }
@@ -119,7 +121,9 @@ class FaceDetectorService {
       boundingBox: box,
       boundingBoxAreaRatio: boxAreaRatio.clamp(0.0, 1.0),
       boundingBoxCenter: center,
+      mouthRatio: _mouthOpenRatio(landmarks),
       yawDegrees: matrixYaw(result),
+      blendshapeScores: _blendshapeMap(result),
       alignedFace112: _similarityWarp(image, result),
     );
   }
@@ -135,6 +139,12 @@ class FaceDetectorService {
     // asin(-m[2]) converts it to a yaw angle in radians.
     final v = (-m[2]).clamp(-1.0, 1.0);
     return math.asin(v) * 180.0 / math.pi;
+  }
+
+  Map<String, double> _blendshapeMap(FaceLandmarkerResult result) {
+    final lists = result.blendshapes;
+    if (lists == null || lists.isEmpty) return const <String, double>{};
+    return <String, double>{for (final c in lists.first) c.categoryName: c.score};
   }
 
   Rect _boundsFromLandmarks(List<NormalizedLandmark> landmarks, int imgW, int imgH) {
@@ -156,6 +166,14 @@ class FaceDetectorService {
       return Rect.fromLTWH(0, 0, imgW.toDouble(), imgH.toDouble());
     }
     return Rect.fromLTRB(minX, minY, maxX, maxY);
+  }
+
+  double _mouthOpenRatio(List<NormalizedLandmark> lm) {
+    if (lm.length <= 152) return 0.0;
+    // lm[13]/lm[14] = upper/lower inner lip; lm[10]/lm[152] = chin to crown.
+    final gap = _dist(lm[13], lm[14]);
+    final faceH = _dist(lm[10], lm[152]).clamp(1e-6, 10.0);
+    return gap / faceH;
   }
 
   // Warps [bitmap] so that the 5 detected facial keypoints align with the
@@ -291,6 +309,13 @@ class FaceDetectorService {
       }
     }
     return img.Image.fromBytes(width: _targetSize, height: _targetSize, bytes: outBytes.buffer, numChannels: 3);
+  }
+
+  // Euclidean distance between two normalized landmarks (ignores Z).
+  static double _dist(NormalizedLandmark a, NormalizedLandmark b) {
+    final dx = a.x - b.x;
+    final dy = a.y - b.y;
+    return math.sqrt(dx * dx + dy * dy);
   }
 
   Future<void> close() async => _pipeline.close();

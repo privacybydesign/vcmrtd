@@ -22,11 +22,14 @@ void main() {
       );
     });
 
-    test('builds observation from landmarks and pose matrix', () {
+    test('builds observation from landmarks, blendshapes, and pose matrix', () {
       final detector = FaceDetectorService();
       final image = img.Image(width: 200, height: 100);
       final result = FaceLandmarkerResult(
         landmarks: <List<NormalizedLandmark>>[_landmarks()],
+        blendshapes: <List<Category>>[
+          <Category>[const Category('jawOpen', 0.3), const Category('mouthSmileLeft', 0.4)],
+        ],
         transformMatrices: <List<double>>[
           <double>[1, 0, -0.5],
         ],
@@ -41,7 +44,9 @@ void main() {
       expect(observation.boundingBox.bottom, closeTo(90, 1e-9));
       expect(observation.boundingBoxCenter, const Offset(0.5, 0.5));
       expect(observation.boundingBoxAreaRatio, closeTo(0.72, 1e-9));
+      expect(observation.mouthRatio, closeTo(0.125, 1e-9));
       expect(observation.yawDegrees, closeTo(30, 1e-9));
+      expect(observation.blendshapeScores, containsPair('jawOpen', 0.3));
       expect(observation.alignedFace112.width, 112);
       expect(observation.alignedFace112.height, 112);
     });
