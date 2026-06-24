@@ -1,8 +1,7 @@
-﻿import 'dart:typed_data';
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vcmrtd/vcmrtd.dart';
-import 'package:face_verification/face_verification.dart';
+import 'package:vcmrtdapp/models/face_verification_args.dart';
 import 'package:vcmrtdapp/widgets/pages/document_selection_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/face_verification_entry_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/driving_licence_data_screen.dart';
@@ -29,14 +28,14 @@ extension CustomRouteExtensions on BuildContext {
     push(path.toString());
   }
 
-  void pushFaceVerificationScreen(Uint8List nfcImageBytes, {DateTime? issueDate}) {
-    push(_faceVerificationPath, extra: {'nfcImageBytes': nfcImageBytes, 'issueDate': issueDate});
+  void pushFaceVerificationScreen(FaceVerificationArgs args) {
+    push(_faceVerificationPath, extra: {'args': args});
   }
 }
 
 final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
 
-GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEngine? faceVerificationEngine}) {
+GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder}) {
   return GoRouter(
     initialLocation: '/select_doc_type',
     observers: [routeObserver],
@@ -115,15 +114,13 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
               passportDataResult: result,
               documentType: ty,
               onBackPressed: () => context.go('/select_doc_type'),
-              onFaceVerification: (nfcImageBytes, issueDate) =>
-                  context.pushFaceVerificationScreen(nfcImageBytes, issueDate: issueDate),
+              onFaceVerification: (args) => context.pushFaceVerificationScreen(args),
             ),
             DocumentType.drivingLicence => DrivingLicenceDataScreen(
               drivingLicence: s['document'] as DrivingLicenceData,
               drivingLicenceDataResult: result,
               onBackPressed: () => context.go('/select_doc_type'),
-              onFaceVerification: (nfcImageBytes, issueDate) =>
-                  context.pushFaceVerificationScreen(nfcImageBytes, issueDate: issueDate),
+              onFaceVerification: (args) => context.pushFaceVerificationScreen(args),
             ),
           };
         },
@@ -132,23 +129,9 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
         path: _faceVerificationPath,
         builder: (context, state) {
           final extra = state.extra as Map<String, dynamic>;
-          final nfcImageBytes = extra['nfcImageBytes'] as Uint8List?;
-          final issueDate = extra['issueDate'] as DateTime?;
+          final args = extra['args'] as FaceVerificationArgs;
 
-          if (faceVerificationEngine != null) {
-            return FaceVerificationEntryScreen.withEngine(
-              engine: faceVerificationEngine,
-              nfcImageBytes: nfcImageBytes,
-              onBackPressed: context.pop,
-              photoIssueDate: issueDate,
-            );
-          }
-
-          return FaceVerificationEntryScreen(
-            nfcImageBytes: nfcImageBytes,
-            onBackPressed: context.pop,
-            photoIssueDate: issueDate,
-          );
+          return FaceVerificationEntryScreen(args: args, onBackPressed: context.pop);
         },
       ),
     ],

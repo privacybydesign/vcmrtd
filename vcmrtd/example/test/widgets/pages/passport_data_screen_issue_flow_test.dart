@@ -41,8 +41,15 @@ class _FakeIssuer extends DefaultPassportIssuer {
 
   _FakeIssuer({this.pointer, this.error}) : super(hostName: 'https://test.local');
 
+  String? capturedFaceSessionId;
+
   @override
-  Future<IrmaSessionPointer> startIrmaIssuanceSession(RawDocumentData result, DocumentType docType) async {
+  Future<IrmaSessionPointer> startIrmaIssuanceSession(
+    RawDocumentData result,
+    DocumentType docType, {
+    String? faceSessionId,
+  }) async {
+    capturedFaceSessionId = faceSessionId;
     if (error != null) throw error!;
     return pointer!;
   }
@@ -63,7 +70,7 @@ Widget _screen(_FakeIssuer issuer, {VoidCallback? onBack}) {
         document: _passportData(),
         passportDataResult: _rawDocument(sessionId: 'session-1'),
         onBackPressed: onBack ?? () {},
-        onFaceVerification: (_, __) {},
+        onFaceVerification: (_) {},
       ),
     ),
   );

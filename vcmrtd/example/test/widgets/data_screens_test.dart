@@ -5,8 +5,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtdapp/models/face_verification_args.dart';
+import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
 import 'package:vcmrtdapp/widgets/pages/driving_licence_data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/passport_data_screen.dart';
+
+/// Fake issuer that returns a canned verify response (carrying a face session),
+/// so the passport screen's "Start Face Verification" flow runs without network.
+class _FakeIssuer extends DefaultPassportIssuer {
+  final VerificationResponse response;
+  _FakeIssuer(this.response) : super(hostName: 'https://test.local');
+
+  @override
+  Future<VerificationResponse> verifyPassport(RawDocumentData passportDataResult) async => response;
+
+  @override
+  Future<VerificationResponse> verifyDrivingLicence(RawDocumentData drivingLicenceDataResult) async => response;
+}
 
 Uint8List _jpeg() {
   return Uint8List.fromList(img.encodeJpg(img.Image(width: 2, height: 2)));
@@ -65,21 +80,31 @@ void main() {
   testWidgets('PassportDataScreen renders document data and starts face verification', (tester) async {
     _setLargeViewport(tester);
     final passport = _passportData();
-    Uint8List? faceBytes;
-    DateTime? issueDate;
+    FaceVerificationArgs? captured;
     var backCount = 0;
+
+    final issuer = _FakeIssuer(
+      VerificationResponse(
+        isExpired: false,
+        authenticChip: true,
+        authenticContent: true,
+        faceSession: FaceSession(
+          faceSessionId: 'fs_1',
+          websocketUrl: 'wss://test.local/stream/fs_1',
+          bindingKeyReady: true,
+        ),
+      ),
+    );
 
     await tester.pumpWidget(
       ProviderScope(
+        overrides: [passportIssuerProvider.overrideWithValue(issuer)],
         child: MaterialApp(
           home: PassportDataScreen(
             document: passport,
             passportDataResult: _rawDocument(sessionId: 'session-1'),
             onBackPressed: () => backCount++,
-            onFaceVerification: (bytes, date) {
-              faceBytes = bytes;
-              issueDate = date;
-            },
+            onFaceVerification: (args) => captured = args,
           ),
         ),
       ),
@@ -93,10 +118,12 @@ void main() {
 
     await tester.scrollUntilVisible(find.text('Start Face Verification'), 300);
     await tester.tap(find.text('Start Face Verification'));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(faceBytes, same(passport.photoImageData));
-    expect(issueDate, DateTime(2024, 2, 1));
+    expect(captured, isNotNull);
+    expect(captured!.portraitImageBytes, same(passport.photoImageData));
+    expect(captured!.issueDate, DateTime(2024, 2, 1));
+    expect(captured!.faceSession?.faceSessionId, 'fs_1');
 
     await tester.tap(find.byType(IconButton).first);
     expect(backCount, 1);
@@ -107,21 +134,31 @@ void main() {
   ) async {
     _setLargeViewport(tester);
     final licence = _drivingLicenceData();
-    Uint8List? faceBytes;
-    DateTime? issueDate;
+    FaceVerificationArgs? captured;
     var backCount = 0;
+
+    final issuer = _FakeIssuer(
+      VerificationResponse(
+        isExpired: false,
+        authenticChip: true,
+        authenticContent: true,
+        faceSession: FaceSession(
+          faceSessionId: 'fs_2',
+          websocketUrl: 'wss://test.local/stream/fs_2',
+          bindingKeyReady: true,
+        ),
+      ),
+    );
 
     await tester.pumpWidget(
       ProviderScope(
+        overrides: [passportIssuerProvider.overrideWithValue(issuer)],
         child: MaterialApp(
           home: DrivingLicenceDataScreen(
             drivingLicence: licence,
             drivingLicenceDataResult: _rawDocument(sessionId: 'session-2'),
             onBackPressed: () => backCount++,
-            onFaceVerification: (bytes, date) {
-              faceBytes = bytes;
-              issueDate = date;
-            },
+            onFaceVerification: (args) => captured = args,
           ),
         ),
       ),
@@ -137,10 +174,12 @@ void main() {
 
     await tester.scrollUntilVisible(find.text('Start Face Verification'), 300);
     await tester.tap(find.text('Start Face Verification'));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(faceBytes, same(licence.photoImageData));
-    expect(issueDate, DateTime(2024, 2, 1));
+    expect(captured, isNotNull);
+    expect(captured!.portraitImageBytes, same(licence.photoImageData));
+    expect(captured!.issueDate, DateTime(2024, 2, 1));
+    expect(captured!.faceSession?.faceSessionId, 'fs_2');
 
     await tester.tap(find.byType(IconButton).first);
     expect(backCount, 1);

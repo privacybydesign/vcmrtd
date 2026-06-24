@@ -153,6 +153,32 @@ void main() {
       expect(restored.isExpired, true);
       expect(restored.authenticChip, false);
       expect(restored.authenticContent, true);
+      expect(restored.faceSession, isNull);
+    });
+
+    test('parses an optional face_session and exposes the stream URL', () {
+      final restored = VerificationResponse.fromJson({
+        'is_expired': false,
+        'authentic_chip': true,
+        'authentic_content': true,
+        'face_session': {
+          'face_session_id': 'fs_abc123',
+          'face_session_token': 'tok',
+          'websocket_url': 'wss://face.example/stream/fs_abc123',
+          'binding_key_ready': true,
+        },
+      });
+      expect(restored.faceSession, isNotNull);
+      expect(restored.faceSession!.faceSessionId, 'fs_abc123');
+      expect(restored.faceSession!.bindingKeyReady, true);
+      expect(restored.faceSession!.resolvedWebsocketUrl, 'wss://face.example/stream/fs_abc123');
+    });
+
+    test('resolvedWebsocketUrl falls back to the face_session_token', () {
+      // base64url of {"id":"fs_x","ws":"wss://face.example/stream/fs_x"}
+      const token = 'eyJpZCI6ImZzX3giLCJ3cyI6IndzczovL2ZhY2UuZXhhbXBsZS9zdHJlYW0vZnNfeCJ9';
+      final session = FaceSession(faceSessionId: 'fs_x', faceSessionToken: token);
+      expect(session.resolvedWebsocketUrl, 'wss://face.example/stream/fs_x');
     });
   });
 

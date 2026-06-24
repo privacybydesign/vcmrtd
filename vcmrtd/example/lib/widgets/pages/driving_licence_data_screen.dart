@@ -5,6 +5,7 @@ import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtdapp/models/face_verification_args.dart';
 import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
 import '../../widgets/pages/data_screen_widgets/web_banner.dart';
 import '../../widgets/pages/data_screen_widgets/return_to_web.dart';
@@ -15,7 +16,7 @@ class DrivingLicenceDataScreen extends ConsumerStatefulWidget {
   final DrivingLicenceData drivingLicence;
   final RawDocumentData drivingLicenceDataResult;
   final VoidCallback onBackPressed;
-  final void Function(Uint8List, DateTime?) onFaceVerification;
+  final void Function(FaceVerificationArgs) onFaceVerification;
 
   const DrivingLicenceDataScreen({
     super.key,
@@ -31,6 +32,41 @@ class DrivingLicenceDataScreen extends ConsumerStatefulWidget {
 
 class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScreen> {
   VerificationResponse? _verificationResponse;
+  bool _startingFaceVerification = false;
+
+  // Verifies the licence (to obtain the face_session the issuer started from the
+  // DG6 portrait), then navigates to the face screen with the raw DG6 bytes
+  // needed to derive the binding key. Mirrors the passport flow.
+  Future<void> _startFaceVerification() async {
+    setState(() => _startingFaceVerification = true);
+
+    var response = _verificationResponse;
+    try {
+      if (response?.faceSession == null) {
+        response = await ref.read(passportIssuerProvider).verifyDrivingLicence(widget.drivingLicenceDataResult);
+        if (!mounted) return;
+        setState(() => _verificationResponse = response);
+      }
+    } catch (e) {
+      // Non-fatal: continue to the face screen (it will show unavailable).
+      if (mounted) _showReturnErrorDialog(e.toString());
+    } finally {
+      if (mounted) setState(() => _startingFaceVerification = false);
+    }
+    if (!mounted) return;
+
+    final dg6Hex = widget.drivingLicenceDataResult.dataGroups['DG6'];
+    final referencePhoto = dg6Hex == null ? null : const Uint8ListConverter().fromJson(dg6Hex);
+
+    widget.onFaceVerification(
+      FaceVerificationArgs(
+        portraitImageBytes: widget.drivingLicence.photoImageData,
+        referencePhotoBytes: referencePhoto,
+        faceSession: response?.faceSession,
+        issueDate: _parseDrivingLicenceDate(widget.drivingLicence.dateOfIssue),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,18 +107,21 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
               ],
               const SizedBox(height: 20),
               ElevatedButton.icon(
-                onPressed: () => widget.onFaceVerification(
-                  widget.drivingLicence.photoImageData,
-                  _parseDrivingLicenceDate(widget.drivingLicence.dateOfIssue),
-                ),
+                onPressed: _startingFaceVerification ? null : _startFaceVerification,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   backgroundColor: Colors.green[600],
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-                icon: const Icon(Icons.face),
-                label: const Text('Start Face Verification'),
+                icon: _startingFaceVerification
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.face),
+                label: Text(_startingFaceVerification ? 'Starting…' : 'Start Face Verification'),
               ),
               if (widget.drivingLicenceDataResult.sessionId != null) ...[
                 const SizedBox(height: 20),
@@ -127,6 +166,7 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
       final response = await issuer.startIrmaIssuanceSession(
         widget.drivingLicenceDataResult,
         DocumentType.drivingLicence,
+        faceSessionId: _verificationResponse?.faceSession?.faceSessionId,
       );
       await launchUrl(response.toUniversalLink(), mode: LaunchMode.externalApplication);
       _showReturnSuccessDialog();

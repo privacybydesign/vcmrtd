@@ -1,91 +1,75 @@
-import 'dart:async';
-import 'dart:typed_data';
-
-import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:image/image.dart' as img;
-import 'package:face_verification/face_verification.dart';
+import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtdapp/models/face_verification_args.dart';
 import 'package:vcmrtdapp/widgets/pages/face_verification_entry_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/face_verification_screen.dart';
+import 'package:vcmrtdapp/widgets/pages/on_device_face_verification_screen.dart';
 
-class _FakeWorker implements FaceVerificationWorker {
-  final StreamController<WorkerFrameResult> _frames = StreamController<WorkerFrameResult>.broadcast(sync: true);
-
-  @override
-  Stream<WorkerFrameResult> get frames => _frames.stream;
-  @override
-  Future<void> initialize() async {}
-  @override
-  Future<void> dispose() async => _frames.close();
-  @override
-  Future<void> startSession() async {}
-  @override
-  Future<void> stop() async {}
-  @override
-  Future<void> processCameraFrame(CameraImage c, int r) async {}
-  @override
-  Future<img.Image?> detectAndCropEncoded(Uint8List e) async => null;
-  @override
-  Future<void> prepareNfcFace(img.Image f) async {}
-  @override
-  Future<void> storeConsistencySelfie(img.Image s) async {}
-  @override
-  Future<double> checkConsistencySelfie(img.Image s) async => 1.0;
-  @override
-  Future<WorkerMatchResult> matchSelfie(img.Image s) async => const WorkerMatchResult(score: 0.9);
-  @override
-  Future<WorkerPassiveResult> getPassiveResult() async => const WorkerPassiveResult(
-    antiSpoofScore: 0.9,
-    antiSpoofPassed: true,
-    rppgHr: 70.0,
-    rppgPassed: true,
-    rppgSampleCount: 30,
-    rppgDurationMs: 3000,
-  );
-  @override
-  Stream<WorkerFrameResult> get debugFrames => _frames.stream;
-  @override
-  int get debugSessionId => 0;
-  @override
-  Future<void> debugWaitPipelineIdle() async {}
-  @override
-  Future<void> debugWaitPassiveIdle() async {}
-  @override
-  void debugEmitFrameResult(WorkerFrameResult r) {}
-  @override
-  void debugEmitFrameError(Object e) {}
-}
+FaceVerificationArgs _remoteCapableArgs() => FaceVerificationArgs(
+  portraitImageBytes: Uint8List.fromList(<int>[1, 2, 3]),
+  referencePhotoBytes: Uint8List.fromList(<int>[4, 5, 6]),
+  faceSession: FaceSession(
+    faceSessionId: 'fs_1',
+    websocketUrl: 'wss://test.local/stream/fs_1',
+    bindingKeyReady: true,
+  ),
+);
 
 void main() {
-  testWidgets('withEngine constructor renders the face verification screen', (tester) async {
-    final engine = FaceVerificationEngine.withWorker(_FakeWorker());
-    await tester.pumpWidget(
-      MaterialApp(
-        home: FaceVerificationEntryScreen.withEngine(engine: engine, nfcImageBytes: Uint8List(1), onBackPressed: () {}),
-      ),
-    );
-    await tester.pump();
-    await tester.pump();
+  TestWidgetsFlutterBinding.ensureInitialized();
 
-    expect(find.byType(FlutterFaceVerificationScreen), findsOneWidget);
+  setUp(() {
+    // No camera devices in the test environment: the screens handle this
+    // gracefully instead of throwing during bootstrap.
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('plugins.flutter.io/camera'),
+      (call) async => call.method == 'availableCameras' ? <dynamic>[] : null,
+    );
   });
 
-  testWidgets('withEngine forwards photoIssueDate', (tester) async {
-    final engine = FaceVerificationEngine.withWorker(_FakeWorker());
+  tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('plugins.flutter.io/camera'),
+      null,
+    );
+  });
+
+  testWidgets('renders the method chooser with both options', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: FaceVerificationEntryScreen.withEngine(
-          engine: engine,
-          nfcImageBytes: Uint8List(1),
+        home: FaceVerificationEntryScreen(
+          args: FaceVerificationArgs(portraitImageBytes: Uint8List(1)),
           onBackPressed: () {},
-          photoIssueDate: DateTime(2024, 1, 1),
         ),
       ),
     );
     await tester.pump();
+
+    expect(find.text('On-device (open source)'), findsOneWidget);
+    expect(find.text('Remote (face service)'), findsOneWidget);
+    // Neither verification screen is shown until a method is chosen.
+    expect(find.byType(FlutterFaceVerificationScreen), findsNothing);
+    expect(find.byType(OnDeviceFaceVerificationScreen), findsNothing);
+  });
+
+  testWidgets('selecting remote shows the remote screen and forwards args', (tester) async {
+    final args = _remoteCapableArgs();
+    await tester.pumpWidget(
+      MaterialApp(home: FaceVerificationEntryScreen(args: args, onBackPressed: () {})),
+    );
     await tester.pump();
 
-    expect(find.byType(FlutterFaceVerificationScreen), findsOneWidget);
+    await tester.tap(find.text('Remote (face service)'));
+    await tester.pump();
+
+    final screen = tester.widget<FlutterFaceVerificationScreen>(find.byType(FlutterFaceVerificationScreen));
+    expect(screen.args, same(args));
   });
+
+  // Note: selecting on-device mounts OnDeviceFaceVerificationScreen, whose
+  // initState boots the TFLite engine — not runnable in the headless test VM.
+  // The on-device screen needs its own mock-engine harness (as the pre-removal
+  // screen had); the selector wiring is covered by the cases above.
 }
