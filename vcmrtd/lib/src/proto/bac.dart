@@ -3,7 +3,6 @@
 
 import 'dart:typed_data';
 
-import 'package:collection/collection.dart';
 import 'package:vcmrtd/extensions.dart';
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
@@ -35,7 +34,6 @@ class BACError implements Exception {
 /// Ref: https://www.icao.int/publications/Documents/9303_p11_cons_en.pdf
 class BAC {
   static final _log = Logger("bac");
-  static final bool Function(List<dynamic>, List<dynamic>) _eq = const ListEquality().equals;
 
   // Specified in section 4.3.1 of ICAO 9303 p11 doc
   static const nonceLen = 8; // Challenge is 8 bytes
@@ -208,8 +206,11 @@ class BAC {
     assert(RNDifd.length == nonceLen);
     assert(R.length == rLen);
     final eRNDifd = Uint8List.fromList(R.sublist(nonceLen, 2 * nonceLen));
-    if (!_eq(eRNDifd, RNDifd)) {
-      throw BACError("Extrected RND.IFD=${eRNDifd.hex()} from R is different than generated RND.IFD=${RNDifd.hex()}");
+    if (!constantTimeEqual(eRNDifd, RNDifd)) {
+      // Do not leak the ephemeral nonce material in the exception message; the
+      // hex values are only emitted under the sensitive-data verbose gate.
+      _log.sdVerbose("Extracted RND.IFD=${eRNDifd.hex()} from R is different than generated RND.IFD=${RNDifd.hex()}");
+      throw BACError("Extracted RND.IFD from R does not match the generated RND.IFD");
     }
     final Kicc = Uint8List.fromList(R.sublist(2 * nonceLen));
     return Kicc;
@@ -225,6 +226,6 @@ class BAC {
     assert(Eicc.length == eLen);
     assert(Kmac.length == ISO9797.macAlg3_Key1Len);
     assert(Micc.length == macLen);
-    return _eq(MAC(Kmac: Kmac, Eifd: Eicc), Micc);
+    return constantTimeEqual(MAC(Kmac: Kmac, Eifd: Eicc), Micc);
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:meta/meta.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
 /// Interface for passport issuance http requests so they can be mocked/spied in the integration tests
@@ -25,7 +26,38 @@ abstract class PassportIssuer {
 class DefaultPassportIssuer implements PassportIssuer {
   final String hostName;
 
-  DefaultPassportIssuer({required this.hostName});
+  /// Hosts the server-supplied `irma_server_url` is allowed to point at.
+  ///
+  /// The IRMA JWT posted to that URL contains the raw biometric passport scan
+  /// data, so a compromised issuer (or an http/MiTM path) must not be able to
+  /// redirect it to an arbitrary host. When not provided, the allowlist
+  /// defaults to the host of [hostName], i.e. the biometric data may only be
+  /// sent back to the configured issuer origin.
+  final Set<String> allowedIrmaHosts;
+
+  DefaultPassportIssuer({required this.hostName, Iterable<String>? allowedIrmaHosts})
+    : allowedIrmaHosts = {
+        ...?allowedIrmaHosts,
+        if (allowedIrmaHosts == null) ...{if (Uri.tryParse(hostName)?.host case final String h when h.isNotEmpty) h},
+      };
+
+  /// Validates a server-supplied session URL before biometric data is posted
+  /// to it. The URL must be absolute, use https and target a host on
+  /// [allowedIrmaHosts]. Throws [Exception] otherwise.
+  @visibleForTesting
+  Uri validateSessionUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.isAbsolute || uri.host.isEmpty) {
+      throw Exception('Invalid session URL supplied by the issuer');
+    }
+    if (uri.scheme != 'https') {
+      throw Exception('Refusing to post biometric data over non-https session URL');
+    }
+    if (!allowedIrmaHosts.contains(uri.host)) {
+      throw Exception('Session URL host "${uri.host}" is not in the allowed host list');
+    }
+    return uri;
+  }
 
   // Start a passport issuer session (so not irma session yet)
   @override
@@ -119,6 +151,9 @@ class DefaultPassportIssuer implements PassportIssuer {
   }
 
   Future<dynamic> _startIrmaSession(String jwt, String irmaServerUrl) async {
+    // Validate the server-supplied URL (https + allowed host) before posting
+    // the IRMA JWT, which carries the raw biometric passport scan data.
+    validateSessionUrl(irmaServerUrl);
     // Start the IRMA session
     final response = await http.post(Uri.parse('$irmaServerUrl/session'), body: jwt);
     if (response.statusCode != 200) {
