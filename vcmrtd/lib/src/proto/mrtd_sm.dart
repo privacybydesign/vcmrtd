@@ -86,8 +86,8 @@ class MrtdSM extends SecureMessaging {
 
     _log.verbose("Generated K=${K.hex()}");
     _log.verbose("  used SSC=${_ssc.toBytes().hex()}");
-    _log.verbose("APDU CC=${do8E.value.hex()}");
-    _log.verbose("Calculated CC=${CC.hex()}");
+    _log.sdVerbose("APDU CC=${do8E.value.hex()}");
+    _log.sdVerbose("Calculated CC=${CC.hex()}");
     if (!constantTimeEqual(CC, do8E.value)) {
       throw SMError("Invalid MAC of response APDU");
     }
