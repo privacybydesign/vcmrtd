@@ -37,7 +37,6 @@ dependencies:
     git:
       url: https://github.com/privacybydesign/pc-dart.git
       ref: master
-  diffie_hellman: ^0.1.2
   logger: ^2.3.0
 
 dev_dependencies:
@@ -50,7 +49,7 @@ dev_dependencies:
   lints: ^6.0.0
   vcmrtdapp:
     path: example
-  go_router: ^16.3.0
+  go_router: ^17.3.0
   mrz_parser:
     git:
       url: https://github.com/privacybydesign/mrz_parser.git
