@@ -85,6 +85,24 @@ class PassportData implements DocumentData {
     this.dg14RawBytes,
     this.dg16RawBytes,
   });
+
+  /// The holder's name as it should be displayed to the user.
+  ///
+  /// Prefers the DG11 `nameOfHolder` field, which is UTF-8 encoded and
+  /// preserves diacritics and special characters (e.g. `Ć`) exactly as they
+  /// appear in the visual inspection zone of the document. Falls back to the
+  /// MRZ name — which is transliterated to basic Latin per ICAO 9303
+  /// (e.g. `Ć` → `C`) — only when DG11 is absent or blank.
+  ///
+  /// Note: this is for display only. The MRZ remains the source of truth for
+  /// machine-readable / check-digit logic.
+  String get displayName {
+    final dg11Name = nameOfHolder?.trim();
+    if (dg11Name != null && dg11Name.isNotEmpty) {
+      return dg11Name;
+    }
+    return '${mrz.firstName} ${mrz.lastName}';
+  }
 }
 
 class DrivingLicenceData implements DocumentData {
