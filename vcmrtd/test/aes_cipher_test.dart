@@ -41,13 +41,28 @@ void main() {
       expect(dec, data);
     });
 
-    test('CBC with null IV uses an all-zero IV (encrypt then decrypt symmetric)', () {
+    test('encrypt throws in CBC mode when no IV is supplied', () {
+      // Regression: CBC used to silently fall back to an all-zero IV, making the
+      // ciphertext deterministic across messages. It must now throw instead.
       final aes = AESCipher128();
       final key = '00112233445566778899AABBCCDDEEFF'.parseHex();
       final data = 'AABBCCDDEEFF00112233445566778899'.parseHex();
+      expect(() => aes.encrypt(data: data, key: key), throwsA(isA<AESCipherError>()));
+    });
 
-      final enc = aes.encrypt(data: data, key: key); // default CBC, null iv
-      final dec = aes.decrypt(data: enc, key: key); // default CBC, null iv
+    test('decrypt throws in CBC mode when no IV is supplied', () {
+      final aes = AESCipher128();
+      final key = '00112233445566778899AABBCCDDEEFF'.parseHex();
+      final data = 'AABBCCDDEEFF00112233445566778899'.parseHex();
+      expect(() => aes.decrypt(data: data, key: key), throwsA(isA<AESCipherError>()));
+    });
+
+    test('ECB mode does not require an IV', () {
+      final aes = AESCipher128();
+      final key = '00112233445566778899AABBCCDDEEFF'.parseHex();
+      final data = 'AABBCCDDEEFF00112233445566778899'.parseHex();
+      final enc = aes.encrypt(data: data, key: key, mode: BLOCK_CIPHER_MODE.ECB);
+      final dec = aes.decrypt(data: enc, key: key, mode: BLOCK_CIPHER_MODE.ECB);
       expect(dec, data);
     });
   });
@@ -113,14 +128,11 @@ void main() {
   });
 
   group('AESChiperSelector', () {
-    test('returns a cipher whose size matches s128 and s256', () {
+    test('selects the cipher matching the requested key length', () {
       expect(AESChiperSelector.getChiper(size: KEY_LENGTH.s128).size, 16);
+      // Regression test: an AES-192 request used to return an AES-128 cipher.
+      expect(AESChiperSelector.getChiper(size: KEY_LENGTH.s192).size, 24);
       expect(AESChiperSelector.getChiper(size: KEY_LENGTH.s256).size, 32);
-    });
-
-    test('s192 selection currently maps to a 128-bit cipher (documents behaviour)', () {
-      // NOTE: the selector returns AESCipher128() for the s192 case.
-      expect(AESChiperSelector.getChiper(size: KEY_LENGTH.s192).size, 16);
     });
   });
 

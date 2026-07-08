@@ -99,7 +99,8 @@ class SimulatedEcdhChip extends ComProvider {
   Uint8List _step1() {
     final kpi = dbaKey.Kpi(protocol.cipherAlgoritm, protocol.keyLength);
     final aes = AESChiperSelector.getChiper(size: protocol.keyLength);
-    final encNonce = aes.encrypt(data: _chipNonce, key: kpi);
+    // Mirror PACE.decryptNonce: CBC with an explicit all-zero IV (ICAO 9303 p11).
+    final encNonce = aes.encrypt(data: _chipNonce, key: kpi, iv: Uint8List(AES_BLOCK_SIZE));
     return _ok(_wrap7C(0x80, encNonce));
   }
 
@@ -354,7 +355,7 @@ class SimulatedDhChip extends ComProvider {
         case 1:
           final kpi = dbaKey.Kpi(protocol.cipherAlgoritm, protocol.keyLength);
           final aes = AESChiperSelector.getChiper(size: protocol.keyLength);
-          return _ok(_wrap7C(0x80, aes.encrypt(data: _chipNonce, key: kpi)));
+          return _ok(_wrap7C(0x80, aes.encrypt(data: _chipNonce, key: kpi, iv: Uint8List(AES_BLOCK_SIZE))));
         case 2:
           {
             final outer = TLV.fromBytes(_extractCommandData(cmd));
