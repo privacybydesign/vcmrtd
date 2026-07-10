@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtdapp/providers/face_api_provider.dart';
 import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
+import 'package:vcmrtdapp/services/regula_face_service.dart';
 import 'package:vcmrtdapp/widgets/pages/driving_licence_data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/passport_data_screen.dart';
 
@@ -58,19 +60,40 @@ class _FakeIssuer extends DefaultPassportIssuer {
   final VerificationResponse? response;
   final Object? error;
 
+  /// The request the screen submitted — lets tests assert the liveness id flows
+  /// through into the verify request.
+  RawDocumentData? lastRequest;
+
   _FakeIssuer({this.response, this.error}) : super(hostName: 'https://test.local');
 
   @override
   Future<VerificationResponse> verifyPassport(RawDocumentData passportDataResult) async {
+    lastRequest = passportDataResult;
     if (error != null) throw error!;
     return response!;
   }
 
   @override
   Future<VerificationResponse> verifyDrivingLicence(RawDocumentData drivingLicenceDataResult) async {
+    lastRequest = drivingLicenceDataResult;
     if (error != null) throw error!;
     return response!;
   }
+}
+
+/// Fake liveness service returning a canned transaction id, so the verify flow
+/// can be exercised without the native Regula SDK.
+class _FakeRegula implements RegulaFaceService {
+  _FakeRegula({this.transactionId = 'tx-1'});
+
+  final String? transactionId;
+
+  @override
+  Future<void> initialize() async {}
+
+  @override
+  Future<RegulaLivenessResult> captureLiveness() async =>
+      RegulaLivenessResult(isLive: true, transactionId: transactionId);
 }
 
 void _setLargeViewport(WidgetTester tester) {
@@ -80,9 +103,14 @@ void _setLargeViewport(WidgetTester tester) {
   addTearDown(tester.view.resetDevicePixelRatio);
 }
 
-Widget _passportScreen(_FakeIssuer issuer) {
+// Face API defaults to null so verify skips liveness unless a test opts in.
+Widget _passportScreen(_FakeIssuer issuer, {String? faceApiUrl, RegulaFaceService? regula}) {
   return ProviderScope(
-    overrides: [passportIssuerProvider.overrideWithValue(issuer)],
+    overrides: [
+      passportIssuerProvider.overrideWithValue(issuer),
+      faceApiUrlProvider.overrideWithValue(faceApiUrl),
+      if (regula != null) regulaFaceServiceProvider.overrideWithValue(regula),
+    ],
     child: MaterialApp(
       home: PassportDataScreen(
         document: _passportData(),
@@ -94,9 +122,13 @@ Widget _passportScreen(_FakeIssuer issuer) {
   );
 }
 
-Widget _licenceScreen(_FakeIssuer issuer) {
+Widget _licenceScreen(_FakeIssuer issuer, {String? faceApiUrl, RegulaFaceService? regula}) {
   return ProviderScope(
-    overrides: [passportIssuerProvider.overrideWithValue(issuer)],
+    overrides: [
+      passportIssuerProvider.overrideWithValue(issuer),
+      faceApiUrlProvider.overrideWithValue(faceApiUrl),
+      if (regula != null) regulaFaceServiceProvider.overrideWithValue(regula),
+    ],
     child: MaterialApp(
       home: DrivingLicenceDataScreen(
         drivingLicence: _drivingLicenceData(),
@@ -124,6 +156,46 @@ void main() {
 
       expect(find.text('Verification Result'), findsOneWidget);
       expect(find.text('Authentic Chip'), findsOneWidget);
+    });
+
+    testWidgets('verify with liveness sends transaction id and shows face match', (tester) async {
+      _setLargeViewport(tester);
+      final issuer = _FakeIssuer(
+        response: VerificationResponse(
+          isExpired: false,
+          authenticChip: true,
+          authenticContent: true,
+          faceMatch: FaceMatch(matched: true, similarity: 0.91),
+        ),
+      );
+      await tester.pumpWidget(
+        _passportScreen(issuer, faceApiUrl: 'https://face.test', regula: _FakeRegula(transactionId: 'tx-42')),
+      );
+      await tester.pump();
+
+      await tester.scrollUntilVisible(find.text('Verify via our API'), 300);
+      await tester.tap(find.text('Verify via our API'));
+      await tester.pumpAndSettle();
+
+      expect(issuer.lastRequest?.livenessTransactionId, 'tx-42');
+      expect(find.textContaining('Face Match'), findsOneWidget);
+      expect(find.textContaining('91.0%'), findsOneWidget);
+    });
+
+    testWidgets('verify without face API sends no liveness transaction', (tester) async {
+      _setLargeViewport(tester);
+      final issuer = _FakeIssuer(
+        response: VerificationResponse(isExpired: false, authenticChip: true, authenticContent: true),
+      );
+      await tester.pumpWidget(_passportScreen(issuer)); // faceApiUrl defaults to null
+      await tester.pump();
+
+      await tester.scrollUntilVisible(find.text('Verify via our API'), 300);
+      await tester.tap(find.text('Verify via our API'));
+      await tester.pumpAndSettle();
+
+      expect(issuer.lastRequest?.livenessTransactionId, isNull);
+      expect(find.textContaining('Face Match'), findsNothing);
     });
 
     testWidgets('verify failure shows error dialog', (tester) async {

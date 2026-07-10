@@ -1,16 +1,19 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtdapp/widgets/pages/data_screen_widgets/read_only_textbox.dart';
 
 class VerifyResultSection extends StatelessWidget {
   final bool isExpired;
   final bool authenticChip;
   final bool authenticContent;
+  final FaceMatch? faceMatch;
 
   const VerifyResultSection({
     super.key,
     required this.isExpired,
     required this.authenticChip,
     required this.authenticContent,
+    this.faceMatch,
   });
 
   @override
@@ -43,6 +46,14 @@ class VerifyResultSection extends StatelessWidget {
             ReadOnlyTextBox(label: 'Authentic Chip', value: yn(authenticChip), isError: false),
             const SizedBox(height: 12),
             ReadOnlyTextBox(label: 'Authentic Content', value: yn(authenticContent), isError: false),
+            if (faceMatch != null) ...[
+              const SizedBox(height: 12),
+              ReadOnlyTextBox(
+                label: 'Face Match (${(faceMatch!.similarity * 100).toStringAsFixed(1)}%)',
+                value: yn(faceMatch!.matched),
+                isError: false,
+              ),
+            ],
           ],
         ),
       ),
