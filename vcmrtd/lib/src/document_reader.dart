@@ -373,8 +373,18 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
     _iosNfcMessageMapper = mapper;
     _isCancelled = false;
     await checkNfcAvailability();
-    if (state is! DocumentReaderNfcUnavailable && nfc.isConnected()) {
-      await nfc.disconnect();
+    if (state is! DocumentReaderNfcUnavailable) {
+      if (nfc.isConnected()) {
+        await nfc.disconnect();
+      } else if (!Platform.isIOS) {
+        // Android: after a prior readout the chip may still be in the field with
+        // reader mode left in a state where a fresh poll won't re-dispatch it.
+        // Cycle the plugin session cleanly (as _retryConnection does) before
+        // polling, otherwise the first fresh poll times out and only a manual
+        // retry succeeds.
+        await nfc.forceCleanup();
+        await Future.delayed(const Duration(milliseconds: 300));
+      }
     }
   }
 
