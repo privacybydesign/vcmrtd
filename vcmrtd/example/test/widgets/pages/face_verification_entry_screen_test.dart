@@ -62,11 +62,12 @@ class _FakeWorker implements FaceVerificationWorker {
 
 /// Fake Regula service returning a canned result without the native SDK.
 class _FakeRegula implements RegulaFaceService {
-  _FakeRegula({
-    this.result = const RegulaFaceResult(isLive: true, matchThreshold: 0.75, similarity: 0.9, transactionId: 'tx-1'),
-  });
-
-  final RegulaFaceResult result;
+  final RegulaFaceResult result = const RegulaFaceResult(
+    isLive: true,
+    matchThreshold: 0.75,
+    similarity: 0.9,
+    transactionId: 'tx-1',
+  );
   int verifyCalls = 0;
 
   @override
