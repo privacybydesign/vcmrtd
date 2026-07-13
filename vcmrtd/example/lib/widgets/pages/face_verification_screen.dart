@@ -6,6 +6,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:face_verification/face_verification.dart';
+import 'package:vcmrtdapp/services/regula_face_service.dart';
 
 // ── Enums & helpers ────────────────────────────────────────────────────────
 
@@ -79,11 +80,17 @@ class FlutterFaceVerificationScreen extends StatefulWidget {
   @visibleForTesting
   final FaceVerificationEngine? testEngine;
 
+  /// Optional injected liveness service backing the Regula option. When null a
+  /// default [RegulaFaceServiceImpl] is created lazily on first use — tests
+  /// pass a fake to drive the flow without the native Regula SDK.
+  final RegulaFaceService? regulaService;
+
   const FlutterFaceVerificationScreen({
     super.key,
     required this.nfcImageBytes,
     required this.onBackPressed,
     this.photoIssueDate,
+    this.regulaService,
   }) : testEngine = null;
 
   const FlutterFaceVerificationScreen.withEngine({
@@ -92,6 +99,7 @@ class FlutterFaceVerificationScreen extends StatefulWidget {
     required this.nfcImageBytes,
     required this.onBackPressed,
     this.photoIssueDate,
+    this.regulaService,
   }) : testEngine = engine;
 
   @override
@@ -132,6 +140,9 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
   bool _debugReadyOverride = false;
   String? _alignTip;
   LivenessMode _selectedMode = LivenessMode.active;
+  bool _startingRegula = false;
+  RegulaLivenessResult? _regulaResult;
+  RegulaFaceService? _lazyRegulaService;
   _PassiveProgress? _passive;
   DateTime? _passiveAt;
   Timer? _passiveTicker;
@@ -183,6 +194,15 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
 
   @visibleForTesting
   void debugSetSelectedMode(LivenessMode mode) => setState(() => _selectedMode = mode);
+
+  @visibleForTesting
+  RegulaLivenessResult? get debugRegulaResult => _regulaResult;
+
+  @visibleForTesting
+  void debugSetRegulaResult(RegulaLivenessResult result) => setState(() {
+    _regulaResult = result;
+    _state = VerificationState.result;
+  });
 
   @visibleForTesting
   void debugSetResultState(VerificationResult result) => setState(() {
@@ -476,6 +496,36 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
     }
   }
 
+  RegulaFaceService get _regulaService =>
+      widget.regulaService ?? (_lazyRegulaService ??= RegulaFaceServiceImpl());
+
+  /// Runs Regula's native liveness UI (via the Face API backend). Unlike the
+  /// on-device active/passive flows, this only proves liveness and returns a
+  /// transaction id — the face match against the document portrait is performed
+  /// server-side by the issuer using that id.
+  Future<void> _startRegulaLiveness() async {
+    if (_startingLiveness || _startingRegula || _state == VerificationState.activeLiveness) return;
+    setState(() {
+      _startingRegula = true;
+      _errorMessage = null;
+    });
+    // Release our camera so Regula's native UI can take it over.
+    await _stopActiveFlow(disposeCamera: true);
+    if (_isDisposed || !mounted) return;
+    try {
+      final result = await _regulaService.captureLiveness();
+      if (_isDisposed || !mounted) return;
+      setState(() {
+        _regulaResult = result;
+        _state = VerificationState.result;
+      });
+    } catch (e) {
+      if (mounted && !_isDisposed) setState(() => _errorMessage = 'Regula liveness failed: $e');
+    } finally {
+      if (mounted && !_isDisposed) setState(() => _startingRegula = false);
+    }
+  }
+
   void _onLivenessEvent(Map<String, dynamic> map) {
     if (_handleCommonLivenessEvent(map)) return;
     if (map['type'] != 'complete') return;
@@ -638,6 +688,8 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
   void _resetForRetry() {
     setState(() {
       _result = null;
+      _regulaResult = null;
+      _startingRegula = false;
       _errorMessage = null;
       _state = VerificationState.idle;
       _actions = <String>[];
@@ -834,9 +886,26 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
                 ),
               ),
               const SizedBox(height: 12),
-              _buildStartButton(ready: ready, mode: LivenessMode.active, label: 'Start with Active Liveness'),
+              _buildStartButton(
+                ready: ready,
+                onStart: () => _startLiveness(LivenessMode.active),
+                label: 'Start with Active Liveness',
+                busy: _startingLiveness && _selectedMode == LivenessMode.active,
+              ),
               const SizedBox(height: 8),
-              _buildStartButton(ready: ready, mode: LivenessMode.passive, label: 'Start with Passive Liveness'),
+              _buildStartButton(
+                ready: ready,
+                onStart: () => _startLiveness(LivenessMode.passive),
+                label: 'Start with Passive Liveness',
+                busy: _startingLiveness && _selectedMode == LivenessMode.passive,
+              ),
+              const SizedBox(height: 8),
+              _buildStartButton(
+                ready: ready,
+                onStart: _startRegulaLiveness,
+                label: 'Start with Regula Liveness',
+                busy: _startingRegula,
+              ),
             ],
           ),
         ),
@@ -844,25 +913,31 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
     );
   }
 
-  Widget _buildStartButton({required bool ready, required LivenessMode mode, required String label}) {
+  Widget _buildStartButton({
+    required bool ready,
+    required VoidCallback onStart,
+    required String label,
+    required bool busy,
+  }) {
+    final enabled = ready && !_startingLiveness && !_startingRegula;
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
-        onPressed: (ready && !_startingLiveness) ? () => _startLiveness(mode) : null,
+        onPressed: enabled ? onStart : null,
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),
           backgroundColor: Colors.green[600],
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
-        icon: _startingLiveness
+        icon: busy
             ? const SizedBox(
                 width: 18,
                 height: 18,
                 child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
               )
             : const Icon(Icons.face),
-        label: Text(_startingLiveness ? 'Preparing…' : label),
+        label: Text(busy ? 'Preparing…' : label),
       ),
     );
   }
@@ -1041,6 +1116,8 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
   );
 
   Widget _buildResultScreen() {
+    final regula = _regulaResult;
+    if (regula != null) return _buildRegulaResultScreen(regula);
     final r = _result!;
     final threshold = faceMatchThreshold(widget.photoIssueDate);
     final matchPassed = r.matchScore > threshold;
@@ -1081,6 +1158,43 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
         ],
       ),
     );
+  }
+
+  Widget _buildRegulaResultScreen(RegulaLivenessResult r) {
+    final passed = r.isLive;
+    final txn = r.transactionId;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Icon(passed ? Icons.check_circle : Icons.cancel, size: 80, color: passed ? Colors.green : Colors.red),
+          const SizedBox(height: 24),
+          Text(
+            passed ? 'Liveness Passed' : 'Liveness Failed',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: passed ? Colors.green : Colors.red),
+          ),
+          const SizedBox(height: 16),
+          _scoreRow('Liveness', passed ? 'live' : 'not live', passed),
+          _scoreRow('Transaction', _shortTransaction(txn), txn != null && txn.isNotEmpty),
+          const SizedBox(height: 12),
+          const Text(
+            'The face match is performed server-side against the document portrait using this transaction.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey, fontSize: 13),
+          ),
+          const SizedBox(height: 32),
+          OutlinedButton(onPressed: _retry, child: const Text('Try Again')),
+        ],
+      ),
+    );
+  }
+
+  static String _shortTransaction(String? id) {
+    if (id == null || id.isEmpty) return 'n/a';
+    if (id.length <= 12) return id;
+    return '${id.substring(0, 6)}…${id.substring(id.length - 4)}';
   }
 
   static Widget _scoreRow(String label, String value, bool ok) => Padding(
