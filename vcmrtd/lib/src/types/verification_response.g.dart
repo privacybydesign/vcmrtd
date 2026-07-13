@@ -10,9 +10,7 @@ VerificationResponse _$VerificationResponseFromJson(Map<String, dynamic> json) =
   isExpired: json['is_expired'] as bool,
   authenticChip: json['authentic_chip'] as bool,
   authenticContent: json['authentic_content'] as bool,
-  faceMatch: json['face_match'] == null
-      ? null
-      : FaceMatch.fromJson(json['face_match'] as Map<String, dynamic>),
+  faceMatch: json['face_match'] == null ? null : FaceMatch.fromJson(json['face_match'] as Map<String, dynamic>),
 );
 
 Map<String, dynamic> _$VerificationResponseToJson(VerificationResponse instance) => <String, dynamic>{
@@ -22,10 +20,8 @@ Map<String, dynamic> _$VerificationResponseToJson(VerificationResponse instance)
   'face_match': instance.faceMatch?.toJson(),
 };
 
-FaceMatch _$FaceMatchFromJson(Map<String, dynamic> json) => FaceMatch(
-  matched: json['matched'] as bool,
-  similarity: (json['similarity'] as num).toDouble(),
-);
+FaceMatch _$FaceMatchFromJson(Map<String, dynamic> json) =>
+    FaceMatch(matched: json['matched'] as bool, similarity: (json['similarity'] as num).toDouble());
 
 Map<String, dynamic> _$FaceMatchToJson(FaceMatch instance) => <String, dynamic>{
   'matched': instance.matched,

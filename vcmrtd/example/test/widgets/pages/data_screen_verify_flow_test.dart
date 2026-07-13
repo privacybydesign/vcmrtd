@@ -94,6 +94,10 @@ class _FakeRegula implements RegulaFaceService {
   @override
   Future<RegulaLivenessResult> captureLiveness() async =>
       RegulaLivenessResult(isLive: true, transactionId: transactionId);
+
+  @override
+  Future<RegulaFaceResult> verifyAgainstDocument(Uint8List documentPortrait) async =>
+      RegulaFaceResult(isLive: true, matchThreshold: 0.75, similarity: 1.0, transactionId: transactionId);
 }
 
 void _setLargeViewport(WidgetTester tester) {
@@ -169,7 +173,11 @@ void main() {
         ),
       );
       await tester.pumpWidget(
-        _passportScreen(issuer, faceApiUrl: 'https://face.test', regula: _FakeRegula(transactionId: 'tx-42')),
+        _passportScreen(
+          issuer,
+          faceApiUrl: 'https://face.test',
+          regula: _FakeRegula(transactionId: 'tx-42'),
+        ),
       );
       await tester.pump();
 

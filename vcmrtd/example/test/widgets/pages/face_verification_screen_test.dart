@@ -1,11 +1,10 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtdapp/widgets/pages/face_verification_screen.dart';
-import 'package:vcmrtdapp/services/regula_face_service.dart';
 import 'package:face_verification/face_verification.dart';
 
 // ---------------------------------------------------------------------------
@@ -69,24 +68,6 @@ class _FakeWorker2 implements FaceVerificationWorker {
   void debugEmitFrameError(Object e) {}
 }
 
-/// Fake Regula liveness service returning a canned result, so the Regula option
-/// can be exercised without the native Regula SDK.
-class _FakeRegulaService implements RegulaFaceService {
-  _FakeRegulaService({this.result = const RegulaLivenessResult(isLive: true, transactionId: 'tx-abcdef-0123456789')});
-
-  final RegulaLivenessResult result;
-  int captureCalls = 0;
-
-  @override
-  Future<void> initialize() async {}
-
-  @override
-  Future<RegulaLivenessResult> captureLiveness() async {
-    captureCalls++;
-    return result;
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -115,19 +96,6 @@ Widget _buildScreenWithWorker(_FakeWorker2 worker) {
   final engine = FaceVerificationEngine.withWorker(worker);
   return MaterialApp(
     home: FlutterFaceVerificationScreen.withEngine(engine: engine, nfcImageBytes: Uint8List(1), onBackPressed: () {}),
-  );
-}
-
-Widget _buildScreenWithRegula(RegulaFaceService regula) {
-  final worker = _FakeWorker2();
-  final engine = FaceVerificationEngine.withWorker(worker);
-  return MaterialApp(
-    home: FlutterFaceVerificationScreen.withEngine(
-      engine: engine,
-      nfcImageBytes: Uint8List(1),
-      onBackPressed: () {},
-      regulaService: regula,
-    ),
   );
 }
 
@@ -897,16 +865,15 @@ void main() {
       expect(find.text('Tap the button below'), findsOneWidget);
       expect(find.text('Follow the on-screen prompts'), findsOneWidget);
 
-      expect(find.text('Start with Active Liveness'), findsOneWidget);
-      expect(find.text('Start with Passive Liveness'), findsOneWidget);
-      expect(find.text('Start with Regula Liveness'), findsOneWidget);
+      // The method picker lives on a separate screen now — only a single Start
+      // button remains here.
+      expect(find.text('Start'), findsOneWidget);
+      expect(find.textContaining('Liveness'), findsNothing);
 
       expect(find.byIcon(Icons.face), findsWidgets);
     });
 
-    testWidgets('ready idle screen active start button can be tapped without crashing when camera is absent', (
-      tester,
-    ) async {
+    testWidgets('ready idle screen start button can be tapped without crashing when camera is absent', (tester) async {
       await tester.pumpWidget(_buildScreen());
       await tester.pump();
       await tester.pump();
@@ -914,23 +881,7 @@ void main() {
       _state(tester).debugSetReadyForTesting();
       await tester.pump();
 
-      await tester.tap(find.text('Start with Active Liveness'));
-      await tester.pump();
-
-      expect(find.byType(FlutterFaceVerificationScreen), findsOneWidget);
-    });
-
-    testWidgets('ready idle screen passive start button can be tapped without crashing when camera is absent', (
-      tester,
-    ) async {
-      await tester.pumpWidget(_buildScreen());
-      await tester.pump();
-      await tester.pump();
-
-      _state(tester).debugSetReadyForTesting();
-      await tester.pump();
-
-      await tester.tap(find.text('Start with Passive Liveness'));
+      await tester.tap(find.text('Start'));
       await tester.pump();
 
       expect(find.byType(FlutterFaceVerificationScreen), findsOneWidget);
@@ -962,60 +913,6 @@ void main() {
       expect(_state(tester).debugCurrentAction, isNull);
       expect(_state(tester).debugCompletedActions, isEmpty);
       expect(_state(tester).debugAlignTip, isNull);
-    });
-  });
-
-  group('FlutterFaceVerificationScreen — Regula liveness option', () {
-    testWidgets('tapping Regula runs the injected service and shows the liveness result', (tester) async {
-      final regula = _FakeRegulaService();
-      await tester.pumpWidget(_buildScreenWithRegula(regula));
-      await tester.pump();
-      await tester.pump();
-
-      _state(tester).debugSetReadyForTesting();
-      await tester.pump();
-
-      await tester.tap(find.text('Start with Regula Liveness'));
-      await tester.pumpAndSettle();
-
-      expect(regula.captureCalls, 1);
-      expect(_state(tester).debugState, VerificationState.result);
-      expect(_state(tester).debugRegulaResult?.transactionId, 'tx-abcdef-0123456789');
-      expect(find.text('Liveness Passed'), findsOneWidget);
-      // Long transaction ids are shortened for display.
-      expect(find.text('tx-abc…6789'), findsOneWidget);
-    });
-
-    testWidgets('renders a failed liveness result with no transaction', (tester) async {
-      final regula = _FakeRegulaService(result: const RegulaLivenessResult(isLive: false, transactionId: null));
-      await tester.pumpWidget(_buildScreenWithRegula(regula));
-      await tester.pump();
-      await tester.pump();
-
-      _state(tester).debugSetReadyForTesting();
-      await tester.pump();
-
-      await tester.tap(find.text('Start with Regula Liveness'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Liveness Failed'), findsOneWidget);
-      expect(find.text('n/a'), findsOneWidget);
-    });
-
-    testWidgets('retry from a Regula result returns to the idle state', (tester) async {
-      await tester.pumpWidget(_buildScreen());
-      await tester.pump();
-      await tester.pump();
-
-      _state(tester).debugSetRegulaResult(const RegulaLivenessResult(isLive: true, transactionId: 'tx-1'));
-      await tester.pump();
-      expect(_state(tester).debugState, VerificationState.result);
-
-      _state(tester).debugResetForRetry();
-      await tester.pump();
-
-      expect(_state(tester).debugState, VerificationState.idle);
-      expect(_state(tester).debugRegulaResult, isNull);
     });
   });
 }
