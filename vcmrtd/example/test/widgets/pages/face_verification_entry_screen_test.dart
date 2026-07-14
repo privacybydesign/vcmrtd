@@ -84,6 +84,18 @@ class _FakeRegula implements RegulaFaceService {
   }
 }
 
+/// Regula service whose verification always fails, to exercise the error path.
+class _ThrowingRegula implements RegulaFaceService {
+  @override
+  Future<void> initialize() async {}
+
+  @override
+  Future<RegulaLivenessResult> captureLiveness() async => throw Exception('nope');
+
+  @override
+  Future<RegulaFaceResult> verifyAgainstDocument(Uint8List documentPortrait) async => throw Exception('nope');
+}
+
 void main() {
   testWidgets('shows the method picker first, not the camera screen', (tester) async {
     final engine = FaceVerificationEngine.withWorker(_FakeWorker());
@@ -175,6 +187,43 @@ void main() {
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
 
+    expect(find.byType(FaceMethodSelectionScreen), findsOneWidget);
+  });
+
+  testWidgets('selecting Regula without an NFC image shows an error and stays on the picker', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: FaceVerificationEntryScreen(nfcImageBytes: null, onBackPressed: () {}, regulaService: _FakeRegula()),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.text('Regula Liveness'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Missing NFC image'), findsOneWidget);
+    expect(find.byType(FaceMethodSelectionScreen), findsOneWidget);
+    expect(find.byType(RegulaResultScreen), findsNothing);
+  });
+
+  testWidgets('shows an error when Regula verification fails', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: FaceVerificationEntryScreen(
+          nfcImageBytes: Uint8List.fromList([1]),
+          onBackPressed: () {},
+          regulaService: _ThrowingRegula(),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.text('Regula Liveness'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Regula verification failed'), findsOneWidget);
     expect(find.byType(FaceMethodSelectionScreen), findsOneWidget);
   });
 }
