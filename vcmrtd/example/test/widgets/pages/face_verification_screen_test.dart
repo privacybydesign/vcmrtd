@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'dart:async';
 import 'dart:typed_data';
@@ -404,6 +404,7 @@ void main() {
 
     testWidgets('active action UI renders instruction and checklist progress', (tester) async {
       await enterActiveState(tester);
+      _state(tester).debugSetSelectedMode(LivenessMode.active);
       _state(tester).debugSetActions(['BLINK', 'SMILE']);
       await tester.pump();
       _state(tester).debugOnLivenessEvent({'type': 'nextAction', 'action': 'BLINK'});
@@ -496,6 +497,7 @@ void main() {
       await tester.pump();
 
       _state(tester).debugSetActiveLiveness();
+      _state(tester).debugSetSelectedMode(LivenessMode.active);
       _state(tester).debugSetActions(['BLINK', 'TURN_LEFT', 'SMILE']);
       await tester.pump();
 
@@ -543,6 +545,7 @@ void main() {
 
     testWidgets('multiple extraAction events append actions and keep latest current', (tester) async {
       await enterActiveState(tester);
+      _state(tester).debugSetSelectedMode(LivenessMode.active);
 
       _state(tester).debugSetActions(['BLINK']);
       _state(tester).debugOnLivenessEvent({'type': 'extraAction', 'action': 'SMILE'});
@@ -675,6 +678,7 @@ void main() {
 
     testWidgets('extra action renders extra chip in checklist', (tester) async {
       await enterActiveState(tester);
+      _state(tester).debugSetSelectedMode(LivenessMode.active);
 
       _state(tester).debugSetActions(['BLINK']);
       await tester.pump();
@@ -688,6 +692,7 @@ void main() {
 
     testWidgets('active holdStill tip renders get ready message', (tester) async {
       await enterActiveState(tester);
+      _state(tester).debugSetSelectedMode(LivenessMode.active);
 
       _state(tester).debugOnLivenessEvent({'type': 'align', 'tip': 'holdStill'});
       await tester.pump();
@@ -865,15 +870,15 @@ void main() {
       expect(find.text('Tap the button below'), findsOneWidget);
       expect(find.text('Follow the on-screen prompts'), findsOneWidget);
 
-      expect(find.text('Start with Active Liveness'), findsOneWidget);
-      expect(find.text('Start with Passive Liveness'), findsOneWidget);
+      // The method picker lives on a separate screen now — only a single Start
+      // button remains here.
+      expect(find.text('Start'), findsOneWidget);
+      expect(find.textContaining('Liveness'), findsNothing);
 
       expect(find.byIcon(Icons.face), findsWidgets);
     });
 
-    testWidgets('ready idle screen active start button can be tapped without crashing when camera is absent', (
-      tester,
-    ) async {
+    testWidgets('ready idle screen start button can be tapped without crashing when camera is absent', (tester) async {
       await tester.pumpWidget(_buildScreen());
       await tester.pump();
       await tester.pump();
@@ -881,23 +886,7 @@ void main() {
       _state(tester).debugSetReadyForTesting();
       await tester.pump();
 
-      await tester.tap(find.text('Start with Active Liveness'));
-      await tester.pump();
-
-      expect(find.byType(FlutterFaceVerificationScreen), findsOneWidget);
-    });
-
-    testWidgets('ready idle screen passive start button can be tapped without crashing when camera is absent', (
-      tester,
-    ) async {
-      await tester.pumpWidget(_buildScreen());
-      await tester.pump();
-      await tester.pump();
-
-      _state(tester).debugSetReadyForTesting();
-      await tester.pump();
-
-      await tester.tap(find.text('Start with Passive Liveness'));
+      await tester.tap(find.text('Start'));
       await tester.pump();
 
       expect(find.byType(FlutterFaceVerificationScreen), findsOneWidget);

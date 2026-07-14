@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:face_verification/face_verification.dart';
+import 'package:vcmrtdapp/widgets/pages/face_method_selection_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/face_verification_entry_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/face_verification_screen.dart';
 
@@ -58,7 +59,7 @@ class _FakeWorker implements FaceVerificationWorker {
 }
 
 void main() {
-  testWidgets('withEngine constructor renders the face verification screen', (tester) async {
+  testWidgets('shows the method picker first, not the camera screen', (tester) async {
     final engine = FaceVerificationEngine.withWorker(_FakeWorker());
     await tester.pumpWidget(
       MaterialApp(
@@ -68,16 +69,19 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(find.byType(FlutterFaceVerificationScreen), findsOneWidget);
+    expect(find.byType(FaceMethodSelectionScreen), findsOneWidget);
+    expect(find.byType(FlutterFaceVerificationScreen), findsNothing);
+    expect(find.text('Passive Liveness'), findsOneWidget);
+    expect(find.text('Active Liveness'), findsOneWidget);
   });
 
-  testWidgets('withEngine forwards photoIssueDate', (tester) async {
+  testWidgets('selecting Active opens the camera screen in active mode, forwarding props', (tester) async {
     final engine = FaceVerificationEngine.withWorker(_FakeWorker());
     await tester.pumpWidget(
       MaterialApp(
         home: FaceVerificationEntryScreen.withEngine(
           engine: engine,
-          nfcImageBytes: Uint8List(1),
+          nfcImageBytes: Uint8List.fromList([1]),
           onBackPressed: () {},
           photoIssueDate: DateTime(2024, 1, 1),
         ),
@@ -86,6 +90,13 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(find.byType(FlutterFaceVerificationScreen), findsOneWidget);
+    await tester.tap(find.text('Active Liveness'));
+    await tester.pump();
+    await tester.pump();
+
+    final screen = tester.widget<FlutterFaceVerificationScreen>(find.byType(FlutterFaceVerificationScreen));
+    expect(screen.mode, LivenessMode.active);
+    expect(screen.photoIssueDate, DateTime(2024, 1, 1));
+    expect(screen.nfcImageBytes, Uint8List.fromList([1]));
   });
 }

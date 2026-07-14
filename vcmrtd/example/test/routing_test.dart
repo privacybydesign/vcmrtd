@@ -9,7 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:face_verification/face_verification.dart';
-import 'package:vcmrtdapp/widgets/pages/face_verification_screen.dart';
+import 'package:vcmrtdapp/widgets/pages/face_verification_entry_screen.dart';
 import 'package:vcmrtdapp/routing.dart';
 import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
 import 'package:vcmrtdapp/widgets/pages/document_selection_screen.dart';
@@ -360,7 +360,9 @@ void main() {
           .onFaceVerification(Uint8List.fromList([9]), issueDate);
       await tester.pump();
       await tester.pump();
-      expect(find.byType(FlutterFaceVerificationScreen), findsOneWidget);
+      // The route builds the method-picker entry screen; the picker -> camera
+      // screen transition is covered by face_verification_entry_screen_test.dart.
+      expect(find.byType(FaceVerificationEntryScreen), findsOneWidget);
 
       router.go(
         '/result',
@@ -380,7 +382,7 @@ void main() {
           .onFaceVerification(Uint8List.fromList([7, 8]), drivingIssueDate);
       await tester.pump();
       await tester.pump();
-      expect(find.byType(FlutterFaceVerificationScreen), findsOneWidget);
+      expect(find.byType(FaceVerificationEntryScreen), findsOneWidget);
 
       router.go(
         '/result',
@@ -415,7 +417,7 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      final screen = tester.widget<FlutterFaceVerificationScreen>(find.byType(FlutterFaceVerificationScreen));
+      final screen = tester.widget<FaceVerificationEntryScreen>(find.byType(FaceVerificationEntryScreen));
       expect(screen.photoIssueDate, issueDate);
       expect(screen.nfcImageBytes, Uint8List.fromList([1]));
     });
