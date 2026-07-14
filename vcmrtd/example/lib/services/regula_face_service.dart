@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter_face_api/flutter_face_api.dart';
 
 /// Outcome of a Regula liveness session: the liveness verdict and the
@@ -15,45 +13,13 @@ class RegulaLivenessResult {
   const RegulaLivenessResult({required this.isLive, required this.transactionId});
 }
 
-/// Outcome of a full Regula face verification: liveness plus the on-device
-/// comparison of the proven-live face against the document chip portrait
-/// (DG2 for passports, DG6 for eDLs).
-class RegulaFaceResult {
-  final bool isLive;
-
-  /// The Regula liveness transaction id, or null if none was produced.
-  final String? transactionId;
-
-  /// Similarity (0..1) between the live face and the document portrait, or null
-  /// when the match step did not run (e.g. liveness failed or no portrait).
-  final double? similarity;
-
-  /// Similarity at or above which the two faces are treated as the same person.
-  final double matchThreshold;
-
-  const RegulaFaceResult({required this.isLive, required this.matchThreshold, this.transactionId, this.similarity});
-
-  /// Whether the live face matched the document portrait.
-  bool get matched => similarity != null && similarity! >= matchThreshold;
-
-  /// Overall verdict: the subject is live AND matches the document portrait.
-  bool get passed => isLive && matched;
-}
-
-/// Runs Regula Face SDK sessions against the Face API backend.
+/// Runs Regula liveness sessions against the Face API backend.
 ///
 /// The session is processed by the Face API (configured via [serviceUrl]) which
-/// holds the Regula license. Two postures are supported:
-///
-/// * [captureLiveness] — liveness only. It produces just a
-///   `liveness_transaction_id`; the 1:1 face match is left to the issuer
-///   backend. This is the primary "verify via our API" flow, where the client
-///   never performs a match itself.
-/// * [verifyAgainstDocument] — liveness plus an on-device match. Once liveness
-///   passes, it hands the proven-live face and the document chip portrait to
-///   the SDK's `matchFaces` and returns a local similarity score. This powers
-///   the Regula option in the face-verification entry screen. Note the live
-///   face image is used for the comparison here, unlike the liveness-only flow.
+/// holds the Regula license. This is liveness-only: [captureLiveness] produces a
+/// `liveness_transaction_id`, and the 1:1 face match is performed by the issuer
+/// backend against that transaction. The client never matches faces itself — the
+/// bundled `flutter_face_core_basic` supports liveness only, not `matchFaces`.
 ///
 /// Abstracted so the flows can be tested without the native SDK.
 abstract class RegulaFaceService {
@@ -62,36 +28,21 @@ abstract class RegulaFaceService {
 
   /// Presents Regula's liveness UI and returns the resulting transaction id.
   Future<RegulaLivenessResult> captureLiveness();
-
-  /// Presents Regula's liveness UI and, once liveness passes, compares the live
-  /// face against [documentPortrait] (the DG2/DG6 chip image).
-  Future<RegulaFaceResult> verifyAgainstDocument(Uint8List documentPortrait);
 }
 
 class RegulaFaceServiceImpl implements RegulaFaceService {
-  RegulaFaceServiceImpl({
-    this.serviceUrl = defaultServiceUrl,
-    this.livenessType = LivenessType.PASSIVE,
-    this.matchThreshold = defaultMatchThreshold,
-    FaceSDK? sdk,
-  }) : _sdk = sdk ?? FaceSDK.instance;
+  RegulaFaceServiceImpl({this.serviceUrl = defaultServiceUrl, this.livenessType = LivenessType.PASSIVE, FaceSDK? sdk})
+    : _sdk = sdk ?? FaceSDK.instance;
 
   /// URL of the Regula Face API. The client runs liveness against this same
   /// service that the issuer uses for matching, so the transaction id resolves
   /// on the backend. The Face API holds the Regula license.
   static const String defaultServiceUrl = 'https://faceapi.staging.yivi.app';
 
-  /// Similarity threshold for the document-portrait match. Regula similarity is
-  /// a 0..1 value; 0.75 is Regula's recommended verification default.
-  static const double defaultMatchThreshold = 0.75;
-
   /// Regula liveness mode. Defaults to [LivenessType.PASSIVE] — a hands-free
   /// check with no on-screen actions — rather than the SDK default of
   /// [LivenessType.ACTIVE], which prompts the user through movement steps.
   final LivenessType livenessType;
-
-  /// Minimum [RegulaFaceResult.similarity] to treat as a match.
-  final double matchThreshold;
 
   final String serviceUrl;
   final FaceSDK _sdk;
@@ -122,26 +73,6 @@ class RegulaFaceServiceImpl implements RegulaFaceService {
     );
   }
 
-  @override
-  Future<RegulaFaceResult> verifyAgainstDocument(Uint8List documentPortrait) async {
-    final liveness = await _runLiveness();
-    final isLive = liveness.liveness == LivenessStatus.PASSED;
-    final liveImage = liveness.image;
-
-    // Only compare against the chip portrait once liveness is proven.
-    double? similarity;
-    if (isLive && liveImage != null && documentPortrait.isNotEmpty) {
-      similarity = await _matchFaces(liveImage, documentPortrait);
-    }
-
-    return RegulaFaceResult(
-      isLive: isLive,
-      transactionId: liveness.transactionId,
-      similarity: similarity,
-      matchThreshold: matchThreshold,
-    );
-  }
-
   Future<LivenessResponse> _runLiveness() async {
     await initialize();
     final liveness = await _sdk.startLiveness(config: LivenessConfig(livenessType: livenessType));
@@ -149,23 +80,5 @@ class RegulaFaceServiceImpl implements RegulaFaceService {
       throw StateError('Regula liveness failed: ${liveness.error!.message}');
     }
     return liveness;
-  }
-
-  /// Compares the live selfie against the RFID chip portrait, returning the
-  /// pair similarity (0..1).
-  Future<double> _matchFaces(Uint8List liveImage, Uint8List documentPortrait) async {
-    final request = MatchFacesRequest([
-      MatchFacesImage(liveImage, ImageType.LIVE),
-      MatchFacesImage(documentPortrait, ImageType.RFID),
-    ]);
-    final response = await _sdk.matchFaces(request);
-    if (response.error != null) {
-      throw StateError('Regula face match failed: ${response.error!.message}');
-    }
-    final pair = response.results.isNotEmpty ? response.results.first : null;
-    if (pair == null || pair.error != null) {
-      throw StateError('Regula face match returned no comparable faces');
-    }
-    return pair.similarity;
   }
 }

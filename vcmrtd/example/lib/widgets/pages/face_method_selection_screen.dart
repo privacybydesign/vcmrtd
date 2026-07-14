@@ -2,24 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:face_verification/face_verification.dart';
 
 /// First step of face verification: the user picks how to prove liveness before
-/// any camera opens. Active/Passive run the on-device engine on the next
-/// screen; Regula launches its own native liveness UI directly.
+/// any camera opens. Both Active and Passive run the on-device liveness engine
+/// on the next screen.
 class FaceMethodSelectionScreen extends StatelessWidget {
   final VoidCallback onBackPressed;
   final void Function(LivenessMode mode) onModeSelected;
-  final VoidCallback onRegulaSelected;
 
-  /// True while the Regula native session is running — disables the buttons and
-  /// shows a spinner on the Regula option.
-  final bool regulaBusy;
-
-  const FaceMethodSelectionScreen({
-    super.key,
-    required this.onBackPressed,
-    required this.onModeSelected,
-    required this.onRegulaSelected,
-    this.regulaBusy = false,
-  });
+  const FaceMethodSelectionScreen({super.key, required this.onBackPressed, required this.onModeSelected});
 
   @override
   Widget build(BuildContext context) {
@@ -42,22 +31,14 @@ class FaceMethodSelectionScreen extends StatelessWidget {
                 icon: Icons.face,
                 label: 'Passive Liveness',
                 subtitle: 'Hands-free — just hold still',
-                onPressed: regulaBusy ? null : () => onModeSelected(LivenessMode.passive),
+                onPressed: () => onModeSelected(LivenessMode.passive),
               ),
               const SizedBox(height: 10),
               _MethodButton(
                 icon: Icons.face_retouching_natural,
                 label: 'Active Liveness',
                 subtitle: 'Follow the on-screen actions',
-                onPressed: regulaBusy ? null : () => onModeSelected(LivenessMode.active),
-              ),
-              const SizedBox(height: 10),
-              _MethodButton(
-                icon: Icons.verified_user,
-                label: 'Regula Liveness',
-                subtitle: 'Regula SDK with document match',
-                busy: regulaBusy,
-                onPressed: regulaBusy ? null : onRegulaSelected,
+                onPressed: () => onModeSelected(LivenessMode.active),
               ),
             ],
           ),
@@ -96,15 +77,8 @@ class _MethodButton extends StatelessWidget {
   final String label;
   final String subtitle;
   final VoidCallback? onPressed;
-  final bool busy;
 
-  const _MethodButton({
-    required this.icon,
-    required this.label,
-    required this.subtitle,
-    required this.onPressed,
-    this.busy = false,
-  });
+  const _MethodButton({required this.icon, required this.label, required this.subtitle, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -120,13 +94,7 @@ class _MethodButton extends StatelessWidget {
       ),
       child: Row(
         children: [
-          busy
-              ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                )
-              : Icon(icon, size: 24),
+          Icon(icon, size: 24),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
