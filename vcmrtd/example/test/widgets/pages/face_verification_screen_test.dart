@@ -404,6 +404,7 @@ void main() {
 
     testWidgets('active action UI renders instruction and checklist progress', (tester) async {
       await enterActiveState(tester);
+      _state(tester).debugSetSelectedMode(LivenessMode.active);
       _state(tester).debugSetActions(['BLINK', 'SMILE']);
       await tester.pump();
       _state(tester).debugOnLivenessEvent({'type': 'nextAction', 'action': 'BLINK'});
@@ -496,6 +497,7 @@ void main() {
       await tester.pump();
 
       _state(tester).debugSetActiveLiveness();
+      _state(tester).debugSetSelectedMode(LivenessMode.active);
       _state(tester).debugSetActions(['BLINK', 'TURN_LEFT', 'SMILE']);
       await tester.pump();
 
@@ -543,6 +545,7 @@ void main() {
 
     testWidgets('multiple extraAction events append actions and keep latest current', (tester) async {
       await enterActiveState(tester);
+      _state(tester).debugSetSelectedMode(LivenessMode.active);
 
       _state(tester).debugSetActions(['BLINK']);
       _state(tester).debugOnLivenessEvent({'type': 'extraAction', 'action': 'SMILE'});
@@ -675,6 +678,7 @@ void main() {
 
     testWidgets('extra action renders extra chip in checklist', (tester) async {
       await enterActiveState(tester);
+      _state(tester).debugSetSelectedMode(LivenessMode.active);
 
       _state(tester).debugSetActions(['BLINK']);
       await tester.pump();
@@ -688,6 +692,7 @@ void main() {
 
     testWidgets('active holdStill tip renders get ready message', (tester) async {
       await enterActiveState(tester);
+      _state(tester).debugSetSelectedMode(LivenessMode.active);
 
       _state(tester).debugOnLivenessEvent({'type': 'align', 'tip': 'holdStill'});
       await tester.pump();
