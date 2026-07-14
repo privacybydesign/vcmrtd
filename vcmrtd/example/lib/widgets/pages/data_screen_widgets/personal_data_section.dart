@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtdapp/widgets/pages/data_screen_widgets/profile_picture.dart';
@@ -62,11 +62,7 @@ class PersonalDataSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        InfoRow(
-          label: 'Full Name',
-          value: passport.nameOfHolder ?? '${passport.mrz.firstName} ${passport.mrz.lastName}',
-          iconData: Icons.person_outline,
-        ),
+        InfoRow(label: 'Full Name', value: passport.displayName, iconData: Icons.person_outline),
         const SizedBox(height: 12),
         InfoRow(label: 'Nationality', value: passport.mrz.nationality, iconData: Icons.flag_outlined),
         const SizedBox(height: 12),
