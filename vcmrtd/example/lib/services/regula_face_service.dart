@@ -43,10 +43,17 @@ class RegulaFaceResult {
 /// Runs Regula Face SDK sessions against the Face API backend.
 ///
 /// The session is processed by the Face API (configured via [serviceUrl]) which
-/// holds the Regula license. [captureLiveness] performs liveness only — the
-/// match is left to the issuer backend (used by the web verify flow).
-/// [verifyAgainstDocument] additionally compares the proven-live face against
-/// the document chip portrait via the SDK's matcher.
+/// holds the Regula license. Two postures are supported:
+///
+/// * [captureLiveness] — liveness only. It produces just a
+///   `liveness_transaction_id`; the 1:1 face match is left to the issuer
+///   backend. This is the primary "verify via our API" flow, where the client
+///   never performs a match itself.
+/// * [verifyAgainstDocument] — liveness plus an on-device match. Once liveness
+///   passes, it hands the proven-live face and the document chip portrait to
+///   the SDK's `matchFaces` and returns a local similarity score. This powers
+///   the Regula option in the face-verification entry screen. Note the live
+///   face image is used for the comparison here, unlike the liveness-only flow.
 ///
 /// Abstracted so the flows can be tested without the native SDK.
 abstract class RegulaFaceService {
