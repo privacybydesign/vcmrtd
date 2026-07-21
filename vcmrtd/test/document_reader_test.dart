@@ -406,8 +406,8 @@ void main() {
       expect(h.nfc.disconnectCount, greaterThanOrEqualTo(1));
     });
 
-    test('with activeAuthenticationParams produces an AA signature', () async {
-      final h = makeHarness(present: {DataGroups.dg1, DataGroups.dg2});
+    test('with activeAuthenticationParams produces an AA signature (DG15 present)', () async {
+      final h = makeHarness(present: {DataGroups.dg1, DataGroups.dg2, DataGroups.dg15});
       final params = NonceAndSessionId(nonce: '0102030405060708', sessionId: 'sess-1');
       final result = await h.reader.readDocument(iosNfcMessages: _msg, activeAuthenticationParams: params);
 
@@ -419,9 +419,24 @@ void main() {
       expect(h.dgr.calls.contains('AA'), true);
     });
 
+    test('AA skipped entirely when DG15 absent (no AA command sent), read succeeds', () async {
+      // A UK passport that relies on Chip Authentication carries no DG15; AA must
+      // not be attempted at all, so the chip is never sent an INTERNAL AUTHENTICATE
+      // (which would answer 6A88 and abort the read).
+      final h = makeHarness(present: {DataGroups.dg1, DataGroups.dg2});
+      final params = NonceAndSessionId(nonce: '0102030405060708', sessionId: 'sess-no-dg15');
+      final result = await h.reader.readDocument(iosNfcMessages: _msg, activeAuthenticationParams: params);
+
+      expect(result, isNotNull);
+      expect(h.state, isA<DocumentReaderSuccess>());
+      expect(h.dgr.calls.contains('AA'), false);
+      expect(result!.$2.aaSignature, isNull);
+      expect(h.reader.getLogs(), contains('Skipping Active Authentication'));
+    });
+
     test('AA invalidInstructionCode (6D00) is skipped, read still succeeds', () async {
       final h = makeHarness(
-        present: {DataGroups.dg1, DataGroups.dg2},
+        present: {DataGroups.dg1, DataGroups.dg2, DataGroups.dg15},
         steps: {
           'AA': [_Step.fail(DocumentError('unsupported', code: StatusWord.invalidInstructionCode))],
         },
@@ -432,6 +447,23 @@ void main() {
       expect(result, isNotNull);
       expect(h.state, isA<DocumentReaderSuccess>());
       // signature stays null because AA was skipped
+      expect(result!.$2.aaSignature, isNull);
+    });
+
+    test('AA referencedDataNotFound (6A88) is skipped, read still succeeds', () async {
+      // The chip reports DG15 but rejects INTERNAL AUTHENTICATE with 6A88; treat
+      // it as "AA unavailable" and skip rather than aborting the whole read.
+      final h = makeHarness(
+        present: {DataGroups.dg1, DataGroups.dg2, DataGroups.dg15},
+        steps: {
+          'AA': [_Step.fail(DocumentError('Referenced data not found', code: StatusWord.referencedDataNotFound))],
+        },
+      );
+      final params = NonceAndSessionId(nonce: '0102030405060708', sessionId: 'sess-6a88');
+      final result = await h.reader.readDocument(iosNfcMessages: _msg, activeAuthenticationParams: params);
+
+      expect(result, isNotNull);
+      expect(h.state, isA<DocumentReaderSuccess>());
       expect(result!.$2.aaSignature, isNull);
     });
   });
@@ -500,9 +532,9 @@ void main() {
       expect(h.state, isA<DocumentReaderFailed>());
     });
 
-    test('AA failure (non-6D00) -> Failed', () async {
+    test('AA hard failure with DG15 present (non-"unsupported" status) -> Failed', () async {
       final h = makeHarness(
-        present: {DataGroups.dg1, DataGroups.dg2},
+        present: {DataGroups.dg1, DataGroups.dg2, DataGroups.dg15},
         steps: {'AA': List.generate(5, (_) => _Step.fail(DocumentError('aa hard fail')))},
       );
       final params = NonceAndSessionId(nonce: '0102030405060708', sessionId: 's');
