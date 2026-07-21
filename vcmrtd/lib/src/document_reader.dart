@@ -221,7 +221,19 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
     }
 
     Uint8List? aaSig;
-    if (activeAuthenticationParams != null) {
+    // Active Authentication proves the chip holds the private key matching the
+    // AA public key stored in DG15. If the chip carries no DG15 there is no AA
+    // key to challenge, so attempting it makes the chip reply 6A88 "referenced
+    // data not found" (or 6D00/6A81). This is common for documents that rely on
+    // Chip Authentication (EAC) instead of AA, e.g. many UK passports. Only
+    // attempt AA when DG15 is actually present; the passport issuer accepts a
+    // missing AA signature for such documents (passive authentication of the
+    // SOD still applies).
+    final chipSupportsAA = documentParser.documentContainsDataGroup(DataGroups.dg15);
+    if (activeAuthenticationParams != null && !chipSupportsAA) {
+      _addLog("Skipping Active Authentication: DG15 (AA public key) not present on chip");
+    }
+    if (activeAuthenticationParams != null && chipSupportsAA) {
       _setState(DocumentReaderActiveAuthentication());
       try {
         await _reconnectionLoop(
@@ -230,8 +242,14 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
             try {
               aaSig = await dataGroupReader.activeAuthenticate(stringToUint8List(activeAuthenticationParams.nonce));
             } on DocumentError catch (e) {
-              if (e.code == StatusWord.invalidInstructionCode) {
-                _addLog("Active Authentication not supported by chip (sw=6D00), skipping");
+              // Some chips advertise no usable AA key and reject the command
+              // outright. Treat these "not supported" status words as AA being
+              // unavailable and skip, rather than failing the whole read.
+              if (e.code == StatusWord.invalidInstructionCode || // 6D00
+                  e.code == StatusWord.referencedDataNotFound || // 6A88
+                  e.code == StatusWord.notSupported) {
+                // 6A81
+                _addLog("Active Authentication not supported by chip (${e.code}), skipping");
                 return;
               }
               rethrow;
