@@ -598,7 +598,10 @@ class PACE {
       if (cipherAlgo == CipherAlgorithm.AES) {
         _log.debug("PACE.decryptNonce; Cipher algorithm: AES");
         AESCipher aesCipher = AESChiperSelector.getChiper(size: keyLength);
-        Uint8List decryptedNonce = aesCipher.decrypt(data: nonce, key: kPi);
+        // ICAO 9303 p11: the encrypted nonce is decrypted in CBC mode with an
+        // all-zero IV. Pass it explicitly (the DESede branch below does the
+        // same) now that CBC no longer defaults to a zero IV silently.
+        Uint8List decryptedNonce = aesCipher.decrypt(data: nonce, key: kPi, iv: Uint8List(AES_BLOCK_SIZE));
         _log.sdVerbose("PACE.decryptNonce; Decrypted nonce: ${decryptedNonce.hex()}");
         return decryptedNonce;
       } else if (cipherAlgo == CipherAlgorithm.DESede) {

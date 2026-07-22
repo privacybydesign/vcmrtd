@@ -70,8 +70,11 @@ class AESCipher {
         throw AESCipherError("AESCipher.encrypt; iv length is not 128 bits.");
       }
     } else if (mode == BLOCK_CIPHER_MODE.CBC) {
-      iv = Uint8List(AES_BLOCK_SIZE);
-      _log.sdVerbose("AESCipher.encrypt; iv is null");
+      // Silently defaulting to an all-zero IV in CBC mode is unsafe (it makes
+      // the encryption deterministic across messages). Require the caller to
+      // supply an explicit IV instead.
+      _log.error("AESCipher.encrypt; CBC mode requires an explicit IV.");
+      throw AESCipherError("AESCipher.encrypt; CBC mode requires an explicit IV.");
     }
     final Uint8List paddedData;
     if (padding) {
@@ -117,12 +120,14 @@ class AESCipher {
     if (iv != null) {
       _log.sdVerbose("AESCipher.decrypt; iv size: ${iv.length}, iv: ${iv.hex()}");
       if (iv.length != AES_BLOCK_SIZE) {
-        _log.error("AESCipher.encrypt; iv length is not 128 bits.");
-        throw AESCipherError("AESCipher.encrypt; iv length is not 128 bits.");
+        _log.error("AESCipher.decrypt; iv length is not 128 bits.");
+        throw AESCipherError("AESCipher.decrypt; iv length is not 128 bits.");
       }
-    } else {
-      iv = Uint8List(AES_BLOCK_SIZE);
-      _log.sdVerbose("AESCipher.decrypt; iv is null");
+    } else if (mode == BLOCK_CIPHER_MODE.CBC) {
+      // Refuse to fall back to an all-zero IV in CBC mode; the caller must
+      // supply the same IV that was used for encryption.
+      _log.error("AESCipher.decrypt; CBC mode requires an explicit IV.");
+      throw AESCipherError("AESCipher.decrypt; CBC mode requires an explicit IV.");
     }
 
     BaseBlockCipher cipher;
@@ -130,7 +135,7 @@ class AESCipher {
       cipher = CBCBlockCipher(_factory())
         ..init(
           false,
-          ParametersWithIV(KeyParameter(key), iv),
+          ParametersWithIV(KeyParameter(key), iv!),
         ); // NOSONAR - CBC without padding is required by ICAO 9303 (PACE data is always block-aligned)
     } else {
       cipher = ECBBlockCipher(_factory())
@@ -192,7 +197,7 @@ class AESChiperSelector {
         return AESCipher128();
       case KEY_LENGTH.s192:
         _log.finer("AES chiper with 192-bit key size selected.");
-        return AESCipher128();
+        return AESCipher192();
       case KEY_LENGTH.s256:
         _log.finer("AES chiper with 256-bit key size selected.");
         return AESCipher256();
