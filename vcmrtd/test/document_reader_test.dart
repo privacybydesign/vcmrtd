@@ -34,17 +34,23 @@ class FakeNfcProvider extends NfcProvider {
   int forceCleanupCount = 0;
   final List<String> iosMessages = [];
 
+  /// Ordered log of lifecycle calls ('forceCleanup' / 'connect' / 'disconnect').
+  /// Lets tests assert the plugin session is cleaned up *before* polling.
+  final List<String> events = [];
+
   FakeNfcProvider({bool connected = false}) : _connected = connected;
 
   @override
   Future<void> connect({Duration? timeout, String iosAlertMessage = ""}) async {
     connectCount++;
+    events.add('connect');
     _connected = true;
   }
 
   @override
   Future<void> disconnect({String? iosAlertMessage, String? iosErrorMessage}) async {
     disconnectCount++;
+    events.add('disconnect');
     _connected = false;
   }
 
@@ -56,6 +62,7 @@ class FakeNfcProvider extends NfcProvider {
   @override
   Future<void> forceCleanup() async {
     forceCleanupCount++;
+    events.add('forceCleanup');
   }
 
   @override
@@ -586,6 +593,62 @@ void main() {
       expect(h.state, isA<DocumentReaderCancelled>());
       // disconnect happened inside _setToCancelState
       expect(h.nfc.disconnectCount, greaterThanOrEqualTo(1));
+    });
+  });
+
+  // --- fresh-poll cleanup (regression) --------------------------------------
+  //
+  // After a successful readout disconnect() finishes the plugin session
+  // (disableReaderMode) but the chip usually stays in the field. On Android a
+  // fresh readout that polls without first cycling the session never
+  // re-dispatches the still-present tag, so the poll times out and only a
+  // manual retry succeeds. _initRead now forceCleanup()s before the first
+  // connect on Android to give every fresh readout a clean reader-mode state.
+  //
+  // These tests run the Android branch: under `flutter test` the host is never
+  // iOS, so Platform.isIOS is false.
+  group('readDocument fresh-poll cleanup', () {
+    test('a fresh readout force-cleans the plugin session before polling', () async {
+      final h = makeHarness(present: {DataGroups.dg1, DataGroups.dg2});
+
+      final result = await h.reader.readDocument(iosNfcMessages: _msg);
+
+      expect(result, isNotNull);
+      expect(h.nfc.forceCleanupCount, 1);
+      // The cleanup must happen before the first poll, otherwise the still
+      // present chip is not re-dispatched and connect times out.
+      expect(h.nfc.events.first, 'forceCleanup');
+      expect(h.nfc.events.indexOf('forceCleanup'), lessThan(h.nfc.events.indexOf('connect')));
+    });
+
+    test('a second consecutive readout also force-cleans before polling', () async {
+      final h = makeHarness(present: {DataGroups.dg1, DataGroups.dg2});
+
+      // First readout: succeeds and disconnects (leaves the chip in the field).
+      final first = await h.reader.readDocument(iosNfcMessages: _msg);
+      expect(first, isNotNull);
+      expect(h.nfc.isConnected(), false);
+      final cleanupsAfterFirst = h.nfc.forceCleanupCount;
+
+      // Second readout (the one that used to time out) must clean up again.
+      h.reader.reset();
+      final second = await h.reader.readDocument(iosNfcMessages: _msg);
+
+      expect(second, isNotNull);
+      expect(h.nfc.forceCleanupCount, cleanupsAfterFirst + 1);
+      expect(h.state, isA<DocumentReaderSuccess>());
+    });
+
+    test('when already connected at start, it disconnects instead of forceCleanup', () async {
+      final h = makeHarness(present: {DataGroups.dg1, DataGroups.dg2}, nfcConnected: true);
+
+      final result = await h.reader.readDocument(iosNfcMessages: _msg);
+
+      expect(result, isNotNull);
+      // A stale connection is torn down, not force-cleaned.
+      expect(h.nfc.forceCleanupCount, 0);
+      expect(h.nfc.events.first, 'disconnect');
+      expect(h.nfc.events.indexOf('disconnect'), lessThan(h.nfc.events.indexOf('connect')));
     });
   });
 }
