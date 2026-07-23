@@ -1,7 +1,6 @@
 //  Created by Nejc Skerjanc, copyright © 2023 ZeroPass. All rights reserved.
 import 'dart:typed_data';
 
-import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'package:vcmrtd/extensions.dart';
 import 'package:pointycastle/asn1/primitives/asn1_sequence.dart';
@@ -9,6 +8,7 @@ import 'package:vcmrtd/src/lds/asn1ObjectIdentifiers.dart';
 import 'package:vcmrtd/src/proto/public_key_pace.dart';
 import 'package:vcmrtd/src/crypto/kdf.dart';
 import 'package:vcmrtd/src/crypto/aes.dart';
+import 'package:vcmrtd/src/crypto/crypto_utils.dart';
 import 'package:vcmrtd/src/crypto/iso9797.dart';
 import 'package:vcmrtd/src/proto/ssc.dart';
 import "package:vcmrtd/src/proto/des_smcipher.dart";
@@ -761,7 +761,7 @@ class PACE {
           ", Computed auth token: ${inputTokenTerminalforCheck.hex()}",
         );
 
-        if (!inputTokenTerminalforCheck.equals(computedAuthTokenICC)) {
+        if (!constantTimeEqual(inputTokenTerminalforCheck, computedAuthTokenICC)) {
           _log.error("PACE(4); Auth token from ICC and terminal are not the same");
           throw PACEError("PACE(4); Auth token from ICC and terminal are not the same");
         }
@@ -968,7 +968,7 @@ class PACE {
           ", Computed auth token: ${inputTokenTerminalforCheck.hex()}",
         );
 
-        if (!inputTokenTerminalforCheck.equals(computedAuthTokenICC)) {
+        if (!constantTimeEqual(inputTokenTerminalforCheck, computedAuthTokenICC)) {
           _log.error("PACE(4); Auth token from ICC and terminal are not the same");
           throw PACEError("PACE(4); Auth token from ICC and terminal are not the same");
         }

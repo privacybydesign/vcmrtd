@@ -43,5 +43,22 @@ void main() {
       addTearDown(container.dispose);
       expect(() => container.read(passportIssuerProvider), returnsNormally);
     });
+
+    test('accepts the Yivi IRMA server hosts as session URLs', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final issuer = container.read(passportIssuerProvider);
+      // The IRMA server runs on a different host than the passport issuer, so
+      // these must be accepted or real issuance would break.
+      expect(() => issuer.validateSessionUrl('https://is.yivi.app'), returnsNormally);
+      expect(() => issuer.validateSessionUrl('https://is.staging.yivi.app'), returnsNormally);
+    });
+
+    test('rejects an off-allowlist session URL host', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final issuer = container.read(passportIssuerProvider);
+      expect(() => issuer.validateSessionUrl('https://attacker.example.com'), throwsException);
+    });
   });
 }

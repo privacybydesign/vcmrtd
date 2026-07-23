@@ -3,7 +3,6 @@
 
 import 'dart:typed_data';
 
-import 'package:collection/collection.dart';
 import 'package:vcmrtd/extensions.dart';
 import 'package:logging/logging.dart';
 import 'package:meta/meta.dart';
@@ -35,7 +34,6 @@ class BACError implements Exception {
 /// Ref: https://www.icao.int/publications/Documents/9303_p11_cons_en.pdf
 class BAC {
   static final _log = Logger("bac");
-  static final bool Function(List<dynamic>, List<dynamic>) _eq = const ListEquality().equals;
 
   // Specified in section 4.3.1 of ICAO 9303 p11 doc
   static const nonceLen = 8; // Challenge is 8 bytes
@@ -57,12 +55,12 @@ class BAC {
     // Get random nonce from ICC
     _log.debug("Requesting challenge from ICC");
     final RNDicc = await icc.getChallenge(challengeLength: nonceLen);
-    _log.verbose("Received RND.IC=${RNDicc.hex()}");
+    _log.sdVerbose("Received RND.IC=${RNDicc.hex()}");
 
     // Generate random RND.IFD & K.IFD
     final RNDifd = randomBytes(nonceLen);
     final Kifd = randomBytes(kLen);
-    _log.verbose("Generated RND.IFD=${RNDifd.hex()}");
+    _log.sdVerbose("Generated RND.IFD=${RNDifd.hex()}");
     _log.sdVerbose("Generated K.IFD=${Kifd.hex()}");
 
     // Generate S
@@ -75,8 +73,8 @@ class BAC {
 
     // Execute EXTERNAL AUTHENTICATE command on ICC
     _log.debug("Sending EXTERNAL AUTHENTICATE command");
-    _log.verbose("  Eifd=${Eifd.hex()}");
-    _log.verbose("  Mifd=${Mifd.hex()}");
+    _log.sdVerbose("  Eifd=${Eifd.hex()}");
+    _log.sdVerbose("  Mifd=${Mifd.hex()}");
     final ICCeaData = await icc.externalAuthenticate(
       data: generateEAData(Eifd: Eifd, Mifd: Mifd),
       ne: eLen + macLen,
@@ -84,8 +82,8 @@ class BAC {
 
     final pairEiccMicc = extractEiccAndMicc(ICCea_data: ICCeaData);
     _log.verbose("Received from ICC:");
-    _log.verbose("  Eicc=${pairEiccMicc.first.hex()}");
-    _log.verbose("  Micc=${pairEiccMicc.second.hex()}");
+    _log.sdVerbose("  Eicc=${pairEiccMicc.first.hex()}");
+    _log.sdVerbose("  Micc=${pairEiccMicc.second.hex()}");
 
     // Verify MAC of received Eicc
     if (!verifyEicc(Eicc: pairEiccMicc.first, Kmac: Kmac, Micc: pairEiccMicc.second)) {
@@ -96,7 +94,7 @@ class BAC {
     // Decrypt R from received Eicc
     _log.debug("Generating session keys KSenc and KSmac");
     final R = D(Kdec: Kenc, Eicc: pairEiccMicc.first);
-    _log.verbose("Decrypted R=${R.hex()}");
+    _log.sdVerbose("Decrypted R=${R.hex()}");
 
     // Verify R contains our RND.IFD and extract Kicc from R
     final Kicc = verifyRNDifdAndExtractKicc(RNDifd: RNDifd, R: R);
@@ -208,8 +206,11 @@ class BAC {
     assert(RNDifd.length == nonceLen);
     assert(R.length == rLen);
     final eRNDifd = Uint8List.fromList(R.sublist(nonceLen, 2 * nonceLen));
-    if (!_eq(eRNDifd, RNDifd)) {
-      throw BACError("Extrected RND.IFD=${eRNDifd.hex()} from R is different than generated RND.IFD=${RNDifd.hex()}");
+    if (!constantTimeEqual(eRNDifd, RNDifd)) {
+      // Do not leak the ephemeral nonce material in the exception message; the
+      // hex values are only emitted under the sensitive-data verbose gate.
+      _log.sdVerbose("Extracted RND.IFD=${eRNDifd.hex()} from R is different than generated RND.IFD=${RNDifd.hex()}");
+      throw BACError("Extracted RND.IFD from R does not match the generated RND.IFD");
     }
     final Kicc = Uint8List.fromList(R.sublist(2 * nonceLen));
     return Kicc;
@@ -225,6 +226,6 @@ class BAC {
     assert(Eicc.length == eLen);
     assert(Kmac.length == ISO9797.macAlg3_Key1Len);
     assert(Micc.length == macLen);
-    return _eq(MAC(Kmac: Kmac, Eifd: Eicc), Micc);
+    return constantTimeEqual(MAC(Kmac: Kmac, Eifd: Eicc), Micc);
   }
 }
