@@ -55,6 +55,8 @@ Copyright (C) 2025-2026 Yivi B.V.
 
 This software is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
+The full licence text is in [LICENSE](LICENSE). The same text ships with both packages, in [vcmrtd/LICENSE](vcmrtd/LICENSE) and [face_verification/LICENSE](face_verification/LICENSE).
+
 ## Funding
 
 This project received funding through [NGI0 Commons Fund](https://nlnet.nl/commonsfund), a fund established by [NLnet](https://nlnet.nl) with financial support from the European Commission's [Next Generation Internet](https://ngi.eu) program. Learn more at the [NLnet project page](https://nlnet.nl/project/Yivi-AgeVerification).
