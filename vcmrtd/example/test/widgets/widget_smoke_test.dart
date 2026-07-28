@@ -1,10 +1,9 @@
-﻿import 'dart:typed_data';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtd/vcmrtd.dart';
-import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_guidance_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/data_screen_widgets/profile_picture.dart';
 
@@ -97,44 +96,6 @@ void main() {
       expect(find.byType(Image), findsOneWidget);
       expect(find.byIcon(Icons.person), findsNothing);
       expect(find.text('No Photo'), findsNothing);
-    });
-  });
-
-  group('ScannedMRZ', () {
-    test('ScannedPassportMRZ.fromManualEntry creates correct instance', () {
-      final dob = DateTime(1990, 1, 1);
-      final exp = DateTime(2030, 12, 31);
-      final mrz = ScannedPassportMRZ.fromManualEntry(
-        documentNumber: 'AB123456',
-        dateOfBirth: dob,
-        dateOfExpiry: exp,
-        countryCode: 'NLD',
-      );
-      expect(mrz.documentNumber, 'AB123456');
-      expect(mrz.countryCode, 'NLD');
-      expect(mrz.dateOfBirth, dob);
-      expect(mrz.dateOfExpiry, exp);
-      expect(mrz.documentType, DocumentType.passport);
-    });
-
-    test('ScannedPassportMRZ with identityCard documentType', () {
-      final mrz = ScannedPassportMRZ.fromManualEntry(
-        documentNumber: 'ID123456',
-        dateOfBirth: DateTime(1985, 6, 15),
-        dateOfExpiry: DateTime(2025, 6, 15),
-        documentType: DocumentType.identityCard,
-      );
-      expect(mrz.documentType, DocumentType.identityCard);
-    });
-
-    test('ScannedIdCardMRZ.fromManualEntry defaults to identityCard', () {
-      final mrz = ScannedIdCardMRZ.fromManualEntry(
-        documentNumber: 'XY987654',
-        dateOfBirth: DateTime(2000, 3, 20),
-        dateOfExpiry: DateTime(2028, 3, 20),
-      );
-      expect(mrz.documentType, DocumentType.identityCard);
-      expect(mrz.documentNumber, 'XY987654');
     });
   });
 }

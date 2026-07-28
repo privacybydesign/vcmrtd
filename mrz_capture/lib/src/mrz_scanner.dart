@@ -35,8 +35,16 @@ class MRZScanner extends StatefulWidget {
   /// next frame.
   final OcrEngine engine;
 
-  /// The caller's route observer, passed on to the camera view so the live feed
-  /// pauses while another route is on top of the scanner.
+  /// The caller's route observer. It is passed on to the camera view so the live
+  /// feed pauses while another route is on top of the scanner, and it is what
+  /// re-arms scanning when the scanner comes back to the top.
+  ///
+  /// Optional, but note what is lost without one: a successful parse stops
+  /// processing so [onSuccess] fires once per document, and the observer's pop
+  /// callback is the only thing that resumes it on its own. A caller that passes
+  /// no observer has a single-shot scanner until it calls
+  /// [MRZScannerState.resumeScanning], which it can reach through the
+  /// `MRZController` it passed as `controller`.
   final RouteObserver<ModalRoute<void>>? routeObserver;
 
   final CameraLensDirection initialDirection;
@@ -79,11 +87,19 @@ class MRZScannerState extends State<MRZScanner> with RouteAware {
     super.dispose();
   }
 
-  @override
-  void didPopNext() {
+  /// Starts reading frames again after a successful scan.
+  ///
+  /// A successful parse stops processing so [MRZScanner.onSuccess] is reported
+  /// once per document. Callers that pass a [MRZScanner.routeObserver] get this
+  /// for free when the scanner's route comes back to the top; callers that do
+  /// not have to call this themselves to read the next document.
+  void resumeScanning() {
     _canProcess = true;
     _isBusy = false;
   }
+
+  @override
+  void didPopNext() => resumeScanning();
 
   @override
   Widget build(BuildContext context) {

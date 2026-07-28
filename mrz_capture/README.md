@@ -34,6 +34,19 @@ The module holds no navigation and no state management of its own. The caller de
 engine to use, hands over its own `RouteObserver` so the camera can be released while another
 route is on top, and receives results through callbacks.
 
+`onSuccess` is reported once per document: a successful parse stops frame processing, and the
+route observer resumes it when the scanner's route comes back to the top. Applications that pass
+no observer resume it themselves through an `MRZController`:
+
+```dart
+final controller = MRZController();
+
+MRZScanner(controller: controller, engine: OcrEngine.googleMlKit, onSuccess: onSuccess);
+
+// ...once the caller is ready for the next document
+controller.currentState?.resumeScanning();
+```
+
 ## OCR engines
 
 Two engines are selectable through `OcrEngine`:

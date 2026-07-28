@@ -148,6 +148,10 @@ class MRZCameraView extends StatefulWidget {
   /// The caller's route observer, so the live feed is stopped while another
   /// route is on top of the scanner and restarted when it comes back. Without
   /// one the camera simply keeps running for as long as the view is mounted.
+  ///
+  /// `MRZScanner` subscribes to the same observer for a second reason — it is
+  /// what re-arms scanning after a successful read — so omitting it there costs
+  /// more than it does here.
   final RouteObserver<ModalRoute<void>>? routeObserver;
 
   final bool initializeCamera;

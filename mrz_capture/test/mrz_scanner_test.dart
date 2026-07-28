@@ -258,6 +258,36 @@ void main() {
       expect(state.debugCanProcess, isFalse);
       expect(state.debugIsBusy, isFalse);
     });
+
+    // _scaffold passes no routeObserver, so didPopNext never fires here. Without
+    // resumeScanning() this scanner would stay dead after the first hit.
+    testWidgets('resumeScanning re-arms the frame path with no route observer', (tester) async {
+      var hits = 0;
+      await tester.pumpWidget(
+        _scaffold(
+          documentType: DocumentType.passport,
+          onSuccess: (_, unused) => hits++,
+          googleMlKitOcrForTesting: (_) async => <String>[_passportLine1, _passportLine2],
+        ),
+      );
+      await tester.pump();
+      final state = _buildState(tester);
+
+      await state.debugProcessFrame(_frame(), OcrEngine.googleMlKit);
+      expect(hits, 1);
+      expect(state.debugCanProcess, isFalse);
+
+      await state.debugProcessFrame(_frame(), OcrEngine.googleMlKit);
+      expect(hits, 1, reason: 'a second read must not be reported before the scanner is re-armed');
+
+      state.resumeScanning();
+
+      expect(state.debugCanProcess, isTrue);
+      expect(state.debugIsBusy, isFalse);
+
+      await state.debugProcessFrame(_frame(), OcrEngine.googleMlKit);
+      expect(hits, 2);
+    });
   });
 
   group('MRZScannerState._processTesseractFrame', () {
