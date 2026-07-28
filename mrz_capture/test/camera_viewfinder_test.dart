@@ -2,8 +2,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:vcmrtdapp/helpers/camera_overlay.dart';
-import 'package:vcmrtdapp/helpers/camera_viewfinder.dart';
+import 'package:mrz_capture/mrz_capture.dart';
 
 void main() {
   group('OcrFrame', () {

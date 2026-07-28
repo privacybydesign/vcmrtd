@@ -1,6 +1,5 @@
 ﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-enum OcrEngine { googleMlKit, tesseract4android }
+import 'package:mrz_capture/mrz_capture.dart';
 
 class OcrEngineNotifier extends Notifier<OcrEngine> {
   @override

@@ -21,6 +21,7 @@ void main() {
     'repository root': File('../LICENSE'),
     'vcmrtd package': File('LICENSE'),
     'face_verification package': File('../face_verification/LICENSE'),
+    'mrz_capture package': File('../mrz_capture/LICENSE'),
   };
 
   group('licence files', () {
@@ -46,6 +47,7 @@ void main() {
         File('../LICENSE.LGPL'),
         File('LICENSE.LGPL'),
         File('../face_verification/LICENSE.LGPL'),
+        File('../mrz_capture/LICENSE.LGPL'),
       ].where((f) => f.existsSync()).map((f) => f.path);
       expect(named, isEmpty);
     });

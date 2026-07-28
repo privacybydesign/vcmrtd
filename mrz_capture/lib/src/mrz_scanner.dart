@@ -3,19 +3,24 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:logging/logging.dart';
 import 'package:mrz_parser/mrz_parser.dart';
 import 'package:vcmrtd/vcmrtd.dart';
-import '../routing.dart';
-import '../providers/ocr_engine_provider.dart';
 import 'camera_viewfinder.dart';
 import 'mrz_helper.dart';
+import 'ocr_engine.dart';
+import 'scanned_mrz.dart';
 
-class MRZScanner extends ConsumerStatefulWidget {
+/// Called with the MRZ that was read and the MRZ lines it was parsed from.
+typedef MrzScannedCallback = void Function(ScannedMRZ mrz, List<String> lines);
+
+class MRZScanner extends StatefulWidget {
   const MRZScanner({
     Key? controller,
     required this.onSuccess,
+    required this.engine,
+    this.routeObserver,
     this.initialDirection = CameraLensDirection.back,
     this.showOverlay = true,
     this.documentType = DocumentType.passport,
@@ -23,7 +28,17 @@ class MRZScanner extends ConsumerStatefulWidget {
     @visibleForTesting this.googleMlKitOcrForTesting,
   }) : super(key: controller);
 
-  final Function(dynamic mrzResult, List<String> lines) onSuccess;
+  final MrzScannedCallback onSuccess;
+
+  /// The OCR engine to read frames with. It is read per frame, so a caller can
+  /// hand the scanner a value it rebuilds on and the change takes effect on the
+  /// next frame.
+  final OcrEngine engine;
+
+  /// The caller's route observer, passed on to the camera view so the live feed
+  /// pauses while another route is on top of the scanner.
+  final RouteObserver<ModalRoute<void>>? routeObserver;
+
   final CameraLensDirection initialDirection;
   final bool showOverlay;
   final DocumentType documentType;
@@ -36,8 +51,9 @@ class MRZScanner extends ConsumerStatefulWidget {
   MRZScannerState createState() => MRZScannerState();
 }
 
-class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
+class MRZScannerState extends State<MRZScanner> with RouteAware {
   static const MethodChannel _ocrChannel = MethodChannel('tesseract_ocr');
+  static final Logger _log = Logger('MRZScanner');
 
   // Lazily instantiated — ML Kit model is not loaded until actually needed.
   TextRecognizer? _textRecognizerInstance;
@@ -51,13 +67,13 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
     super.didChangeDependencies();
     final route = ModalRoute.of(context);
     if (route is PageRoute) {
-      routeObserver.subscribe(this, route);
+      widget.routeObserver?.subscribe(this, route);
     }
   }
 
   @override
   void dispose() {
-    routeObserver.unsubscribe(this);
+    widget.routeObserver?.unsubscribe(this);
     _canProcess = false;
     _textRecognizerInstance?.close();
     super.dispose();
@@ -71,13 +87,12 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
 
   @override
   Widget build(BuildContext context) {
-    final selectedEngine = ref.watch(ocrEngineProvider);
-
     return MRZCameraView(
       showOverlay: widget.showOverlay,
       initialDirection: widget.initialDirection,
       initializeCamera: widget.initializeCamera,
-      onImage: (frame) => _processFrame(frame, selectedEngine),
+      routeObserver: widget.routeObserver,
+      onImage: (frame) => _processFrame(frame, widget.engine),
     );
   }
 
@@ -180,7 +195,7 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
     final parsedRaw = _parseScannedText(lines);
     if (parsedRaw != null) {
       _canProcess = false;
-      widget.onSuccess(parsedRaw, lines);
+      _notify(parsedRaw, lines);
       return true;
     }
     final correctedStrict = MRZHelper.fixForDocType(widget.documentType, lines);
@@ -188,15 +203,21 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
       final parsedStrict = _parseScannedText(correctedStrict);
       if (parsedStrict != null) {
         _canProcess = false;
-        widget.onSuccess(parsedStrict, correctedStrict);
+        _notify(parsedStrict, correctedStrict);
         return true;
       }
     }
     return false;
   }
 
+  void _notify(ScannedMRZ mrz, List<String> lines) {
+    _log.info('MRZ Scanned');
+    _log.info(mrz.documentType.toString());
+    widget.onSuccess(mrz, lines);
+  }
+
   @visibleForTesting
-  dynamic debugParseScannedText(List<String> lines) => _parseScannedText(lines);
+  ScannedMRZ? debugParseScannedText(List<String> lines) => _parseScannedText(lines);
 
   @visibleForTesting
   bool debugTryParseAndNotify(List<String> lines) => _tryParseAndNotify(lines);
@@ -213,15 +234,21 @@ class MRZScannerState extends ConsumerState<MRZScanner> with RouteAware {
   @visibleForTesting
   bool get debugIsBusy => _isBusy;
 
-  dynamic _parseScannedText(List<String> lines) {
+  ScannedMRZ? _parseScannedText(List<String> lines) {
     try {
       switch (widget.documentType) {
         case DocumentType.passport:
-          return PassportMrzParser().parse(lines);
+          return ScannedPassportMRZ.fromMRZResult(
+            PassportMrzParser().parse(lines),
+            documentType: DocumentType.passport,
+          );
         case DocumentType.identityCard:
-          return IdCardMrzParser().parse(lines);
+          return ScannedPassportMRZ.fromMRZResult(
+            IdCardMrzParser().parse(lines),
+            documentType: DocumentType.identityCard,
+          );
         case DocumentType.drivingLicence:
-          return DrivingLicenceMrzParser().parse(lines);
+          return ScannedDriverLicenseMRZ.fromMRZResult(DrivingLicenceMrzParser().parse(lines));
       }
     } catch (_) {
       return null;

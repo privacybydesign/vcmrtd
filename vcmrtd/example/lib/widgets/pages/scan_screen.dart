@@ -1,38 +1,34 @@
-﻿import 'package:flutter/material.dart';
-import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
-
-import '../../custom/custom_logger_extension.dart';
-import '../../controllers/mrz_controller.dart';
-import '../../helpers/mrz_scanner.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
-class ScannerPage extends StatefulWidget {
+import '../../providers/ocr_engine_provider.dart';
+import '../../routing.dart';
+
+/// Wires the mrz_capture scanner into this application: the OCR engine comes
+/// from the settings provider, the route observer from the router.
+class ScannerPage extends ConsumerStatefulWidget {
   final DocumentType documentType;
   final Function(ScannedMRZ) onSuccess;
 
   const ScannerPage({super.key, this.documentType = DocumentType.passport, required this.onSuccess});
 
   @override
-  State<ScannerPage> createState() => _ScannerPageState();
+  ConsumerState<ScannerPage> createState() => _ScannerPageState();
 }
 
-class _ScannerPageState extends State<ScannerPage> {
+class _ScannerPageState extends ConsumerState<ScannerPage> {
   final MRZController controller = MRZController();
+
   @override
   Widget build(BuildContext context) {
     return MRZScanner(
       controller: controller,
       documentType: widget.documentType,
-      onSuccess: (dynamic mrzResult, lines) async {
-        'MRZ Scanned'.logInfo();
-        final ScannedMRZ scannedMRZ = switch (widget.documentType) {
-          DocumentType.passport ||
-          DocumentType.identityCard => ScannedPassportMRZ.fromMRZResult(mrzResult, documentType: widget.documentType),
-          DocumentType.drivingLicence => ScannedDriverLicenseMRZ.fromMRZResult(mrzResult),
-        };
-        scannedMRZ.documentType.toString().logInfo();
-        widget.onSuccess(scannedMRZ);
-      },
+      engine: ref.watch(ocrEngineProvider),
+      routeObserver: routeObserver,
+      onSuccess: (scannedMRZ, lines) => widget.onSuccess(scannedMRZ),
     );
   }
 }

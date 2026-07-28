@@ -1,0 +1,39 @@
+name: mrz_capture
+description: MRZ capture — camera viewfinder, framing overlay, both OCR engines and the manual entry fallback
+
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.8.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  vcmrtd:
+    path: ../vcmrtd
+  camera: ^0.12.0
+  flutter_platform_widgets: ^9.0.0
+  google_mlkit_text_recognition: ^0.15.0
+  intl: ^0.20.2
+  logging: ^1.3.0
+  meta: ^1.15.0
+  mrz_parser:
+    git:
+      url: https://github.com/privacybydesign/mrz_parser.git
+      ref: v3.0.0
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+  lints: ^6.0.0
+
+flutter:
+  plugin:
+    platforms:
+      # Tesseract4Android is the free software OCR engine and is Android-only.
+      # Google ML Kit needs no platform code here: its own plugin provides that.
+      android:
+        package: foundation.privacybydesign.mrzcapture
+        pluginClass: TesseractOcrPlugin

@@ -1,7 +1,7 @@
 ﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/internal.dart';
 import 'package:vcmrtd/vcmrtd.dart';
-import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
+import 'package:mrz_capture/mrz_capture.dart';
 
 final passportReaderProvider = NotifierProvider.autoDispose
     .family<DocumentReader<PassportData>, DocumentReaderState, ScannedPassportMRZ>((scannedPassportMRZ) {

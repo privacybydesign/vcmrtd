@@ -1,5 +1,6 @@
 ﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtdapp/providers/ocr_engine_provider.dart';
 import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
 

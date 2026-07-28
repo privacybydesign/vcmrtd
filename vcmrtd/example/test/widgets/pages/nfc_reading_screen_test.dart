@@ -15,7 +15,7 @@ import 'package:vcmrtd/vcmrtd.dart';
 
 import 'package:vcmrtdapp/providers/reader_providers.dart';
 import 'package:vcmrtdapp/widgets/common/animated_nfc_status_widget.dart';
-import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
+import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_guidance_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_reading_screen.dart';
 

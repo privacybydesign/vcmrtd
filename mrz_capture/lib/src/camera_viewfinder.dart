@@ -4,7 +4,6 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'camera_overlay.dart';
-import '../routing.dart';
 
 class OcrFrame {
   OcrFrame({
@@ -138,12 +137,18 @@ class MRZCameraView extends StatefulWidget {
     required this.onImage,
     this.initialDirection = CameraLensDirection.back,
     required this.showOverlay,
+    this.routeObserver,
     this.initializeCamera = true,
   });
 
   final Function(OcrFrame frame) onImage;
   final CameraLensDirection initialDirection;
   final bool showOverlay;
+
+  /// The caller's route observer, so the live feed is stopped while another
+  /// route is on top of the scanner and restarted when it comes back. Without
+  /// one the camera simply keeps running for as long as the view is mounted.
+  final RouteObserver<ModalRoute<void>>? routeObserver;
 
   final bool initializeCamera;
 
@@ -180,13 +185,13 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
     super.didChangeDependencies();
     final route = ModalRoute.of(context);
     if (route is PageRoute) {
-      routeObserver.subscribe(this, route);
+      widget.routeObserver?.subscribe(this, route);
     }
   }
 
   @override
   void dispose() {
-    routeObserver.unsubscribe(this);
+    widget.routeObserver?.unsubscribe(this);
 
     final controller = _controller;
     _controller = null;

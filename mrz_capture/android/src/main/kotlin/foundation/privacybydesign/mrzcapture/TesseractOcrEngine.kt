@@ -1,4 +1,4 @@
-package foundation.privacybydesign.vcmrtd.ocr
+package foundation.privacybydesign.mrzcapture
 
 import android.content.Context
 import com.googlecode.tesseract.android.TessBaseAPI

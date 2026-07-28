@@ -11,12 +11,12 @@ import 'package:vcmrtd/vcmrtd.dart';
 import 'package:face_verification/face_verification.dart';
 import 'package:vcmrtdapp/widgets/pages/face_verification_entry_screen.dart';
 import 'package:vcmrtdapp/routing.dart';
-import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
+import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtdapp/widgets/pages/document_selection_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/driving_licence_data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/passport_data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/scanner_wrapper.dart';
-import 'package:vcmrtdapp/widgets/pages/manual_entry_screen.dart';
+import 'package:vcmrtdapp/widgets/pages/manual_entry_route_params.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_reading_screen.dart';
 
 class _FakeScanner extends StatelessWidget {

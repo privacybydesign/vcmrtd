@@ -2,7 +2,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtdapp/routing.dart';
-import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
+import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtdapp/widgets/pages/scanner_wrapper.dart';
 
 class _FakeScanner extends StatelessWidget {

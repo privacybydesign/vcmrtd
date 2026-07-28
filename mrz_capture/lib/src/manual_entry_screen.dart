@@ -6,22 +6,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:intl/intl.dart';
 import 'package:vcmrtd/vcmrtd.dart';
-import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
+import 'scanned_mrz.dart';
 
-class ManualEntryRouteParams {
-  final DocumentType documentType;
-
-  ManualEntryRouteParams({required this.documentType});
-
-  static ManualEntryRouteParams fromQueryParams(Map<String, String> params) {
-    return ManualEntryRouteParams(documentType: stringToDocumentType(params['document_type']!));
-  }
-
-  Map<String, String> toQueryParams() {
-    return {'document_type': documentTypeToString(documentType)};
-  }
-}
-
+/// Fallback for when scanning will not work: the user types the fields the chip
+/// needs. Reports the same [ScannedMRZ] shape the scanner does.
 class ManualEntryScreen extends StatefulWidget {
   final VoidCallback onBack;
   final Function(ScannedMRZ) onManualEntryComplete;

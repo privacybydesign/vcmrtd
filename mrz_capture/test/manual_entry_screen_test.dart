@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vcmrtd/vcmrtd.dart';
-import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
-import 'package:vcmrtdapp/widgets/pages/manual_entry_screen.dart';
+import 'package:mrz_capture/mrz_capture.dart';
 
 void _setLargeViewport(WidgetTester tester) {
   tester.view.physicalSize = const Size(1200, 2200);
@@ -22,15 +21,6 @@ Widget _screen({required DocumentType documentType, VoidCallback? onBack, void F
 }
 
 void main() {
-  group('ManualEntryRouteParams', () {
-    test('round-trips through query params', () {
-      final params = ManualEntryRouteParams(documentType: DocumentType.drivingLicence);
-      final query = params.toQueryParams();
-      final restored = ManualEntryRouteParams.fromQueryParams(query);
-      expect(restored.documentType, DocumentType.drivingLicence);
-    });
-  });
-
   group('ManualEntryScreen — passport', () {
     testWidgets('renders passport fields and header', (tester) async {
       _setLargeViewport(tester);

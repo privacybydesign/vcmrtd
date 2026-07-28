@@ -1,12 +1,14 @@
-package foundation.privacybydesign.vcmrtd.ocr
+package foundation.privacybydesign.mrzcapture
 
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import org.opencv.android.OpenCVLoader
 
 class TesseractOcrPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
@@ -16,6 +18,11 @@ class TesseractOcrPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private var ocrExecutor: ExecutorService? = null
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        // OpenCV backs the MRZ zone detection this engine runs before Tesseract.
+        if (!OpenCVLoader.initLocal()) {
+            Log.e("OpenCV", "OpenCV initialization failed")
+        }
+
         engine = TesseractOcrEngine(binding.applicationContext)
         ocrExecutor = Executors.newSingleThreadExecutor()
         channel = MethodChannel(binding.binaryMessenger, "tesseract_ocr")
