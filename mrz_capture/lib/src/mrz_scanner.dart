@@ -93,9 +93,14 @@ class MRZScannerState extends State<MRZScanner> with RouteAware {
   /// once per document. Callers that pass a [MRZScanner.routeObserver] get this
   /// for free when the scanner's route comes back to the top; callers that do
   /// not have to call this themselves to read the next document.
+  ///
+  /// Callers may call this while a read is still in flight, so it deliberately
+  /// leaves [_isBusy] alone: that flag is the reentrancy guard for one OCR pass
+  /// and [_processFrame] owns its whole lifetime. Clearing it here would let the
+  /// next frame start a second pass alongside the first, and both would report
+  /// the same document.
   void resumeScanning() {
     _canProcess = true;
-    _isBusy = false;
   }
 
   @override

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -287,6 +289,49 @@ void main() {
 
       await state.debugProcessFrame(_frame(), OcrEngine.googleMlKit);
       expect(hits, 2);
+    });
+
+    // resumeScanning() is public, so a caller can reach it while a read is still
+    // running — a button tap or a timer after a result, with frames still
+    // arriving. It must re-arm the frame path without dropping the in-flight
+    // guard, or the next frame starts a second OCR pass beside the first and one
+    // document is reported twice.
+    testWidgets('resumeScanning mid-read does not start a second OCR pass', (tester) async {
+      var hits = 0;
+      var ocrCalls = 0;
+      final firstRead = Completer<List<String>?>();
+      await tester.pumpWidget(
+        _scaffold(
+          documentType: DocumentType.passport,
+          onSuccess: (_, unused) => hits++,
+          googleMlKitOcrForTesting: (_) {
+            ocrCalls++;
+            if (ocrCalls == 1) return firstRead.future;
+            return Future<List<String>?>.value(<String>[_passportLine1, _passportLine2]);
+          },
+        ),
+      );
+      await tester.pump();
+      final state = _buildState(tester);
+
+      // First frame: the read hangs on the completer, so the pass stays in flight.
+      final inFlight = state.debugProcessFrame(_frame(), OcrEngine.googleMlKit);
+      expect(ocrCalls, 1);
+      expect(state.debugIsBusy, isTrue);
+
+      state.resumeScanning();
+
+      expect(state.debugCanProcess, isTrue);
+      expect(state.debugIsBusy, isTrue, reason: 'the in-flight guard belongs to the read, not to resumeScanning');
+
+      await state.debugProcessFrame(_frame(), OcrEngine.googleMlKit);
+      expect(ocrCalls, 1, reason: 'the next frame must be dropped while the first read is still running');
+
+      firstRead.complete(<String>[_passportLine1, _passportLine2]);
+      await inFlight;
+
+      expect(hits, 1, reason: 'one document must be reported once');
+      expect(state.debugIsBusy, isFalse);
     });
   });
 
