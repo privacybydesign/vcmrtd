@@ -58,6 +58,7 @@ void main() {
     // Without a camera frame, onSuccess is never invoked.
     expect(received, isNull);
   });
+
   testWidgets('ScannerPage hands the selected OCR engine and the route observer to the scanner', (tester) async {
     final container = ProviderContainer();
     addTearDown(container.dispose);
