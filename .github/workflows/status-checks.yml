@@ -38,6 +38,9 @@ jobs:
       - name: Run face_verification tests with coverage
         working-directory: ./face_verification
         run: flutter test --coverage
+      - name: Run mrz_capture tests with coverage
+        working-directory: ./mrz_capture
+        run: flutter test --coverage
       - name: Upload vcmrtd coverage to Codecov
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
@@ -51,6 +54,14 @@ jobs:
         with:
           files: face_verification/coverage/lcov.info
           flags: face_verification
+          fail_ci_if_error: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload mrz_capture coverage to Codecov
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          files: mrz_capture/coverage/lcov.info
+          flags: mrz_capture
           fail_ci_if_error: true
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -74,12 +85,16 @@ jobs:
       - name: Run face_verification tests with coverage
         working-directory: ./face_verification
         run: flutter test --coverage
+      - name: Run mrz_capture tests with coverage
+        working-directory: ./mrz_capture
+        run: flutter test --coverage
       - name: Merge coverage reports
         run: |
           mkdir -p coverage
           sed 's|SF:lib/|SF:vcmrtd/lib/|g' vcmrtd/coverage/lcov.info > coverage/lcov.info
           sed 's|SF:lib/|SF:vcmrtd/example/lib/|g' vcmrtd/example/coverage/lcov.info >> coverage/lcov.info
           sed 's|SF:lib/|SF:face_verification/lib/|g' face_verification/coverage/lcov.info >> coverage/lcov.info
+          sed 's|SF:lib/|SF:mrz_capture/lib/|g' mrz_capture/coverage/lcov.info >> coverage/lcov.info
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602 # v6
         env:

@@ -6,8 +6,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vcmrtd/vcmrtd.dart';
-import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
-import 'package:vcmrtdapp/widgets/pages/manual_entry_screen.dart';
+import 'package:mrz_capture/mrz_capture.dart';
 
 void _setLargeViewport(WidgetTester tester) {
   tester.view.physicalSize = const Size(1200, 2400);

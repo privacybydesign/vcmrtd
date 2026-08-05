@@ -1,37 +1,36 @@
-﻿import 'package:camera/camera.dart';
+import 'dart:async';
+
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vcmrtd/vcmrtd.dart';
-import 'package:vcmrtdapp/helpers/camera_viewfinder.dart';
-import 'package:vcmrtdapp/helpers/mrz_scanner.dart';
-import 'package:vcmrtdapp/providers/ocr_engine_provider.dart';
+import 'package:mrz_capture/mrz_capture.dart';
 
 // Helper to build an MRZScannerState for testing the parsing logic.
-// We wrap in a real widget tree because MRZScanner is a ConsumerStatefulWidget.
+// We wrap in a real widget tree because the state does the parsing.
 MRZScannerState _buildState(WidgetTester tester) {
   return tester.state<MRZScannerState>(find.byType(MRZScanner));
 }
 
 Widget _scaffold({
   required DocumentType documentType,
-  void Function(dynamic, List<String>)? onSuccess,
+  MrzScannedCallback? onSuccess,
   bool showOverlay = true,
+  OcrEngine engine = OcrEngine.googleMlKit,
   CameraLensDirection initialDirection = CameraLensDirection.back,
   Future<List<String>?> Function(OcrFrame frame)? googleMlKitOcrForTesting,
 }) {
-  return ProviderScope(
-    child: MaterialApp(
-      home: Scaffold(
-        body: MRZScanner(
-          documentType: documentType,
-          initialDirection: initialDirection,
-          showOverlay: showOverlay,
-          initializeCamera: false,
-          googleMlKitOcrForTesting: googleMlKitOcrForTesting,
-          onSuccess: onSuccess ?? (result, lines) {},
-        ),
+  return MaterialApp(
+    home: Scaffold(
+      body: MRZScanner(
+        documentType: documentType,
+        engine: engine,
+        initialDirection: initialDirection,
+        showOverlay: showOverlay,
+        initializeCamera: false,
+        googleMlKitOcrForTesting: googleMlKitOcrForTesting,
+        onSuccess: onSuccess ?? (result, lines) {},
       ),
     ),
   );
@@ -70,15 +69,14 @@ void main() {
   group('MRZScanner widget wiring', () {
     testWidgets('builds a camera view with scanner settings and selected OCR engine', (tester) async {
       await tester.pumpWidget(
-        ProviderScope(
-          child: MaterialApp(
-            home: MRZScanner(
-              documentType: DocumentType.identityCard,
-              initialDirection: CameraLensDirection.front,
-              showOverlay: false,
-              initializeCamera: false,
-              onSuccess: (result, lines) {},
-            ),
+        MaterialApp(
+          home: MRZScanner(
+            documentType: DocumentType.identityCard,
+            engine: OcrEngine.googleMlKit,
+            initialDirection: CameraLensDirection.front,
+            showOverlay: false,
+            initializeCamera: false,
+            onSuccess: (result, lines) {},
           ),
         ),
       );
@@ -167,7 +165,7 @@ void main() {
     });
 
     testWidgets('returns true and calls onSuccess for valid passport lines', (tester) async {
-      dynamic captured;
+      ScannedMRZ? captured;
       List<String>? capturedLines;
       await tester.pumpWidget(
         _scaffold(
@@ -262,12 +260,85 @@ void main() {
       expect(state.debugCanProcess, isFalse);
       expect(state.debugIsBusy, isFalse);
     });
+
+    // _scaffold passes no routeObserver, so didPopNext never fires here. Without
+    // resumeScanning() this scanner would stay dead after the first hit.
+    testWidgets('resumeScanning re-arms the frame path with no route observer', (tester) async {
+      var hits = 0;
+      await tester.pumpWidget(
+        _scaffold(
+          documentType: DocumentType.passport,
+          onSuccess: (_, unused) => hits++,
+          googleMlKitOcrForTesting: (_) async => <String>[_passportLine1, _passportLine2],
+        ),
+      );
+      await tester.pump();
+      final state = _buildState(tester);
+
+      await state.debugProcessFrame(_frame(), OcrEngine.googleMlKit);
+      expect(hits, 1);
+      expect(state.debugCanProcess, isFalse);
+
+      await state.debugProcessFrame(_frame(), OcrEngine.googleMlKit);
+      expect(hits, 1, reason: 'a second read must not be reported before the scanner is re-armed');
+
+      state.resumeScanning();
+
+      expect(state.debugCanProcess, isTrue);
+      expect(state.debugIsBusy, isFalse);
+
+      await state.debugProcessFrame(_frame(), OcrEngine.googleMlKit);
+      expect(hits, 2);
+    });
+
+    // resumeScanning() is public, so a caller can reach it while a read is still
+    // running — a button tap or a timer after a result, with frames still
+    // arriving. It must re-arm the frame path without dropping the in-flight
+    // guard, or the next frame starts a second OCR pass beside the first and one
+    // document is reported twice.
+    testWidgets('resumeScanning mid-read does not start a second OCR pass', (tester) async {
+      var hits = 0;
+      var ocrCalls = 0;
+      final firstRead = Completer<List<String>?>();
+      await tester.pumpWidget(
+        _scaffold(
+          documentType: DocumentType.passport,
+          onSuccess: (_, unused) => hits++,
+          googleMlKitOcrForTesting: (_) {
+            ocrCalls++;
+            if (ocrCalls == 1) return firstRead.future;
+            return Future<List<String>?>.value(<String>[_passportLine1, _passportLine2]);
+          },
+        ),
+      );
+      await tester.pump();
+      final state = _buildState(tester);
+
+      // First frame: the read hangs on the completer, so the pass stays in flight.
+      final inFlight = state.debugProcessFrame(_frame(), OcrEngine.googleMlKit);
+      expect(ocrCalls, 1);
+      expect(state.debugIsBusy, isTrue);
+
+      state.resumeScanning();
+
+      expect(state.debugCanProcess, isTrue);
+      expect(state.debugIsBusy, isTrue, reason: 'the in-flight guard belongs to the read, not to resumeScanning');
+
+      await state.debugProcessFrame(_frame(), OcrEngine.googleMlKit);
+      expect(ocrCalls, 1, reason: 'the next frame must be dropped while the first read is still running');
+
+      firstRead.complete(<String>[_passportLine1, _passportLine2]);
+      await inFlight;
+
+      expect(hits, 1, reason: 'one document must be reported once');
+      expect(state.debugIsBusy, isFalse);
+    });
   });
 
   group('MRZScannerState._processTesseractFrame', () {
     testWidgets('sends frame metadata to channel and parses valid OCR text', (tester) async {
       MethodCall? capturedCall;
-      dynamic capturedResult;
+      ScannedMRZ? capturedResult;
       List<String>? capturedLines;
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(_tesseractChannel, (
         call,
@@ -371,6 +442,88 @@ void main() {
 
       expect(called, isFalse);
       expect(state.debugCanProcess, isTrue);
+    });
+  });
+  group('MRZScannerState result mapping', () {
+    testWidgets('a passport scan reports a ScannedPassportMRZ', (tester) async {
+      ScannedMRZ? captured;
+      await tester.pumpWidget(_scaffold(documentType: DocumentType.passport, onSuccess: (mrz, _) => captured = mrz));
+      await tester.pump();
+
+      expect(_buildState(tester).debugTryParseAndNotify([_passportLine1, _passportLine2]), isTrue);
+
+      final passport = captured as ScannedPassportMRZ;
+      expect(passport.documentType, DocumentType.passport);
+      expect(passport.documentNumber, 'L898902C3');
+      expect(passport.countryCode, 'UTO');
+      expect(passport.dateOfBirth, DateTime(1974, 8, 12));
+      expect(passport.dateOfExpiry, DateTime(2012, 4, 15));
+    });
+
+    testWidgets('an identity card scan reports a ScannedPassportMRZ carrying the card type', (tester) async {
+      ScannedMRZ? captured;
+      await tester.pumpWidget(
+        _scaffold(documentType: DocumentType.identityCard, onSuccess: (mrz, _) => captured = mrz),
+      );
+      await tester.pump();
+
+      expect(_buildState(tester).debugTryParseAndNotify([_idLine1, _idLine2, _idLine3]), isTrue);
+
+      final card = captured as ScannedPassportMRZ;
+      expect(card.documentType, DocumentType.identityCard);
+      expect(card.documentNumber, 'D23145890');
+    });
+
+    testWidgets('a driving licence scan reports a ScannedDriverLicenseMRZ', (tester) async {
+      ScannedMRZ? captured;
+      await tester.pumpWidget(
+        _scaffold(documentType: DocumentType.drivingLicence, onSuccess: (mrz, _) => captured = mrz),
+      );
+      await tester.pump();
+
+      expect(_buildState(tester).debugTryParseAndNotify([_driverLine]), isTrue);
+
+      final licence = captured as ScannedDriverLicenseMRZ;
+      expect(licence.documentType, DocumentType.drivingLicence);
+      expect(licence.countryCode, 'NLD');
+    });
+  });
+
+  group('MRZScanner engine selection', () {
+    testWidgets('the camera view feeds frames into the engine the caller passed', (tester) async {
+      OcrFrame? seenFrame;
+      List<String>? capturedLines;
+      await tester.pumpWidget(
+        _scaffold(
+          documentType: DocumentType.passport,
+          engine: OcrEngine.googleMlKit,
+          onSuccess: (_, lines) => capturedLines = lines,
+          googleMlKitOcrForTesting: (frame) async {
+            seenFrame = frame;
+            return <String>[_passportLine1, _passportLine2];
+          },
+        ),
+      );
+      await tester.pump();
+
+      // Deliver a frame the way MRZCameraView does, rather than calling the
+      // processing entry point directly, so the wiring is covered too.
+      await tester.widget<MRZCameraView>(find.byType(MRZCameraView)).onImage(_frame());
+
+      expect(seenFrame, isNotNull);
+      expect(capturedLines, <String>[_passportLine1, _passportLine2]);
+    });
+
+    testWidgets('rebuilding with another engine hands the new engine to the next frame', (tester) async {
+      await tester.pumpWidget(_scaffold(documentType: DocumentType.passport, engine: OcrEngine.googleMlKit));
+      await tester.pump();
+      expect(tester.widget<MRZScanner>(find.byType(MRZScanner)).engine, OcrEngine.googleMlKit);
+
+      await tester.pumpWidget(_scaffold(documentType: DocumentType.passport, engine: OcrEngine.tesseract4android));
+      await tester.pump();
+
+      expect(tester.widget<MRZScanner>(find.byType(MRZScanner)).engine, OcrEngine.tesseract4android);
+      expect(_buildState(tester).debugCanProcess, isTrue);
     });
   });
 }

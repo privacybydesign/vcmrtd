@@ -1,4 +1,4 @@
-﻿import '../custom/custom_logger_extension.dart';
+﻿import 'package:logging/logging.dart';
 import 'package:vcmrtd/vcmrtd.dart' show DocumentType;
 
 /// ICAO 9303 MRZ helper:
@@ -8,6 +8,8 @@ import 'package:vcmrtd/vcmrtd.dart' show DocumentType;
 /// - Validates ICAO checksums
 /// - Scores candidate blocks to pick the best MRZ window
 class MRZHelper {
+  static final Logger _log = Logger('MRZHelper');
+
   static const _mrzChar = r'[A-Z0-9<]';
   static final _mrzCharRe = RegExp('^$_mrzChar\$');
   static final _allowedLineLen = <int>{30, 36, 44};
@@ -65,7 +67,7 @@ class MRZHelper {
 
     final first = l.first;
     if (first.length >= 2 && _isDriversLicensePrefix(first.substring(0, 2))) {
-      "Driver's License MRZ detected".logInfo();
+      _log.info("Driver's License MRZ detected");
       return [...l];
     }
 
@@ -93,9 +95,9 @@ class MRZHelper {
     final fChar = l.first[0];
     if (fChar == 'P' || fChar == 'V' || fChar == 'I') {
       if (fChar == 'I') {
-        'Identity Card MRZ detected'.logInfo();
+        _log.info('Identity Card MRZ detected');
       } else {
-        'Passport or Visa MRZ detected'.logInfo();
+        _log.info('Passport or Visa MRZ detected');
       }
       return [...l];
     }

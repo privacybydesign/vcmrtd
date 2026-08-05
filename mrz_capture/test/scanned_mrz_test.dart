@@ -1,7 +1,7 @@
 ﻿import 'package:flutter_test/flutter_test.dart';
 import 'package:mrz_parser/mrz_parser.dart';
 import 'package:vcmrtd/vcmrtd.dart';
-import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
+import 'package:mrz_capture/mrz_capture.dart';
 
 void main() {
   group('ScannedPassportMRZ', () {
@@ -138,58 +138,6 @@ void main() {
         expect(scanned.documentNumber, 'D23145890');
         expect(scanned.countryCode, 'UTO');
       });
-    });
-  });
-
-  group('ScannedIdCardMRZ', () {
-    final testDate1 = DateTime(1990, 6, 8);
-    final testDate2 = DateTime(2025, 12, 31);
-
-    test('constructor defaults to identity card document type', () {
-      final mrz = ScannedIdCardMRZ(
-        documentNumber: 'D23145890',
-        countryCode: 'UTO',
-        dateOfBirth: testDate1,
-        dateOfExpiry: testDate2,
-      );
-
-      expect(mrz.documentType, equals(DocumentType.identityCard));
-      expect(mrz.documentNumber, equals('D23145890'));
-      expect(mrz.countryCode, equals('UTO'));
-      expect(mrz.dateOfBirth, equals(testDate1));
-      expect(mrz.dateOfExpiry, equals(testDate2));
-    });
-
-    test('fromManualEntry preserves supplied fields and type', () {
-      final mrz = ScannedIdCardMRZ.fromManualEntry(
-        documentNumber: 'I12345678',
-        dateOfBirth: testDate1,
-        dateOfExpiry: testDate2,
-        countryCode: 'NLD',
-        documentType: DocumentType.identityCard,
-      );
-
-      expect(mrz.documentType, equals(DocumentType.identityCard));
-      expect(mrz.documentNumber, equals('I12345678'));
-      expect(mrz.countryCode, equals('NLD'));
-      expect(mrz.dateOfBirth, equals(testDate1));
-      expect(mrz.dateOfExpiry, equals(testDate2));
-    });
-
-    test('fromMRZResult creates id card MRZ from parser result', () {
-      final parsed = IdCardMrzParser().parse([
-        'I<UTOD231458907<<<<<<<<<<<<<<<',
-        '7408122F1204159UTO<<<<<<<<<<<6',
-        'ERIKSSON<<ANNA<MARIA<<<<<<<<<<',
-      ]);
-
-      final mrz = ScannedIdCardMRZ.fromMRZResult(parsed);
-
-      expect(mrz.documentType, equals(DocumentType.identityCard));
-      expect(mrz.documentNumber, equals('D23145890'));
-      expect(mrz.countryCode, equals('UTO'));
-      expect(mrz.dateOfBirth, equals(DateTime(1974, 8, 12)));
-      expect(mrz.dateOfExpiry, equals(DateTime(2012, 4, 15)));
     });
   });
 
