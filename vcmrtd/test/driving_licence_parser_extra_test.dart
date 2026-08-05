@@ -148,6 +148,22 @@ void main() {
     });
   });
 
+  group('documentSupportsActiveAuthentication', () {
+    test('true when EF.COM lists DG13 (0x6f) — the eDL AA public key', () {
+      final parser = DrivingLicenceParser(failDg1CategoriesGracefully: false);
+      // EF.COM tag list (5C) includes 0x6f (DG13) alongside DG1/DG5/DG11.
+      parser.parseEfCOM(hexb("60165F0104303130375F36063034303030305C0461676d6f"));
+      expect(parser.documentSupportsActiveAuthentication(), true);
+    });
+
+    test('false when EF.COM does not list DG13', () {
+      final parser = DrivingLicenceParser(failDg1CategoriesGracefully: false);
+      // Same EF.COM without 0x6f (DG13) in the tag list.
+      parser.parseEfCOM(hexb("60155F0104303130375F36063034303030305C0361676d"));
+      expect(parser.documentSupportsActiveAuthentication(), false);
+    });
+  });
+
   group('valid DG1 categories parse', () {
     test('ascii DG1 produces categories', () {
       final parser = DrivingLicenceParser(failDg1CategoriesGracefully: false);

@@ -177,6 +177,15 @@ class FakeDocumentParser extends DocumentParser<DocumentData> {
   final List<String> parsed = [];
   bool throwOnEfCom = false;
 
+  /// When true, advertises Active Authentication via DG13 (as driving licences
+  /// do) instead of the DG15 default, exercising the
+  /// documentSupportsActiveAuthentication override path.
+  bool aaViaDg13 = false;
+
+  @override
+  bool documentSupportsActiveAuthentication() =>
+      aaViaDg13 ? present.contains(DataGroups.dg13) : super.documentSupportsActiveAuthentication();
+
   FakeDocumentParser({Set<DataGroups>? present, Set<DataGroups>? throwOnParse})
     : present = present ?? const {},
       throwOnParse = throwOnParse ?? const {};
@@ -275,6 +284,7 @@ Harness makeHarness({
   Object? startSessionPaceError,
   bool throwOnEfCom = false,
   bool nfcConnected = false,
+  bool aaViaDg13 = false,
   DocumentReaderConfig? config,
 }) {
   final nfc = FakeNfcProvider(connected: nfcConnected);
@@ -283,6 +293,7 @@ Harness makeHarness({
   dgr.startSessionPaceError = startSessionPaceError;
   final parser = FakeDocumentParser(present: present, throwOnParse: throwOnParse);
   parser.throwOnEfCom = throwOnEfCom;
+  parser.aaViaDg13 = aaViaDg13;
 
   final cfg = config ?? DocumentReaderConfig(readIfAvailable: DataGroups.values.toSet());
 
@@ -415,6 +426,20 @@ void main() {
       final raw = result!.$2;
       expect(raw.sessionId, 'sess-1');
       expect(raw.nonce, isNotNull);
+      expect(raw.aaSignature, isNotNull);
+      expect(h.dgr.calls.contains('AA'), true);
+    });
+
+    test('with activeAuthenticationParams produces an AA signature for an eDL (DG13, no DG15)', () async {
+      // Driving licences carry the AA public key in DG13 and have no DG15;
+      // the reader must still perform AA via documentSupportsActiveAuthentication.
+      final h = makeHarness(present: {DataGroups.dg1, DataGroups.dg2, DataGroups.dg13}, aaViaDg13: true);
+      final params = NonceAndSessionId(nonce: '0102030405060708', sessionId: 'sess-edl');
+      final result = await h.reader.readDocument(iosNfcMessages: _msg, activeAuthenticationParams: params);
+
+      expect(result, isNotNull);
+      final raw = result!.$2;
+      expect(raw.sessionId, 'sess-edl');
       expect(raw.aaSignature, isNotNull);
       expect(h.dgr.calls.contains('AA'), true);
     });
