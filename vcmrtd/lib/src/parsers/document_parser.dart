@@ -24,6 +24,14 @@ abstract class DocumentParser<DocType extends DocumentData> {
 
   bool documentContainsDataGroup(DataGroups dg);
 
+  /// Whether the chip carries Active Authentication key material and therefore
+  /// supports the AA challenge-response.
+  ///
+  /// Defaults to DG15, where passports and ID cards store the AA public key.
+  /// Documents that keep the AA public key in a different data group (e.g.
+  /// driving licences use DG13) override this.
+  bool documentSupportsActiveAuthentication() => documentContainsDataGroup(DataGroups.dg15);
+
   void parseDG1(Uint8List bytes);
   void parseDG2(Uint8List bytes);
   void parseDG3(Uint8List bytes);

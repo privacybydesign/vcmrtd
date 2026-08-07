@@ -222,16 +222,17 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
 
     Uint8List? aaSig;
     // Active Authentication proves the chip holds the private key matching the
-    // AA public key stored in DG15. If the chip carries no DG15 there is no AA
-    // key to challenge, so attempting it makes the chip reply 6A88 "referenced
-    // data not found" (or 6D00/6A81). This is common for documents that rely on
+    // AA public key stored on the chip (DG15 for passports/ID cards, DG13 for
+    // driving licences). If the chip carries no such key there is nothing to
+    // challenge, so attempting it makes the chip reply 6A88 "referenced data
+    // not found" (or 6D00/6A81). This is common for documents that rely on
     // Chip Authentication (EAC) instead of AA, e.g. many UK passports. Only
-    // attempt AA when DG15 is actually present; the passport issuer accepts a
+    // attempt AA when the AA key is actually present; the issuer accepts a
     // missing AA signature for such documents (passive authentication of the
     // SOD still applies).
-    final chipSupportsAA = documentParser.documentContainsDataGroup(DataGroups.dg15);
+    final chipSupportsAA = documentParser.documentSupportsActiveAuthentication();
     if (activeAuthenticationParams != null && !chipSupportsAA) {
-      _addLog("Skipping Active Authentication: DG15 (AA public key) not present on chip");
+      _addLog("Skipping Active Authentication: AA public key not present on chip");
     }
     if (activeAuthenticationParams != null && chipSupportsAA) {
       _setState(DocumentReaderActiveAuthentication());
