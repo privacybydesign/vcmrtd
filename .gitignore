@@ -20,8 +20,6 @@ vcmrtd/example/fastlane/report.xml
 .history
 .svn/
 *.lock
-# The example is an application, so its pub resolution is committed.
-!vcmrtd/example/pubspec.lock
 
 # IntelliJ related
 *.iml
