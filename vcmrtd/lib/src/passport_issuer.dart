@@ -4,11 +4,43 @@ import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
+/// Face verification configuration the issuer announces for one document
+/// session.
+///
+/// The announcement's *presence* is the signal that face verification applies:
+/// the issuer includes it in the start-validation response whenever its policy
+/// enables face verification, and the app must skip the whole face
+/// verification step when it is absent. There is deliberately no `enabled`
+/// flag inside.
+class FaceVerificationConfig {
+  /// Browser/app-reachable origin of the Regula Face API the liveness session
+  /// must run against — the same service the issuer matches against, so the
+  /// liveness transaction id resolves at issuance.
+  final String faceApiUrl;
+
+  const FaceVerificationConfig({required this.faceApiUrl});
+}
+
+/// Result of starting a validation session at the passport issuer:
+/// the anti-replay [nonceAndSessionId] for active authentication, plus the
+/// issuer's [faceVerification] announcement when face verification applies to
+/// this session.
+class StartValidationResult {
+  final NonceAndSessionId nonceAndSessionId;
+
+  /// Present iff the issuer requires the face verification step for this
+  /// session; `null` means the app skips it entirely.
+  final FaceVerificationConfig? faceVerification;
+
+  StartValidationResult({required this.nonceAndSessionId, this.faceVerification});
+}
+
 /// Interface for passport issuance http requests so they can be mocked/spied in the integration tests
 abstract class PassportIssuer {
   /// Starts a session at the passport issuer server, which will return a nonce and
-  /// session id to be used during passport reading to prove the readout is not a replay.
-  Future<NonceAndSessionId> startSessionAtPassportIssuer();
+  /// session id to be used during passport reading to prove the readout is not a replay,
+  /// along with the issuer's face verification announcement (when it applies).
+  Future<StartValidationResult> startSessionAtPassportIssuer();
 
   /// Initiates the issuance session at the irma server and returns a session pointer,
   /// which the app will use to start the normal issuance session flow.
@@ -61,7 +93,7 @@ class DefaultPassportIssuer implements PassportIssuer {
 
   // Start a passport issuer session (so not irma session yet)
   @override
-  Future<NonceAndSessionId> startSessionAtPassportIssuer() async {
+  Future<StartValidationResult> startSessionAtPassportIssuer() async {
     final storeResp = await http.post(
       Uri.parse('$hostName/api/start-validation'),
       headers: {'Content-Type': 'application/json'},
@@ -70,8 +102,31 @@ class DefaultPassportIssuer implements PassportIssuer {
       throw Exception('Store failed: ${storeResp.statusCode} ${storeResp.body}');
     }
 
-    final response = json.decode(storeResp.body);
-    return NonceAndSessionId(sessionId: response['session_id'].toString(), nonce: response['nonce'].toString());
+    return parseStartValidationResponse(json.decode(storeResp.body));
+  }
+
+  /// Parses a start-validation response body.
+  ///
+  /// The `face_verification` announcement is optional: issuers with face
+  /// verification disabled (and issuer versions that predate it) omit the
+  /// field. A malformed announcement — not an object, or without a non-empty
+  /// `face_api_url` — is treated as absent rather than rejected: the issuer
+  /// guarantees a well-formed one, and the fallback (skipping the step) can
+  /// never produce an unverified issuance because the issuer rejects issuance
+  /// without a liveness transaction whenever it requires one.
+  @visibleForTesting
+  static StartValidationResult parseStartValidationResponse(dynamic response) {
+    FaceVerificationConfig? faceVerification;
+    if (response['face_verification'] case {'face_api_url': final String faceApiUrl} when faceApiUrl.isNotEmpty) {
+      faceVerification = FaceVerificationConfig(faceApiUrl: faceApiUrl);
+    }
+    return StartValidationResult(
+      nonceAndSessionId: NonceAndSessionId(
+        sessionId: response['session_id'].toString(),
+        nonce: response['nonce'].toString(),
+      ),
+      faceVerification: faceVerification,
+    );
   }
 
   // Starts the issuance session with the irma server with passport scan result

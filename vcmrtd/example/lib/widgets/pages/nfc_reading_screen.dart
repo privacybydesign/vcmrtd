@@ -176,7 +176,8 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
       NonceAndSessionId? nonceAndSessionId;
 
       if (ref.read(activeAuthenticationProvider)) {
-        nonceAndSessionId = await ref.read(passportIssuerProvider).startSessionAtPassportIssuer();
+        final startValidation = await ref.read(passportIssuerProvider).startSessionAtPassportIssuer();
+        nonceAndSessionId = startValidation.nonceAndSessionId;
       }
       final result = await ref
           .read(readerProvider(scannedMRZ).notifier)
