@@ -5,6 +5,7 @@ import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtdapp/providers/face_api_provider.dart';
 import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
 import '../../widgets/pages/data_screen_widgets/web_banner.dart';
 import '../../widgets/pages/data_screen_widgets/return_to_web.dart';
@@ -99,6 +100,7 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
                     isExpired: _verificationResponse!.isExpired,
                     authenticChip: _verificationResponse!.authenticChip,
                     authenticContent: _verificationResponse!.authenticContent,
+                    faceMatch: _verificationResponse!.faceMatch,
                   ),
                 ],
               ],
@@ -112,13 +114,24 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
   Future<void> _verifyDrivingLicence() async {
     final issuer = ref.read(passportIssuerProvider);
     try {
-      final result = await issuer.verifyDrivingLicence(widget.drivingLicenceDataResult);
+      final request = await _withLivenessTransaction(widget.drivingLicenceDataResult);
+      final result = await issuer.verifyDrivingLicence(request);
       setState(() {
         _verificationResponse = result;
       });
     } catch (e) {
       _showReturnErrorDialog(e.toString());
     }
+  }
+
+  /// Runs a Regula liveness session (when a Face API is configured) and attaches
+  /// the resulting transaction id to [request], so the issuer can match the
+  /// live face against the chip portrait during verify.
+  Future<RawDocumentData> _withLivenessTransaction(RawDocumentData request) async {
+    final faceApiUrl = ref.read(faceApiUrlProvider);
+    if (faceApiUrl == null) return request;
+    final liveness = await ref.read(regulaFaceServiceProvider).captureLiveness();
+    return request.copyWith(livenessTransactionId: liveness.transactionId);
   }
 
   Future<void> _issueDrivingLicence() async {

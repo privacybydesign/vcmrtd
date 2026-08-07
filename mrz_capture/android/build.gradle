@@ -1,0 +1,39 @@
+plugins {
+    id "com.android.library"
+    id "org.jetbrains.kotlin.android"
+}
+
+group = "foundation.privacybydesign.mrzcapture"
+version = "1.0"
+
+android {
+    namespace = "foundation.privacybydesign.mrzcapture"
+
+    compileSdk = 36
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    defaultConfig {
+        // Matches the minimum the example application ships with; both OCR
+        // dependencies below resolve well below it.
+        minSdk = 26
+    }
+
+    sourceSets {
+        main.java.srcDirs += "src/main/kotlin"
+    }
+}
+
+dependencies {
+    // Tesseract4Android is the free software OCR engine, kept for F-Droid
+    // interoperability. OpenCV is used by the MRZ zone detector that feeds it.
+    implementation "cz.adaptech.tesseract4android:tesseract4android:4.9.0"
+    implementation "org.opencv:opencv:4.9.0"
+}

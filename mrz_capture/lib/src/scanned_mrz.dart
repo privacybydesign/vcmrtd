@@ -1,6 +1,12 @@
 ﻿import 'package:mrz_parser/mrz_parser.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
+/// An MRZ that was read, either by the scanner or through manual entry.
+///
+/// Sealed, so a caller can switch over it exhaustively. There are two shapes,
+/// not three: identity cards come back as a [ScannedPassportMRZ] carrying
+/// `DocumentType.identityCard`, because `mrz_parser` returns the same result
+/// type for the passport and the ID card parser.
 sealed class ScannedMRZ {
   final String documentNumber;
   final String countryCode;
@@ -43,51 +49,6 @@ class ScannedPassportMRZ extends ScannedMRZ {
     DocumentType documentType = DocumentType.passport,
   }) {
     return ScannedPassportMRZ(
-      documentNumber: documentNumber,
-      countryCode: countryCode,
-      dateOfBirth: dateOfBirth,
-      dateOfExpiry: dateOfExpiry,
-      documentType: documentType,
-    );
-  }
-}
-
-// =====================
-// ID CARD (TD1)
-// =====================
-class ScannedIdCardMRZ extends ScannedMRZ {
-  final DateTime dateOfBirth;
-  final DateTime dateOfExpiry;
-
-  ScannedIdCardMRZ({
-    required super.documentNumber,
-    required super.countryCode,
-    required this.dateOfBirth,
-    required this.dateOfExpiry,
-    super.documentType = DocumentType.identityCard,
-  });
-
-  factory ScannedIdCardMRZ.fromMRZResult(
-    PassportMrzResult mrz, {
-    DocumentType documentType = DocumentType.identityCard,
-  }) {
-    return ScannedIdCardMRZ(
-      documentNumber: mrz.documentNumber,
-      countryCode: mrz.countryCode,
-      dateOfBirth: mrz.birthDate,
-      dateOfExpiry: mrz.expiryDate,
-      documentType: documentType,
-    );
-  }
-
-  factory ScannedIdCardMRZ.fromManualEntry({
-    required String documentNumber,
-    required DateTime dateOfBirth,
-    required DateTime dateOfExpiry,
-    String countryCode = '',
-    DocumentType documentType = DocumentType.identityCard,
-  }) {
-    return ScannedIdCardMRZ(
       documentNumber: documentNumber,
       countryCode: countryCode,
       dateOfBirth: dateOfBirth,

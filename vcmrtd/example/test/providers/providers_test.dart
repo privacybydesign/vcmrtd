@@ -1,5 +1,6 @@
 ﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtdapp/providers/ocr_engine_provider.dart';
 import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
 
@@ -42,6 +43,23 @@ void main() {
       final container = ProviderContainer();
       addTearDown(container.dispose);
       expect(() => container.read(passportIssuerProvider), returnsNormally);
+    });
+
+    test('accepts the Yivi IRMA server hosts as session URLs', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final issuer = container.read(passportIssuerProvider);
+      // The IRMA server runs on a different host than the passport issuer, so
+      // these must be accepted or real issuance would break.
+      expect(() => issuer.validateSessionUrl('https://is.yivi.app'), returnsNormally);
+      expect(() => issuer.validateSessionUrl('https://is.staging.yivi.app'), returnsNormally);
+    });
+
+    test('rejects an off-allowlist session URL host', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final issuer = container.read(passportIssuerProvider);
+      expect(() => issuer.validateSessionUrl('https://attacker.example.com'), throwsException);
     });
   });
 }

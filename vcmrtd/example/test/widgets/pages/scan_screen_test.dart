@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vcmrtd/vcmrtd.dart';
-import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
+import 'package:mrz_capture/mrz_capture.dart';
+import 'package:vcmrtdapp/providers/ocr_engine_provider.dart';
+import 'package:vcmrtdapp/routing.dart';
 import 'package:vcmrtdapp/widgets/pages/scan_screen.dart';
 
 void main() {
@@ -55,5 +57,28 @@ void main() {
     expect(find.byType(ScannerPage), findsOneWidget);
     // Without a camera frame, onSuccess is never invoked.
     expect(received, isNull);
+  });
+
+  testWidgets('ScannerPage hands the selected OCR engine and the route observer to the scanner', (tester) async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          home: ScannerPage(documentType: DocumentType.passport, onSuccess: (_) {}),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(tester.widget<MRZScanner>(find.byType(MRZScanner)).engine, OcrEngine.googleMlKit);
+    expect(tester.widget<MRZScanner>(find.byType(MRZScanner)).routeObserver, same(routeObserver));
+
+    container.read(ocrEngineProvider.notifier).set(OcrEngine.tesseract4android);
+    await tester.pump();
+
+    expect(tester.widget<MRZScanner>(find.byType(MRZScanner)).engine, OcrEngine.tesseract4android);
   });
 }

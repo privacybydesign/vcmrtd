@@ -54,7 +54,10 @@ class PaceCam {
     for (int i = 0; i < 16; i++) {
       allOnes[i] = 0xFF;
     }
-    final iv = aesCipher.encrypt(data: allOnes, key: ksEnc);
+    // IV derivation is a single-block encryption, so use ECB explicitly (for a
+    // single block ECB is identical to CBC with a zero IV, which CBC mode no
+    // longer allows implicitly).
+    final iv = aesCipher.encrypt(data: allOnes, key: ksEnc, mode: BLOCK_CIPHER_MODE.ECB);
     _log.sdVerbose('IV: ${iv.map((b) => b.toRadixString(16).padLeft(2, '0')).join()}');
 
     // Decrypt ECAD using CBC mode

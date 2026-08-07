@@ -1,4 +1,4 @@
-package foundation.privacybydesign.vcmrtd.ocr
+package foundation.privacybydesign.mrzcapture
 
 import org.opencv.core.*
 import org.opencv.imgproc.Imgproc

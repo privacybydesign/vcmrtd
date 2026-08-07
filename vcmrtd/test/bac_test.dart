@@ -97,4 +97,23 @@ void main() {
     expect(pairKS.second, tvKSmac);
     expect(BAC.calculateSCC(RNDifd: tvRNDifd, RNDicc: tvRNDicc).toBytes(), tvSCC);
   });
+
+  test('verifyRNDifdAndExtractKicc throws a BACError that does not leak nonce bytes', () {
+    // R = RND.ICC ‖ RND.IFD(in R) ‖ K.ICC (32 bytes); force RND.IFD mismatch.
+    final r = Uint8List(32); // all zeros -> RND.IFD embedded in R is 0x00..00
+    final rndIfd = Uint8List.fromList(List<int>.filled(8, 0xFF)); // differs from R
+
+    Object? thrown;
+    try {
+      BAC.verifyRNDifdAndExtractKicc(RNDifd: rndIfd, R: r);
+    } catch (e) {
+      thrown = e;
+    }
+
+    expect(thrown, isA<BACError>());
+    final message = thrown.toString();
+    // The generic message must not expose the hex-encoded nonce material.
+    expect(message.toLowerCase(), isNot(contains('ff')));
+    expect(message, isNot(contains('=')));
+  });
 }

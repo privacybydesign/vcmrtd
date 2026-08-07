@@ -60,6 +60,11 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
     return com.dgTags.contains(_tagForDataGroup(dg));
   }
 
+  /// Driving licences carry the Active Authentication public key in DG13
+  /// (there is no DG15), so AA is supported whenever DG13 is present.
+  @override
+  bool documentSupportsActiveAuthentication() => documentContainsDataGroup(DataGroups.dg13);
+
   DgTag? _tagForDataGroup(DataGroups dg) {
     return switch (dg) {
       DataGroups.dg1 => DrivingLicenceEfDG1.TAG,

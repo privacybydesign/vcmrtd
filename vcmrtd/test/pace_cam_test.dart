@@ -151,7 +151,7 @@ void main() {
         final expectedDecryptedNonce = "3F00C4D39D153F2B2A214A078D899B22".parseHex();
 
         final aesCipher = AESChiperSelector.getChiper(size: KEY_LENGTH.s128);
-        final decryptedNonce = aesCipher.decrypt(data: encryptedNonce, key: kKdf);
+        final decryptedNonce = aesCipher.decrypt(data: encryptedNonce, key: kKdf, iv: Uint8List(AES_BLOCK_SIZE));
 
         expect(decryptedNonce, expectedDecryptedNonce);
       });
@@ -391,7 +391,7 @@ void main() {
         // IV = AES_encrypt(KsEnc, 0xFF...FF)
         final aesCipher = AESChiperSelector.getChiper(size: KEY_LENGTH.s128);
         final allOnes = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF".parseHex();
-        final iv = aesCipher.encrypt(data: allOnes, key: ksEnc);
+        final iv = aesCipher.encrypt(data: allOnes, key: ksEnc, mode: BLOCK_CIPHER_MODE.ECB);
 
         // Decrypt ECAD using CBC with the computed IV
         final decryptedEcadPadded = aesCipher.decrypt(data: ecad, key: ksEnc, iv: iv);
@@ -573,7 +573,7 @@ void main() {
 
         // Decrypt nonce
         final aesCipher = AESChiperSelector.getChiper(size: KEY_LENGTH.s128);
-        final decryptedNonce = aesCipher.decrypt(data: encryptedNonce, key: kpi);
+        final decryptedNonce = aesCipher.decrypt(data: encryptedNonce, key: kpi, iv: Uint8List(AES_BLOCK_SIZE));
         expect(decryptedNonce, expectedDecryptedNonce);
 
         // Terminal and chip key pairs
@@ -678,7 +678,7 @@ void main() {
         // Verify IV computation: IV = E(KSEnc, 0xFF...FF)
         final aesCipher = AESChiperSelector.getChiper(size: KEY_LENGTH.s128);
         final allOnes = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF".parseHex();
-        final computedIv = aesCipher.encrypt(data: allOnes, key: ksEnc);
+        final computedIv = aesCipher.encrypt(data: allOnes, key: ksEnc, mode: BLOCK_CIPHER_MODE.ECB);
         expect(computedIv, expectedIv);
 
         // Decrypt ECAD

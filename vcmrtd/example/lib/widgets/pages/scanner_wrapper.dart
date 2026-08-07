@@ -3,7 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
-import 'package:vcmrtdapp/widgets/common/scanned_mrz.dart';
+import 'package:mrz_capture/mrz_capture.dart';
 
 import '../../routing.dart';
 import 'scan_screen.dart';

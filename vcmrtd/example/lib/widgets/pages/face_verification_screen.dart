@@ -79,11 +79,16 @@ class FlutterFaceVerificationScreen extends StatefulWidget {
   @visibleForTesting
   final FaceVerificationEngine? testEngine;
 
+  /// The liveness mode chosen on the method-selection screen. The scan starts in
+  /// this mode; there is no in-screen picker.
+  final LivenessMode mode;
+
   const FlutterFaceVerificationScreen({
     super.key,
     required this.nfcImageBytes,
     required this.onBackPressed,
     this.photoIssueDate,
+    this.mode = LivenessMode.passive,
   }) : testEngine = null;
 
   const FlutterFaceVerificationScreen.withEngine({
@@ -92,6 +97,7 @@ class FlutterFaceVerificationScreen extends StatefulWidget {
     required this.nfcImageBytes,
     required this.onBackPressed,
     this.photoIssueDate,
+    this.mode = LivenessMode.passive,
   }) : testEngine = engine;
 
   @override
@@ -131,7 +137,7 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
   bool _engineReady = false;
   bool _debugReadyOverride = false;
   String? _alignTip;
-  LivenessMode _selectedMode = LivenessMode.active;
+  late LivenessMode _selectedMode = widget.mode;
   _PassiveProgress? _passive;
   DateTime? _passiveAt;
   Timer? _passiveTicker;
@@ -834,9 +840,12 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
                 ),
               ),
               const SizedBox(height: 12),
-              _buildStartButton(ready: ready, mode: LivenessMode.active, label: 'Start with Active Liveness'),
-              const SizedBox(height: 8),
-              _buildStartButton(ready: ready, mode: LivenessMode.passive, label: 'Start with Passive Liveness'),
+              _buildStartButton(
+                ready: ready,
+                onStart: () => _startLiveness(widget.mode),
+                label: 'Start',
+                busy: _startingLiveness,
+              ),
             ],
           ),
         ),
@@ -844,25 +853,31 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
     );
   }
 
-  Widget _buildStartButton({required bool ready, required LivenessMode mode, required String label}) {
+  Widget _buildStartButton({
+    required bool ready,
+    required VoidCallback onStart,
+    required String label,
+    required bool busy,
+  }) {
+    final enabled = ready && !_startingLiveness;
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
-        onPressed: (ready && !_startingLiveness) ? () => _startLiveness(mode) : null,
+        onPressed: enabled ? onStart : null,
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 16),
           backgroundColor: Colors.green[600],
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
-        icon: _startingLiveness
+        icon: busy
             ? const SizedBox(
                 width: 18,
                 height: 18,
                 child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
               )
             : const Icon(Icons.face),
-        label: Text(_startingLiveness ? 'Preparing…' : label),
+        label: Text(busy ? 'Preparing…' : label),
       ),
     );
   }

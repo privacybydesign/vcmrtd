@@ -12,6 +12,7 @@ RawDocumentData _$PassportDataResultFromJson(Map<String, dynamic> json) => RawDo
   sessionId: json['session_id'] as String?,
   nonce: const Uint8ListConverter().fromJson(json['nonce'] as String?),
   aaSignature: const Uint8ListConverter().fromJson(json['aa_signature'] as String?),
+  livenessTransactionId: json['liveness_transaction_id'] as String?,
 );
 
 Map<String, dynamic> _$PassportDataResultToJson(RawDocumentData instance) => <String, dynamic>{
@@ -20,4 +21,5 @@ Map<String, dynamic> _$PassportDataResultToJson(RawDocumentData instance) => <St
   'session_id': instance.sessionId,
   'nonce': const Uint8ListConverter().toJson(instance.nonce),
   'aa_signature': const Uint8ListConverter().toJson(instance.aaSignature),
+  if (instance.livenessTransactionId != null) 'liveness_transaction_id': instance.livenessTransactionId,
 };

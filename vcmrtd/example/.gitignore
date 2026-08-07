@@ -40,3 +40,4 @@ lib/generated_plugin_registrant.dart
 ._*
 
 !Gemfile.lock
+!pubspec.lock

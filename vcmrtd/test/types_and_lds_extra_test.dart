@@ -132,6 +132,39 @@ void main() {
       expect(restored.aaSignature, isNull);
     });
 
+    test('liveness_transaction_id is omitted when null and present when set', () {
+      final without = RawDocumentData(dataGroups: {}, efSod: '');
+      expect(without.toJson().containsKey('liveness_transaction_id'), isFalse);
+
+      final withId = RawDocumentData(dataGroups: {}, efSod: '', livenessTransactionId: 'tx-1');
+      final json = withId.toJson();
+      expect(json['liveness_transaction_id'], 'tx-1');
+      expect(RawDocumentData.fromJson(json).livenessTransactionId, 'tx-1');
+    });
+
+    test('copyWith sets the liveness transaction id and preserves other fields', () {
+      final original = RawDocumentData(
+        dataGroups: {'DG1': 'aabb'},
+        efSod: '7700',
+        sessionId: 'sess-1',
+        nonce: Uint8List.fromList([0x0a]),
+        aaSignature: Uint8List.fromList([0x01, 0x02]),
+      );
+
+      final copy = original.copyWith(livenessTransactionId: 'tx-42');
+      expect(copy.livenessTransactionId, 'tx-42');
+      expect(copy.dataGroups, original.dataGroups);
+      expect(copy.efSod, original.efSod);
+      expect(copy.sessionId, original.sessionId);
+      expect(copy.nonce, original.nonce);
+      expect(copy.aaSignature, original.aaSignature);
+    });
+
+    test('copyWith without an id keeps the existing liveness transaction id', () {
+      final original = RawDocumentData(dataGroups: {}, efSod: '', livenessTransactionId: 'tx-keep');
+      expect(original.copyWith().livenessTransactionId, 'tx-keep');
+    });
+
     test('Uint8ListConverter standalone', () {
       const conv = Uint8ListConverter();
       expect(conv.toJson(null), isNull);
@@ -153,6 +186,29 @@ void main() {
       expect(restored.isExpired, true);
       expect(restored.authenticChip, false);
       expect(restored.authenticContent, true);
+      expect(restored.faceMatch, isNull);
+    });
+
+    test('face_match round-trips through toJson/fromJson', () {
+      final original = VerificationResponse(
+        isExpired: false,
+        authenticChip: true,
+        authenticContent: true,
+        faceMatch: FaceMatch(matched: true, similarity: 0.92),
+      );
+      final json = original.toJson();
+      expect(json['face_match'], {'matched': true, 'similarity': 0.92});
+
+      final restored = VerificationResponse.fromJson(json);
+      expect(restored.faceMatch, isNotNull);
+      expect(restored.faceMatch!.matched, isTrue);
+      expect(restored.faceMatch!.similarity, 0.92);
+    });
+
+    test('FaceMatch toJson/fromJson', () {
+      final restored = FaceMatch.fromJson(FaceMatch(matched: false, similarity: 0.1).toJson());
+      expect(restored.matched, isFalse);
+      expect(restored.similarity, 0.1);
     });
   });
 

@@ -290,7 +290,9 @@ void main() {
 
     // nonce management
     AESCipher aesCipherNonce = AESChiperSelector.getChiper(size: KEY_LENGTH.s128);
-    Uint8List decryptedNonceCalc = aesCipherNonce.decrypt(data: nonceEncypted, key: kpi);
+    // ICAO 9303 p11 decrypts the nonce in CBC mode with an all-zero IV; CBC
+    // now requires the IV to be passed explicitly.
+    Uint8List decryptedNonceCalc = aesCipherNonce.decrypt(data: nonceEncypted, key: kpi, iv: Uint8List(AES_BLOCK_SIZE));
     print("Decrypted nonce: ${decryptedNonceCalc.hex()}");
     expect(decryptedNonceCalc.length, 16);
     expect(decryptedNonceCalc, nonceDecrypted);
@@ -430,13 +432,23 @@ void main() {
     expect(inputTokenChipforCheck, tic);
 
     AESCipher aesCipher = AESChiperSelector.getChiper(size: KEY_LENGTH.s128);
-    Uint8List encryptedTByAES = aesCipher.encrypt(data: calcInputDataTTerminal, key: macKey, padding: true);
-    Uint8List decryptedTByAES = aesCipher.decrypt(data: encryptedTByAES, key: macKey);
+    Uint8List encryptedTByAES = aesCipher.encrypt(
+      data: calcInputDataTTerminal,
+      key: macKey,
+      iv: Uint8List(AES_BLOCK_SIZE),
+      padding: true,
+    );
+    Uint8List decryptedTByAES = aesCipher.decrypt(data: encryptedTByAES, key: macKey, iv: Uint8List(AES_BLOCK_SIZE));
 
     expect(calcInputDataTTerminal.sublist(0, 147), decryptedTByAES.sublist(0, 147));
 
-    Uint8List encryptedCByAES = aesCipher.encrypt(data: calcInputDataTChip, key: macKey, padding: true);
-    Uint8List decryptedCByAES = aesCipher.decrypt(data: encryptedCByAES, key: macKey);
+    Uint8List encryptedCByAES = aesCipher.encrypt(
+      data: calcInputDataTChip,
+      key: macKey,
+      iv: Uint8List(AES_BLOCK_SIZE),
+      padding: true,
+    );
+    Uint8List decryptedCByAES = aesCipher.decrypt(data: encryptedCByAES, key: macKey, iv: Uint8List(AES_BLOCK_SIZE));
 
     expect(calcInputDataTChip.sublist(0, 147), decryptedCByAES.sublist(0, 147));
 

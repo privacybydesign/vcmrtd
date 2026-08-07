@@ -23,7 +23,29 @@ class RawDocumentData {
   @Uint8ListConverter()
   final Uint8List? aaSignature;
 
-  RawDocumentData({required this.dataGroups, required this.efSod, this.sessionId, this.nonce, this.aaSignature});
+  /// Identifier of a completed Regula liveness transaction. The issuer compares
+  /// the live face captured during that session against the document chip
+  /// portrait for face verification (optional).
+  @JsonKey(name: 'liveness_transaction_id', includeIfNull: false)
+  final String? livenessTransactionId;
+
+  RawDocumentData({
+    required this.dataGroups,
+    required this.efSod,
+    this.sessionId,
+    this.nonce,
+    this.aaSignature,
+    this.livenessTransactionId,
+  });
+
+  RawDocumentData copyWith({String? livenessTransactionId}) => RawDocumentData(
+    dataGroups: dataGroups,
+    efSod: efSod,
+    sessionId: sessionId,
+    nonce: nonce,
+    aaSignature: aaSignature,
+    livenessTransactionId: livenessTransactionId ?? this.livenessTransactionId,
+  );
 
   factory RawDocumentData.fromJson(Map<String, dynamic> json) => _$PassportDataResultFromJson(json);
 

@@ -1,0 +1,3 @@
+# GPLv3 asks for a verbatim copy, and license_test.dart pins these to a
+# byte-exact digest, so never convert their line endings on checkout.
+LICENSE* -text
