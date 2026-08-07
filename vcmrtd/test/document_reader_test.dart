@@ -623,12 +623,11 @@ void main() {
 
   // --- fresh-poll cleanup (regression) --------------------------------------
   //
-  // After a successful readout disconnect() finishes the plugin session
-  // (disableReaderMode) but the chip usually stays in the field. On Android a
-  // fresh readout that polls without first cycling the session never
-  // re-dispatches the still-present tag, so the poll times out and only a
-  // manual retry succeeds. _initRead now forceCleanup()s before the first
-  // connect on Android to give every fresh readout a clean reader-mode state.
+  // disconnect() only finishes the plugin session when a tag was acquired, so a
+  // poll cancelled or abandoned before that leaves Android's reader mode enabled
+  // until the plugin's own poll timeout fires. _initRead now forceCleanup()s
+  // before the first connect on Android so every readout starts from a known
+  // reader-mode state, whatever the previous one did.
   //
   // These tests run the Android branch: under `flutter test` the host is never
   // iOS, so Platform.isIOS is false.

@@ -396,11 +396,12 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
       if (nfc.isConnected()) {
         await nfc.disconnect();
       } else if (!Platform.isIOS) {
-        // Android: after a prior readout the chip may still be in the field with
-        // reader mode left in a state where a fresh poll won't re-dispatch it.
-        // Cycle the plugin session cleanly (as _retryConnection does) before
-        // polling, otherwise the first fresh poll times out and only a manual
-        // retry succeeds.
+        // Android: start every readout from a known reader-mode state.
+        // disconnect() only calls FlutterNfcKit.finish() when a tag was actually
+        // acquired, so a poll cancelled or abandoned before that leaves the
+        // plugin's reader mode enabled until its own poll timeout fires.
+        // forceCleanup() finishes any such session; the delay gives NFC
+        // discovery time to settle before we re-enable reader mode.
         await nfc.forceCleanup();
         await Future.delayed(const Duration(milliseconds: 300));
       }
