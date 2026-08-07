@@ -13,6 +13,7 @@ The example app demonstrates the complete passport verification workflow:
 flutter pub get
 flutter run
 ```
+`pubspec.lock` was resolved with Flutter 3.38.4, the version `ci_scripts/install_flutter.sh` pins for CI. Running `flutter pub get` on a newer Flutter rewrites the SDK-pinned test packages in it, so check those changes back out if they are not part of your work.
 
 ## Backend Integration
 The app connects to the go-passport-issuer backend service, which provides:
