@@ -15,7 +15,8 @@ import 'package:vcmrtd/vcmrtd.dart';
 class FaceVerificationConfig {
   /// Browser/app-reachable origin of the Regula Face API the liveness session
   /// must run against — the same service the issuer matches against, so the
-  /// liveness transaction id resolves at issuance.
+  /// liveness transaction id resolves at issuance. Always an absolute https
+  /// URL; an announcement carrying anything else is treated as absent.
   final String faceApiUrl;
 
   const FaceVerificationConfig({required this.faceApiUrl});
@@ -105,19 +106,36 @@ class DefaultPassportIssuer implements PassportIssuer {
     return parseStartValidationResponse(json.decode(storeResp.body));
   }
 
+  /// Whether a server-supplied `face_api_url` may be used as the destination
+  /// of the liveness session.
+  ///
+  /// The user's liveness selfie is uploaded to this URL, so it is held to the
+  /// same absolute-https rule as [validateSessionUrl]. There is no host
+  /// allowlist here: the Face API legitimately runs on a different host from
+  /// the issuer, so allowlisting it needs its own configured list, the way
+  /// [allowedIrmaHosts] is plumbed.
+  @visibleForTesting
+  static bool isValidFaceApiUrl(String url) {
+    final uri = Uri.tryParse(url);
+    return uri != null && uri.isAbsolute && uri.scheme == 'https' && uri.host.isNotEmpty;
+  }
+
   /// Parses a start-validation response body.
   ///
   /// The `face_verification` announcement is optional: issuers with face
   /// verification disabled (and issuer versions that predate it) omit the
-  /// field. A malformed announcement — not an object, or without a non-empty
-  /// `face_api_url` — is treated as absent rather than rejected: the issuer
-  /// guarantees a well-formed one, and the fallback (skipping the step) can
-  /// never produce an unverified issuance because the issuer rejects issuance
-  /// without a liveness transaction whenever it requires one.
+  /// field. A malformed announcement — not an object, or without a
+  /// `face_api_url` that passes [isValidFaceApiUrl] — is treated as absent
+  /// rather than rejected: the issuer guarantees a well-formed one, and the
+  /// fallback (skipping the step) can never produce an unverified issuance
+  /// because the issuer rejects issuance without a liveness transaction
+  /// whenever it requires one.
   @visibleForTesting
   static StartValidationResult parseStartValidationResponse(dynamic response) {
     FaceVerificationConfig? faceVerification;
-    if (response['face_verification'] case {'face_api_url': final String faceApiUrl} when faceApiUrl.isNotEmpty) {
+    if (response['face_verification'] case {
+      'face_api_url': final String faceApiUrl,
+    } when isValidFaceApiUrl(faceApiUrl)) {
       faceVerification = FaceVerificationConfig(faceApiUrl: faceApiUrl);
     }
     return StartValidationResult(

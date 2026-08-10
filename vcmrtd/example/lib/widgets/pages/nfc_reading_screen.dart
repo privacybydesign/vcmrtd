@@ -175,6 +175,12 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
 
       NonceAndSessionId? nonceAndSessionId;
 
+      // TODO: startValidation.faceVerification is parsed but nothing reads it
+      // yet, so faceApiUrlProvider still returns the hardcoded default. When
+      // the liveness step starts using the announcement, the fetch also has to
+      // move out of this branch: the issuer's face verification policy is
+      // independent of the active authentication toggle, so with the toggle off
+      // the app would never learn that face verification applies.
       if (ref.read(activeAuthenticationProvider)) {
         final startValidation = await ref.read(passportIssuerProvider).startSessionAtPassportIssuer();
         nonceAndSessionId = startValidation.nonceAndSessionId;

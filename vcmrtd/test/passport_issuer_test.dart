@@ -36,10 +36,7 @@ void main() {
 
   group('DefaultPassportIssuer.parseStartValidationResponse', () {
     test('parses the nonce and session id', () {
-      final result = DefaultPassportIssuer.parseStartValidationResponse({
-        'session_id': 'sess-1',
-        'nonce': 'nonce-1',
-      });
+      final result = DefaultPassportIssuer.parseStartValidationResponse({'session_id': 'sess-1', 'nonce': 'nonce-1'});
       expect(result.nonceAndSessionId.sessionId, 'sess-1');
       expect(result.nonceAndSessionId.nonce, 'nonce-1');
     });
@@ -54,10 +51,7 @@ void main() {
     });
 
     test('an absent announcement means face verification does not apply', () {
-      final result = DefaultPassportIssuer.parseStartValidationResponse({
-        'session_id': 'sess-1',
-        'nonce': 'nonce-1',
-      });
+      final result = DefaultPassportIssuer.parseStartValidationResponse({'session_id': 'sess-1', 'nonce': 'nonce-1'});
       expect(result.faceVerification, isNull);
     });
 
@@ -79,6 +73,35 @@ void main() {
         });
         expect(result.faceVerification, isNull, reason: 'for $malformed');
       }
+    });
+
+    // The liveness selfie is uploaded to this server-supplied URL, so it gets
+    // the same absolute-https treatment as validateSessionUrl.
+    test('an announcement with a url that is not absolute https is treated as absent', () {
+      for (final url in [
+        'http://faceapi.example', // plaintext
+        'javascript:alert(1)',
+        'faceapi.example', // not absolute
+        'not-a-url-at-all',
+        '   ',
+        'https://', // no host
+      ]) {
+        final result = DefaultPassportIssuer.parseStartValidationResponse({
+          'session_id': 'sess-1',
+          'nonce': 'nonce-1',
+          'face_verification': {'face_api_url': url},
+        });
+        expect(result.faceVerification, isNull, reason: 'for "$url"');
+      }
+    });
+
+    test('an https url with a path and port is accepted as-is', () {
+      final result = DefaultPassportIssuer.parseStartValidationResponse({
+        'session_id': 'sess-1',
+        'nonce': 'nonce-1',
+        'face_verification': {'face_api_url': 'https://faceapi.staging.yivi.app:8443/api'},
+      });
+      expect(result.faceVerification?.faceApiUrl, 'https://faceapi.staging.yivi.app:8443/api');
     });
   });
 
