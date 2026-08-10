@@ -85,6 +85,10 @@ void main() {
         'not-a-url-at-all',
         '   ',
         'https://', // no host
+        // Uri percent-encodes whitespace into the host, so these survive the
+        // scheme/host checks and need rejecting on their own.
+        'https://face api.example', // host -> face%20api.example
+        'https://faceapi.example ', // host -> faceapi.example%20
       ]) {
         final result = DefaultPassportIssuer.parseStartValidationResponse({
           'session_id': 'sess-1',

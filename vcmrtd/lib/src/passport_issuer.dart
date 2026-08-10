@@ -1,7 +1,9 @@
 import 'dart:convert';
 
+// foundation.dart re-exports meta's @visibleForTesting, so it replaces the
+// former package:meta import outright.
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:meta/meta.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
 /// Face verification configuration the issuer announces for one document
@@ -117,7 +119,10 @@ class DefaultPassportIssuer implements PassportIssuer {
   @visibleForTesting
   static bool isValidFaceApiUrl(String url) {
     final uri = Uri.tryParse(url);
-    return uri != null && uri.isAbsolute && uri.scheme == 'https' && uri.host.isNotEmpty;
+    if (uri == null || !uri.isAbsolute || uri.scheme != 'https' || uri.host.isEmpty) return false;
+    // A host containing whitespace (percent-encoded by Uri, so it survives the
+    // checks above) is never a real Face API host.
+    return !RegExp(r'\s').hasMatch(url);
   }
 
   /// Parses a start-validation response body.
@@ -137,6 +142,11 @@ class DefaultPassportIssuer implements PassportIssuer {
       'face_api_url': final String faceApiUrl,
     } when isValidFaceApiUrl(faceApiUrl)) {
       faceVerification = FaceVerificationConfig(faceApiUrl: faceApiUrl);
+    } else if (response['face_verification'] != null) {
+      // Absence is routine, but a rejected announcement means the issuer sent a
+      // shape this parser does not recognise — without a log the app just looks
+      // like face verification never applied.
+      debugPrint('vcmrtd: ignoring malformed face_verification announcement: ${response['face_verification']}');
     }
     return StartValidationResult(
       nonceAndSessionId: NonceAndSessionId(

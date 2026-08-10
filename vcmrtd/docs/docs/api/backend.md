@@ -34,6 +34,11 @@ Start a new document validation session. Returns a session ID and nonce for Acti
 |-------|------|-------------|
 | `session_id` | string | Unique session identifier (32 hex characters) |
 | `nonce` | string | Challenge for Active Authentication (8 hex characters) |
+| `face_verification` | object | Optional. Present only when the issuer's policy requires the face verification step for this session; absent means the step does not apply and the app skips it. |
+| `face_verification.face_api_url` | string | Absolute `https` URL of the Face API the liveness session must run against. |
+
+An announcement that is not an object, or whose `face_api_url` is not an absolute
+`https` URL, is treated by the client as absent.
 
 ---
 
