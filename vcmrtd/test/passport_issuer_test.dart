@@ -34,6 +34,81 @@ void main() {
     });
   });
 
+  group('DefaultPassportIssuer.parseStartValidationResponse', () {
+    test('parses the nonce and session id', () {
+      final result = DefaultPassportIssuer.parseStartValidationResponse({'session_id': 'sess-1', 'nonce': 'nonce-1'});
+      expect(result.nonceAndSessionId.sessionId, 'sess-1');
+      expect(result.nonceAndSessionId.nonce, 'nonce-1');
+    });
+
+    test('parses the face verification announcement when present', () {
+      final result = DefaultPassportIssuer.parseStartValidationResponse({
+        'session_id': 'sess-1',
+        'nonce': 'nonce-1',
+        'face_verification': {'face_api_url': 'https://faceapi.example'},
+      });
+      expect(result.faceVerification?.faceApiUrl, 'https://faceapi.example');
+    });
+
+    test('an absent announcement means face verification does not apply', () {
+      final result = DefaultPassportIssuer.parseStartValidationResponse({'session_id': 'sess-1', 'nonce': 'nonce-1'});
+      expect(result.faceVerification, isNull);
+    });
+
+    // A malformed announcement is treated as absent: skipping the step is safe
+    // because an issuer that requires face verification rejects issuance
+    // without a liveness transaction anyway (fail-closed server-side).
+    test('a malformed announcement is treated as absent', () {
+      for (final malformed in [
+        null,
+        'https://faceapi.example', // not an object
+        <String, dynamic>{}, // no face_api_url
+        {'face_api_url': ''}, // empty url
+        {'face_api_url': 42}, // not a string
+      ]) {
+        final result = DefaultPassportIssuer.parseStartValidationResponse({
+          'session_id': 'sess-1',
+          'nonce': 'nonce-1',
+          'face_verification': malformed,
+        });
+        expect(result.faceVerification, isNull, reason: 'for $malformed');
+      }
+    });
+
+    // The liveness selfie is uploaded to this server-supplied URL, so it gets
+    // the same absolute-https treatment as validateSessionUrl.
+    test('an announcement with a url that is not absolute https is treated as absent', () {
+      for (final url in [
+        'http://faceapi.example', // plaintext
+        'javascript:alert(1)',
+        'faceapi.example', // not absolute
+        'not-a-url-at-all',
+        '   ',
+        'https://', // no host
+        // Uri percent-encodes whitespace into the host, so these survive the
+        // scheme/host checks and need rejecting on their own.
+        'https://face api.example', // host -> face%20api.example
+        'https://faceapi.example ', // host -> faceapi.example%20
+      ]) {
+        final result = DefaultPassportIssuer.parseStartValidationResponse({
+          'session_id': 'sess-1',
+          'nonce': 'nonce-1',
+          'face_verification': {'face_api_url': url},
+        });
+        expect(result.faceVerification, isNull, reason: 'for "$url"');
+      }
+    });
+
+    test('an https url with a path and port is accepted as-is', () {
+      final result = DefaultPassportIssuer.parseStartValidationResponse({
+        'session_id': 'sess-1',
+        'nonce': 'nonce-1',
+        'face_verification': {'face_api_url': 'https://faceapi.staging.yivi.app:8443/api'},
+      });
+      expect(result.faceVerification?.faceApiUrl, 'https://faceapi.staging.yivi.app:8443/api');
+    });
+  });
+
   group('DefaultPassportIssuer.validateSessionUrl', () {
     final issuer = DefaultPassportIssuer(hostName: 'https://issuer.example', allowedIrmaHosts: ['irma.example']);
 
