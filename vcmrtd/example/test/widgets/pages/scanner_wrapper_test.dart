@@ -43,7 +43,6 @@ Widget _buildWrapper({
       documentType: documentType,
       onMrzScanned: onMrzScanned ?? (_) {},
       onManualEntry: onManualEntry ?? () {},
-      onCancel: () {},
       onBack: onBack ?? () {},
       scannerBuilder: ({required documentType, required onSuccess}) {
         return _FakeScanner(documentType: documentType, onSuccess: onSuccess);
@@ -128,7 +127,6 @@ void main() {
             documentType: DocumentType.passport,
             onMrzScanned: scanned.add,
             onManualEntry: () {},
-            onCancel: () {},
             onBack: () {},
             scannerBuilder: ({required documentType, required onSuccess}) {
               return _FakeScanner(documentType: documentType, onSuccess: onSuccess);

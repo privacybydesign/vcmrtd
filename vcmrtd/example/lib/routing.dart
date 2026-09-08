@@ -110,7 +110,6 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
             onManualEntry: () {
               context.pushManualEntryScreen(ManualEntryRouteParams(documentType: params.documentType));
             },
-            onCancel: context.pop,
             onBack: context.pop,
             scannerBuilder: scannerBuilder,
           );
@@ -137,7 +136,6 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
           final params = NfcReadingRouteParams.fromQueryParams(state.uri.queryParameters);
           return NfcReadingScreen(
             params: params,
-            onCancel: context.pop,
             onSuccess: (document, result) {
               final (nfcImageBytes, issueDate) = _faceVerificationInputFor(document, params.documentType);
               context.pushFaceVerificationScreen(

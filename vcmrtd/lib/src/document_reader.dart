@@ -383,6 +383,11 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
           _addLog('Rethrow on attempt $i');
           rethrow;
         }
+        // Surface the connection loss to the UI immediately, rather than only
+        // after every retry has been exhausted - a silent retry loop looks
+        // identical to a healthy read in progress, so the user has no signal
+        // to reposition the document until it's too late to matter.
+        await _setReconnecting();
         await Future.delayed(const Duration(milliseconds: 300));
         _addLog('Retry $i (Reason: $e)');
         try {
@@ -417,6 +422,16 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
         }
       }
     }
+  }
+
+  /// Marks the read as transiently reconnecting after a retryable error
+  /// (e.g. tag lost), without losing track of the step the read was actually
+  /// on - unwraps an already-reconnecting state instead of nesting, so
+  /// repeated retries within the same step don't pile up wrapper layers.
+  Future<void> _setReconnecting() async {
+    final current = state;
+    final previousState = current is DocumentReaderReconnecting ? current.previousState : current;
+    await _setState(DocumentReaderReconnecting(previousState));
   }
 
   Future<void> _setState(DocumentReaderState s) async {
@@ -518,6 +533,16 @@ class DocumentReaderActiveAuthentication extends DocumentReaderState {}
 
 class DocumentReaderSuccess extends DocumentReaderState {}
 
+/// Set while a retryable error (e.g. tag lost, connection drop) is being
+/// retried internally, before the retry budget is exhausted. [previousState]
+/// is the step the read was on when the connection dropped, so UI progress
+/// indicators can keep showing it - only the tip/message shown to the user
+/// needs to change, e.g. to ask them to reposition the document.
+class DocumentReaderReconnecting extends DocumentReaderState {
+  DocumentReaderReconnecting(this.previousState);
+  final DocumentReaderState previousState;
+}
+
 enum DocumentReadingError { unknown, timeoutWaitingForTag, tagLost, failedToInitiateSession, invalidatedByUser }
 
 double progressForState(DocumentReaderState state) {
@@ -532,6 +557,7 @@ double progressForState(DocumentReaderState state) {
     DocumentReaderReadingCOM() => 0.4,
     DocumentReaderReadingDataGroup(:final progress) => 0.5 + progress / 4.0,
     DocumentReaderReadingSOD() => 0.8,
+    DocumentReaderReconnecting(:final previousState) => progressForState(previousState),
     DocumentReaderActiveAuthentication() => 0.9,
     DocumentReaderSuccess() => 1.0,
     _ => throw Exception('unexpected state: $state'),

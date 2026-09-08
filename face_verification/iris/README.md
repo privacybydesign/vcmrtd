@@ -53,22 +53,25 @@ there's no per-frame event stream to hook into, unlike `face_verification`'s
   Xcode toolchain. Verify the inferred Swift signature once the framework is
   vendored in.
 
-## Not yet wired into the app
+## Wired into the app
 
-This package is self-contained but not yet consumed anywhere. Wiring it into
-`vcmrtd/example` still needs, at minimum:
+`vcmrtd/example` consumes this package and lets the user pick the engine
+in advanced settings, via `FaceEngineChoice` (`onDevice` vs `iris`,
+`lib/providers/face_engine_provider.dart`). `FaceVerificationEntryScreen`
+is the call site: it branches to `FlutterFaceVerificationScreen`
+(`face_verification`) or `IrisFaceVerificationScreen` (this package)
+based on that choice.
 
-- **Android**: `vcmrtd/example/android/settings.gradle.kts` needs a `flatDir`
-  repository pointing at `../../face_verification_iris/android/libs` — this
+- **Android**: `vcmrtd/example/android/build.gradle` declares a `flatDir`
+  repository pointing at `../../face_verification/iris/android/libs` — this
   package's own `build.gradle` intentionally does *not* declare one, since
-  modern Flutter/AGP centralizes repository resolution in the app's
-  `settings.gradle` (`RepositoriesMode.FAIL_ON_PROJECT_REPOS`), and a
-  plugin module declaring its own `repositories {}` block would break that.
-- **iOS**: the example app's `Podfile`/`Runner.xcodeproj` needs to pick up
-  this pod (standard Flutter plugin resolution should handle this once it's
-  a `pubspec.yaml` dependency of the example app).
-- **App code**: a call site choosing between `FaceVerificationEngine`
-  (`face_verification`) and `IrisFaceVerifier` (this package).
+  modern Flutter/AGP centralizes repository resolution in the app's own
+  Gradle files (`RepositoriesMode.FAIL_ON_PROJECT_REPOS`), and a plugin
+  module declaring its own `repositories {}` block would break that.
+- **iOS**: no extra `Podfile` entry was needed — the podspec vendors
+  `Iris.xcframework` directly (`s.vendored_frameworks`), and standard
+  Flutter plugin resolution picks it up once it's a `pubspec.yaml`
+  dependency of the example app.
 
 ## Related packages
 

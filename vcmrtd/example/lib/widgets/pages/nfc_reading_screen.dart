@@ -11,6 +11,8 @@ import 'package:vcmrtdapp/widgets/pages/nfc_guidance_screen.dart';
 import 'package:vcmrtdapp/providers/reader_providers.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 
+import '../../routing.dart';
+
 class NfcReadingRouteParams {
   final ScannedMRZ scannedMRZ;
   final DocumentType documentType;
@@ -73,18 +75,17 @@ class NfcReadingRouteParams {
 }
 
 class NfcReadingScreen extends ConsumerStatefulWidget {
-  const NfcReadingScreen({required this.params, required this.onCancel, required this.onSuccess, super.key});
+  const NfcReadingScreen({required this.params, required this.onSuccess, super.key});
 
   final NfcReadingRouteParams params;
 
-  final Function() onCancel;
   final Function(DocumentData, RawDocumentData) onSuccess;
 
   @override
   ConsumerState<NfcReadingScreen> createState() => _NfcReadingScreenState();
 }
 
-class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
+class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteAware {
   static const _readingStepTitles = ['Start reading', 'Reading details', 'Getting photo', 'Almost done'];
 
   static const _readingStepSubtitles = [
@@ -106,6 +107,38 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
       'it back down until it buzzes or beeps again.';
 
   late ScannedMRZ scannedMRZ;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) routeObserver.subscribe(this, route);
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  /// Fires when a route pushed on top of this one (face verification) is
+  /// popped back to it. If the read already succeeded, there is nothing left
+  /// to do on this screen - re-showing the completed checklist would be a
+  /// dead end, so drop back to the guidance screen and let the user tap
+  /// through the (quick) NFC read again to continue.
+  @override
+  void didPopNext() {
+    final readerProvider = switch (widget.params.documentType) {
+      DocumentType.passport => passportReaderProvider,
+      DocumentType.identityCard => identityCardReaderProvider,
+      DocumentType.drivingLicence => drivingLicenceReaderProvider,
+    };
+    final state = ref.read(readerProvider(scannedMRZ));
+    if (state is DocumentReaderSuccess) {
+      ref.read(readerProvider(scannedMRZ).notifier).reset();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     scannedMRZ = widget.params.scannedMRZ;
@@ -182,17 +215,26 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
       DocumentReaderReadingDataGroup() => 2,
       DocumentReaderReadingSOD() || DocumentReaderActiveAuthentication() || DocumentReaderSuccess() => 3,
       DocumentReaderFailed() || DocumentReaderCancelled() || DocumentReaderCancelling() => 0,
+      // Keep showing whichever step the read was actually on when the
+      // connection dropped - regressing to step 0 here would read as a full
+      // failure, when this is just a retry in progress.
+      DocumentReaderReconnecting(:final previousState) => _readingStepForState(previousState),
       _ => null,
     };
   }
 
   /// The contextual tip to show for the current state, or null to hide it.
-  /// Surfaces a dedicated "seems stuck" tip when the tag connection was lost
-  /// or timed out, otherwise the tip tied to the current reading step.
+  /// Surfaces a dedicated "seems stuck" tip whenever a connection has been
+  /// lost - both while it's actively being retried, and after retries are
+  /// exhausted with a tag-lost/timeout failure - since a silent retry loop
+  /// otherwise looks identical to a healthy read to the user. Otherwise falls
+  /// back to the tip tied to the current reading step.
   String? _tipForState(DocumentReaderState state, int? readingStep) {
-    if (state is DocumentReaderFailed &&
-        (state.error == DocumentReadingError.tagLost ||
-            state.error == DocumentReadingError.timeoutWaitingForTag)) {
+    final isConnectionLost =
+        state is DocumentReaderReconnecting ||
+        (state is DocumentReaderFailed &&
+            (state.error == DocumentReadingError.tagLost || state.error == DocumentReadingError.timeoutWaitingForTag));
+    if (isConnectionLost) {
       return _stuckTip;
     }
     return readingStep == null ? null : _readingStepTips[readingStep];
@@ -306,7 +348,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
             alignment: Alignment.centerLeft,
             child: IconButton(
               icon: const Icon(Icons.arrow_back),
-              onPressed: () => Navigator.maybePop(context),
+              onPressed: () => _handleBack(context),
             ),
           ),
           StepBadge(current: 2, total: 4, label: 'Read ${widget.params.documentType.displayName}'),
@@ -329,8 +371,20 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
       DocumentReaderReadingCOM() => NFCReadingState.reading,
       DocumentReaderActiveAuthentication() => NFCReadingState.authenticating,
       DocumentReaderSuccess() => NFCReadingState.success,
+      // Keep the visual state (color/icon) matching whatever step this is a
+      // retry of - the reposition tip is what actually flags the connection
+      // loss, this shouldn't also read as a harder failure.
+      DocumentReaderReconnecting(:final previousState) => _mapState(previousState),
       _ => throw Exception('unexpected state: $state'),
     };
+  }
+
+  /// Back-arrow tap: explicitly cancels any in-flight read (same as the
+  /// "Cancel" button) before leaving, rather than relying solely on the
+  /// reader provider's autoDispose cleanup.
+  Future<void> _handleBack(BuildContext context) async {
+    await cancel();
+    if (context.mounted) Navigator.maybePop(context);
   }
 
   Future<void> cancel() async {
@@ -415,6 +469,10 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
         DocumentReaderReadingSOD() => 'Reading Ef.SOD',
         DocumentReaderActiveAuthentication() => 'Performing security verification...',
         DocumentReaderSuccess() => 'Success!',
+        // This is the only feedback visible while iOS's own NFC sheet covers
+        // the app - without it, a lost connection looks identical to a
+        // healthy read in progress until every retry is exhausted.
+        DocumentReaderReconnecting() => 'Connection lost. Slowly lift your phone and place it back down.',
         _ => '',
       };
 

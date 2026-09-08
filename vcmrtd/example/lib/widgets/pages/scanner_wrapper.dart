@@ -30,7 +30,6 @@ class MrzReaderRouteParams {
 class ScannerWrapper extends StatefulWidget {
   final Function(ScannedMRZ) onMrzScanned;
   final VoidCallback onManualEntry;
-  final VoidCallback onCancel;
   final VoidCallback onBack;
   final DocumentType documentType;
   final ScannerWidgetBuilder? scannerBuilder;
@@ -39,7 +38,6 @@ class ScannerWrapper extends StatefulWidget {
     super.key,
     required this.onMrzScanned,
     required this.onManualEntry,
-    required this.onCancel,
     required this.onBack,
     this.documentType = DocumentType.passport,
     this.scannerBuilder,
