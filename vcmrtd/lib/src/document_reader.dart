@@ -392,8 +392,19 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
     _iosNfcMessageMapper = mapper;
     _isCancelled = false;
     await checkNfcAvailability();
-    if (state is! DocumentReaderNfcUnavailable && nfc.isConnected()) {
-      await nfc.disconnect();
+    if (state is! DocumentReaderNfcUnavailable) {
+      if (nfc.isConnected()) {
+        await nfc.disconnect();
+      } else if (!Platform.isIOS) {
+        // Android: start every readout from a known reader-mode state.
+        // disconnect() only calls FlutterNfcKit.finish() when a tag was actually
+        // acquired, so a poll cancelled or abandoned before that leaves the
+        // plugin's reader mode enabled until its own poll timeout fires.
+        // forceCleanup() finishes any such session; the delay gives NFC
+        // discovery time to settle before we re-enable reader mode.
+        await nfc.forceCleanup();
+        await Future.delayed(const Duration(milliseconds: 300));
+      }
     }
   }
 
