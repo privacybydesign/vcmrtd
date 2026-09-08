@@ -6,9 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:face_verification/face_verification.dart';
-import 'package:vcmrtdapp/widgets/pages/face_method_selection_screen.dart';
+import 'package:vcmrtdapp/providers/face_engine_provider.dart';
 import 'package:vcmrtdapp/widgets/pages/face_verification_entry_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/face_verification_screen.dart';
+import 'package:vcmrtdapp/widgets/pages/iris_face_verification_screen.dart';
 
 class _FakeWorker implements FaceVerificationWorker {
   final StreamController<WorkerFrameResult> _frames = StreamController<WorkerFrameResult>.broadcast(sync: true);
@@ -59,23 +60,7 @@ class _FakeWorker implements FaceVerificationWorker {
 }
 
 void main() {
-  testWidgets('shows the method picker first, not the camera screen', (tester) async {
-    final engine = FaceVerificationEngine.withWorker(_FakeWorker());
-    await tester.pumpWidget(
-      MaterialApp(
-        home: FaceVerificationEntryScreen.withEngine(engine: engine, nfcImageBytes: Uint8List(1), onBackPressed: () {}),
-      ),
-    );
-    await tester.pump();
-    await tester.pump();
-
-    expect(find.byType(FaceMethodSelectionScreen), findsOneWidget);
-    expect(find.byType(FlutterFaceVerificationScreen), findsNothing);
-    expect(find.text('Passive Liveness'), findsOneWidget);
-    expect(find.text('Active Liveness'), findsOneWidget);
-  });
-
-  testWidgets('selecting Active opens the camera screen in active mode, forwarding props', (tester) async {
+  testWidgets('onDevice choice opens the camera screen directly, in the given liveness mode', (tester) async {
     final engine = FaceVerificationEngine.withWorker(_FakeWorker());
     await tester.pumpWidget(
       MaterialApp(
@@ -83,6 +68,9 @@ void main() {
           engine: engine,
           nfcImageBytes: Uint8List.fromList([1]),
           onBackPressed: () {},
+          onVerified: () {},
+          engineChoice: FaceEngineChoice.onDevice,
+          livenessMode: LivenessMode.active,
           photoIssueDate: DateTime(2024, 1, 1),
         ),
       ),
@@ -90,13 +78,52 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    await tester.tap(find.text('Active Liveness'));
-    await tester.pump();
-    await tester.pump();
-
+    expect(find.byType(IrisFaceVerificationScreen), findsNothing);
     final screen = tester.widget<FlutterFaceVerificationScreen>(find.byType(FlutterFaceVerificationScreen));
     expect(screen.mode, LivenessMode.active);
     expect(screen.photoIssueDate, DateTime(2024, 1, 1));
     expect(screen.nfcImageBytes, Uint8List.fromList([1]));
+  });
+
+  testWidgets('onDevice choice defaults to passive when that is the configured liveness mode', (tester) async {
+    final engine = FaceVerificationEngine.withWorker(_FakeWorker());
+    await tester.pumpWidget(
+      MaterialApp(
+        home: FaceVerificationEntryScreen.withEngine(
+          engine: engine,
+          nfcImageBytes: Uint8List(1),
+          onBackPressed: () {},
+          onVerified: () {},
+          engineChoice: FaceEngineChoice.onDevice,
+          livenessMode: LivenessMode.passive,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    final screen = tester.widget<FlutterFaceVerificationScreen>(find.byType(FlutterFaceVerificationScreen));
+    expect(screen.mode, LivenessMode.passive);
+  });
+
+  testWidgets('iris choice opens the Iris screen directly, not the on-device camera', (tester) async {
+    final engine = FaceVerificationEngine.withWorker(_FakeWorker());
+    await tester.pumpWidget(
+      MaterialApp(
+        home: FaceVerificationEntryScreen.withEngine(
+          engine: engine,
+          nfcImageBytes: Uint8List(1),
+          onBackPressed: () {},
+          onVerified: () {},
+          engineChoice: FaceEngineChoice.iris,
+          livenessMode: LivenessMode.passive,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byType(IrisFaceVerificationScreen), findsOneWidget);
+    expect(find.byType(FlutterFaceVerificationScreen), findsNothing);
   });
 }

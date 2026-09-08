@@ -6,8 +6,8 @@ import 'package:vcmrtdapp/custom/custom_logger_extension.dart';
 import 'package:vcmrtdapp/providers/active_authenticiation_provider.dart';
 import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
 import 'package:vcmrtdapp/widgets/common/animated_nfc_status_widget.dart';
+import 'package:vcmrtdapp/widgets/common/nfc_reading_animation.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_guidance_screen.dart';
-
 import 'package:vcmrtdapp/providers/reader_providers.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 
@@ -85,6 +85,26 @@ class NfcReadingScreen extends ConsumerStatefulWidget {
 }
 
 class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
+  static const _readingStepTitles = ['Start reading', 'Reading details', 'Getting photo', 'Almost done'];
+
+  static const _readingStepSubtitles = [
+    'Connecting to the chip',
+    'Getting personal data',
+    'Getting the document photo',
+    'Verifying document security',
+  ];
+
+  static const _readingStepTips = [
+    'Hold the document steady against the back of your phone.',
+    'Keep your phone still, moving it now can interrupt the scan.',
+    "You're almost there, keep holding the document in place.",
+    "Don't move your phone until you see the success screen.",
+  ];
+
+  static const _stuckTip =
+      'Not moving forward? Slowly lift your phone off the document and place '
+      'it back down until it buzzes or beeps again.';
+
   late ScannedMRZ scannedMRZ;
   @override
   Widget build(BuildContext context) {
@@ -106,22 +126,191 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> {
       );
     }
 
-    final title = switch (widget.params.documentType) {
-      DocumentType.passport => 'Scan passport',
-      DocumentType.identityCard => 'Scan identity card',
-      DocumentType.drivingLicence => 'Scan driving license',
-    };
+    final nfcState = _mapState(state);
+    final readingStep = _readingStepForState(state);
+    final tip = _tipForState(state, readingStep);
 
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(
-        child: AnimatedNFCStatusWidget(
-          state: _mapState(state),
-          message: '',
-          progress: progressForState(state),
-          onRetry: retry,
-          onCancel: cancel,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildTopBar(context),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    if (nfcState != NFCReadingState.success && nfcState != NFCReadingState.error) ...[
+                      NfcReadingAnimation(documentType: widget.params.documentType),
+                      const SizedBox(height: 16),
+                    ],
+                    Center(
+                      child: AnimatedNFCStatusWidget(
+                        state: nfcState,
+                        message: '',
+                        progress: progressForState(state),
+                        onRetry: retry,
+                        onCancel: cancel,
+                        tip: tip,
+                      ),
+                    ),
+                    if (readingStep != null) ...[
+                      const SizedBox(height: 32),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: _buildStepChecklist(currentStep: readingStep, nfcState: nfcState),
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  /// Maps the reader state to an index into [_readingStepTitles]. Regresses
+  /// to step 0 on failure/cancellation, since the user needs to reposition
+  /// the document and start the reading flow again.
+  int? _readingStepForState(DocumentReaderState state) {
+    return switch (state) {
+      DocumentReaderConnecting() || DocumentReaderReadingCardAccess() || DocumentReaderAuthenticating() => 0,
+      DocumentReaderReadingCOM() => 1,
+      DocumentReaderReadingDataGroup(dataGroup: 'DG1') => 1,
+      DocumentReaderReadingDataGroup() => 2,
+      DocumentReaderReadingSOD() || DocumentReaderActiveAuthentication() || DocumentReaderSuccess() => 3,
+      DocumentReaderFailed() || DocumentReaderCancelled() || DocumentReaderCancelling() => 0,
+      _ => null,
+    };
+  }
+
+  /// The contextual tip to show for the current state, or null to hide it.
+  /// Surfaces a dedicated "seems stuck" tip when the tag connection was lost
+  /// or timed out, otherwise the tip tied to the current reading step.
+  String? _tipForState(DocumentReaderState state, int? readingStep) {
+    if (state is DocumentReaderFailed &&
+        (state.error == DocumentReadingError.tagLost ||
+            state.error == DocumentReadingError.timeoutWaitingForTag)) {
+      return _stuckTip;
+    }
+    return readingStep == null ? null : _readingStepTips[readingStep];
+  }
+
+  /// Checklist card of reading steps, e.g. a checkmark for a done step, a
+  /// small spinner for the current one, and an outlined circle for steps
+  /// still ahead.
+  Widget _buildStepChecklist({required int currentStep, required NFCReadingState nfcState}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var index = 0; index < _readingStepTitles.length; index++)
+            _buildStepRow(
+              index: index,
+              currentStep: currentStep,
+              nfcState: nfcState,
+              isLast: index == _readingStepTitles.length - 1,
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// A step row with its status icon connected to the next row by a
+  /// vertical line, filled in green once this step is done.
+  Widget _buildStepRow({
+    required int index,
+    required int currentStep,
+    required NFCReadingState nfcState,
+    required bool isLast,
+  }) {
+    final isDone = index < currentStep;
+    final isCurrent = index == currentStep;
+
+    final titleColor = switch ((isDone, isCurrent)) {
+      (true, _) => const Color(0xFF212121),
+      (_, true) => nfcStateColor(nfcState),
+      _ => Colors.grey[500],
+    };
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Column(
+            children: [
+              _buildStepStatusIcon(isDone: isDone, isCurrent: isCurrent, nfcState: nfcState),
+              if (!isLast)
+                Expanded(
+                  child: Container(
+                    width: 2,
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    color: isDone ? const Color(0xFF4CAF50) : Colors.grey[300],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: isLast ? 0 : 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _readingStepTitles[index],
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: titleColor),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _readingStepSubtitles[index],
+                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepStatusIcon({required bool isDone, required bool isCurrent, required NFCReadingState nfcState}) {
+    if (isDone) {
+      return const Icon(Icons.check_circle, color: Color(0xFF4CAF50), size: 22);
+    }
+    if (isCurrent) {
+      if (nfcState == NFCReadingState.error) {
+        return const Icon(Icons.error, color: Color(0xFFF44336), size: 22);
+      }
+      return SizedBox(
+        width: 20,
+        height: 20,
+        child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(nfcStateColor(nfcState))),
+      );
+    }
+    return Icon(Icons.circle_outlined, color: Colors.grey[400], size: 22);
+  }
+
+  Widget _buildTopBar(BuildContext context) {
+    return SizedBox(
+      height: 48,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => Navigator.maybePop(context),
+            ),
+          ),
+          StepBadge(current: 2, total: 4, label: 'Read ${widget.params.documentType.displayName}'),
+        ],
       ),
     );
   }

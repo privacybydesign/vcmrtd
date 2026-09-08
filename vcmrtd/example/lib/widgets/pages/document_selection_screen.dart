@@ -1,28 +1,32 @@
-﻿import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtd/vcmrtd.dart';
-import 'package:vcmrtdapp/providers/active_authenticiation_provider.dart';
-import 'package:vcmrtdapp/providers/ocr_engine_provider.dart';
 import 'package:vcmrtdapp/theme/text_styles.dart';
 
 class DocumentTypeSelectionScreen extends StatelessWidget {
   final Function(DocumentType) onDocumentTypeSelected;
+  final VoidCallback onSettingsPressed;
+  final VoidCallback onWalletPressed;
 
   const DocumentTypeSelectionScreen({
     super.key,
     required this.onDocumentTypeSelected,
-    @visibleForTesting this.showOcrEngineForTesting,
+    required this.onSettingsPressed,
+    required this.onWalletPressed,
   });
-
-  @visibleForTesting
-  final bool? showOcrEngineForTesting;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Select document type')),
+      appBar: AppBar(
+        title: Text('Select document type'),
+        actions: [
+          IconButton(
+            tooltip: 'Wallet',
+            icon: const Icon(Icons.account_balance_wallet_outlined),
+            onPressed: onWalletPressed,
+          ),
+        ],
+      ),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -39,7 +43,7 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _Header(showOcrEngineForTesting: showOcrEngineForTesting),
+                  const _Header(),
                   const SizedBox(height: 24),
                   _OptionCard(
                     context: context,
@@ -69,6 +73,15 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
                     accentColor: const Color(0xFF2196F3),
                     onTap: () => onDocumentTypeSelected(DocumentType.drivingLicence),
                   ),
+                  const SizedBox(height: 16),
+                  _OptionCard(
+                    context: context,
+                    title: 'Advanced settings',
+                    subtitle: 'Ocr Engine, Face Verification and more',
+                    icon: Icons.settings,
+                    accentColor: const Color(0xFF757575),
+                    onTap: onSettingsPressed,
+                  ),
                 ],
               ),
             ),
@@ -79,13 +92,11 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
   }
 }
 
-class _Header extends ConsumerWidget {
-  const _Header({this.showOcrEngineForTesting});
-
-  final bool? showOcrEngineForTesting;
+class _Header extends StatelessWidget {
+  const _Header();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return Card(
       elevation: 8,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -105,44 +116,16 @@ class _Header extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'Which document type do you want to read?',
+              'Verify your Identity',
               style: Theme.of(context).defaultTextStyles.primaryLarge,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Flexible(child: Text('Perform active authentication', style: Theme.of(context).defaultTextStyles.hint)),
-                Switch(
-                  value: ref.watch(activeAuthenticationProvider),
-                  onChanged: (value) {
-                    ref.read(activeAuthenticationProvider.notifier).set(value);
-                  },
-                ),
-              ],
+            Text(
+              'Select the type of document you want to use for verification.',
+              style: Theme.of(context).defaultTextStyles.secondary,
+              textAlign: TextAlign.left,
             ),
-            if (showOcrEngineForTesting ?? Platform.isAndroid) ...[
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('OCR engine', style: Theme.of(context).defaultTextStyles.hint),
-                  DropdownButton<OcrEngine>(
-                    value: ref.watch(ocrEngineProvider),
-                    onChanged: (OcrEngine? value) {
-                      if (value != null) {
-                        ref.read(ocrEngineProvider.notifier).set(value);
-                      }
-                    },
-                    items: const [
-                      DropdownMenuItem(value: OcrEngine.googleMlKit, child: Text('Google ML Kit')),
-                      DropdownMenuItem(value: OcrEngine.tesseract4android, child: Text('Tesseract4Android')),
-                    ],
-                  ),
-                ],
-              ),
-            ],
           ],
         ),
       ),

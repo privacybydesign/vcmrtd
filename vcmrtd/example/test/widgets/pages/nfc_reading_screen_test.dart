@@ -152,7 +152,7 @@ void main() {
         await tester.pumpWidget(_app(DocumentType.passport));
         await tester.pump(const Duration(milliseconds: 100));
 
-        expect(find.text('Scan passport'), findsOneWidget);
+        expect(find.text('2 of 4 · Read ${DocumentType.passport.displayName}'), findsOneWidget);
         expect(find.byType(AnimatedNFCStatusWidget), findsOneWidget);
 
         // Drain any continuous animations.
@@ -191,7 +191,7 @@ void main() {
       await tester.pumpWidget(_app(DocumentType.identityCard));
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('Scan identity card'), findsOneWidget);
+      expect(find.text('2 of 4 · Read ${DocumentType.identityCard.displayName}'), findsOneWidget);
       await tester.pump(const Duration(milliseconds: 600));
     });
   });

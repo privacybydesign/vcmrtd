@@ -72,11 +72,34 @@ class _FakeWorker2 implements FaceVerificationWorker {
 // Helpers
 // ---------------------------------------------------------------------------
 
+Uint8List _fakePortraitPng() {
+  final image = img.Image(width: 2, height: 2);
+  return Uint8List.fromList(img.encodePng(image));
+}
+
+Widget _buildScreenWithPortrait() {
+  final worker = _FakeWorker2();
+  final engine = FaceVerificationEngine.withWorker(worker);
+  return MaterialApp(
+    home: FlutterFaceVerificationScreen.withEngine(
+      engine: engine,
+      nfcImageBytes: _fakePortraitPng(),
+      onBackPressed: () {},
+      onVerified: () {},
+    ),
+  );
+}
+
 Widget _buildScreen() {
   final worker = _FakeWorker2();
   final engine = FaceVerificationEngine.withWorker(worker);
   return MaterialApp(
-    home: FlutterFaceVerificationScreen.withEngine(engine: engine, nfcImageBytes: Uint8List(1), onBackPressed: () {}),
+    home: FlutterFaceVerificationScreen.withEngine(
+      engine: engine,
+      nfcImageBytes: Uint8List(1),
+      onBackPressed: () {},
+      onVerified: () {},
+    ),
   );
 }
 
@@ -88,6 +111,7 @@ Widget _buildScreenWithBack(VoidCallback onBackPressed) {
       engine: engine,
       nfcImageBytes: Uint8List(1),
       onBackPressed: onBackPressed,
+      onVerified: () {},
     ),
   );
 }
@@ -95,7 +119,12 @@ Widget _buildScreenWithBack(VoidCallback onBackPressed) {
 Widget _buildScreenWithWorker(_FakeWorker2 worker) {
   final engine = FaceVerificationEngine.withWorker(worker);
   return MaterialApp(
-    home: FlutterFaceVerificationScreen.withEngine(engine: engine, nfcImageBytes: Uint8List(1), onBackPressed: () {}),
+    home: FlutterFaceVerificationScreen.withEngine(
+      engine: engine,
+      nfcImageBytes: Uint8List(1),
+      onBackPressed: () {},
+      onVerified: () {},
+    ),
   );
 }
 
@@ -108,6 +137,7 @@ Widget _buildScreenWithIssueDate(DateTime issueDate) {
       nfcImageBytes: Uint8List(1),
       photoIssueDate: issueDate,
       onBackPressed: () {},
+      onVerified: () {},
     ),
   );
 }
@@ -581,7 +611,44 @@ void main() {
       expect(find.text('88.0%'), findsOneWidget);
       expect(find.text('72 bpm'), findsOneWidget);
       expect(find.text('passed'), findsOneWidget);
-      expect(find.text('Try Again'), findsOneWidget);
+      // A passing result auto-continues, so there's no retry button — just a
+      // brief "Continuing…" hint before onVerified fires.
+      expect(find.text('Try Again'), findsNothing);
+      expect(find.text('Continuing…'), findsOneWidget);
+    });
+
+    testWidgets('passed complete event auto-continues to onVerified after a short delay, not onBackPressed', (
+      tester,
+    ) async {
+      var backCount = 0;
+      var verifiedCount = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: FlutterFaceVerificationScreen.withEngine(
+            engine: FaceVerificationEngine.withWorker(_FakeWorker2()),
+            nfcImageBytes: Uint8List(1),
+            onBackPressed: () => backCount++,
+            onVerified: () => verifiedCount++,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      _state(tester).debugOnLivenessEvent({
+        'type': 'complete',
+        'passed': true,
+        'matchScore': 0.92,
+        'antiSpoofScore': 0.88,
+        'antiSpoofPassed': true,
+        'rppg': {'hr': 72.0, 'passed': true, 'sampleCount': 31, 'durationMs': 3000},
+      });
+      await tester.pump();
+
+      expect(verifiedCount, 0);
+      await tester.pump(const Duration(seconds: 2));
+      expect(verifiedCount, 1);
+      expect(backCount, 0);
     });
 
     testWidgets('failed complete event renders failed result and consistency warning', (tester) async {
@@ -605,6 +672,8 @@ void main() {
       expect(find.text('20.0%'), findsOneWidget);
       expect(find.text('face changed mid-session'), findsOneWidget);
       expect(find.byIcon(Icons.cancel), findsWidgets);
+      expect(find.text('Try Again'), findsOneWidget);
+      expect(find.text('Continuing…'), findsNothing);
     });
 
     testWidgets('error screen renders actions and back callback fires', (tester) async {
@@ -625,6 +694,45 @@ void main() {
       await tester.tap(find.text('Go Back'));
       await tester.pump();
       expect(backCount, 1);
+    });
+
+    testWidgets('result screen shows document photo and live capture thumbnails when available', (tester) async {
+      await tester.pumpWidget(_buildScreenWithPortrait());
+      await tester.pump();
+      await tester.pump();
+
+      _state(tester).debugOnLivenessEvent({
+        'type': 'complete',
+        'passed': true,
+        'matchScore': 0.9,
+        'antiSpoofScore': 0.9,
+        'antiSpoofPassed': true,
+        'liveFace': _fakePortraitPng(),
+        'rppg': {'hr': 70.0, 'passed': true, 'sampleCount': 30},
+      });
+      await tester.pump();
+
+      expect(find.text('Document photo'), findsOneWidget);
+      expect(find.text('Live capture'), findsOneWidget);
+    });
+
+    testWidgets('result screen omits live capture thumbnail when engine has none', (tester) async {
+      await tester.pumpWidget(_buildScreenWithPortrait());
+      await tester.pump();
+      await tester.pump();
+
+      _state(tester).debugOnLivenessEvent({
+        'type': 'complete',
+        'passed': false,
+        'matchScore': 0.3,
+        'antiSpoofScore': 0.2,
+        'antiSpoofPassed': false,
+        'rppg': {'hr': null, 'passed': false, 'sampleCount': 0},
+      });
+      await tester.pump();
+
+      expect(find.text('Document photo'), findsOneWidget);
+      expect(find.text('Live capture'), findsNothing);
     });
   });
 
@@ -867,7 +975,6 @@ void main() {
 
       expect(find.text('How it works'), findsOneWidget);
       expect(find.text('Center your face inside the oval'), findsOneWidget);
-      expect(find.text('Tap the button below'), findsOneWidget);
       expect(find.text('Follow the on-screen prompts'), findsOneWidget);
 
       // The method picker lives on a separate screen now — only a single Start

@@ -1,12 +1,14 @@
-﻿import 'dart:typed_data';
+import 'dart:typed_data';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mrz_capture/mrz_capture.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtdapp/providers/face_api_provider.dart';
 import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
+import 'package:vcmrtdapp/providers/wallet_provider.dart';
 import '../../widgets/pages/data_screen_widgets/web_banner.dart';
 import '../../widgets/pages/data_screen_widgets/return_to_web.dart';
 import '../../widgets/pages/data_screen_widgets/verify_result.dart';
@@ -16,14 +18,12 @@ class DrivingLicenceDataScreen extends ConsumerStatefulWidget {
   final DrivingLicenceData drivingLicence;
   final RawDocumentData drivingLicenceDataResult;
   final VoidCallback onBackPressed;
-  final void Function(Uint8List, DateTime?) onFaceVerification;
 
   const DrivingLicenceDataScreen({
     super.key,
     required this.drivingLicence,
     required this.drivingLicenceDataResult,
     required this.onBackPressed,
-    required this.onFaceVerification,
   });
 
   @override
@@ -38,77 +38,98 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
     final imageData = widget.drivingLicence.photoImageData;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Driving Licence Data'),
-        leading: IconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBackPressed),
-      ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (widget.drivingLicenceDataResult.sessionId != null)
-                WebBanner(sessionId: widget.drivingLicenceDataResult.sessionId!),
-              _buildPhotoSection(imageData),
-              const SizedBox(height: 24),
-              _buildSection('Personal Information', [
-                _buildDataRow('Surname', widget.drivingLicence.holderSurname),
-                _buildDataRow('Other Names', widget.drivingLicence.holderOtherName),
-                _buildDataRow('Date of Birth', _formatDate(widget.drivingLicence.dateOfBirth)),
-                _buildDataRow('Place of Birth', widget.drivingLicence.placeOfBirth),
-              ]),
-              const SizedBox(height: 24),
-              _buildSection('Document Information', [
-                _buildDataRow('Document Number', widget.drivingLicence.documentNumber),
-                _buildDataRow('Issuing Member State', widget.drivingLicence.issuingMemberState),
-                _buildDataRow('Issuing Authority', widget.drivingLicence.issuingAuthority),
-                _buildDataRow('Date of Issue', _formatDate(widget.drivingLicence.dateOfIssue)),
-                _buildDataRow('Date of Expiry', _formatDate(widget.drivingLicence.dateOfExpiry)),
-              ]),
-              if (widget.drivingLicence.categories.isNotEmpty) ...[
-                const SizedBox(height: 24),
-                _buildCategoriesSection(widget.drivingLicence.categories),
-              ],
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                onPressed: () => widget.onFaceVerification(
-                  widget.drivingLicence.photoImageData,
-                  _parseDrivingLicenceDate(widget.drivingLicence.dateOfIssue),
+        child: Column(
+          children: [
+            _buildTopBar(context),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (widget.drivingLicenceDataResult.sessionId != null)
+                      WebBanner(sessionId: widget.drivingLicenceDataResult.sessionId!),
+                    _buildPhotoSection(imageData),
+                    const SizedBox(height: 24),
+                    _buildSection('Personal Information', [
+                      _buildDataRow('Surname', widget.drivingLicence.holderSurname),
+                      _buildDataRow('Other Names', widget.drivingLicence.holderOtherName),
+                      _buildDataRow('Date of Birth', _formatDate(widget.drivingLicence.dateOfBirth)),
+                      _buildDataRow('Place of Birth', widget.drivingLicence.placeOfBirth),
+                    ]),
+                    const SizedBox(height: 24),
+                    _buildSection('Document Information', [
+                      _buildDataRow('Document Number', widget.drivingLicence.documentNumber),
+                      _buildDataRow('Issuing Member State', widget.drivingLicence.issuingMemberState),
+                      _buildDataRow('Issuing Authority', widget.drivingLicence.issuingAuthority),
+                      _buildDataRow('Date of Issue', _formatDate(widget.drivingLicence.dateOfIssue)),
+                      _buildDataRow('Date of Expiry', _formatDate(widget.drivingLicence.dateOfExpiry)),
+                    ]),
+                    if (widget.drivingLicence.categories.isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      _buildCategoriesSection(widget.drivingLicence.categories),
+                    ],
+                    const SizedBox(height: 20),
+                    ElevatedButton.icon(
+                      onPressed: _addToWallet,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        backgroundColor: Colors.green[600],
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      icon: const Icon(Icons.account_balance_wallet),
+                      label: const Text('Add to Wallet'),
+                    ),
+                    if (widget.drivingLicenceDataResult.sessionId != null) ...[
+                      const SizedBox(height: 20),
+                      if (_verificationResponse == null)
+                        ReturnToWebSection(
+                          isReturningToIssue: false,
+                          isReturningToVerify: false,
+                          onIssuePressed: _issueDrivingLicence,
+                          onVerifyPressed: _verifyDrivingLicence,
+                        )
+                      else ...[
+                        const SizedBox(height: 20),
+                        VerifyResultSection(
+                          isExpired: _verificationResponse!.isExpired,
+                          authenticChip: _verificationResponse!.authenticChip,
+                          authenticContent: _verificationResponse!.authenticContent,
+                          faceMatch: _verificationResponse!.faceMatch,
+                        ),
+                      ],
+                    ],
+                  ],
                 ),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: Colors.green[600],
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                icon: const Icon(Icons.face),
-                label: const Text('Start Face Verification'),
               ),
-              if (widget.drivingLicenceDataResult.sessionId != null) ...[
-                const SizedBox(height: 20),
-                if (_verificationResponse == null)
-                  ReturnToWebSection(
-                    isReturningToIssue: false,
-                    isReturningToVerify: false,
-                    onIssuePressed: _issueDrivingLicence,
-                    onVerifyPressed: _verifyDrivingLicence,
-                  )
-                else ...[
-                  const SizedBox(height: 20),
-                  VerifyResultSection(
-                    isExpired: _verificationResponse!.isExpired,
-                    authenticChip: _verificationResponse!.authenticChip,
-                    authenticContent: _verificationResponse!.authenticContent,
-                    faceMatch: _verificationResponse!.faceMatch,
-                  ),
-                ],
-              ],
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  Widget _buildTopBar(BuildContext context) => SizedBox(
+    height: 48,
+    child: Stack(
+      alignment: Alignment.center,
+      children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: IconButton(icon: const Icon(Icons.arrow_back), onPressed: widget.onBackPressed),
+        ),
+        const StepBadge(current: 4, total: 4, label: 'Driving Licence Data'),
+      ],
+    ),
+  );
+
+  void _addToWallet() {
+    ref.read(walletProvider.notifier).add(WalletCard.fromDocument(widget.drivingLicence, DocumentType.drivingLicence));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Added to wallet (example app only — cleared on restart)')));
   }
 
   Future<void> _verifyDrivingLicence() async {
@@ -286,14 +307,5 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
     final month = date.substring(2, 4);
     final year = date.substring(4, 8);
     return '$day/$month/$year';
-  }
-
-  DateTime? _parseDrivingLicenceDate(String date) {
-    if (date.length != 8) return null;
-    final day = int.tryParse(date.substring(0, 2));
-    final month = int.tryParse(date.substring(2, 4));
-    final year = int.tryParse(date.substring(4, 8));
-    if (day == null || month == null || year == null) return null;
-    return DateTime(year, month, day);
   }
 }

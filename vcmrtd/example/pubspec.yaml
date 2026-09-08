@@ -23,6 +23,8 @@ dependencies:
     path: ../
   face_verification:
     path: ../../face_verification
+  face_verification_iris:
+    path: ../../face_verification/iris
   mrz_capture:
     path: ../../mrz_capture
   flutter:
@@ -30,6 +32,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   flutter_platform_widgets: ^9.0.0
+  image: ^4.5.4
   #intl: ^0.20.1
 
   # The following adds the Cupertino Icons font to your application.

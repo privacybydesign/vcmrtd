@@ -82,10 +82,10 @@ void main() {
   });
 
   group('ScannerWrapper', () {
-    testWidgets('renders document-specific title and manual entry copy', (tester) async {
+    testWidgets('renders the step badge and document-specific manual entry copy', (tester) async {
       await tester.pumpWidget(_buildWrapper(documentType: DocumentType.drivingLicence));
 
-      expect(find.text('Scan ${DocumentType.drivingLicence.displayName}'), findsOneWidget);
+      expect(find.text('1 of 4 · Scan ${DocumentType.drivingLicence.displayName}'), findsOneWidget);
       expect(find.text('Position the ${DocumentType.drivingLicence.displayName}'), findsOneWidget);
       expect(find.text('Enter ${DocumentType.drivingLicence.displayName} details manually'), findsOneWidget);
       expect(find.text('fake scanner ${DocumentType.drivingLicence.name}'), findsOneWidget);

@@ -1,0 +1,12 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--
+    Camera/NFC/etc. permissions come from the Iris SDK's own .aar manifest
+    and merge in automatically — nothing to declare here for those.
+    -->
+    <application>
+        <activity
+            android:name=".IrisFaceVerificationActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
+    </application>
+</manifest>
