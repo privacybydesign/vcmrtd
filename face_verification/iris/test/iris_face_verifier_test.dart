@@ -17,7 +17,10 @@ void main() {
         case 'version':
           return '1.2.3';
         case 'verify':
-          return {'outcome': 'matched', 'face': Uint8List.fromList([1, 2, 3])};
+          return {
+            'outcome': 'matched',
+            'face': Uint8List.fromList([1, 2, 3]),
+          };
         default:
           return null;
       }

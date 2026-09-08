@@ -671,37 +671,40 @@ void main() {
   // --- retry preserves already-read progress --------------------------------
 
   group('retry after a failure preserves already-read data groups', () {
-    test('a later mandatory DG exhausting retries does not lose earlier successfully-read DGs on the next attempt', () async {
-      final h = makeHarness(
-        present: {DataGroups.dg1, DataGroups.dg2, DataGroups.dg15},
-        steps: {
-          // DG15 (mandatory-if-present) fails every attempt on the first
-          // readDocument() call, so the whole read aborts.
-          'DG15': List.generate(5, (_) => _Step.fail(Exception('dg15 lost'))),
-        },
-      );
+    test(
+      'a later mandatory DG exhausting retries does not lose earlier successfully-read DGs on the next attempt',
+      () async {
+        final h = makeHarness(
+          present: {DataGroups.dg1, DataGroups.dg2, DataGroups.dg15},
+          steps: {
+            // DG15 (mandatory-if-present) fails every attempt on the first
+            // readDocument() call, so the whole read aborts.
+            'DG15': List.generate(5, (_) => _Step.fail(Exception('dg15 lost'))),
+          },
+        );
 
-      final first = await h.reader.readDocument(iosNfcMessages: _msg);
-      expect(first, isNull);
-      expect(h.state, isA<DocumentReaderFailed>());
-      // DG1 and DG2 were read successfully before DG15 gave up.
-      expect(h.dgr.calls.where((c) => c == 'DG1').length, 1);
-      expect(h.dgr.calls.where((c) => c == 'DG2').length, 1);
-      expect(h.dgr.calls.where((c) => c == 'COM').length, 1);
+        final first = await h.reader.readDocument(iosNfcMessages: _msg);
+        expect(first, isNull);
+        expect(h.state, isA<DocumentReaderFailed>());
+        // DG1 and DG2 were read successfully before DG15 gave up.
+        expect(h.dgr.calls.where((c) => c == 'DG1').length, 1);
+        expect(h.dgr.calls.where((c) => c == 'DG2').length, 1);
+        expect(h.dgr.calls.where((c) => c == 'COM').length, 1);
 
-      h.reader.reset();
-      final second = await h.reader.readDocument(iosNfcMessages: _msg);
+        h.reader.reset();
+        final second = await h.reader.readDocument(iosNfcMessages: _msg);
 
-      expect(second, isNotNull);
-      expect(h.state, isA<DocumentReaderSuccess>());
-      expect(second!.$2.dataGroups.keys, containsAll(['DG1', 'DG2', 'DG15']));
-      // DG1, DG2 and COM were not re-read on the second attempt.
-      expect(h.dgr.calls.where((c) => c == 'DG1').length, 1);
-      expect(h.dgr.calls.where((c) => c == 'DG2').length, 1);
-      expect(h.dgr.calls.where((c) => c == 'COM').length, 1);
-      // DG15 was attempted again (5 failed + 1 succeeding = 6 total calls).
-      expect(h.dgr.calls.where((c) => c == 'DG15').length, 6);
-    });
+        expect(second, isNotNull);
+        expect(h.state, isA<DocumentReaderSuccess>());
+        expect(second!.$2.dataGroups.keys, containsAll(['DG1', 'DG2', 'DG15']));
+        // DG1, DG2 and COM were not re-read on the second attempt.
+        expect(h.dgr.calls.where((c) => c == 'DG1').length, 1);
+        expect(h.dgr.calls.where((c) => c == 'DG2').length, 1);
+        expect(h.dgr.calls.where((c) => c == 'COM').length, 1);
+        // DG15 was attempted again (5 failed + 1 succeeding = 6 total calls).
+        expect(h.dgr.calls.where((c) => c == 'DG15').length, 6);
+      },
+    );
 
     test('a second full readDocument() call after a success starts fresh, not skipping everything', () async {
       // Regression test: on a reader instance reused for a second read (e.g.

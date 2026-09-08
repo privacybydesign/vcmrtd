@@ -229,7 +229,11 @@ class MrtdApi {
   /// [onProgress], if given, is invoked with the cumulative bytes read so far
   /// after every successfully read chunk, so a caller can recover partial
   /// progress even if this call later throws.
-  Future<Uint8List> _readBinary({required int offset, required int length, void Function(Uint8List)? onProgress}) async {
+  Future<Uint8List> _readBinary({
+    required int offset,
+    required int length,
+    void Function(Uint8List)? onProgress,
+  }) async {
     var data = Uint8List(0);
     while (length > 0) {
       int nRead = length;
