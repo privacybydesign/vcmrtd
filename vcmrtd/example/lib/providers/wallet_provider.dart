@@ -14,6 +14,7 @@ class WalletCard {
   final String holderName;
   final String? documentNumber;
   final Uint8List photoImageData;
+  final ImageType? photoImageType;
   final DateTime addedAt;
 
   static int _idCounter = 0;
@@ -24,6 +25,7 @@ class WalletCard {
     required this.holderName,
     required this.documentNumber,
     required this.photoImageData,
+    required this.photoImageType,
     required this.addedAt,
   });
 
@@ -31,6 +33,7 @@ class WalletCard {
     String holderName;
     String? documentNumber;
     Uint8List photo;
+    ImageType? photoType;
     switch (documentType) {
       case DocumentType.passport:
       case DocumentType.identityCard:
@@ -38,11 +41,13 @@ class WalletCard {
         holderName = passport.displayName;
         documentNumber = passport.mrz.documentNumber;
         photo = passport.photoImageData;
+        photoType = passport.photoImageType;
       case DocumentType.drivingLicence:
         final licence = document as DrivingLicenceData;
         holderName = '${licence.holderOtherName} ${licence.holderSurname}'.trim();
         documentNumber = licence.documentNumber;
         photo = licence.photoImageData;
+        photoType = licence.photoImageType;
     }
     return WalletCard(
       id: '${DateTime.now().microsecondsSinceEpoch}-${_idCounter++}',
@@ -50,6 +55,7 @@ class WalletCard {
       holderName: holderName,
       documentNumber: documentNumber,
       photoImageData: photo,
+      photoImageType: photoType,
       addedAt: DateTime.now(),
     );
   }

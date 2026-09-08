@@ -25,6 +25,31 @@ class MrtdApiError implements Exception {
   String toString() => "MRTDApiError: $message";
 }
 
+/// Tracks progress reading a single elementary file across possibly several
+/// calls to [MrtdApi.readFileBySFI], so that if the connection to the chip is
+/// lost part-way through a large file (e.g. DG2's face image) a retry can
+/// continue from the last byte read instead of starting the file over.
+///
+/// The caller is responsible for keeping the same instance around across
+/// retries (e.g. keyed by SFI) and for discarding it once the file has been
+/// read in full.
+class MrtdFileReadState {
+  Uint8List? _header;
+  int _remainingAfterHeader = 0;
+  Uint8List content = Uint8List(0);
+
+  bool get hasHeader => _header != null;
+
+  void _setHeader(Uint8List header, int remainingAfterHeader) {
+    _header = header;
+    _remainingAfterHeader = remainingAfterHeader;
+  }
+
+  int get _remaining => _remainingAfterHeader - content.length;
+
+  Uint8List get _rawFile => Uint8List.fromList(_header! + content);
+}
+
 /// Defines ICAO 9303 MRTD standard API to
 /// communicate and send commands to MRTD.
 /// TODO: Add ComProvider onConnected notifier and reset _maxRead to _defaultReadLength on new connection
@@ -156,28 +181,55 @@ class MrtdApi {
   /// Can throw [ICCError] in case when file doesn't exist, read errors or
   /// SM session is not established but required to read file.
   /// Can throw [ComProviderError] in case connection with MRTD is lost.
-  Future<Uint8List> readFileBySFI(int sfi) async {
+  ///
+  /// If [state] is passed and already carries progress from an earlier,
+  /// interrupted call for the same file (see [MrtdFileReadState]), the read
+  /// continues from where it left off instead of starting over. [state] is
+  /// mutated in place as bytes are read, so the caller can still see how far
+  /// the read got even if this call throws (e.g. because the connection to
+  /// the chip was lost) - resulting in a smaller read on the next attempt.
+  Future<Uint8List> readFileBySFI(int sfi, {MrtdFileReadState? state}) async {
     _log.debug("Reading file sfi=0x${sfi.hex()}");
     sfi |= 0x80;
     if (sfi > 0x9F) {
       throw ArgumentError.value(sfi, null, "Invalid SFI value");
     }
+    final st = state ?? MrtdFileReadState();
 
-    // Read chunk of file to obtain file length
-    final chunk1 = await icc.readBinaryBySFI(sfi: sfi, offset: 0, ne: _readAheadLength);
-    final dtl = TLV.decodeTagAndLength(chunk1.data!);
+    if (!st.hasHeader) {
+      // First attempt at this file: read a chunk to obtain its length.
+      final chunk1 = await icc.readBinaryBySFI(sfi: sfi, offset: 0, ne: _readAheadLength);
+      final dtl = TLV.decodeTagAndLength(chunk1.data!);
+      st._setHeader(chunk1.data!, dtl.length.value - (chunk1.data!.length - dtl.encodedLen));
+    } else if (st._remaining > 0) {
+      // Resuming after the connection to the chip was lost and re-established:
+      // file/EF selection does not survive that, so re-select this file as
+      // the current EF before continuing to read it from where we left off.
+      await icc.readBinaryBySFI(sfi: sfi, offset: 0, ne: _readAheadLength);
+    }
 
-    // Read the rest of the file
-    final length = dtl.length.value - (chunk1.data!.length - dtl.encodedLen);
-    final chunk2 = await _readBinary(offset: chunk1.data!.length, length: length);
+    if (st._remaining > 0) {
+      // _readBinary only knows about the bytes read within this call, so its
+      // progress must be appended to whatever content was already cached
+      // from an earlier, interrupted call - not used to replace it.
+      final contentBeforeThisCall = st.content;
+      await _readBinary(
+        offset: st._header!.length + contentBeforeThisCall.length,
+        length: st._remaining,
+        onProgress: (dataSoFar) => st.content = Uint8List.fromList(contentBeforeThisCall + dataSoFar),
+      );
+    }
 
-    final rawFile = Uint8List.fromList(chunk1.data! + chunk2);
-    assert(rawFile.length == dtl.encodedLen + dtl.length.value);
+    final rawFile = st._rawFile;
+    assert(rawFile.length == st._header!.length + st._remainingAfterHeader);
     return rawFile;
   }
 
   /// Reads [length] long fragment of file starting at [offset].
-  Future<Uint8List> _readBinary({required int offset, required int length}) async {
+  /// [onProgress], if given, is invoked with the cumulative bytes read so far
+  /// after every successfully read chunk, so a caller can recover partial
+  /// progress even if this call later throws.
+  Future<Uint8List> _readBinary({required int offset, required int length, void Function(Uint8List)? onProgress}) async {
     var data = Uint8List(0);
     while (length > 0) {
       int nRead = length;
@@ -221,6 +273,7 @@ class MrtdApi {
           data = Uint8List.fromList(data + rapdu.data!);
           offset += rapdu.data!.length;
           length -= rapdu.data!.length;
+          onProgress?.call(data);
         } else {
           _log.warning("No data received when trying to read binary");
         }
@@ -253,6 +306,7 @@ class MrtdApi {
       _log.warning("Total read data size is greater than requested, removing last ${length.abs()} byte(s)");
       _log.debug("  Requested size:$newSize byte(s) actual size:${data.length} byte(s)");
       data = data.sublist(0, newSize);
+      onProgress?.call(data);
     }
 
     return data;

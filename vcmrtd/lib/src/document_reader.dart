@@ -40,6 +40,20 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
   List<String> _sensitiveLog = [];
   IosNfcMessageMapper? _iosNfcMessageMapper;
 
+  // Files already successfully read on a prior *failed* attempt at this
+  // document (map key is the data group name, e.g. "DG2"). If readDocument()
+  // previously exhausted its retries on, say, DG14 after DG1-DG13 had already
+  // been read, retrying should not pay for re-reading DG1-DG13 again.
+  // reset() intentionally leaves these caches alone - it is only ever called
+  // to retry the same, still-incomplete document. They are cleared as soon
+  // as a read completes successfully (see the end of readDocument()), since
+  // at that point there is nothing left to resume and the next
+  // readDocument() call - on the same reader instance, whether for the same
+  // document scanned again or a different one - must start fresh.
+  final Map<String, String> _dataGroups = {};
+  bool _efComRead = false;
+  bool _efSodRead = false;
+
   DocumentReader({
     required this.documentParser,
     required this.dataGroupReader,
@@ -131,19 +145,20 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
       }
     }
 
-    _setState(DocumentReaderReadingCOM());
-    try {
-      await _reconnectionLoop(
-        authMethod: method,
-        whenConnected: () async => documentParser.parseEfCOM(await dataGroupReader.readEfCOM()),
-      );
-      if (state is DocumentReaderCancelled) return null;
-    } catch (e) {
-      await _failure('Failure reading Ef.COM', e);
-      return null;
+    if (!_efComRead) {
+      _setState(DocumentReaderReadingCOM());
+      try {
+        await _reconnectionLoop(
+          authMethod: method,
+          whenConnected: () async => documentParser.parseEfCOM(await dataGroupReader.readEfCOM()),
+        );
+        if (state is DocumentReaderCancelled) return null;
+        _efComRead = true;
+      } catch (e) {
+        await _failure('Failure reading Ef.COM', e);
+        return null;
+      }
     }
-
-    final Map<String, String> dataGroups = {};
 
     // isMandatory: DG1, DG2 are mandatory; DG15 is mandatory if provided
     for (final (dataGroup, read, parse, progress, isMandatory) in [
@@ -168,7 +183,14 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
         continue;
       }
 
-      _setState(DocumentReaderReadingDataGroup(dataGroup: dataGroup.getName(), progress: progress));
+      final dgName = dataGroup.getName();
+      if (_dataGroups.containsKey(dgName)) {
+        // Already read (and parsed) successfully on a prior attempt; a
+        // retry after a later DG failed should not pay to re-fetch this one.
+        continue;
+      }
+
+      _setState(DocumentReaderReadingDataGroup(dataGroup: dgName, progress: progress));
       Uint8List? bytes;
 
       // First, read the bytes from the chip
@@ -179,7 +201,7 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
             bytes = await read();
             final hexData = bytes!.hex();
             if (hexData.isNotEmpty) {
-              dataGroups[dataGroup.getName()] = hexData;
+              _dataGroups[dgName] = hexData;
             }
           },
         );
@@ -187,8 +209,18 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
           return null;
         }
       } catch (e) {
-        await _failure('Failure reading data group $dataGroup', e);
-        return null;
+        // _reconnectionLoop only reaches here by rethrowing after exhausting
+        // its retries (a cancellation returns via _setToCancelState() above
+        // instead of throwing), so this is a genuine, persistent read
+        // failure. Optional DGs are already allowed to fail to parse without
+        // aborting the whole document (below) - a DG that can't be read at
+        // all deserves the same treatment, not a harder failure mode.
+        if (isMandatory) {
+          await _failure('Failure reading data group $dataGroup', e);
+          return null;
+        }
+        _addLog('Failed to read optional data group $dataGroup: $e');
+        continue;
       }
 
       // Then, parse the bytes (can fail for optional DGs)
@@ -206,18 +238,21 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
       }
     }
 
-    _setState(DocumentReaderReadingSOD());
-    try {
-      await _reconnectionLoop(
-        authMethod: method,
-        whenConnected: () async => documentParser.parseEfSOD(await dataGroupReader.readEfSOD()),
-      );
-      if (state is DocumentReaderCancelled) {
+    if (!_efSodRead) {
+      _setState(DocumentReaderReadingSOD());
+      try {
+        await _reconnectionLoop(
+          authMethod: method,
+          whenConnected: () async => documentParser.parseEfSOD(await dataGroupReader.readEfSOD()),
+        );
+        if (state is DocumentReaderCancelled) {
+          return null;
+        }
+        _efSodRead = true;
+      } catch (e) {
+        await _failure('Failure reading SOD', e);
         return null;
       }
-    } catch (e) {
-      await _failure('Failure reading SOD', e);
-      return null;
     }
 
     Uint8List? aaSig;
@@ -272,12 +307,21 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
 
     final document = documentParser.createDocument();
     final result = RawDocumentData(
-      dataGroups: dataGroups,
+      dataGroups: Map<String, String>.from(_dataGroups),
       efSod: documentParser.sod.toBytes().hex(),
       sessionId: activeAuthenticationParams?.sessionId,
       nonce: activeAuthenticationParams != null ? stringToUint8List(activeAuthenticationParams.nonce) : null,
       aaSignature: aaSig,
     );
+
+    // The read completed fully: there is nothing left to resume, so the
+    // cross-attempt caches above must not leak into whatever readDocument()
+    // call comes next - otherwise a second read (of the same or a different
+    // document, on a reused reader instance) would see these DGs/EF.COM/
+    // EF.SOD as "already read" and skip reading the chip almost entirely.
+    _dataGroups.clear();
+    _efComRead = false;
+    _efSodRead = false;
 
     return (document, result);
   }
@@ -329,31 +373,46 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
         await whenConnected();
         return;
       } on Exception catch (e) {
+        // Check for cancellation before giving up on attempt count, so a
+        // cancel on the very last attempt is still reported as Cancelled
+        // rather than as a generic failure.
+        if (_isCancelled || _isCancelException(e)) {
+          return await _setToCancelState();
+        }
         if (i >= numAttempts) {
           _addLog('Rethrow on attempt $i');
           rethrow;
-        }
-        if (_isCancelled || _isCancelException(e)) {
-          return await _setToCancelState();
         }
         await Future.delayed(const Duration(milliseconds: 300));
         _addLog('Retry $i (Reason: $e)');
         try {
           await _retryConnection();
-        } catch (e) {
-          _addLog('Retry connection failed: $e');
+        } catch (e2) {
+          // _retryConnection() re-polls for the tag, which on iOS/Android
+          // shows the NFC prompt again. If the user (or the OS) cancels
+          // *that* prompt, the resulting exception must not be silently
+          // discarded here - it needs the same cancellation check as the
+          // original error above.
+          _addLog('Retry connection failed: $e2');
+          if (_isCancelled || (e2 is Exception && _isCancelException(e2))) {
+            return await _setToCancelState();
+          }
+          // Reconnect didn't succeed for a non-cancel reason; there is no
+          // live connection to re-authenticate against yet, so move on to
+          // the next attempt instead of calling startSession/startSessionPACE.
+          continue;
         }
 
         if (authMethod != _AuthMethod.none) {
           try {
-            if (_isCancelled || _isCancelException(e)) {
-              return await _setToCancelState();
-            }
             authMethod == _AuthMethod.bac
                 ? await dataGroupReader.startSession()
                 : await dataGroupReader.startSessionPACE(documentParser.cardAccess);
-          } catch (e) {
-            _addLog('Retry authenticate failed: $e');
+          } catch (e3) {
+            _addLog('Retry authenticate failed: $e3');
+            if (_isCancelled || (e3 is Exception && _isCancelException(e3))) {
+              return await _setToCancelState();
+            }
           }
         }
       }

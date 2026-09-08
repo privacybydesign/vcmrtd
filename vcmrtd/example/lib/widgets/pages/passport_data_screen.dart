@@ -111,9 +111,7 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
 
   void _addToWallet() {
     ref.read(walletProvider.notifier).add(WalletCard.fromDocument(widget.document, widget.documentType));
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Added to wallet (example app only — cleared on restart)')));
+    widget.onBackPressed();
   }
 
   Future<void> _verifyPassport() async {

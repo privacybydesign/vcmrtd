@@ -75,8 +75,8 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
                       onPressed: _addToWallet,
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: Colors.green[600],
-                        foregroundColor: Colors.white,
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
                       icon: const Icon(Icons.account_balance_wallet),
@@ -127,9 +127,7 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
 
   void _addToWallet() {
     ref.read(walletProvider.notifier).add(WalletCard.fromDocument(widget.drivingLicence, DocumentType.drivingLicence));
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Added to wallet (example app only — cleared on restart)')));
+    widget.onBackPressed();
   }
 
   Future<void> _verifyDrivingLicence() async {

@@ -5,9 +5,29 @@ import 'dart:typed_data';
 
 import 'package:test/test.dart';
 import 'package:vcmrtd/extensions.dart';
+import 'package:vcmrtd/src/com/com_provider.dart';
+import 'package:vcmrtd/src/lds/tlv.dart';
 import 'package:vcmrtd/src/proto/mrtd_api.dart';
 
 import 'fake_com_provider.dart';
+
+/// Splits [file] into the exact sequence of response chunks (each with a
+/// trailing 9000) that readFileBySFI/_readBinary would request: an initial
+/// [peekLen]-byte peek, then successive [maxRead]-byte chunks for the rest.
+/// Used to script a FakeComProvider matching the real read pattern.
+List<Uint8List> _chunkFile(Uint8List file, {int peekLen = 8, int maxRead = 256}) {
+  final out = <Uint8List>[];
+  var offset = 0;
+  final peekEnd = offset + peekLen > file.length ? file.length : offset + peekLen;
+  out.add(Uint8List.fromList([...file.sublist(offset, peekEnd), 0x90, 0x00]));
+  offset = peekEnd;
+  while (offset < file.length) {
+    final end = offset + maxRead > file.length ? file.length : offset + maxRead;
+    out.add(Uint8List.fromList([...file.sublist(offset, end), 0x90, 0x00]));
+    offset = end;
+  }
+  return out;
+}
 
 void main() {
   group('MrtdApi', () {
@@ -102,6 +122,53 @@ void main() {
       expect(result, sig);
       // INS 0x88 INTERNAL_AUTHENTICATE
       expect(com.sent.first.hex().substring(2, 4), "88");
+    });
+
+    test('readFileBySFI resumes large-file progress across a reconnect instead of re-reading from the start', () async {
+      // 604-byte file: 4-byte BER header (tag + long-form length) + 600-byte
+      // value, chunked at the default 256-byte max read into
+      // [peek(8), rest1(256), rest2(256), rest3(84)].
+      final value = Uint8List.fromList(List.generate(600, (i) => i & 0xFF));
+      final file = TLV.encode(0x60, value);
+      final chunks = _chunkFile(file);
+      expect(chunks.length, 4);
+
+      // First attempt: connection drops after the first "rest" chunk (the
+      // FakeComProvider throws ComProviderError once its queue runs dry,
+      // simulating the tag moving out of range).
+      final com1 = FakeComProvider([chunks[0], chunks[1]]);
+      final api1 = MrtdApi(com1);
+      final state = MrtdFileReadState();
+      await expectLater(api1.readFileBySFI(0x02, state: state), throwsA(isA<ComProviderError>()));
+
+      // The header and first rest chunk already made it into the shared
+      // state and should not need to be re-fetched.
+      expect(state.hasHeader, true);
+      expect(state.content.length, 256);
+
+      // Second attempt: new connection/session (new MrtdApi), same cached
+      // state. Only a small re-select read plus the two still-missing rest
+      // chunks are needed to finish - not a full re-read from offset 0.
+      final com2 = FakeComProvider([chunks[0], chunks[2], chunks[3]]);
+      final api2 = MrtdApi(com2);
+      final raw = await api2.readFileBySFI(0x02, state: state);
+
+      expect(raw, file);
+      // 1 re-select read + 2 remaining chunks = 3 commands (a full re-read
+      // would have needed 4: peek + all 3 rest chunks).
+      expect(com2.sent.length, 3);
+    });
+
+    test('readFileBySFI without a state param behaves exactly as before (no resume across calls)', () async {
+      final fullValue = "00112233445566778899".parseHex();
+      final file = Uint8List.fromList([0x60, 0x0A, ...fullValue]);
+      final chunk1 = Uint8List.fromList([...file.sublist(0, 8), 0x90, 0x00]);
+      final chunk2 = Uint8List.fromList([...file.sublist(8, 12), 0x90, 0x00]);
+      final com = FakeComProvider([chunk1, chunk2]);
+      final api = MrtdApi(com);
+      final raw = await api.readFileBySFI(0x01);
+      expect(raw, file);
+      expect(com.sent.length, 2);
     });
 
     test('readFileBySFI propagates ICCError as MrtdApiError when read chunk fails', () async {

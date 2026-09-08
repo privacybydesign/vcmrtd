@@ -93,12 +93,9 @@ void main() {
     await tester.tap(find.text('Add to Wallet'));
     await tester.pump();
 
-    expect(find.textContaining('Added to wallet'), findsOneWidget);
     expect(container.read(walletProvider), hasLength(1));
     expect(container.read(walletProvider).single.holderName, 'ANNA MARIA ERIKSSON');
-
-    await tester.tap(find.byType(IconButton).first);
-    expect(backCount, 1);
+    expect(backCount, 1, reason: 'adding to wallet should navigate back to the wallet page');
   });
 
   testWidgets('DrivingLicenceDataScreen renders licence data and adds it to the wallet', (tester) async {
@@ -133,11 +130,8 @@ void main() {
     await tester.tap(find.text('Add to Wallet'));
     await tester.pump();
 
-    expect(find.textContaining('Added to wallet'), findsOneWidget);
     expect(container.read(walletProvider), hasLength(1));
     expect(container.read(walletProvider).single.holderName, 'Anna Maria Eriksson');
-
-    await tester.tap(find.byType(IconButton).first);
-    expect(backCount, 1);
+    expect(backCount, 1, reason: 'adding to wallet should navigate back to the wallet page');
   });
 }

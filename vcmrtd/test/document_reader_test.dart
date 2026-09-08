@@ -67,6 +67,21 @@ class FakeNfcProvider extends NfcProvider {
   }
 }
 
+/// Throws an OS-level "session invalidated" error on every connect() call
+/// after the first, simulating the user (or the OS) cancelling the NFC
+/// prompt that _retryConnection() re-shows when recovering from a transient
+/// read error - i.e. a cancellation on the "second scan".
+class _CancelsOnRetryNfcProvider extends FakeNfcProvider {
+  @override
+  Future<void> connect({Duration? timeout, String iosAlertMessage = ""}) async {
+    connectCount++;
+    if (connectCount > 1) {
+      throw NfcProviderError('Session invalidated by user');
+    }
+    _connected = true;
+  }
+}
+
 /// A queued action: either return canned bytes or throw a supplied error.
 class _Step {
   final Uint8List? bytes;
@@ -286,8 +301,9 @@ Harness makeHarness({
   bool nfcConnected = false,
   bool aaViaDg13 = false,
   DocumentReaderConfig? config,
+  FakeNfcProvider? nfc,
 }) {
-  final nfc = FakeNfcProvider(connected: nfcConnected);
+  final nfcProvider = nfc ?? FakeNfcProvider(connected: nfcConnected);
   final dgr = FakeDataGroupReader(FakeComProvider([], throwWhenEmpty: false), steps: steps);
   dgr.startSessionError = startSessionError;
   dgr.startSessionPaceError = startSessionPaceError;
@@ -298,11 +314,11 @@ Harness makeHarness({
   final cfg = config ?? DocumentReaderConfig(readIfAvailable: DataGroups.values.toSet());
 
   final provider = NotifierProvider<DocumentReader<DocumentData>, DocumentReaderState>(
-    () => DocumentReader<DocumentData>(documentParser: parser, dataGroupReader: dgr, nfc: nfc, config: cfg),
+    () => DocumentReader<DocumentData>(documentParser: parser, dataGroupReader: dgr, nfc: nfcProvider, config: cfg),
   );
   final container = ProviderContainer();
   addTearDown(container.dispose);
-  return Harness(container, provider, nfc, dgr, parser);
+  return Harness(container, provider, nfcProvider, dgr, parser);
 }
 
 void main() {
@@ -537,7 +553,7 @@ void main() {
       expect(h.state, isA<DocumentReaderFailed>());
     });
 
-    test('DG read failure -> Failed', () async {
+    test('mandatory DG read failure -> Failed', () async {
       final h = makeHarness(
         present: {DataGroups.dg1, DataGroups.dg2},
         steps: {'DG1': List.generate(5, (_) => _Step.fail(Exception('dg lost')))},
@@ -545,6 +561,24 @@ void main() {
       final result = await h.reader.readDocument(iosNfcMessages: _msg);
       expect(result, isNull);
       expect(h.state, isA<DocumentReaderFailed>());
+    });
+
+    test('optional DG read failure is logged and skipped, read still succeeds', () async {
+      // DG7 (optional) never manages to be read; unlike a mandatory DG this
+      // must not abort the whole document, mirroring how an optional DG's
+      // parse failure is already tolerated.
+      final h = makeHarness(
+        present: {DataGroups.dg1, DataGroups.dg2, DataGroups.dg7},
+        steps: {'DG7': List.generate(5, (_) => _Step.fail(Exception('dg7 lost')))},
+      );
+      final result = await h.reader.readDocument(iosNfcMessages: _msg);
+      expect(result, isNotNull);
+      expect(h.state, isA<DocumentReaderSuccess>());
+      expect(result!.$2.dataGroups.keys, containsAll(['DG1', 'DG2']));
+      expect(result.$2.dataGroups.containsKey('DG7'), false);
+      // DG7 is never parsed since it was never successfully read.
+      expect(h.parser.parsed.contains('DG7'), false);
+      expect(h.reader.getLogs(), contains('Failed to read optional data group'));
     });
 
     test('SOD read failure -> Failed', () async {
@@ -611,6 +645,87 @@ void main() {
       expect(h.state, isA<DocumentReaderCancelled>());
       // disconnect happened inside _setToCancelState
       expect(h.nfc.disconnectCount, greaterThanOrEqualTo(1));
+    });
+
+    test('cancellation during retry-connection is recognised, not swallowed as a generic failure', () async {
+      // COM fails once with a transient (non-cancel) error. That triggers
+      // _reconnectionLoop's retry path, whose _retryConnection() re-polls -
+      // and this NfcProvider throws a "session invalidated" error on that
+      // second connect() call, simulating the user cancelling the re-shown
+      // NFC prompt.
+      final h = makeHarness(
+        present: {DataGroups.dg1, DataGroups.dg2},
+        steps: {
+          'COM': [_Step.fail(Exception('transient'))],
+        },
+        nfc: _CancelsOnRetryNfcProvider(),
+      );
+
+      final result = await h.reader.readDocument(iosNfcMessages: _msg);
+
+      expect(result, isNull);
+      expect(h.state, isA<DocumentReaderCancelled>());
+    });
+  });
+
+  // --- retry preserves already-read progress --------------------------------
+
+  group('retry after a failure preserves already-read data groups', () {
+    test('a later mandatory DG exhausting retries does not lose earlier successfully-read DGs on the next attempt', () async {
+      final h = makeHarness(
+        present: {DataGroups.dg1, DataGroups.dg2, DataGroups.dg15},
+        steps: {
+          // DG15 (mandatory-if-present) fails every attempt on the first
+          // readDocument() call, so the whole read aborts.
+          'DG15': List.generate(5, (_) => _Step.fail(Exception('dg15 lost'))),
+        },
+      );
+
+      final first = await h.reader.readDocument(iosNfcMessages: _msg);
+      expect(first, isNull);
+      expect(h.state, isA<DocumentReaderFailed>());
+      // DG1 and DG2 were read successfully before DG15 gave up.
+      expect(h.dgr.calls.where((c) => c == 'DG1').length, 1);
+      expect(h.dgr.calls.where((c) => c == 'DG2').length, 1);
+      expect(h.dgr.calls.where((c) => c == 'COM').length, 1);
+
+      h.reader.reset();
+      final second = await h.reader.readDocument(iosNfcMessages: _msg);
+
+      expect(second, isNotNull);
+      expect(h.state, isA<DocumentReaderSuccess>());
+      expect(second!.$2.dataGroups.keys, containsAll(['DG1', 'DG2', 'DG15']));
+      // DG1, DG2 and COM were not re-read on the second attempt.
+      expect(h.dgr.calls.where((c) => c == 'DG1').length, 1);
+      expect(h.dgr.calls.where((c) => c == 'DG2').length, 1);
+      expect(h.dgr.calls.where((c) => c == 'COM').length, 1);
+      // DG15 was attempted again (5 failed + 1 succeeding = 6 total calls).
+      expect(h.dgr.calls.where((c) => c == 'DG15').length, 6);
+    });
+
+    test('a second full readDocument() call after a success starts fresh, not skipping everything', () async {
+      // Regression test: on a reader instance reused for a second read (e.g.
+      // scanning the same document again, or a different one), the caches
+      // that make a *retry after failure* skip already-read DGs must not
+      // also make an entirely new, successful read skip everything.
+      final h = makeHarness(present: {DataGroups.dg1, DataGroups.dg2});
+
+      final first = await h.reader.readDocument(iosNfcMessages: _msg);
+      expect(first, isNotNull);
+      expect(h.state, isA<DocumentReaderSuccess>());
+      expect(h.dgr.calls.where((c) => c == 'DG1').length, 1);
+      expect(h.dgr.calls.where((c) => c == 'COM').length, 1);
+      expect(h.dgr.calls.where((c) => c == 'SOD').length, 1);
+
+      final second = await h.reader.readDocument(iosNfcMessages: _msg);
+      expect(second, isNotNull);
+      expect(h.state, isA<DocumentReaderSuccess>());
+      expect(second!.$2.dataGroups.keys, containsAll(['DG1', 'DG2']));
+      // The chip was actually read again on the second call, not skipped.
+      expect(h.dgr.calls.where((c) => c == 'DG1').length, 2);
+      expect(h.dgr.calls.where((c) => c == 'DG2').length, 2);
+      expect(h.dgr.calls.where((c) => c == 'COM').length, 2);
+      expect(h.dgr.calls.where((c) => c == 'SOD').length, 2);
     });
   });
 }

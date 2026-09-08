@@ -16,7 +16,6 @@ import 'package:vcmrtdapp/widgets/pages/nfc_reading_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/passport_data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/scanner_wrapper.dart';
 import 'package:vcmrtdapp/widgets/pages/settings_screen.dart';
-import 'package:vcmrtdapp/widgets/pages/wallet_screen.dart';
 
 /// The photo + issue date to seed face verification with, straight off the
 /// just-read [document] — used to jump into face verification immediately
@@ -34,7 +33,6 @@ import 'package:vcmrtdapp/widgets/pages/wallet_screen.dart';
 
 const _faceVerificationPath = '/face_verification';
 const _settingsPath = '/settings';
-const _walletPath = '/wallet';
 
 extension CustomRouteExtensions on BuildContext {
   void pushNfcReadingScreen(NfcReadingRouteParams params) {
@@ -74,10 +72,6 @@ extension CustomRouteExtensions on BuildContext {
   void pushSettingsScreen() {
     push(_settingsPath);
   }
-
-  void pushWalletScreen() {
-    push(_walletPath);
-  }
 }
 
 final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
@@ -95,17 +89,12 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
               context.pushMrzReaderScreen(MrzReaderRouteParams(documentType: docType));
             },
             onSettingsPressed: context.pushSettingsScreen,
-            onWalletPressed: context.pushWalletScreen,
           );
         },
       ),
       GoRoute(
         path: _settingsPath,
         builder: (context, state) => SettingsScreen(onBackPressed: context.pop),
-      ),
-      GoRoute(
-        path: _walletPath,
-        builder: (context, state) => WalletScreen(onBackPressed: context.pop),
       ),
       GoRoute(
         path: '/mrz_reader',
