@@ -284,7 +284,10 @@ void main() {
             path: '/',
             builder: (_, __) => NfcReadingScreen(params: params, onSuccess: (_, __) {}),
           ),
-          GoRoute(path: '/next', builder: (_, __) => const Scaffold(body: Text('face verification'))),
+          GoRoute(
+            path: '/next',
+            builder: (_, __) => const Scaffold(body: Text('face verification')),
+          ),
         ],
       );
       addTearDown(router.dispose);

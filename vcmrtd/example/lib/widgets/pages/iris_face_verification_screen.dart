@@ -263,11 +263,7 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const CircularProgressIndicator(),
-          const SizedBox(height: 16),
-          Text(_launchMessage),
-        ],
+        children: [const CircularProgressIndicator(), const SizedBox(height: 16), Text(_launchMessage)],
       ),
     );
   }
@@ -378,7 +374,11 @@ class _ResultView extends StatelessWidget {
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color),
           ),
           const SizedBox(height: 12),
-          Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.grey),
+          ),
           if (documentPhoto != null || liveFace != null) ...[
             const SizedBox(height: 24),
             Row(
@@ -392,7 +392,9 @@ class _ResultView extends StatelessWidget {
           ],
           const SizedBox(height: 32),
           if (isContinuing)
-            const Center(child: Text('Continuing…', style: TextStyle(color: Colors.grey)))
+            const Center(
+              child: Text('Continuing…', style: TextStyle(color: Colors.grey)),
+            )
           else if (onRetry != null)
             OutlinedButton(onPressed: onRetry, child: const Text('Try Again')),
         ],

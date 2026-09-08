@@ -82,9 +82,7 @@ void main() {
     expect(find.text('Continuing…'), findsOneWidget);
   });
 
-  testWidgets('a matched result auto-continues to onVerified after a short delay, not onBackPressed', (
-    tester,
-  ) async {
+  testWidgets('a matched result auto-continues to onVerified after a short delay, not onBackPressed', (tester) async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async {
       return {'outcome': 'matched', 'face': _fakePortraitPng()};
     });

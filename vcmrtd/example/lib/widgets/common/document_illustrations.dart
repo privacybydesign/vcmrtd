@@ -20,10 +20,7 @@ Widget buildPhoneIllustration() {
           width: 40,
           height: 6,
           margin: const EdgeInsets.only(top: 8),
-          decoration: BoxDecoration(
-            color: const Color.fromARGB(255, 0, 0, 0),
-            borderRadius: BorderRadius.circular(3),
-          ),
+          decoration: BoxDecoration(color: const Color.fromARGB(255, 0, 0, 0), borderRadius: BorderRadius.circular(3)),
         ),
         const Spacer(),
         // You can add a blank screen or content here if desired

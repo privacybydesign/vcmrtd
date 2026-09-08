@@ -56,10 +56,7 @@ class SettingsScreen extends ConsumerWidget {
               context: context,
               title: 'Face verification engine',
               current: ref.read(faceEngineProvider),
-              options: const [
-                (FaceEngineChoice.onDevice, 'Open source'),
-                (FaceEngineChoice.iris, 'Iris SDK'),
-              ],
+              options: const [(FaceEngineChoice.onDevice, 'Open source'), (FaceEngineChoice.iris, 'Iris SDK')],
               onSelected: (choice) => ref.read(faceEngineProvider.notifier).set(choice),
             ),
           ),
@@ -73,10 +70,7 @@ class SettingsScreen extends ConsumerWidget {
                 context: context,
                 title: 'Liveness detection',
                 current: ref.read(livenessModeProvider),
-                options: const [
-                  (LivenessMode.passive, 'Passive'),
-                  (LivenessMode.active, 'Active'),
-                ],
+                options: const [(LivenessMode.passive, 'Passive'), (LivenessMode.active, 'Active')],
                 onSelected: (mode) => ref.read(livenessModeProvider.notifier).set(mode),
               ),
             ),

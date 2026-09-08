@@ -1,4 +1,4 @@
-﻿import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtd/vcmrtd.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
@@ -308,10 +308,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: titleColor),
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    _readingStepSubtitles[index],
-                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                  ),
+                  Text(_readingStepSubtitles[index], style: TextStyle(fontSize: 13, color: Colors.grey[600])),
                 ],
               ),
             ),
@@ -346,10 +343,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
         children: [
           Align(
             alignment: Alignment.centerLeft,
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => _handleBack(context),
-            ),
+            child: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => _handleBack(context)),
           ),
           StepBadge(current: 2, total: 4, label: 'Read ${widget.params.documentType.displayName}'),
         ],

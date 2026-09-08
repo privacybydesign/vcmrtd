@@ -53,7 +53,10 @@ class _NfcReadingAnimationState extends State<NfcReadingAnimation> with SingleTi
             top: 0,
             child: Stack(
               alignment: Alignment.center,
-              children: [buildPhoneIllustration(), const Icon(Icons.wifi, color: Color(0xFF2196F3), size: 28)],
+              children: [
+                buildPhoneIllustration(),
+                const Icon(Icons.wifi, color: Color(0xFF2196F3), size: 28),
+              ],
             ),
           ),
         ],

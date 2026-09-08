@@ -22,7 +22,10 @@ class DocumentTypeSelectionScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('VCMRTD', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22)),
+        title: const Text(
+          'VCMRTD',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22),
+        ),
         actions: [
           if (hasCards)
             IconButton(
@@ -42,7 +45,9 @@ class DocumentTypeSelectionScreen extends ConsumerWidget {
           ),
         ),
         child: SafeArea(
-          child: hasCards ? _WalletHome(cards: cards, onSettingsPressed: onSettingsPressed) : _ScanOptionsHome(onDocumentTypeSelected: onDocumentTypeSelected, onSettingsPressed: onSettingsPressed),
+          child: hasCards
+              ? _WalletHome(cards: cards, onSettingsPressed: onSettingsPressed)
+              : _ScanOptionsHome(onDocumentTypeSelected: onDocumentTypeSelected, onSettingsPressed: onSettingsPressed),
         ),
       ),
     );

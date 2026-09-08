@@ -54,7 +54,8 @@ class WalletList extends ConsumerWidget {
           padding: const EdgeInsets.only(bottom: 12),
           child: WalletCardTile(
             card: card,
-            onTap: () => showWalletCardDetails(context, card, onRemove: () => ref.read(walletProvider.notifier).remove(card.id)),
+            onTap: () =>
+                showWalletCardDetails(context, card, onRemove: () => ref.read(walletProvider.notifier).remove(card.id)),
           ),
         );
       },
@@ -173,7 +174,10 @@ class _WalletCardDetailsSheet extends StatelessWidget {
             const SizedBox(height: 24),
             OutlinedButton.icon(
               onPressed: onRemove,
-              style: OutlinedButton.styleFrom(foregroundColor: Colors.red, padding: const EdgeInsets.symmetric(vertical: 14)),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
               icon: const Icon(Icons.delete_outline),
               label: const Text('Remove from wallet'),
             ),
