@@ -60,6 +60,11 @@ class _FakeReader extends DocumentReader<PassportData> {
     state = DocumentReaderPending();
   }
 
+  /// Test-only hook to simulate a state transition, as the real reader would
+  /// emit one mid-[readDocument] - [initialState] only covers the state the
+  /// screen is built with, not changes after that.
+  void emit(DocumentReaderState newState) => state = newState;
+
   @override
   Future<(PassportData, RawDocumentData)?> readDocument({
     required IosNfcMessageMapper iosNfcMessages,
@@ -184,21 +189,60 @@ void main() {
       expect(find.byType(AnimatedNFCStatusWidget), findsOneWidget);
     });
 
-    testWidgets('reconnecting state shows the reposition tip and keeps the wrapped step', (tester) async {
+    testWidgets('failed state with a lost-connection error shows the reposition tip immediately', (tester) async {
       _setLargeViewport(tester);
-      _FakeReader.initialState = DocumentReaderReconnecting(
-        DocumentReaderReadingDataGroup(dataGroup: 'DG2', progress: 0.4),
+      _FakeReader.initialState = DocumentReaderFailed(
+        error: DocumentReadingError.tagLost,
+        logs: 'logs',
+        sensitiveLogs: 'sensitive',
       );
       await tester.pumpWidget(_app(DocumentType.passport));
-      await tester.pump(const Duration(milliseconds: 600));
+      await tester.pump(const Duration(milliseconds: 100));
 
-      // A lost connection mid-retry must not look identical to a healthy
-      // read in progress - the tip is the only signal the user gets.
+      // A terminal tag-lost failure won't recover on its own, so there's
+      // nothing to debounce - the tip shows right away.
       expect(find.textContaining('Slowly lift your phone off the document'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 600));
+    });
+
+    testWidgets('reconnecting state only shows the reposition tip once the connection has stayed lost for a bit', (
+      tester,
+    ) async {
+      _setLargeViewport(tester);
+      _FakeReader.initialState = DocumentReaderReadingDataGroup(dataGroup: 'DG2', progress: 0.4);
+      await tester.pumpWidget(_app(DocumentType.passport));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final reader =
+          ProviderScope.containerOf(
+                tester.element(find.byType(NfcReadingScreen)),
+              ).read(passportReaderProvider(_passportMrz()).notifier)
+              as _FakeReader;
+      reader.emit(DocumentReaderReconnecting(DocumentReaderReadingDataGroup(dataGroup: 'DG2', progress: 0.4)));
+      await tester.pump();
+
+      // A brief blip that's still within the debounce window must not
+      // read as "stuck" - a retry that resolves on its own would otherwise
+      // flash a tip about a connection that was never really lost.
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.textContaining('Slowly lift your phone off the document'), findsNothing);
       // Still on the reading screen (not regressed to the guidance screen or
       // a hard failure) since the retry budget isn't exhausted yet.
       expect(find.byType(NfcGuidanceScreen), findsNothing);
       expect(find.text('2 of 4 · Read ${DocumentType.passport.displayName}'), findsOneWidget);
+
+      // Once the connection has stayed lost past the debounce window, the
+      // tip is the only signal the user gets that this isn't a healthy
+      // read in progress.
+      await tester.pump(const Duration(seconds: 2));
+      expect(find.textContaining('Slowly lift your phone off the document'), findsOneWidget);
+
+      // Reading resumes: the tip must revert immediately, not stay stuck
+      // showing a stale warning.
+      reader.emit(DocumentReaderReadingDataGroup(dataGroup: 'DG2', progress: 0.6));
+      await tester.pump();
+      expect(find.textContaining('Slowly lift your phone off the document'), findsNothing);
+      expect(find.textContaining('Keep your phone and the document still'), findsOneWidget);
     });
   });
 

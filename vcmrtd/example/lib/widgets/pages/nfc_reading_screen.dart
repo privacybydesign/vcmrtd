@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -100,10 +102,15 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
   static const _holdSteadyTip = "Keep your phone and the document still - this can take a moment.";
 
   static const _stuckTip =
-      'Not moving forward? Slowly lift your phone off the document and place '
+      'Reading was interrupted. Slowly lift your phone off the document and place '
       'it back down until it buzzes or beeps again.';
 
+  static const _stuckTipDelay = Duration(seconds: 2);
+
   late ScannedMRZ scannedMRZ;
+
+  Timer? _stuckTipTimer;
+  bool _connectionSeemsStuck = false;
 
   @override
   void didChangeDependencies() {
@@ -114,8 +121,24 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
 
   @override
   void dispose() {
+    _stuckTipTimer?.cancel();
     routeObserver.unsubscribe(this);
     super.dispose();
+  }
+
+  void _handleReaderStateChange(DocumentReaderState? previous, DocumentReaderState next) {
+    if (next is! DocumentReaderReconnecting) {
+      _stuckTipTimer?.cancel();
+      _stuckTipTimer = null;
+      if (_connectionSeemsStuck) setState(() => _connectionSeemsStuck = false);
+      return;
+    }
+
+    if (_stuckTipTimer != null || _connectionSeemsStuck) return;
+    _stuckTipTimer = Timer(_stuckTipDelay, () {
+      if (!mounted) return;
+      setState(() => _connectionSeemsStuck = true);
+    });
   }
 
   /// Fires when a route pushed on top of this one (face verification) is
@@ -147,6 +170,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
     };
 
     final state = ref.watch(readerProvider(scannedMRZ));
+    ref.listen(readerProvider(scannedMRZ), _handleReaderStateChange);
 
     if (state is DocumentReaderPending) {
       return NfcGuidanceScreen(
@@ -221,24 +245,20 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
   }
 
   /// The contextual tip to show for the current state, or null to hide it.
-  /// Surfaces a dedicated "seems stuck" tip whenever a connection has been
-  /// lost - both while it's actively being retried, and after retries are
-  /// exhausted with a tag-lost/timeout failure - since a silent retry loop
-  /// otherwise looks identical to a healthy read to the user. [_firstTip]
-  /// only shows during [DocumentReaderConnecting] - the phase before
-  /// `nfc.connect()` has resolved, where the user still has to find the
-  /// chip - since every later phase (including [DocumentReaderReadingCardAccess]
-  /// and [DocumentReaderAuthenticating]) only runs once a connection is
-  /// already established. Every state past that shows the steady "don't
-  /// move" tip - individual reading phases finish at wildly different
-  /// speeds, so a tip tied to the current phase would often swap out before
-  /// it could actually be read.
+  /// [_firstTip] only shows during [DocumentReaderConnecting] - the phase
+  /// before `nfc.connect()` has resolved, where the user still has to find
+  /// the chip - since every later
+  /// phase (including [DocumentReaderReadingCardAccess] and
+  /// [DocumentReaderAuthenticating]) only runs once a connection is already
+  /// established. Every state past that shows the steady "don't move" tip -
+  /// individual reading phases finish at wildly different speeds, so a tip
+  /// tied to the current phase would often swap out before it could actually
+  /// be read.
   String? _tipForState(DocumentReaderState state, int? readingStep) {
-    final isConnectionLost =
-        state is DocumentReaderReconnecting ||
-        (state is DocumentReaderFailed &&
-            (state.error == DocumentReadingError.tagLost || state.error == DocumentReadingError.timeoutWaitingForTag));
-    if (isConnectionLost) {
+    final isTerminalConnectionFailure =
+        state is DocumentReaderFailed &&
+        (state.error == DocumentReadingError.tagLost || state.error == DocumentReadingError.timeoutWaitingForTag);
+    if (_connectionSeemsStuck || isTerminalConnectionFailure) {
       return _stuckTip;
     }
     if (readingStep == null) return null;

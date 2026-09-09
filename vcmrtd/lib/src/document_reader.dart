@@ -395,6 +395,9 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
       }
       try {
         await whenConnected();
+        if (state case DocumentReaderReconnecting(:final previousState)) {
+          await _setState(previousState);
+        }
         return;
       } on Exception catch (e) {
         // Check for cancellation before giving up on attempt count, so a

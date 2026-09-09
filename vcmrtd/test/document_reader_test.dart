@@ -621,6 +621,24 @@ void main() {
       expect(h.dgr.startSessionPaceCount, 2);
     });
 
+    test('leaves DocumentReaderReconnecting once the retried step succeeds', () async {
+      final h = makeHarness(
+        present: {DataGroups.dg1, DataGroups.dg2},
+        startSessionError: Exception('bac disabled'),
+        steps: {
+          'COM': [_Step.fail(Exception('transient'))],
+        },
+      );
+      final history = <DocumentReaderState>[];
+      h.container.listen(h.provider, (_, next) => history.add(next));
+
+      await h.reader.readDocument(iosNfcMessages: _msg);
+
+      final reconnectingIndex = history.indexWhere((s) => s is DocumentReaderReconnecting);
+      expect(reconnectingIndex, greaterThanOrEqualTo(0));
+      expect(history[reconnectingIndex + 1], isA<DocumentReaderReadingCOM>());
+    });
+
     test('a cancellation surfaced through the PACE retry re-authentication itself is honoured', () async {
       // Same shape as above, but this time the retry re-auth fails with a
       // "session invalidated" error (the OS/user cancelling the re-shown NFC
