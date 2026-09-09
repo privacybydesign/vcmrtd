@@ -6,11 +6,6 @@ end
 
 lane :lint do
   Dir.chdir("../..") do
-    [".", "example"].each do |package|
-      Dir.chdir(package) do
-        sh("flutter", "pub", "get")
-      end
-    end
     sh("dart", "format", "--line-length", "120", "--set-exit-if-changed", ".")
     sh("flutter", "analyze", "--no-fatal-infos")
   end

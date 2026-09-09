@@ -215,7 +215,7 @@ void main() {
       expect(api.icc.sm, isNotNull);
     });
 
-    test('initSessionViaPACE completes a full ECDH-GM handshake and sets up secure messaging', () async {
+    Future<void> initSessionViaPaceEcdhGmHandshake() async {
       final efCardAccess = EfCardAccess.fromBytes("31143012060A04007F0007020204020202010202010D".parseHex());
       final protocol = efCardAccess.paceInfo!.protocol;
       final dba = DBAKey("T22000129", DateTime(1964, 8, 12), DateTime(2010, 10, 31), paceMode: true);
@@ -225,7 +225,13 @@ void main() {
       expect(api.icc.sm, isNull);
       await api.initSessionViaPACE(dba, efCardAccess);
       expect(api.icc.sm, isNotNull);
-    }, timeout: const Timeout(Duration(seconds: 30)));
+    }
+
+    test(
+      'initSessionViaPACE completes a full ECDH-GM handshake and sets up secure messaging',
+      initSessionViaPaceEcdhGmHandshake,
+      timeout: const Timeout(Duration(seconds: 30)),
+    );
   });
 
   // --------------------------------------------------------------------------
