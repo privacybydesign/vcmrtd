@@ -21,3 +21,42 @@ class StepBadge extends StatelessWidget {
     );
   }
 }
+
+/// The back button + [StepBadge] combination shown at the top of every
+/// screen in the multi-step capture flow: a fixed-height row with the back
+/// button pinned to the left and the badge centered over it.
+class StepBadgeTopBar extends StatelessWidget {
+  const StepBadgeTopBar({
+    required this.icon,
+    required this.onBack,
+    required this.current,
+    required this.total,
+    required this.label,
+    this.tooltip,
+    super.key,
+  });
+
+  final IconData icon;
+  final VoidCallback onBack;
+  final int current;
+  final int total;
+  final String label;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 48,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: IconButton(tooltip: tooltip, icon: Icon(icon), onPressed: onBack),
+          ),
+          StepBadge(current: current, total: total, label: label),
+        ],
+      ),
+    );
+  }
+}

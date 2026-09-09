@@ -113,18 +113,12 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
   }
 
   Widget _buildTopBar(BuildContext context) {
-    return SizedBox(
-      height: 48,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: IconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBack),
-          ),
-          StepBadge(current: 1, total: 4, label: 'Enter ${widget.documentType.displayName} details'),
-        ],
-      ),
+    return StepBadgeTopBar(
+      icon: PlatformIcons(context).back,
+      onBack: widget.onBack,
+      current: 1,
+      total: 4,
+      label: 'Enter ${widget.documentType.displayName} details',
     );
   }
 

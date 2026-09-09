@@ -236,42 +236,11 @@ class MrtdApi {
   }) async {
     var data = Uint8List(0);
     while (length > 0) {
-      int nRead = length;
-      if (length > _maxRead) {
-        nRead = _maxRead;
-      }
-
+      final nRead = _clampToMaxRead(length);
       _log.debug("_readBinary: offset=$offset nRead=$nRead remaining=$length maxRead=$_maxRead");
       try {
-        ResponseAPDU rapdu;
-        if (offset > 0x7FFF) {
-          // extended read binary
-          rapdu = await icc.readBinaryExt(offset: offset, ne: nRead);
-        } else {
-          if (offset + nRead > 0x7FFF) {
-            // Do not overlap offset 32 767 with even READ BINARY command
-            nRead = 0x7FFF - offset;
-          }
-          rapdu = await icc.readBinary(offset: offset, ne: nRead);
-        }
-
-        if (rapdu.status.sw1 == StatusWord.sw1SuccessWithRemainingBytes) {
-          // This should probably happen only in case of calling
-          // command GET STATUS, which we don't call here.
-          // We log it for tracing purpose.
-          _log.debug("Received ${rapdu.data?.length ?? 0} byte(s), ${rapdu.status.description()}");
-        } else if (rapdu.status == StatusWord.unexpectedEOF) {
-          _log.warning(rapdu.status.description());
-          _reduceMaxRead();
-        } else if (rapdu.status == StatusWord.possibleCorruptedData) {
-          _log.warning("Part of received data chunk my be corrupted");
-        } else if (rapdu.status.isError()) {
-          // Just making sure if an error has occured we still have valid session
-          _log.warning(
-            "An error ${rapdu.status} has occurred while reading file but have received some data. Re-initializing SM session and trying to continue normally.",
-          );
-          await _reinitSession?.call();
-        }
+        final rapdu = await _issueReadBinary(offset: offset, nRead: nRead);
+        await _handleReadBinaryStatus(rapdu);
 
         if (rapdu.data != null) {
           data = Uint8List.fromList(data + rapdu.data!);
@@ -282,38 +251,85 @@ class MrtdApi {
           _log.warning("No data received when trying to read binary");
         }
       } on ICCError catch (e) {
-        // thrown on _readBinary error when no data is received.
-        if (e.sw == StatusWord.wrongLength && _maxRead != 1) {
-          // if _maxRead == 1 then we tried all possible lengths and failed, so this check should throw us out of the loop
-          _reduceMaxRead();
-        } else if (e.sw.sw1 == StatusWord.sw1WrongLengthWithExactLength) {
-          _log.warning("Reducing max read to ${e.sw.sw2} byte(s) due to wrong length error");
-          _maxRead = e.sw.sw2;
-        } else {
-          _maxRead = _defaultReadLength;
-          throw MrtdApiError("An error has occurred while trying to read file chunk.", code: e.sw);
-        }
-        if (e.sw.isError()) {
-          // Just a sanity check as ICCError is thrown only on error
-          _log.info("Re-initializing SM session due to read binary error");
-          await _reinitSession?.call();
-        }
+        await _handleReadBinaryError(e);
       }
     }
 
-    // Verify total received data size is not greater than
-    // requested and remove excess data.
-    // Some passports e.g.: Slovenian on SW:0x6282 (unexpectedEOF)
-    // add possible wrong pad data: 0x000080 instead of 0x800000.
-    if (length < 0) {
-      final newSize = data.length - length.abs();
-      _log.warning("Total read data size is greater than requested, removing last ${length.abs()} byte(s)");
-      _log.debug("  Requested size:$newSize byte(s) actual size:${data.length} byte(s)");
-      data = data.sublist(0, newSize);
-      onProgress?.call(data);
-    }
+    return _trimOverread(data: data, overreadBy: length, onProgress: onProgress);
+  }
 
-    return data;
+  int _clampToMaxRead(int length) => length > _maxRead ? _maxRead : length;
+
+  // Issues a single READ BINARY (or extended READ BINARY, for offsets beyond
+  // the short form's reach) command for up to [nRead] bytes at [offset].
+  Future<ResponseAPDU> _issueReadBinary({required int offset, required int nRead}) async {
+    if (offset > 0x7FFF) {
+      // extended read binary
+      return icc.readBinaryExt(offset: offset, ne: nRead);
+    }
+    if (offset + nRead > 0x7FFF) {
+      // Do not overlap offset 32 767 with even READ BINARY command
+      nRead = 0x7FFF - offset;
+    }
+    return icc.readBinary(offset: offset, ne: nRead);
+  }
+
+  // Logs/reacts to the status word of a successfully received READ BINARY
+  // response. Does not throw - errors here still carry data to append.
+  Future<void> _handleReadBinaryStatus(ResponseAPDU rapdu) async {
+    if (rapdu.status.sw1 == StatusWord.sw1SuccessWithRemainingBytes) {
+      // This should probably happen only in case of calling
+      // command GET STATUS, which we don't call here.
+      // We log it for tracing purpose.
+      _log.debug("Received ${rapdu.data?.length ?? 0} byte(s), ${rapdu.status.description()}");
+    } else if (rapdu.status == StatusWord.unexpectedEOF) {
+      _log.warning(rapdu.status.description());
+      _reduceMaxRead();
+    } else if (rapdu.status == StatusWord.possibleCorruptedData) {
+      _log.warning("Part of received data chunk my be corrupted");
+    } else if (rapdu.status.isError()) {
+      // Just making sure if an error has occured we still have valid session
+      _log.warning(
+        "An error ${rapdu.status} has occurred while reading file but have received some data. Re-initializing SM session and trying to continue normally.",
+      );
+      await _reinitSession?.call();
+    }
+  }
+
+  // Handles an ICCError thrown when no data is received for a READ BINARY
+  // call - adjusts _maxRead (or rethrows as MrtdApiError) and re-initializes
+  // the SM session if the status word indicates an error.
+  Future<void> _handleReadBinaryError(ICCError e) async {
+    if (e.sw == StatusWord.wrongLength && _maxRead != 1) {
+      // if _maxRead == 1 then we tried all possible lengths and failed, so this check should throw us out of the loop
+      _reduceMaxRead();
+    } else if (e.sw.sw1 == StatusWord.sw1WrongLengthWithExactLength) {
+      _log.warning("Reducing max read to ${e.sw.sw2} byte(s) due to wrong length error");
+      _maxRead = e.sw.sw2;
+    } else {
+      _maxRead = _defaultReadLength;
+      throw MrtdApiError("An error has occurred while trying to read file chunk.", code: e.sw);
+    }
+    if (e.sw.isError()) {
+      // Just a sanity check as ICCError is thrown only on error
+      _log.info("Re-initializing SM session due to read binary error");
+      await _reinitSession?.call();
+    }
+  }
+
+  // Verify total received data size is not greater than requested and
+  // remove excess data. Some passports e.g.: Slovenian on SW:0x6282
+  // (unexpectedEOF) add possible wrong pad data: 0x000080 instead of
+  // 0x800000. [overreadBy] is the (negative) leftover `length` from the read
+  // loop - negative means more bytes were received than requested.
+  Uint8List _trimOverread({required Uint8List data, required int overreadBy, void Function(Uint8List)? onProgress}) {
+    if (overreadBy >= 0) return data;
+    final newSize = data.length - overreadBy.abs();
+    _log.warning("Total read data size is greater than requested, removing last ${overreadBy.abs()} byte(s)");
+    _log.debug("  Requested size:$newSize byte(s) actual size:${data.length} byte(s)");
+    final trimmed = data.sublist(0, newSize);
+    onProgress?.call(trimmed);
+    return trimmed;
   }
 
   void _reduceMaxRead() {

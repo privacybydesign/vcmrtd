@@ -111,18 +111,12 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
     );
   }
 
-  Widget _buildTopBar(BuildContext context) => SizedBox(
-    height: 48,
-    child: Stack(
-      alignment: Alignment.center,
-      children: [
-        Align(
-          alignment: Alignment.centerLeft,
-          child: IconButton(icon: const Icon(Icons.arrow_back), onPressed: widget.onBackPressed),
-        ),
-        const StepBadge(current: 4, total: 4, label: 'Driving Licence Data'),
-      ],
-    ),
+  Widget _buildTopBar(BuildContext context) => StepBadgeTopBar(
+    icon: Icons.arrow_back,
+    onBack: widget.onBackPressed,
+    current: 4,
+    total: 4,
+    label: 'Driving Licence Data',
   );
 
   void _addToWallet() {

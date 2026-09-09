@@ -132,18 +132,12 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
   }
 
   Widget _buildTopBar(BuildContext context) {
-    return SizedBox(
-      height: 48,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: IconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBack),
-          ),
-          StepBadge(current: 2, total: 4, label: 'Read ${widget.documentType.displayName}'),
-        ],
-      ),
+    return StepBadgeTopBar(
+      icon: PlatformIcons(context).back,
+      onBack: widget.onBack,
+      current: 2,
+      total: 4,
+      label: 'Read ${widget.documentType.displayName}',
     );
   }
 

@@ -40,71 +40,76 @@ Widget buildDocumentIllustration(DocumentType documentType) {
 Widget buildPassportIllustration() {
   return RotatedBox(
     quarterTurns: 3,
-    child: Container(
+    child: const SizedBox(
       width: 160,
       height: 200, // increased height to accommodate opened cover
       child: Column(
         children: [
           // Top half – passport cover flipped open
-          Container(
+          SizedBox(
             height: 90,
             width: double.infinity,
-            decoration: BoxDecoration(
-              color: const Color(0xFF424242),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-              border: Border.all(color: const Color(0xFF424242), width: 2),
-            ),
-            child: const Center(
-              child: RotatedBox(
-                quarterTurns: 2, // upside down to simulate flipping
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'PASSPORT',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
-                    Text('Kingdom of Example', style: TextStyle(fontSize: 10, color: Colors.white70)),
-                  ],
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Color(0xFF424242),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+                border: Border.fromBorderSide(BorderSide(color: Color(0xFF424242), width: 2)),
+              ),
+              child: Center(
+                child: RotatedBox(
+                  quarterTurns: 2, // upside down to simulate flipping
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'PASSPORT',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                      Text('Kingdom of Example', style: TextStyle(fontSize: 10, color: Colors.white70)),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
 
           // Bottom half – inner page with photo + info
-          Container(
+          SizedBox(
             height: 100,
             width: double.infinity,
-            decoration: BoxDecoration(
-              color: const Color(0xFFBDBDBD),
-              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8)),
-              border: Border.all(color: const Color(0xFF424242), width: 2),
-            ),
-            child: Row(
-              children: [
-                // Photo placeholder
-                Container(
-                  width: 70,
-                  alignment: Alignment.center,
-                  child: CircleAvatar(
-                    radius: 24,
-                    backgroundColor: Colors.grey.shade300,
-                    child: Icon(Icons.person, size: 28, color: Colors.grey.shade700),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Color(0xFFBDBDBD),
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(8)),
+                border: Border.fromBorderSide(BorderSide(color: Color(0xFF424242), width: 2)),
+              ),
+              child: Row(
+                children: [
+                  // Photo placeholder
+                  SizedBox(
+                    width: 70,
+                    child: Center(
+                      child: CircleAvatar(
+                        radius: 24,
+                        backgroundColor: Color(0xFFE0E0E0), // Colors.grey.shade300
+                        child: Icon(Icons.person, size: 28, color: Color(0xFF616161)), // Colors.grey.shade700
+                      ),
+                    ),
                   ),
-                ),
-                // Info text
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text('Name: John Doe', style: TextStyle(fontSize: 10, color: Color(0xFF333333))),
-                      Text('Nationality: NL', style: TextStyle(fontSize: 10, color: Color(0xFF333333))),
-                      Text('DOB: 01-01-1990', style: TextStyle(fontSize: 10, color: Color(0xFF333333))),
-                    ],
+                  // Info text
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Name: John Doe', style: TextStyle(fontSize: 10, color: Color(0xFF333333))),
+                        Text('Nationality: NL', style: TextStyle(fontSize: 10, color: Color(0xFF333333))),
+                        Text('DOB: 01-01-1990', style: TextStyle(fontSize: 10, color: Color(0xFF333333))),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -112,6 +117,8 @@ Widget buildPassportIllustration() {
     ),
   );
 }
+
+const BorderColor = Color(0xFFB48DA3);
 
 Widget buildDrivingLicenceIllustration() {
   return Container(
@@ -123,7 +130,7 @@ Widget buildDrivingLicenceIllustration() {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ),
-      border: Border.all(color: Color(0xFFB48DA3), width: 1.2),
+      border: Border.all(color: BorderColor, width: 1.2),
       borderRadius: BorderRadius.circular(8),
       boxShadow: [BoxShadow(color: Colors.grey.withValues(alpha: 0.15), blurRadius: 3, offset: const Offset(2, 2))],
     ),

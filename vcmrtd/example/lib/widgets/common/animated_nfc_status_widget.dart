@@ -320,7 +320,8 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget> with 
   Widget _buildCancelButton() {
     if ((widget.state == NFCReadingState.waiting ||
             widget.state == NFCReadingState.connecting ||
-            widget.state == NFCReadingState.reading) &&
+            widget.state == NFCReadingState.reading ||
+            widget.state == NFCReadingState.authenticating) &&
         widget.onCancel != null) {
       return Padding(
         padding: const EdgeInsets.only(top: 16.0),
@@ -347,16 +348,18 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget> with 
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             _isProgressState ? _buildProgressRing() : _buildAnimatedIcon(),
-            const SizedBox(height: 24),
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 300),
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-                color: _colorAnimation.value ?? _getStateColor(),
+            if (widget.message.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 300),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                  color: _colorAnimation.value ?? _getStateColor(),
+                ),
+                child: Text(widget.message, textAlign: TextAlign.center, maxLines: 3, overflow: TextOverflow.ellipsis),
               ),
-              child: Text(widget.message, textAlign: TextAlign.center, maxLines: 3, overflow: TextOverflow.ellipsis),
-            ),
+            ],
             if (widget.tip != null) ...[const SizedBox(height: 16), _buildTipCard(widget.tip!)],
             _buildRetryButton(),
             _buildCancelButton(),

@@ -1223,54 +1223,68 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(passed ? Icons.check_circle : Icons.cancel, size: 80, color: passed ? Colors.green : Colors.red),
-            const SizedBox(height: 24),
-            Text(
-              passed ? 'Identity Verified' : 'Verification Failed',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: passed ? Colors.green : Colors.red),
-            ),
+            ..._buildResultHeader(passed),
             const SizedBox(height: 16),
-            _scoreRow(
-              'Match (≥${(threshold * 100).toStringAsFixed(0)}%)',
-              '${(r.matchScore * 100).toStringAsFixed(1)}%',
-              matchPassed,
-            ),
-            _scoreRow(
-              'Anti-spoof',
-              r.antiSpoofScore != null ? '${(r.antiSpoofScore! * 100).toStringAsFixed(1)}%' : 'n/a',
-              r.antiSpoofPassed,
-            ),
-            _scoreRow(
-              'rPPG (${r.rppgSampleCount} samples)',
-              r.rppgHr != null ? '${r.rppgHr!.toStringAsFixed(0)} bpm' : 'n/a',
-              r.rppgPassed,
-            ),
-            _scoreRow('Liveness actions', r.isLive ? 'passed' : 'failed', r.isLive),
-            if (r.consistencyFailed) _scoreRow('Identity consistent', 'face changed mid-session', false),
-            if (_documentPhoto != null || r.liveFace != null) ...[
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (_documentPhoto != null) _Thumbnail(label: 'Document photo', bytes: _documentPhoto!),
-                  if (_documentPhoto != null && r.liveFace != null) const SizedBox(width: 16),
-                  if (r.liveFace != null) _Thumbnail(label: 'Live capture', bytes: r.liveFace!),
-                ],
-              ),
-            ],
+            ..._buildResultScoreRows(r, threshold, matchPassed),
+            ..._buildResultThumbnails(r),
             const SizedBox(height: 32),
-            if (passed)
-              const Center(
-                child: Text('Continuing…', style: TextStyle(color: Colors.grey)),
-              )
-            else
-              OutlinedButton(onPressed: _retry, child: const Text('Try Again')),
+            _buildResultFooter(passed),
           ],
         ),
       ),
     );
   }
+
+  List<Widget> _buildResultHeader(bool passed) => [
+    Icon(passed ? Icons.check_circle : Icons.cancel, size: 80, color: passed ? Colors.green : Colors.red),
+    const SizedBox(height: 24),
+    Text(
+      passed ? 'Identity Verified' : 'Verification Failed',
+      textAlign: TextAlign.center,
+      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: passed ? Colors.green : Colors.red),
+    ),
+  ];
+
+  List<Widget> _buildResultScoreRows(VerificationResult r, double threshold, bool matchPassed) => [
+    _scoreRow(
+      'Match (≥${(threshold * 100).toStringAsFixed(0)}%)',
+      '${(r.matchScore * 100).toStringAsFixed(1)}%',
+      matchPassed,
+    ),
+    _scoreRow(
+      'Anti-spoof',
+      r.antiSpoofScore != null ? '${(r.antiSpoofScore! * 100).toStringAsFixed(1)}%' : 'n/a',
+      r.antiSpoofPassed,
+    ),
+    _scoreRow(
+      'rPPG (${r.rppgSampleCount} samples)',
+      r.rppgHr != null ? '${r.rppgHr!.toStringAsFixed(0)} bpm' : 'n/a',
+      r.rppgPassed,
+    ),
+    _scoreRow('Liveness actions', r.isLive ? 'passed' : 'failed', r.isLive),
+    if (r.consistencyFailed) _scoreRow('Identity consistent', 'face changed mid-session', false),
+  ];
+
+  List<Widget> _buildResultThumbnails(VerificationResult r) {
+    final documentPhoto = _documentPhoto;
+    final liveFace = r.liveFace;
+    if (documentPhoto == null && liveFace == null) return const [];
+    return [
+      const SizedBox(height: 24),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (documentPhoto != null) _Thumbnail(label: 'Document photo', bytes: documentPhoto),
+          if (documentPhoto != null && liveFace != null) const SizedBox(width: 16),
+          if (liveFace != null) _Thumbnail(label: 'Live capture', bytes: liveFace),
+        ],
+      ),
+    ];
+  }
+
+  Widget _buildResultFooter(bool passed) => passed
+      ? const Center(child: Text('Continuing…', style: TextStyle(color: Colors.grey)))
+      : OutlinedButton(onPressed: _retry, child: const Text('Try Again'));
 
   static Widget _scoreRow(String label, String value, bool ok) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 3),

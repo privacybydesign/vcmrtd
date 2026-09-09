@@ -95,18 +95,12 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
     );
   }
 
-  Widget _buildTopBar(BuildContext context) => SizedBox(
-    height: 48,
-    child: Stack(
-      alignment: Alignment.center,
-      children: [
-        Align(
-          alignment: Alignment.centerLeft,
-          child: IconButton(icon: const Icon(Icons.arrow_back), onPressed: widget.onBackPressed),
-        ),
-        StepBadge(current: 4, total: 4, label: '${widget.documentType.displayName} Data'),
-      ],
-    ),
+  Widget _buildTopBar(BuildContext context) => StepBadgeTopBar(
+    icon: Icons.arrow_back,
+    onBack: widget.onBackPressed,
+    current: 4,
+    total: 4,
+    label: '${widget.documentType.displayName} Data',
   );
 
   void _addToWallet() {

@@ -187,18 +187,13 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
     );
   }
 
-  Widget _buildTopBar(BuildContext context) => SizedBox(
-    height: 48,
-    child: Stack(
-      alignment: Alignment.center,
-      children: [
-        Align(
-          alignment: Alignment.centerLeft,
-          child: IconButton(tooltip: 'Back', icon: const Icon(Icons.arrow_back), onPressed: widget.onBackPressed),
-        ),
-        const StepBadge(current: 3, total: 4, label: 'Face Verification'),
-      ],
-    ),
+  Widget _buildTopBar(BuildContext context) => StepBadgeTopBar(
+    icon: Icons.arrow_back,
+    tooltip: 'Back',
+    onBack: widget.onBackPressed,
+    current: 3,
+    total: 4,
+    label: 'Face Verification',
   );
 
   Widget _buildIntro() {

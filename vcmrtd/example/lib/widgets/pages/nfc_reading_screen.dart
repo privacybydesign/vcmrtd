@@ -95,12 +95,9 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
     'Verifying document security',
   ];
 
-  static const _readingStepTips = [
-    'Hold the document steady against the back of your phone.',
-    'Keep your phone still, moving it now can interrupt the scan.',
-    "You're almost there, keep holding the document in place.",
-    "Don't move your phone until you see the success screen.",
-  ];
+  static const _firstTip = 'Place your document behind your phone and move it around until it buzzes or beeps.';
+
+  static const _holdSteadyTip = "Keep your phone and the document still - this can take a moment.";
 
   static const _stuckTip =
       'Not moving forward? Slowly lift your phone off the document and place '
@@ -182,12 +179,12 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
                         message: '',
                         progress: progressForState(state),
                         onRetry: retry,
-                        onCancel: cancel,
+                        onCancel: () => _handleBack(context), 
                         tip: tip,
                       ),
                     ),
                     if (readingStep != null) ...[
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 16),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24),
                         child: _buildStepChecklist(currentStep: readingStep, nfcState: nfcState),
@@ -227,8 +224,15 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
   /// Surfaces a dedicated "seems stuck" tip whenever a connection has been
   /// lost - both while it's actively being retried, and after retries are
   /// exhausted with a tag-lost/timeout failure - since a silent retry loop
-  /// otherwise looks identical to a healthy read to the user. Otherwise falls
-  /// back to the tip tied to the current reading step.
+  /// otherwise looks identical to a healthy read to the user. [_firstTip]
+  /// only shows during [DocumentReaderConnecting] - the phase before
+  /// `nfc.connect()` has resolved, where the user still has to find the
+  /// chip - since every later phase (including [DocumentReaderReadingCardAccess]
+  /// and [DocumentReaderAuthenticating]) only runs once a connection is
+  /// already established. Every state past that shows the steady "don't
+  /// move" tip - individual reading phases finish at wildly different
+  /// speeds, so a tip tied to the current phase would often swap out before
+  /// it could actually be read.
   String? _tipForState(DocumentReaderState state, int? readingStep) {
     final isConnectionLost =
         state is DocumentReaderReconnecting ||
@@ -237,7 +241,8 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
     if (isConnectionLost) {
       return _stuckTip;
     }
-    return readingStep == null ? null : _readingStepTips[readingStep];
+    if (readingStep == null) return null;
+    return state is DocumentReaderConnecting ? _firstTip : _holdSteadyTip;
   }
 
   /// Checklist card of reading steps, e.g. a checkmark for a done step, a
@@ -336,18 +341,12 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
   }
 
   Widget _buildTopBar(BuildContext context) {
-    return SizedBox(
-      height: 48,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => _handleBack(context)),
-          ),
-          StepBadge(current: 2, total: 4, label: 'Read ${widget.params.documentType.displayName}'),
-        ],
-      ),
+    return StepBadgeTopBar(
+      icon: Icons.arrow_back,
+      onBack: () => _handleBack(context),
+      current: 2,
+      total: 4,
+      label: 'Read ${widget.params.documentType.displayName}',
     );
   }
 

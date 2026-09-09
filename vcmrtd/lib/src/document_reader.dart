@@ -89,6 +89,12 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
 
   Future<void> cancel() async {
     _isCancelled = true;
+    // Aborts an in-flight poll/transceive immediately instead of leaving the
+    // cancel flag to be noticed only at the next _reconnectionLoop iteration
+    // boundary - without this, cancelling while nfc.connect() is blocked
+    // waiting for a tag has no visible effect until that poll times out on
+    // its own.
+    await nfc.forceCleanup();
   }
 
   Future<bool> tryAuthenticateWithBAC() async {
@@ -112,7 +118,25 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
     }
 
     _setState(DocumentReaderConnecting());
-    await nfc.connect(iosAlertMessage: iosNfcMessages(DocumentReaderConnecting()));
+    try {
+      await _reconnectionLoop(
+        authMethod: _AuthMethod.none,
+        whenConnected: () async {
+          if (!nfc.isConnected()) {
+            await nfc.connect(iosAlertMessage: iosNfcMessages(DocumentReaderConnecting()));
+          }
+        },
+      );
+      if (state is DocumentReaderCancelled) return null;
+    } catch (e) {
+      // Previously this initial connect() call was unwrapped, so a timeout
+      // waiting for a tag (e.g. common with driving licences) threw straight
+      // out of readDocument() uncaught, past every state transition below -
+      // the caller's generic catch swallowed it with just a debugPrint,
+      // leaving the UI frozen on "Connecting" forever with no retry option.
+      await _failure('Failure connecting to document', e);
+      return null;
+    }
 
     _AuthMethod method = _AuthMethod.bac;
     _setState(DocumentReaderAuthenticating());
