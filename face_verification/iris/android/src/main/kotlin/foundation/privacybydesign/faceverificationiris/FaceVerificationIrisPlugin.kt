@@ -8,7 +8,6 @@ import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.PluginRegistry.ActivityResultListener
-import iris.Iris
 
 /** Flutter plugin bridging [IrisFaceVerifier] (Dart) to the Iris SDK. */
 class FaceVerificationIrisPlugin :
@@ -54,7 +53,7 @@ class FaceVerificationIrisPlugin :
             return
         }
         when (call.method) {
-            "version" -> result.success(Iris(currentActivity).version())
+            "version" -> result.success(IrisFaceVerificationActivity.sdkVersion(currentActivity))
             "verify" -> startVerification(currentActivity, call, result)
             else -> result.notImplemented()
         }

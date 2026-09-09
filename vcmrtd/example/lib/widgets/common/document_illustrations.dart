@@ -38,9 +38,9 @@ Widget buildDocumentIllustration(DocumentType documentType) {
 }
 
 Widget buildPassportIllustration() {
-  return RotatedBox(
+  return const RotatedBox(
     quarterTurns: 3,
-    child: const SizedBox(
+    child: SizedBox(
       width: 160,
       height: 200, // increased height to accommodate opened cover
       child: Column(

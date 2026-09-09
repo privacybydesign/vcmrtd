@@ -8,8 +8,7 @@
 //
 // NfcProvider.nfcStatus throws a MissingPluginException under `flutter test`;
 // checkNfcAvailability() swallows it, so state stays DocumentReaderPending.
-import 'dart:typed_data';
-
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -82,6 +81,16 @@ class _CancelsOnRetryNfcProvider extends FakeNfcProvider {
   }
 }
 
+/// Never manages to connect, on the initial attempt or any retry - simulates
+/// a document that's never actually presented to the reader.
+class _NeverConnectsNfcProvider extends FakeNfcProvider {
+  @override
+  Future<void> connect({Duration? timeout, String iosAlertMessage = ""}) async {
+    connectCount++;
+    throw SensitiveException(nonSensitive: 'no tag found', sensitive: 'raw platform error detail');
+  }
+}
+
 /// A queued action: either return canned bytes or throw a supplied error.
 class _Step {
   final Uint8List? bytes;
@@ -105,6 +114,14 @@ class FakeDataGroupReader extends DataGroupReader {
   Object? startSessionPaceError;
   int startSessionCount = 0;
   int startSessionPaceCount = 0;
+
+  /// Optional per-call override for startSessionPACE: index 0 is the first
+  /// call, index 1 the second, etc. A null entry (or running past the end of
+  /// the list) succeeds; a non-null entry is thrown. Lets a test make the
+  /// initial PACE auth succeed but a later retry re-auth fail (or vice versa)
+  /// - something the single fixed [startSessionPaceError] can't express.
+  List<Object?>? startSessionPaceErrorSequence;
+  int _startSessionPaceCallIndex = 0;
 
   FakeDataGroupReader(ComProvider com, {Map<String, List<_Step>>? steps})
     : steps = steps ?? {},
@@ -138,6 +155,13 @@ class FakeDataGroupReader extends DataGroupReader {
   Future<void> startSessionPACE(EfCardAccess efCardAccess) async {
     startSessionPaceCount++;
     calls.add('startSessionPACE');
+    final seq = startSessionPaceErrorSequence;
+    if (seq != null) {
+      final idx = _startSessionPaceCallIndex++;
+      final err = idx < seq.length ? seq[idx] : null;
+      if (err != null) throw err;
+      return;
+    }
     if (startSessionPaceError != null) throw startSessionPaceError!;
   }
 
@@ -322,6 +346,8 @@ Harness makeHarness({
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   // --- Pure / simple methods ------------------------------------------------
 
   group('DocumentError', () {
@@ -392,6 +418,43 @@ void main() {
       expect(h.reader.getLogs().startsWith('- '), true);
       expect(h.reader.getSensitiveLogs().startsWith('- '), true);
     });
+
+    // NfcProvider.nfcStatus normally throws a MissingPluginException under
+    // `flutter test` (no real flutter_nfc_kit platform side), which is why
+    // the test above only exercises the catch branch. Mocking the plugin's
+    // MethodChannel directly lets us drive the real success path instead.
+    group('with a mocked flutter_nfc_kit platform channel', () {
+      const channel = MethodChannel('flutter_nfc_kit/method');
+
+      void mockAvailability(String availability) {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, (
+          call,
+        ) async {
+          if (call.method == 'getNFCAvailability') return availability;
+          return null;
+        });
+      }
+
+      tearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, null);
+      });
+
+      test('sets DocumentReaderNfcUnavailable when NFC is disabled', () async {
+        mockAvailability('disabled');
+        final h = makeHarness();
+        await h.reader.checkNfcAvailability();
+        expect(h.state, isA<DocumentReaderNfcUnavailable>());
+        expect(h.reader.getLogs(), contains('NFC status: NfcStatus.disabled'));
+      });
+
+      test('leaves state untouched when NFC is available', () async {
+        mockAvailability('available');
+        final h = makeHarness();
+        await h.reader.checkNfcAvailability();
+        expect(h.state, isA<DocumentReaderPending>());
+        expect(h.reader.getLogs(), contains('NFC status: NfcStatus.enabled'));
+      });
+    });
   });
 
   group('tryAuthenticateWithBAC', () {
@@ -431,6 +494,19 @@ void main() {
       expect(h.dgr.startSessionCount, 1);
       expect(h.dgr.startSessionPaceCount, 0);
       expect(h.nfc.disconnectCount, greaterThanOrEqualTo(1));
+    });
+
+    test('disconnects a still-connected NFC session before starting a fresh read', () async {
+      // With the tag already connected at the start of readDocument(), _initRead
+      // must disconnect it first (a stale connection from a previous session)
+      // in addition to the normal end-of-read disconnect - two disconnects
+      // total instead of the usual one.
+      final h = makeHarness(present: {DataGroups.dg1, DataGroups.dg2}, nfcConnected: true);
+      final result = await h.reader.readDocument(iosNfcMessages: _msg);
+
+      expect(result, isNotNull);
+      expect(h.state, isA<DocumentReaderSuccess>());
+      expect(h.nfc.disconnectCount, 2);
     });
 
     test('with activeAuthenticationParams produces an AA signature (DG15 present)', () async {
@@ -520,11 +596,71 @@ void main() {
       expect(h.dgr.startSessionPaceCount, greaterThanOrEqualTo(1));
       expect(h.dgr.calls.contains('CardAccess'), true);
     });
+
+    test('retries PACE re-authentication after a transient failure, and tolerates the retry itself failing', () async {
+      // COM fails once (transient tag loss). _reconnectionLoop retries: the
+      // re-poll (_retryConnection) succeeds, then - because auth used PACE -
+      // it calls startSessionPACE() again to re-establish SM. That second
+      // call is scripted to fail too; the loop must log it and move on to
+      // the next attempt rather than aborting, and that next attempt (COM
+      // read, with its one-shot failure already consumed) succeeds.
+      final h = makeHarness(
+        present: {DataGroups.dg1, DataGroups.dg2},
+        startSessionError: Exception('bac disabled'),
+        steps: {
+          'COM': [_Step.fail(Exception('transient'))],
+        },
+      );
+      h.dgr.startSessionPaceErrorSequence = [null, Exception('pace re-auth failed')];
+
+      final result = await h.reader.readDocument(iosNfcMessages: _msg);
+
+      expect(result, isNotNull);
+      expect(h.state, isA<DocumentReaderSuccess>());
+      // Initial auth + one retry re-auth.
+      expect(h.dgr.startSessionPaceCount, 2);
+    });
+
+    test('a cancellation surfaced through the PACE retry re-authentication itself is honoured', () async {
+      // Same shape as above, but this time the retry re-auth fails with a
+      // "session invalidated" error (the OS/user cancelling the re-shown NFC
+      // prompt) rather than a generic one - that must abort straight to
+      // Cancelled instead of quietly moving on to the next attempt.
+      final h = makeHarness(
+        present: {DataGroups.dg1, DataGroups.dg2},
+        startSessionError: Exception('bac disabled'),
+        steps: {
+          'COM': [_Step.fail(Exception('transient'))],
+        },
+      );
+      h.dgr.startSessionPaceErrorSequence = [null, Exception('session invalidated by user')];
+
+      final result = await h.reader.readDocument(iosNfcMessages: _msg);
+
+      expect(result, isNull);
+      expect(h.state, isA<DocumentReaderCancelled>());
+    });
   });
 
   // --- readDocument: failure branches --------------------------------------
 
   group('readDocument failure branches', () {
+    test(
+      'exhausting retries on the initial connect fails with the SensitiveException non-sensitive log preserved',
+      () async {
+        final h = makeHarness(present: {DataGroups.dg1, DataGroups.dg2}, nfc: _NeverConnectsNfcProvider());
+        final result = await h.reader.readDocument(iosNfcMessages: _msg);
+
+        expect(result, isNull);
+        expect(h.state, isA<DocumentReaderFailed>());
+        // Non-sensitive log: generic message only.
+        expect(h.reader.getLogs(), contains('Failure connecting to document'));
+        expect(h.reader.getLogs(), isNot(contains('raw platform error detail')));
+        // Sensitive log: carries the sensitive detail too.
+        expect(h.reader.getSensitiveLogs(), contains('raw platform error detail'));
+      },
+    );
+
     test('mandatory DG parse failure aborts with Failed state', () async {
       final h = makeHarness(present: {DataGroups.dg1, DataGroups.dg2}, throwOnParse: {DataGroups.dg1});
       final result = await h.reader.readDocument(iosNfcMessages: _msg);
@@ -665,6 +801,23 @@ void main() {
 
       expect(result, isNull);
       expect(h.state, isA<DocumentReaderCancelled>());
+    });
+
+    test('a cancellation flagged during one step is honoured at the very start of the next step\'s loop', () async {
+      // COM succeeds (no failing step) but its onRead hook flips cancellation
+      // as a side effect. _reconnectionLoop for COM never itself observes it
+      // (whenConnected didn't throw), so the flag only takes effect at the
+      // top of the *next* stage's loop (DG1) - before it ever calls
+      // whenConnected - rather than via the exception-path cancel check.
+      final h = makeHarness(present: {DataGroups.dg1, DataGroups.dg2});
+      h.dgr.onRead['COM'] = () => h.reader.cancel();
+
+      final result = await h.reader.readDocument(iosNfcMessages: _msg);
+
+      expect(result, isNull);
+      expect(h.state, isA<DocumentReaderCancelled>());
+      // DG1 was never actually read - cancellation was caught before that.
+      expect(h.dgr.calls.contains('DG1'), false);
     });
   });
 

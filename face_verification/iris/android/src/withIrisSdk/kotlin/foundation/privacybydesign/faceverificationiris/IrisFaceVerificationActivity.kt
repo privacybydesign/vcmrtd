@@ -27,6 +27,10 @@ import iris.Iris
  * itself doesn't offer) and a footer with plainer instructions around the
  * [container] it hands the SDK, rather than replacing anything the SDK
  * draws.
+ *
+ * This is the `withIrisSdk` variant, compiled only when the vendor
+ * `iris.aar` is present (see `android/build.gradle`) — see the
+ * `withoutIrisSdk` variant for the stand-in used otherwise.
  */
 class IrisFaceVerificationActivity : Activity() {
 
@@ -143,5 +147,7 @@ class IrisFaceVerificationActivity : Activity() {
             Intent(context, IrisFaceVerificationActivity::class.java).apply {
                 putExtra(EXTRA_PORTRAIT, portrait)
             }
+
+        fun sdkVersion(activity: Activity): String = Iris(activity).version()
     }
 }
