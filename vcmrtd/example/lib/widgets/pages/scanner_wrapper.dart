@@ -30,7 +30,6 @@ class MrzReaderRouteParams {
 class ScannerWrapper extends StatefulWidget {
   final Function(ScannedMRZ) onMrzScanned;
   final VoidCallback onManualEntry;
-  final VoidCallback onCancel;
   final VoidCallback onBack;
   final DocumentType documentType;
   final ScannerWidgetBuilder? scannerBuilder;
@@ -39,7 +38,6 @@ class ScannerWrapper extends StatefulWidget {
     super.key,
     required this.onMrzScanned,
     required this.onManualEntry,
-    required this.onCancel,
     required this.onBack,
     this.documentType = DocumentType.passport,
     this.scannerBuilder,
@@ -73,10 +71,6 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
     final scannerBuilder = widget.scannerBuilder ?? _defaultScannerBuilder;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Scan ${_getDocumentTypeName()}'),
-        leading: IconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBack),
-      ),
       body: Stack(
         children: [
           scannerBuilder(
@@ -88,7 +82,37 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
               }
             },
           ),
+          Positioned(left: 0, right: 0, top: 0, child: _buildTopOverlay(context)),
           Positioned(left: 0, right: 0, bottom: 0, child: _buildBottomControls(context)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopOverlay(BuildContext context) {
+    return SafeArea(
+      bottom: false,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            height: 48,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: IconButton(
+                    icon: Icon(PlatformIcons(context).back, color: Colors.white),
+                    onPressed: widget.onBack,
+                  ),
+                ),
+                StepBadge(current: 1, total: 4, label: 'Scan ${_getDocumentTypeName()}'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Padding(padding: const EdgeInsets.fromLTRB(30, 0, 24, 0), child: _buildOverlayCard(context)),
         ],
       ),
     );
@@ -125,21 +149,12 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
       decoration: BoxDecoration(color: Colors.transparent),
       child: SafeArea(
         top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildOverlayCard(context),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black),
-              onPressed: () {
-                widget.onManualEntry();
-              },
-              child: Text('Enter ${_getDocumentTypeName()} details manually', style: TextStyle(color: Colors.black)),
-            ),
-            const SizedBox(height: 12),
-          ],
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black),
+          onPressed: () {
+            widget.onManualEntry();
+          },
+          child: Text('Enter ${_getDocumentTypeName()} details manually', style: TextStyle(color: Colors.black)),
         ),
       ),
     );

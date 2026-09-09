@@ -1,5 +1,6 @@
 // Created by Crt Vavros, copyright © 2022 ZeroPass. All rights reserved.
 import 'dart:core';
+
 import 'package:logging/logging.dart';
 
 extension LogApis on Logger {

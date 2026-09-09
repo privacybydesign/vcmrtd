@@ -2,6 +2,7 @@
 // ignore_for_file: constant_identifier_names
 
 import 'dart:typed_data';
+
 import 'package:vcmrtd/extensions.dart';
 import 'package:logging/logging.dart';
 

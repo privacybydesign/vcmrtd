@@ -116,7 +116,6 @@ Widget _passportScreen(_FakeIssuer issuer, {String? faceApiUrl, RegulaFaceServic
         document: _passportData(),
         passportDataResult: _rawDocument(sessionId: 'session-1'),
         onBackPressed: () {},
-        onFaceVerification: (_, __) {},
       ),
     ),
   );
@@ -134,7 +133,6 @@ Widget _licenceScreen(_FakeIssuer issuer, {String? faceApiUrl, RegulaFaceService
         drivingLicence: _drivingLicenceData(),
         drivingLicenceDataResult: _rawDocument(sessionId: 'session-2'),
         onBackPressed: () {},
-        onFaceVerification: (_, __) {},
       ),
     ),
   );

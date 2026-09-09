@@ -3,6 +3,7 @@
 // Script decrypts BAC encrypted response APDU.
 
 import 'dart:io';
+
 import 'package:vcmrtd/extensions.dart';
 import 'package:vcmrtd/internal.dart';
 

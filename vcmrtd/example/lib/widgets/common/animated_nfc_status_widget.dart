@@ -6,6 +6,28 @@ import 'package:flutter/material.dart';
 /// Enumeration of NFC reading states for animation control
 enum NFCReadingState { waiting, connecting, reading, authenticating, success, error, idle, cancelling }
 
+/// The color associated with a given [NFCReadingState], shared with other
+/// widgets (e.g. a step progress indicator) that need to stay visually in
+/// sync with this widget's state color.
+Color nfcStateColor(NFCReadingState state) {
+  switch (state) {
+    case NFCReadingState.waiting:
+      return const Color(0xFF2196F3); // Blue
+    case NFCReadingState.connecting:
+    case NFCReadingState.reading:
+    case NFCReadingState.authenticating:
+      return const Color(0xFFFF9800); // Orange
+    case NFCReadingState.success:
+      return const Color(0xFF4CAF50); // Green
+    case NFCReadingState.error:
+      return const Color(0xFFF44336); // Red
+    case NFCReadingState.cancelling:
+      return const Color(0xFFFF9800); // Orange (transitional state)
+    case NFCReadingState.idle:
+      return const Color(0xFF757575); // Gray
+  }
+}
+
 /// Animated widget to display NFC reading status with beautiful animations
 class AnimatedNFCStatusWidget extends StatefulWidget {
   final NFCReadingState state;
@@ -14,6 +36,11 @@ class AnimatedNFCStatusWidget extends StatefulWidget {
   final VoidCallback? onCancel;
   final double progress; // 0.0 to 1.0 for progress indicators
 
+  /// An optional contextual tip, rendered below the progress circle/message
+  /// and above the retry/cancel buttons — the only spot guaranteed to be
+  /// visible without scrolling.
+  final String? tip;
+
   const AnimatedNFCStatusWidget({
     super.key,
     required this.state,
@@ -21,6 +48,7 @@ class AnimatedNFCStatusWidget extends StatefulWidget {
     this.onRetry,
     this.onCancel,
     this.progress = 0.0,
+    this.tip,
   });
 
   @override
@@ -132,24 +160,7 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget> with 
     }
   }
 
-  Color _getStateColor() {
-    switch (widget.state) {
-      case NFCReadingState.waiting:
-        return const Color(0xFF2196F3); // Blue
-      case NFCReadingState.connecting:
-      case NFCReadingState.reading:
-      case NFCReadingState.authenticating:
-        return const Color(0xFFFF9800); // Orange
-      case NFCReadingState.success:
-        return const Color(0xFF4CAF50); // Green
-      case NFCReadingState.error:
-        return const Color(0xFFF44336); // Red
-      case NFCReadingState.cancelling:
-        return const Color(0xFFFF9800); // Orange (transitional state)
-      case NFCReadingState.idle:
-        return const Color(0xFF757575); // Gray
-    }
-  }
+  Color _getStateColor() => nfcStateColor(widget.state);
 
   IconData _getStateIcon() {
     switch (widget.state) {
@@ -172,6 +183,9 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget> with 
     }
   }
 
+  bool get _isProgressState =>
+      widget.state == NFCReadingState.reading || widget.state == NFCReadingState.authenticating;
+
   Widget _buildAnimatedIcon() {
     return AnimatedBuilder(
       animation: Listenable.merge([
@@ -190,8 +204,6 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget> with 
             iconWidget = Transform.scale(scale: _pulseAnimation.value, child: iconWidget);
             break;
           case NFCReadingState.connecting:
-          case NFCReadingState.reading:
-          case NFCReadingState.authenticating:
             iconWidget = Transform.rotate(angle: _rotationAnimation.value * 2 * 3.14159, child: iconWidget);
             break;
           case NFCReadingState.success:
@@ -220,30 +232,74 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget> with 
     );
   }
 
-  Widget _buildProgressIndicator() {
-    if (widget.state == NFCReadingState.reading || widget.state == NFCReadingState.authenticating) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16.0),
-        child: Column(
-          children: [
-            LinearProgressIndicator(
-              value: widget.progress > 0 ? widget.progress : null,
-              backgroundColor: _getStateColor().withValues(alpha: 0.2),
-              valueColor: AlwaysStoppedAnimation<Color>(_getStateColor()),
-            ),
-            if (widget.progress > 0)
-              Padding(
-                padding: const EdgeInsets.only(top: 8.0),
-                child: Text(
-                  '${(widget.progress * 100).toInt()}%',
-                  style: TextStyle(fontSize: 12, color: _getStateColor(), fontWeight: FontWeight.w500),
+  /// Reading/authenticating states: a single circular progress ring in place of
+  /// the icon circle, filling as [widget.progress] advances, with the
+  /// percentage shown in its center once progress data is available.
+  Widget _buildProgressRing() {
+    return AnimatedBuilder(
+      animation: Listenable.merge([_rotationAnimation, _colorAnimation]),
+      builder: (context, child) {
+        final color = _colorAnimation.value ?? _getStateColor();
+        final hasProgress = widget.progress > 0;
+
+        return SizedBox(
+          width: 120,
+          height: 120,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox(
+                width: 120,
+                height: 120,
+                child: CircularProgressIndicator(
+                  value: hasProgress ? widget.progress : null,
+                  strokeWidth: 6,
+                  strokeAlign: CircularProgressIndicator.strokeAlignInside,
+                  backgroundColor: color.withValues(alpha: 0.15),
+                  valueColor: AlwaysStoppedAnimation<Color>(color),
                 ),
               ),
+              if (hasProgress)
+                Text(
+                  '${(widget.progress * 100).toInt()}%',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: color),
+                )
+              else
+                Transform.rotate(
+                  angle: _rotationAnimation.value * 2 * 3.14159,
+                  child: Icon(_getStateIcon(), size: 40, color: color),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTipCard(String tip) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 250),
+      child: Container(
+        key: ValueKey(tip),
+        constraints: const BoxConstraints(maxWidth: 320),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF8E1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFFFE082)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.lightbulb_outline, size: 20, color: Color(0xFFF9A825)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(tip, style: const TextStyle(fontSize: 13, color: Color(0xFF6B5900), height: 1.3)),
+            ),
           ],
         ),
-      );
-    }
-    return const SizedBox.shrink();
+      ),
+    );
   }
 
   Widget _buildRetryButton() {
@@ -264,7 +320,8 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget> with 
   Widget _buildCancelButton() {
     if ((widget.state == NFCReadingState.waiting ||
             widget.state == NFCReadingState.connecting ||
-            widget.state == NFCReadingState.reading) &&
+            widget.state == NFCReadingState.reading ||
+            widget.state == NFCReadingState.authenticating) &&
         widget.onCancel != null) {
       return Padding(
         padding: const EdgeInsets.only(top: 16.0),
@@ -290,18 +347,20 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget> with 
         return Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildAnimatedIcon(),
-            const SizedBox(height: 24),
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 300),
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-                color: _colorAnimation.value ?? _getStateColor(),
+            _isProgressState ? _buildProgressRing() : _buildAnimatedIcon(),
+            if (widget.message.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 300),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                  color: _colorAnimation.value ?? _getStateColor(),
+                ),
+                child: Text(widget.message, textAlign: TextAlign.center, maxLines: 3, overflow: TextOverflow.ellipsis),
               ),
-              child: Text(widget.message, textAlign: TextAlign.center, maxLines: 3, overflow: TextOverflow.ellipsis),
-            ),
-            _buildProgressIndicator(),
+            ],
+            if (widget.tip != null) ...[const SizedBox(height: 16), _buildTipCard(widget.tip!)],
             _buildRetryButton(),
             _buildCancelButton(),
           ],

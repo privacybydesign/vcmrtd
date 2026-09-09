@@ -6,6 +6,7 @@
 // point 04‖X‖Y would be malformed and rejected by the chip.
 
 import 'dart:typed_data';
+
 import 'package:test/test.dart';
 import 'package:vcmrtd/src/proto/public_key_pace.dart';
 

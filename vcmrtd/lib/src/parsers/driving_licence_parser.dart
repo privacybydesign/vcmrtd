@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:vcmrtd/src/extension/uint8list_apis.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+
 import '../extension/byte_reader.dart';
 
 import 'document_parser.dart';

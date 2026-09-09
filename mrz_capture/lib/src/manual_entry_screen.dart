@@ -7,6 +7,7 @@ import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:intl/intl.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'scanned_mrz.dart';
+import 'step_badge.dart';
 
 /// Fallback for when scanning will not work: the user types the fields the chip
 /// needs. Reports the same [ScannedMRZ] shape the scanner does.
@@ -50,58 +51,74 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Enter Passport Details'),
-        leading: IconButton(icon: Icon(PlatformIcons(context).back), onPressed: widget.onBack),
-      ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildHeaderCard(),
-                const SizedBox(height: 32),
-                if (widget.documentType == DocumentType.passport)
-                  ..._buildPassportFields()
-                else
-                  ..._buildDriverLicenseFields(),
-                const SizedBox(height: 24),
-                if (_errorMessage.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.error_outline, color: Colors.red, size: 20),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(_errorMessage, style: const TextStyle(color: Colors.red, fontSize: 14)),
+        child: Column(
+          children: [
+            _buildTopBar(context),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildHeaderCard(),
+                      const SizedBox(height: 32),
+                      if (widget.documentType == DocumentType.passport)
+                        ..._buildPassportFields()
+                      else
+                        ..._buildDriverLicenseFields(),
+                      const SizedBox(height: 24),
+                      if (_errorMessage.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          margin: const EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.error_outline, color: Colors.red, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(_errorMessage, style: const TextStyle(color: Colors.red, fontSize: 14)),
+                              ),
+                            ],
+                          ),
                         ),
-                      ],
-                    ),
-                  ),
-                PlatformElevatedButton(
-                  onPressed: _handleContinue,
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Text('Continue to NFC Reading', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                      PlatformElevatedButton(
+                        onPressed: _handleContinue,
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          child: Text(
+                            'Continue to NFC Reading',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildHelpText(),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                _buildHelpText(),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _buildTopBar(BuildContext context) {
+    return StepBadgeTopBar(
+      icon: PlatformIcons(context).back,
+      onBack: widget.onBack,
+      current: 1,
+      total: 4,
+      label: 'Enter ${widget.documentType.displayName} details',
     );
   }
 

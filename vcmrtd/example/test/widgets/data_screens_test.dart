@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtdapp/providers/wallet_provider.dart';
 import 'package:vcmrtdapp/widgets/pages/driving_licence_data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/passport_data_screen.dart';
 
@@ -62,87 +63,75 @@ void _setLargeViewport(WidgetTester tester) {
 }
 
 void main() {
-  testWidgets('PassportDataScreen renders document data and starts face verification', (tester) async {
+  testWidgets('PassportDataScreen renders document data and adds it to the wallet', (tester) async {
     _setLargeViewport(tester);
     final passport = _passportData();
-    Uint8List? faceBytes;
-    DateTime? issueDate;
     var backCount = 0;
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
 
     await tester.pumpWidget(
-      ProviderScope(
+      UncontrolledProviderScope(
+        container: container,
         child: MaterialApp(
           home: PassportDataScreen(
             document: passport,
             passportDataResult: _rawDocument(sessionId: 'session-1'),
             onBackPressed: () => backCount++,
-            onFaceVerification: (bytes, date) {
-              faceBytes = bytes;
-              issueDate = date;
-            },
           ),
         ),
       ),
     );
     await tester.pump();
 
-    expect(find.text('Passport Data'), findsOneWidget);
+    expect(find.text('4 of 4 · Passport Data'), findsOneWidget);
     expect(find.text('Web Authentication Session'), findsOneWidget);
     expect(find.text('ANNA MARIA ERIKSSON'), findsOneWidget);
     expect(find.text('Available Data Groups'), findsOneWidget);
 
-    await tester.scrollUntilVisible(find.text('Start Face Verification'), 300);
-    await tester.tap(find.text('Start Face Verification'));
+    await tester.scrollUntilVisible(find.text('Add to Wallet'), 300);
+    await tester.tap(find.text('Add to Wallet'));
     await tester.pump();
 
-    expect(faceBytes, same(passport.photoImageData));
-    expect(issueDate, DateTime(2024, 2, 1));
-
-    await tester.tap(find.byType(IconButton).first);
-    expect(backCount, 1);
+    expect(container.read(walletProvider), hasLength(1));
+    expect(container.read(walletProvider).single.holderName, 'ANNA MARIA ERIKSSON');
+    expect(backCount, 1, reason: 'adding to wallet should navigate back to the wallet page');
   });
 
-  testWidgets('DrivingLicenceDataScreen renders licence data and parses issue date for face verification', (
-    tester,
-  ) async {
+  testWidgets('DrivingLicenceDataScreen renders licence data and adds it to the wallet', (tester) async {
     _setLargeViewport(tester);
     final licence = _drivingLicenceData();
-    Uint8List? faceBytes;
-    DateTime? issueDate;
     var backCount = 0;
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
 
     await tester.pumpWidget(
-      ProviderScope(
+      UncontrolledProviderScope(
+        container: container,
         child: MaterialApp(
           home: DrivingLicenceDataScreen(
             drivingLicence: licence,
             drivingLicenceDataResult: _rawDocument(sessionId: 'session-2'),
             onBackPressed: () => backCount++,
-            onFaceVerification: (bytes, date) {
-              faceBytes = bytes;
-              issueDate = date;
-            },
           ),
         ),
       ),
     );
     await tester.pump();
 
-    expect(find.text('Driving Licence Data'), findsOneWidget);
+    expect(find.text('4 of 4 · Driving Licence Data'), findsOneWidget);
     expect(find.text('Web Authentication Session'), findsOneWidget);
     expect(find.text('Eriksson'), findsOneWidget);
     expect(find.text('12/08/1974'), findsOneWidget);
     expect(find.text('Categories'), findsOneWidget);
     expect(find.text('B'), findsOneWidget);
 
-    await tester.scrollUntilVisible(find.text('Start Face Verification'), 300);
-    await tester.tap(find.text('Start Face Verification'));
+    await tester.scrollUntilVisible(find.text('Add to Wallet'), 300);
+    await tester.tap(find.text('Add to Wallet'));
     await tester.pump();
 
-    expect(faceBytes, same(licence.photoImageData));
-    expect(issueDate, DateTime(2024, 2, 1));
-
-    await tester.tap(find.byType(IconButton).first);
-    expect(backCount, 1);
+    expect(container.read(walletProvider), hasLength(1));
+    expect(container.read(walletProvider).single.holderName, 'Anna Maria Eriksson');
+    expect(backCount, 1, reason: 'adding to wallet should navigate back to the wallet page');
   });
 }

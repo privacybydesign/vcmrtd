@@ -1,0 +1,5 @@
+# Proprietary Iris SDK binaries (passportreader.app), shared privately with
+# us — not ours to redistribute in this public repository. Every developer
+# building against this package places their own copy here. See README.md.
+/android/libs/iris.aar
+/ios/Iris.xcframework/

@@ -13,4 +13,4 @@ class ValueNotifier<T> extends Notifier<T> {
 }
 
 // can be used to globally enable/disable active authentication
-final activeAuthenticationProvider = NotifierProvider(() => ValueNotifier(true));
+final activeAuthenticationProvider = NotifierProvider(() => ValueNotifier(false));

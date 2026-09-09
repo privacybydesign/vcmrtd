@@ -4,6 +4,10 @@ allprojects {
         mavenCentral()
         maven { url "https://artifactory.appodeal.com/appodeal-public" }
         maven { url 'https://jitpack.io' }
+        // The Iris SDK ships as a local .aar (not committed — see
+        // face_verification/iris/android/libs/README.md). flatDir lets AGP
+        // consume it as a full Android library (manifest + resources + JNI).
+        flatDir { dirs "${rootProject.projectDir}/../../../face_verification/iris/android/libs" }
     }
 }
 

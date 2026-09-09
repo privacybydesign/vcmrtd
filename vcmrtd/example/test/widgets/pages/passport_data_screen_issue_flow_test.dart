@@ -63,7 +63,6 @@ Widget _screen(_FakeIssuer issuer, {VoidCallback? onBack}) {
         document: _passportData(),
         passportDataResult: _rawDocument(sessionId: 'session-1'),
         onBackPressed: onBack ?? () {},
-        onFaceVerification: (_, __) {},
       ),
     ),
   );

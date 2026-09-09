@@ -1,28 +1,40 @@
-﻿import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtd/vcmrtd.dart';
-import 'package:vcmrtdapp/providers/active_authenticiation_provider.dart';
-import 'package:vcmrtdapp/providers/ocr_engine_provider.dart';
+import 'package:vcmrtdapp/providers/wallet_provider.dart';
 import 'package:vcmrtdapp/theme/text_styles.dart';
+import 'package:vcmrtdapp/widgets/pages/wallet_widgets.dart';
 
-class DocumentTypeSelectionScreen extends StatelessWidget {
+/// Home screen: shows the scanning options when the wallet is empty, or just
+/// the wallet when it holds at least one card — a new scan is then started
+/// via the "+" button in the app bar. The advanced settings entry is always
+/// shown at the bottom, in both states.
+class DocumentTypeSelectionScreen extends ConsumerWidget {
   final Function(DocumentType) onDocumentTypeSelected;
+  final VoidCallback onSettingsPressed;
 
-  const DocumentTypeSelectionScreen({
-    super.key,
-    required this.onDocumentTypeSelected,
-    @visibleForTesting this.showOcrEngineForTesting,
-  });
-
-  @visibleForTesting
-  final bool? showOcrEngineForTesting;
+  const DocumentTypeSelectionScreen({super.key, required this.onDocumentTypeSelected, required this.onSettingsPressed});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cards = ref.watch(walletProvider);
+    final hasCards = cards.isNotEmpty;
+
     return Scaffold(
-      appBar: AppBar(title: Text('Select document type')),
+      appBar: AppBar(
+        title: const Text(
+          'VCMRTD',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22),
+        ),
+        actions: [
+          if (hasCards)
+            IconButton(
+              tooltip: 'New scan',
+              icon: const Icon(Icons.add, size: 32),
+              onPressed: () => _showNewScanSheet(context),
+            ),
+        ],
+      ),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -33,59 +45,152 @@ class DocumentTypeSelectionScreen extends StatelessWidget {
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(14.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _Header(showOcrEngineForTesting: showOcrEngineForTesting),
-                  const SizedBox(height: 24),
-                  _OptionCard(
-                    context: context,
-                    title: 'Passport',
-                    subtitle: 'Use a machine readable passport',
-                    icon: Icons.book,
-                    accentColor: const Color(0xFF6b6868),
-                    onTap: () => onDocumentTypeSelected(DocumentType.passport),
-                    showBadge: true,
-                    badgeText: 'Most common',
-                  ),
-                  const SizedBox(height: 16),
-                  _OptionCard(
-                    context: context,
-                    title: 'Identity Card',
-                    subtitle: 'Use a machine readable identity card',
-                    icon: Icons.credit_card,
-                    accentColor: const Color(0xFF4CAF50),
-                    onTap: () => onDocumentTypeSelected(DocumentType.identityCard),
-                  ),
-                  const SizedBox(height: 16),
-                  _OptionCard(
-                    context: context,
-                    title: 'Driving Licence',
-                    subtitle: 'Use a machine readable driving licence. Currently works primarily with Dutch licences.',
-                    icon: Icons.directions_car,
-                    accentColor: const Color(0xFF2196F3),
-                    onTap: () => onDocumentTypeSelected(DocumentType.drivingLicence),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          child: hasCards
+              ? _WalletHome(cards: cards, onSettingsPressed: onSettingsPressed)
+              : _ScanOptionsHome(onDocumentTypeSelected: onDocumentTypeSelected, onSettingsPressed: onSettingsPressed),
+        ),
+      ),
+    );
+  }
+
+  void _showNewScanSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (sheetContext) => _NewScanSheet(
+        onDocumentTypeSelected: (type) {
+          Navigator.of(sheetContext).pop();
+          onDocumentTypeSelected(type);
+        },
+      ),
+    );
+  }
+}
+
+/// Body shown when the wallet is empty: header + the three scan options,
+/// with the advanced settings entry pinned at the bottom.
+class _ScanOptionsHome extends StatelessWidget {
+  final Function(DocumentType) onDocumentTypeSelected;
+  final VoidCallback onSettingsPressed;
+  const _ScanOptionsHome({required this.onDocumentTypeSelected, required this.onSettingsPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(14.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const _Header(),
+            const SizedBox(height: 24),
+            ..._documentTypeOptions(context, onDocumentTypeSelected),
+            const SizedBox(height: 16),
+            _advancedSettingsOption(context, onSettingsPressed),
+          ],
         ),
       ),
     );
   }
 }
 
-class _Header extends ConsumerWidget {
-  const _Header({this.showOcrEngineForTesting});
-
-  final bool? showOcrEngineForTesting;
+/// Body shown when the wallet holds at least one card: the wallet list fills
+/// the available space, with the advanced settings entry pinned at the
+/// bottom (not scrolled away with the list).
+class _WalletHome extends StatelessWidget {
+  final List<WalletCard> cards;
+  final VoidCallback onSettingsPressed;
+  const _WalletHome({required this.cards, required this.onSettingsPressed});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Expanded(child: WalletList(cards: cards)),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+          child: _advancedSettingsOption(context, onSettingsPressed),
+        ),
+      ],
+    );
+  }
+}
+
+/// Bottom sheet shown after tapping "+" to start a new scan while the wallet
+/// already holds cards.
+class _NewScanSheet extends StatelessWidget {
+  final Function(DocumentType) onDocumentTypeSelected;
+  const _NewScanSheet({required this.onDocumentTypeSelected});
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 20, 14, 14),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('New scan', style: Theme.of(context).defaultTextStyles.primaryLarge, textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            ..._documentTypeOptions(context, onDocumentTypeSelected),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+List<Widget> _documentTypeOptions(BuildContext context, Function(DocumentType) onDocumentTypeSelected) {
+  return [
+    _OptionCard(
+      context: context,
+      title: 'Passport',
+      subtitle: 'Use a machine readable passport',
+      icon: Icons.book,
+      accentColor: const Color(0xFF6b6868),
+      onTap: () => onDocumentTypeSelected(DocumentType.passport),
+      showBadge: true,
+      badgeText: 'Most common',
+    ),
+    const SizedBox(height: 16),
+    _OptionCard(
+      context: context,
+      title: 'Identity Card',
+      subtitle: 'Use a machine readable identity card',
+      icon: Icons.credit_card,
+      accentColor: const Color(0xFF4CAF50),
+      onTap: () => onDocumentTypeSelected(DocumentType.identityCard),
+    ),
+    const SizedBox(height: 16),
+    _OptionCard(
+      context: context,
+      title: 'Driving Licence',
+      subtitle: 'Use a machine readable driving licence. Currently works primarily with Dutch licences.',
+      icon: Icons.directions_car,
+      accentColor: const Color(0xFF2196F3),
+      onTap: () => onDocumentTypeSelected(DocumentType.drivingLicence),
+    ),
+  ];
+}
+
+Widget _advancedSettingsOption(BuildContext context, VoidCallback onSettingsPressed) {
+  return _OptionCard(
+    context: context,
+    title: 'Advanced settings',
+    subtitle: 'Ocr Engine, Face Verification and more',
+    icon: Icons.settings,
+    accentColor: const Color(0xFF757575),
+    onTap: onSettingsPressed,
+  );
+}
+
+class _Header extends StatelessWidget {
+  const _Header();
+
+  @override
+  Widget build(BuildContext context) {
     return Card(
       elevation: 8,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -105,44 +210,16 @@ class _Header extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'Which document type do you want to read?',
+              'Verify your Identity',
               style: Theme.of(context).defaultTextStyles.primaryLarge,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Flexible(child: Text('Perform active authentication', style: Theme.of(context).defaultTextStyles.hint)),
-                Switch(
-                  value: ref.watch(activeAuthenticationProvider),
-                  onChanged: (value) {
-                    ref.read(activeAuthenticationProvider.notifier).set(value);
-                  },
-                ),
-              ],
+            Text(
+              'Select the type of document you want to use for verification.',
+              style: Theme.of(context).defaultTextStyles.secondary,
+              textAlign: TextAlign.left,
             ),
-            if (showOcrEngineForTesting ?? Platform.isAndroid) ...[
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('OCR engine', style: Theme.of(context).defaultTextStyles.hint),
-                  DropdownButton<OcrEngine>(
-                    value: ref.watch(ocrEngineProvider),
-                    onChanged: (OcrEngine? value) {
-                      if (value != null) {
-                        ref.read(ocrEngineProvider.notifier).set(value);
-                      }
-                    },
-                    items: const [
-                      DropdownMenuItem(value: OcrEngine.googleMlKit, child: Text('Google ML Kit')),
-                      DropdownMenuItem(value: OcrEngine.tesseract4android, child: Text('Tesseract4Android')),
-                    ],
-                  ),
-                ],
-              ),
-            ],
           ],
         ),
       ),

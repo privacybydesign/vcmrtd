@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+
 import 'package:logging/logging.dart';
 import 'package:vcmrtd/extensions.dart';
 import 'package:vcmrtd/internal.dart';
@@ -31,6 +32,14 @@ class DataGroupReader {
   final AccessKey? paceAccessKey;
   _DF _dfSelected = _DF.None;
   MrtdApi _api;
+
+  // Per-SFI partial read progress, so that if the connection drops part-way
+  // through a large file (e.g. DG2's face image) a retry resumes from the
+  // last byte read instead of re-reading the whole file. Deliberately not
+  // cleared by reset(): reset() rebuilds the SM session (which does not
+  // survive a reconnect anyway) but the file content already read is still
+  // valid and worth keeping.
+  final Map<int, MrtdFileReadState> _fileReadState = {};
 
   DataGroupReader(ComProvider provider, this._applicationAID, {this.bacAccessKey, this.paceAccessKey})
     : _com = provider,
@@ -66,115 +75,126 @@ class DataGroupReader {
   Future<Uint8List> readDG1() async {
     await _selectDF1();
     _log.debug("Reading EF.DG1");
-    return await _exec(() => _api.readFileBySFI(DG1_SFI));
+    return await _readFileBySFI(DG1_SFI);
   }
 
   Future<Uint8List> readDG2() async {
     await _selectDF1();
     _log.debug("Reading EF.DG2");
-    return await _exec(() => _api.readFileBySFI(DG2_SFI));
+    return await _readFileBySFI(DG2_SFI);
   }
 
   Future<Uint8List> readDG3() async {
     await _selectDF1();
     _log.debug("Reading EF.DG3");
-    return await _exec(() => _api.readFileBySFI(DG3_SFI));
+    return await _readFileBySFI(DG3_SFI);
   }
 
   Future<Uint8List> readDG4() async {
     await _selectDF1();
     _log.debug("Reading EF.DG4");
-    return await _exec(() => _api.readFileBySFI(DG4_SFI));
+    return await _readFileBySFI(DG4_SFI);
   }
 
   Future<Uint8List> readDG5() async {
     await _selectDF1();
     _log.debug("Reading EF.DG5");
-    return await _exec(() => _api.readFileBySFI(DG5_SFI));
+    return await _readFileBySFI(DG5_SFI);
   }
 
   Future<Uint8List> readDG6() async {
     await _selectDF1();
     _log.debug("Reading EF.DG6");
-    return await _exec(() => _api.readFileBySFI(DG6_SFI));
+    return await _readFileBySFI(DG6_SFI);
   }
 
   Future<Uint8List> readDG7() async {
     await _selectDF1();
     _log.debug("Reading EF.DG7");
-    return await _exec(() => _api.readFileBySFI(DG7_SFI));
+    return await _readFileBySFI(DG7_SFI);
   }
 
   Future<Uint8List> readDG8() async {
     await _selectDF1();
     _log.debug("Reading EF.DG8");
-    return await _exec(() => _api.readFileBySFI(DG8_SFI));
+    return await _readFileBySFI(DG8_SFI);
   }
 
   Future<Uint8List> readDG9() async {
     await _selectDF1();
     _log.debug("Reading EF.DG9");
-    return await _exec(() => _api.readFileBySFI(DG9_SFI));
+    return await _readFileBySFI(DG9_SFI);
   }
 
   Future<Uint8List> readDG10() async {
     await _selectDF1();
     _log.debug("Reading EF.DG10");
-    return await _exec(() => _api.readFileBySFI(DG10_SFI));
+    return await _readFileBySFI(DG10_SFI);
   }
 
   Future<Uint8List> readDG11() async {
     await _selectDF1();
     _log.debug("Reading EF.DG11");
-    return await _exec(() => _api.readFileBySFI(DG11_SFI));
+    return await _readFileBySFI(DG11_SFI);
   }
 
   Future<Uint8List> readDG12() async {
     await _selectDF1();
     _log.debug("Reading EF.DG12");
-    return await _exec(() => _api.readFileBySFI(DG12_SFI));
+    return await _readFileBySFI(DG12_SFI);
   }
 
   Future<Uint8List> readDG13() async {
     await _selectDF1();
     _log.debug("Reading EF.DG13");
-    return await _exec(() => _api.readFileBySFI(DG13_SFI));
+    return await _readFileBySFI(DG13_SFI);
   }
 
   Future<Uint8List> readDG14() async {
     await _selectDF1();
     _log.debug("Reading EF.DG14");
-    return await _exec(() => _api.readFileBySFI(DG14_SFI));
+    return await _readFileBySFI(DG14_SFI);
   }
 
   Future<Uint8List> readDG15() async {
     await _selectDF1();
     _log.debug("Reading EF.DG15");
-    return await _exec(() => _api.readFileBySFI(DG15_SFI));
+    return await _readFileBySFI(DG15_SFI);
   }
 
   Future<Uint8List> readDG16() async {
     await _selectDF1();
     _log.debug("Reading EF.DG16");
-    return await _exec(() => _api.readFileBySFI(DG16_SFI));
+    return await _readFileBySFI(DG16_SFI);
   }
 
   Future<Uint8List> readEfCOM() async {
     await _selectDF1();
     _log.debug("Reading EF.COM");
-    return await _exec(() => _api.readFileBySFI(EfCOM.SFI));
+    return await _readFileBySFI(EfCOM.SFI);
   }
 
   Future<Uint8List> readEfSOD() async {
     await _selectDF1();
     _log.debug("Reading EF.SOD");
-    return await _exec(() => _api.readFileBySFI(EfSOD.SFI));
+    return await _readFileBySFI(EfSOD.SFI);
   }
 
   Future<Uint8List> readEfCardAccess() async {
     await _selectMF();
     _log.debug("Reading EF.CardAccess");
-    return await _exec(() => _api.readFileBySFI(EfCardAccess.SFI));
+    return await _readFileBySFI(EfCardAccess.SFI);
+  }
+
+  /// Reads the file identified by [sfi], resuming from any progress left over
+  /// by a previous, interrupted attempt. Only clears the cached progress once
+  /// the file has been read in full, so a further failure keeps resuming
+  /// rather than starting over.
+  Future<Uint8List> _readFileBySFI(int sfi) async {
+    final readState = _fileReadState.putIfAbsent(sfi, () => MrtdFileReadState());
+    final bytes = await _exec(() => _api.readFileBySFI(sfi, state: readState));
+    _fileReadState.remove(sfi);
+    return bytes;
   }
 
   Future<Uint8List> activeAuthenticate(Uint8List challenge) async {
