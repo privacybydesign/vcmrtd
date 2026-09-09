@@ -137,7 +137,7 @@ void main() {
       expect(com.sent.first.hex().substring(2, 4), "88");
     });
 
-    test('readFileBySFI resumes large-file progress across a reconnect instead of re-reading from the start', () async {
+    test('readFileBySFI resumes large-file progress after a reconnect instead of restarting', () async {
       // 604-byte file: 4-byte BER header (tag + long-form length) + 600-byte
       // value, chunked at the default 256-byte max read into
       // [peek(8), rest1(256), rest2(256), rest3(84)].
