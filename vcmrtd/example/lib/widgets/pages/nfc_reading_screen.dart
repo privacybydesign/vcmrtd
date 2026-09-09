@@ -179,7 +179,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
                         message: '',
                         progress: progressForState(state),
                         onRetry: retry,
-                        onCancel: () => _handleBack(context), 
+                        onCancel: () => _handleBack(context),
                         tip: tip,
                       ),
                     ),

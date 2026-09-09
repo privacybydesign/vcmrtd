@@ -1283,7 +1283,9 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
   }
 
   Widget _buildResultFooter(bool passed) => passed
-      ? const Center(child: Text('Continuing…', style: TextStyle(color: Colors.grey)))
+      ? const Center(
+          child: Text('Continuing…', style: TextStyle(color: Colors.grey)),
+        )
       : OutlinedButton(onPressed: _retry, child: const Text('Try Again'));
 
   static Widget _scoreRow(String label, String value, bool ok) => Padding(
