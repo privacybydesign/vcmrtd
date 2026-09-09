@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+
 import 'package:logging/logging.dart';
 import 'package:vcmrtd/extensions.dart';
 import 'package:vcmrtd/internal.dart';

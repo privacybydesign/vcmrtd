@@ -1,6 +1,7 @@
 // Created by Crt Vavros, copyright © 2022 ZeroPass. All rights reserved.
 import 'dart:convert';
 import 'dart:typed_data';
+
 import 'package:convert/convert.dart' as conv;
 
 extension Uint8ListEncodeApis on Uint8List {

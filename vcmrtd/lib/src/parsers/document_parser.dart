@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+
 import 'package:vcmrtd/vcmrtd.dart';
 
 abstract class DocumentParser<DocType extends DocumentData> {
