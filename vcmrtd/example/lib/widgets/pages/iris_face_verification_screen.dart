@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:mrz_capture/mrz_capture.dart';
+import 'package:vcmrtdapp/services/face_verification_outcome.dart';
 
 /// Runs the Iris SDK's face-verification flow.
 ///
@@ -26,7 +27,7 @@ class IrisFaceVerificationScreen extends StatefulWidget {
   /// whatever comes after face verification. Distinct from [onBackPressed] so
   /// callers can send a cancel and a successful verification to different
   /// places (e.g. back to NFC reading vs. on to the document data screen).
-  final VoidCallback onVerified;
+  final ValueChanged<FaceVerificationOutcome> onVerified;
 
   // Test-only: injects a verifier so tests don't have to hit the real plugin.
   final IrisFaceVerifier? testVerifier;
@@ -118,7 +119,7 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
     _autoContinueTimer?.cancel();
     _autoContinueTimer = Timer(const Duration(seconds: 2), () {
       if (!mounted) return;
-      widget.onVerified();
+      widget.onVerified(const FaceVerificationOutcome(engine: 'iris', livenessPassed: true));
     });
   }
 

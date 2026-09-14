@@ -320,6 +320,33 @@ void main() {
       expect(doc.photoImageHeight, 2);
       expect(doc.mrz.lastName, 'ERIKSSON');
     });
+
+    test('parseDG1, DG2, DG11, DG12, DG15 also store their own raw bytes verbatim', () {
+      // Passive Authentication hashes each data group exactly as stored on
+      // the chip, so the DGs that are also individually parsed into
+      // structured fields (mrz, photo*, DG11/DG12 fields, aaPublicKey) must
+      // still expose the untouched bytes passed to parseDGx.
+      final parser = PassportParser();
+
+      final dg1Bytes = buildDG1(validMrz);
+      final dg2Bytes = hexb(validDg2);
+      final dg11Bytes = tlv(0x6B, cat([tlv(0x5C, hexb("5F0E")), tlv(0x5F0E, Uint8List.fromList("ANNA".codeUnits))]));
+      final dg12Bytes = tlv(0x6C, cat([tlv(0x5C, hexb("5F19")), tlv(0x5F19, Uint8List.fromList("ABC".codeUnits))]));
+      final dg15Bytes = TLV.encode(0x6F, hexb(validAaPubKeyDer));
+
+      parser.parseDG1(dg1Bytes);
+      parser.parseDG2(dg2Bytes);
+      parser.parseDG11(dg11Bytes);
+      parser.parseDG12(dg12Bytes);
+      parser.parseDG15(dg15Bytes);
+
+      final doc = parser.createDocument();
+      expect(doc.dg1RawBytes, dg1Bytes);
+      expect(doc.dg2RawBytes, dg2Bytes);
+      expect(doc.dg11RawBytes, dg11Bytes);
+      expect(doc.dg12RawBytes, dg12Bytes);
+      expect(doc.dg15RawBytes, dg15Bytes);
+    });
   });
 
   group('documentContainsDataGroup', () {

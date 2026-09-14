@@ -49,8 +49,10 @@ dependencies:
   path_provider: ^2.1.5
   intl: ^0.20.2
   logger: ^2.6.1
+  package_info_plus: ^8.1.2
   flutter_face_api: ^8.2.1149
   flutter_face_core_basic: ^8.2.461
+  google_mlkit_barcode_scanning: ^0.14.1
 
 dev_dependencies:
   flutter_lints: ^6.0.0

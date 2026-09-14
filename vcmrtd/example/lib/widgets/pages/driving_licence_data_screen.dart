@@ -1,17 +1,18 @@
+import 'dart:io' show Platform;
 import 'dart:typed_data';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mrz_capture/mrz_capture.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:vcmrtd/vcmrtd.dart';
-import 'package:vcmrtdapp/providers/face_api_provider.dart';
-import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
+import 'package:vcmrtdapp/providers/proofing_session_provider.dart';
 import 'package:vcmrtdapp/providers/wallet_provider.dart';
+import 'package:vcmrtdapp/services/face_verification_outcome.dart';
+import 'package:vcmrtdapp/services/proofing_session_client.dart';
 import '../../widgets/pages/data_screen_widgets/web_banner.dart';
-import '../../widgets/pages/data_screen_widgets/return_to_web.dart';
-import '../../widgets/pages/data_screen_widgets/verify_result.dart';
+import '../../widgets/pages/data_screen_widgets/submit_to_proofing_session.dart';
 import '../common/issuance_result_dialogs.dart';
 
 class DrivingLicenceDataScreen extends ConsumerStatefulWidget {
@@ -19,11 +20,14 @@ class DrivingLicenceDataScreen extends ConsumerStatefulWidget {
   final RawDocumentData drivingLicenceDataResult;
   final VoidCallback onBackPressed;
 
+  final FaceVerificationOutcome? faceVerification;
+
   const DrivingLicenceDataScreen({
     super.key,
     required this.drivingLicence,
     required this.drivingLicenceDataResult,
     required this.onBackPressed,
+    this.faceVerification,
   });
 
   @override
@@ -31,11 +35,12 @@ class DrivingLicenceDataScreen extends ConsumerStatefulWidget {
 }
 
 class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScreen> {
-  VerificationResponse? _verificationResponse;
+  bool _submittingToProofingSession = false;
 
   @override
   Widget build(BuildContext context) {
     final imageData = widget.drivingLicence.photoImageData;
+    final activeProofingSession = ref.watch(activeProofingSessionProvider);
 
     return Scaffold(
       body: SafeArea(
@@ -70,36 +75,31 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
                       const SizedBox(height: 24),
                       _buildCategoriesSection(widget.drivingLicence.categories),
                     ],
-                    const SizedBox(height: 20),
-                    ElevatedButton.icon(
-                      onPressed: _addToWallet,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      icon: const Icon(Icons.account_balance_wallet),
-                      label: const Text('Add to Wallet'),
-                    ),
-                    if (widget.drivingLicenceDataResult.sessionId != null) ...[
+                    // A document scanned to fulfil a relying party's proofing
+                    // session is reported back to them, not kept in the
+                    // local wallet — so this and the submit section below
+                    // are mutually exclusive on activeProofingSession.
+                    if (activeProofingSession == null) ...[
                       const SizedBox(height: 20),
-                      if (_verificationResponse == null)
-                        ReturnToWebSection(
-                          isReturningToIssue: false,
-                          isReturningToVerify: false,
-                          onIssuePressed: _issueDrivingLicence,
-                          onVerifyPressed: _verifyDrivingLicence,
-                        )
-                      else ...[
-                        const SizedBox(height: 20),
-                        VerifyResultSection(
-                          isExpired: _verificationResponse!.isExpired,
-                          authenticChip: _verificationResponse!.authenticChip,
-                          authenticContent: _verificationResponse!.authenticContent,
-                          faceMatch: _verificationResponse!.faceMatch,
+                      ElevatedButton.icon(
+                        onPressed: _addToWallet,
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
-                      ],
+                        icon: const Icon(Icons.account_balance_wallet),
+                        label: const Text('Add to Wallet'),
+                      ),
+                    ],
+                    if (activeProofingSession != null) ...[
+                      const SizedBox(height: 20),
+                      SubmitToProofingSessionSection(
+                        relyingParty: activeProofingSession.info.relyingParty,
+                        isSubmitting: _submittingToProofingSession,
+                        onSubmit: () => _submitToProofingSession(activeProofingSession),
+                      ),
                     ],
                   ],
                 ),
@@ -124,62 +124,52 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
     widget.onBackPressed();
   }
 
-  Future<void> _verifyDrivingLicence() async {
-    final issuer = ref.read(passportIssuerProvider);
+  Future<void> _submitToProofingSession(ActiveProofingSession session) async {
+    setState(() => _submittingToProofingSession = true);
     try {
-      final request = await _withLivenessTransaction(widget.drivingLicenceDataResult);
-      final result = await issuer.verifyDrivingLicence(request);
-      setState(() {
-        _verificationResponse = result;
-      });
-    } catch (e) {
-      _showReturnErrorDialog(e.toString());
-    }
-  }
-
-  /// Runs a Regula liveness session (when a Face API is configured) and attaches
-  /// the resulting transaction id to [request], so the issuer can match the
-  /// live face against the chip portrait during verify.
-  Future<RawDocumentData> _withLivenessTransaction(RawDocumentData request) async {
-    final faceApiUrl = ref.read(faceApiUrlProvider);
-    if (faceApiUrl == null) return request;
-    final liveness = await ref.read(regulaFaceServiceProvider).captureLiveness();
-    return request.copyWith(livenessTransactionId: liveness.transactionId);
-  }
-
-  Future<void> _issueDrivingLicence() async {
-    final issuer = ref.read(passportIssuerProvider);
-    try {
-      final response = await issuer.startIrmaIssuanceSession(
-        widget.drivingLicenceDataResult,
-        DocumentType.drivingLicence,
+      final outcome = widget.faceVerification;
+      final packageInfo = await PackageInfo.fromPlatform();
+      await const ProofingSessionClient().submitResult(
+        session.ref,
+        status: 'approved',
+        requestedAttributes: session.info.requestedAttributes,
+        document: ProofingDocumentInfo.fromDrivingLicenceData(widget.drivingLicence),
+        photo: ProofingPhotoInfo.fromImage(widget.drivingLicence.photoImageData, widget.drivingLicence.photoImageType),
+        mrtdEvidence: ProofingMrtdEvidence.fromRawDocumentData(widget.drivingLicenceDataResult, aaKeyDataGroup: 'DG13'),
+        biometrics: ProofingBiometricsInfo(
+          faceMatchScore: outcome?.matchScore,
+          faceVerified: outcome != null ? true : null,
+          livenessResult: outcome == null ? 'not_performed' : (outcome.livenessPassed ? 'passed' : 'failed'),
+          engine: outcome?.engine,
+        ),
+        device: ProofingDeviceInfo(
+          appVersion: '${packageInfo.version}+${packageInfo.buildNumber}',
+          devicePlatform: Platform.operatingSystem,
+        ),
       );
-      await launchUrl(response.toUniversalLink(), mode: LaunchMode.externalApplication);
-      _showReturnSuccessDialog();
+      ref.read(activeProofingSessionProvider.notifier).set(null);
+      if (!mounted) return;
+      DialogHelpers.showSuccessDialog(
+        context: context,
+        title: 'Submitted',
+        message: 'Your document identity and face verification result were sent to ${session.info.relyingParty}.',
+        onContinue: () {
+          Navigator.of(context).pop();
+          widget.onBackPressed();
+        },
+      );
     } catch (e) {
-      _showReturnErrorDialog(e.toString());
+      if (!mounted) return;
+      DialogHelpers.showErrorDialog(
+        context: context,
+        title: 'Submit Failed',
+        message: 'Failed to submit the result to the relying party:',
+        error: e.toString(),
+        onRetry: () => _submitToProofingSession(session),
+      );
+    } finally {
+      if (mounted) setState(() => _submittingToProofingSession = false);
     }
-  }
-
-  void _showReturnSuccessDialog() {
-    DialogHelpers.showSuccessDialog(
-      context: context,
-      title: 'Success!',
-      message:
-          'Your driving licence data has been securely transmitted to the web application. '
-          'You can now close this app or scan another document.',
-      onContinue: widget.onBackPressed,
-    );
-  }
-
-  void _showReturnErrorDialog(String error) {
-    DialogHelpers.showErrorDialog(
-      context: context,
-      title: 'Verification Failed',
-      message: 'Failed to verify driving licence:',
-      error: error,
-      onRetry: _verifyDrivingLicence,
-    );
   }
 
   Widget _buildPhotoSection(Uint8List imageData) {

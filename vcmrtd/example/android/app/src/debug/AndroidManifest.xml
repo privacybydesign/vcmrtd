@@ -4,4 +4,12 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- Debug builds only: allows plain http:// (not just https://) so the
+         identity-proofing-service QR/deep-link flow can be tested against a
+         local dev server (e.g. http://192.168.x.x:8080), which has no TLS
+         cert. Android blocks cleartext traffic by default since API 28.
+         Merged into the debug manifest only — release builds stay
+         https-only, same as passport-issuer.yivi.app already requires. -->
+    <application android:usesCleartextTraffic="true" />
 </manifest>

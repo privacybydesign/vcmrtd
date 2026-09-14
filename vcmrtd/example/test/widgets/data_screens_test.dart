@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtdapp/providers/proofing_session_provider.dart';
 import 'package:vcmrtdapp/providers/wallet_provider.dart';
+import 'package:vcmrtdapp/services/proofing_session_client.dart';
 import 'package:vcmrtdapp/widgets/pages/driving_licence_data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/passport_data_screen.dart';
 
@@ -61,6 +63,17 @@ void _setLargeViewport(WidgetTester tester) {
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
 }
+
+ActiveProofingSession _fakeProofingSession() => ActiveProofingSession(
+  ref: const ProofingSessionRef(apiBase: 'https://proof.example.com', token: 'tok-1'),
+  info: ProofingSessionInfo(
+    id: 'session-1',
+    relyingParty: 'Acme Corp',
+    requestedAttributes: const ['dg1'],
+    expiresAt: DateTime.now().add(const Duration(minutes: 5)),
+  ),
+  openedAt: DateTime.now(),
+);
 
 void main() {
   testWidgets('PassportDataScreen renders document data and adds it to the wallet', (tester) async {
@@ -134,4 +147,57 @@ void main() {
     expect(container.read(walletProvider).single.holderName, 'Anna Maria Eriksson');
     expect(backCount, 1, reason: 'adding to wallet should navigate back to the wallet page');
   });
+
+  testWidgets('PassportDataScreen hides Add to Wallet and shows the submit section once a proofing session is pinned', (
+    tester,
+  ) async {
+    _setLargeViewport(tester);
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    container.read(activeProofingSessionProvider.notifier).set(_fakeProofingSession());
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          home: PassportDataScreen(
+            document: _passportData(),
+            passportDataResult: _rawDocument(sessionId: 'session-1'),
+            onBackPressed: () {},
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Add to Wallet'), findsNothing);
+    expect(find.text('Submit to Acme Corp'), findsOneWidget);
+  });
+
+  testWidgets(
+    'DrivingLicenceDataScreen hides Add to Wallet and shows the submit section once a proofing session is pinned',
+    (tester) async {
+      _setLargeViewport(tester);
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      container.read(activeProofingSessionProvider.notifier).set(_fakeProofingSession());
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: DrivingLicenceDataScreen(
+              drivingLicence: _drivingLicenceData(),
+              drivingLicenceDataResult: _rawDocument(sessionId: 'session-2'),
+              onBackPressed: () {},
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('Add to Wallet'), findsNothing);
+      expect(find.text('Submit to Acme Corp'), findsOneWidget);
+    },
+  );
 }

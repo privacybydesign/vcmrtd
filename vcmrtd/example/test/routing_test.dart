@@ -18,7 +18,10 @@ import 'package:vcmrtdapp/widgets/pages/passport_data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/scanner_wrapper.dart';
 import 'package:vcmrtdapp/widgets/pages/manual_entry_route_params.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_reading_screen.dart';
+import 'package:vcmrtdapp/widgets/pages/proofing_session_consent_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/settings_screen.dart';
+import 'package:vcmrtdapp/providers/proofing_session_provider.dart';
+import 'package:vcmrtdapp/services/proofing_session_client.dart';
 
 class _FakeScanner extends StatelessWidget {
   const _FakeScanner({required this.documentType, required this.onSuccess});
@@ -505,6 +508,62 @@ void main() {
       await tester.pump();
 
       expect(find.byType(NfcReadingScreen), findsOneWidget);
+    });
+
+    testWidgets('proofing consent route: Continue pins the session and returns to document selection', (tester) async {
+      final router = createRouter(scannerBuilder: _scannerBuilder());
+      addTearDown(router.dispose);
+      final sessionRef = const ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok');
+      final info = ProofingSessionInfo(
+        id: 'sess1',
+        relyingParty: 'acme-tenant',
+        requestedAttributes: const [],
+        expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+      );
+
+      await tester.pumpWidget(_routerApp(router));
+      router.push('/proofing_consent', extra: {'ref': sessionRef, 'info': info});
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byType(ProofingSessionConsentScreen), findsOneWidget);
+      final container = ProviderScope.containerOf(tester.element(find.byType(ProofingSessionConsentScreen)));
+      expect(container.read(activeProofingSessionProvider), isNull);
+
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Continue'));
+      await tester.pumpAndSettle();
+
+      expect(router.routeInformationProvider.value.uri.path, '/select_doc_type');
+      final pinned = container.read(activeProofingSessionProvider);
+      expect(pinned, isNotNull);
+      expect(pinned!.ref.token, 'tok');
+      expect(pinned.info.relyingParty, 'acme-tenant');
+    });
+
+    testWidgets('proofing consent route: Decline returns to document selection without pinning a session', (
+      tester,
+    ) async {
+      final router = createRouter(scannerBuilder: _scannerBuilder());
+      addTearDown(router.dispose);
+      final sessionRef = const ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok');
+      final info = ProofingSessionInfo(
+        id: 'sess1',
+        relyingParty: 'acme-tenant',
+        requestedAttributes: const [],
+        expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+      );
+
+      await tester.pumpWidget(_routerApp(router));
+      router.push('/proofing_consent', extra: {'ref': sessionRef, 'info': info});
+      await tester.pump();
+      await tester.pump();
+
+      final container = ProviderScope.containerOf(tester.element(find.byType(ProofingSessionConsentScreen)));
+      await tester.tap(find.widgetWithText(OutlinedButton, 'Decline'));
+      await tester.pumpAndSettle();
+
+      expect(router.routeInformationProvider.value.uri.path, '/select_doc_type');
+      expect(container.read(activeProofingSessionProvider), isNull);
     });
 
     testWidgets('builds result route for identity card using passport data screen', (tester) async {

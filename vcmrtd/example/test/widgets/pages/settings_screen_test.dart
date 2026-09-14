@@ -35,10 +35,10 @@ void main() {
       );
       await tester.pump();
 
-      expect(container.read(activeAuthenticationProvider), isFalse);
+      expect(container.read(activeAuthenticationProvider), isTrue);
       await tester.tap(find.byType(Switch));
       await tester.pump();
-      expect(container.read(activeAuthenticationProvider), isTrue);
+      expect(container.read(activeAuthenticationProvider), isFalse);
     });
 
     testWidgets('face verification engine tile shows current value and updates provider via picker', (tester) async {

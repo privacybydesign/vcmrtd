@@ -29,7 +29,7 @@ void main() {
   testWidgets('shows an intro screen before the native flow starts', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: IrisFaceVerificationScreen(nfcImageBytes: _fakePortraitPng(), onBackPressed: () {}, onVerified: () {}),
+        home: IrisFaceVerificationScreen(nfcImageBytes: _fakePortraitPng(), onBackPressed: () {}, onVerified: (_) {}),
       ),
     );
     await tester.pump();
@@ -47,7 +47,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: IrisFaceVerificationScreen(nfcImageBytes: _fakePortraitPng(), onBackPressed: () {}, onVerified: () {}),
+        home: IrisFaceVerificationScreen(nfcImageBytes: _fakePortraitPng(), onBackPressed: () {}, onVerified: (_) {}),
       ),
     );
     await tester.pump();
@@ -66,7 +66,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: IrisFaceVerificationScreen(nfcImageBytes: _fakePortraitPng(), onBackPressed: () {}, onVerified: () {}),
+        home: IrisFaceVerificationScreen(nfcImageBytes: _fakePortraitPng(), onBackPressed: () {}, onVerified: (_) {}),
       ),
     );
     await tester.pump();
@@ -94,7 +94,7 @@ void main() {
         home: IrisFaceVerificationScreen(
           nfcImageBytes: _fakePortraitPng(),
           onBackPressed: () => backCount++,
-          onVerified: () => verifiedCount++,
+          onVerified: (_) => verifiedCount++,
         ),
       ),
     );
@@ -115,7 +115,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: IrisFaceVerificationScreen(nfcImageBytes: _fakePortraitPng(), onBackPressed: () {}, onVerified: () {}),
+        home: IrisFaceVerificationScreen(nfcImageBytes: _fakePortraitPng(), onBackPressed: () {}, onVerified: (_) {}),
       ),
     );
     await tester.pump();
@@ -134,7 +134,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: IrisFaceVerificationScreen(nfcImageBytes: _fakePortraitPng(), onBackPressed: () {}, onVerified: () {}),
+        home: IrisFaceVerificationScreen(nfcImageBytes: _fakePortraitPng(), onBackPressed: () {}, onVerified: (_) {}),
       ),
     );
     await tester.pump();
@@ -151,7 +151,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: IrisFaceVerificationScreen(nfcImageBytes: _fakePortraitPng(), onBackPressed: () {}, onVerified: () {}),
+        home: IrisFaceVerificationScreen(nfcImageBytes: _fakePortraitPng(), onBackPressed: () {}, onVerified: (_) {}),
       ),
     );
     await tester.pump();
@@ -173,7 +173,7 @@ void main() {
         home: IrisFaceVerificationScreen(
           nfcImageBytes: Uint8List.fromList([1, 2, 3]),
           onBackPressed: () {},
-          onVerified: () {},
+          onVerified: (_) {},
         ),
       ),
     );
@@ -206,7 +206,7 @@ void main() {
         home: IrisFaceVerificationScreen(
           nfcImageBytes: Uint8List.fromList([1, 2, 3]),
           onBackPressed: () {},
-          onVerified: () {},
+          onVerified: (_) {},
         ),
       ),
     );
@@ -227,7 +227,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: IrisFaceVerificationScreen(nfcImageBytes: _fakePortraitPng(), onBackPressed: () {}, onVerified: () {}),
+        home: IrisFaceVerificationScreen(nfcImageBytes: _fakePortraitPng(), onBackPressed: () {}, onVerified: (_) {}),
       ),
     );
     await tester.pump();

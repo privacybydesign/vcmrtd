@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:face_verification/face_verification.dart';
 import 'package:image/image.dart' as img;
 import 'package:mrz_capture/mrz_capture.dart';
+import 'package:vcmrtdapp/services/face_verification_outcome.dart';
 
 // ── Enums & helpers ────────────────────────────────────────────────────────
 
@@ -85,7 +86,7 @@ class FlutterFaceVerificationScreen extends StatefulWidget {
   /// whatever comes after face verification. Distinct from [onBackPressed] so
   /// callers can send a cancel and a successful verification to different
   /// places (e.g. back to NFC reading vs. on to the document data screen).
-  final VoidCallback onVerified;
+  final ValueChanged<FaceVerificationOutcome> onVerified;
   final DateTime? photoIssueDate;
 
   // Test-only: injects a pre-built engine and skips camera + model bootstrap.
@@ -722,7 +723,14 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
     _autoContinueTimer?.cancel();
     _autoContinueTimer = Timer(const Duration(seconds: 2), () {
       if (!mounted || _isDisposed) return;
-      widget.onVerified();
+      widget.onVerified(
+        FaceVerificationOutcome(
+          engine: 'open source',
+          livenessMode: _selectedMode.name,
+          matchScore: result.matchScore,
+          livenessPassed: result.isLive,
+        ),
+      );
     });
   }
 

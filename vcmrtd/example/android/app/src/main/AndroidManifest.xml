@@ -20,6 +20,15 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+            <!-- Flutter's built-in auto deep-linking defaults to true and races
+                 ahead of ProofingDeepLinkPlugin / DeepLinkPlugin: it forwards
+                 any opened URL straight to go_router's navigation channel as a
+                 raw location, which throws GoException ("no routes for
+                 location: vcmrtd://verify?...") since no GoRoute matches it.
+                 Disabled so only our own plugins handle incoming links. -->
+            <meta-data
+              android:name="flutter_deeplinking_enabled"
+              android:value="false" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
@@ -32,6 +41,14 @@
                 <data android:scheme="https"
                       android:host="passport-issuer.yivi.app"
                       android:pathPrefix="/start-app" />
+            </intent-filter>
+            <!-- Custom-scheme deep link for identity-proofing-service sessions
+                 (vcmrtd://verify?token=...&api=...), see ProofingDeepLinkPlugin. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="vcmrtd" />
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

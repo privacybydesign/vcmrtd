@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:face_verification/face_verification.dart';
 import 'package:vcmrtdapp/providers/face_engine_provider.dart';
+import 'package:vcmrtdapp/services/face_verification_outcome.dart';
 import 'package:vcmrtdapp/widgets/pages/face_verification_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/iris_face_verification_screen.dart';
 
@@ -19,7 +20,7 @@ class FaceVerificationEntryScreen extends StatelessWidget {
 
   /// Fired once verification has passed, to continue on to whatever comes
   /// after face verification (e.g. the document data screen).
-  final VoidCallback onVerified;
+  final ValueChanged<FaceVerificationOutcome> onVerified;
   final DateTime? photoIssueDate;
   final FaceEngineChoice engineChoice;
 

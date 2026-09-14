@@ -76,7 +76,23 @@ class MrtdApi {
   Future<Uint8List> activeAuthenticate(final Uint8List challenge, {int sigLength = 256}) async {
     assert(challenge.length == challengeLen);
     _log.debug("Sending AA command with challenge=${challenge.hex()}");
-    return await icc.internalAuthenticate(data: challenge, ne: sigLength);
+    try {
+      return await icc.internalAuthenticate(data: challenge, ne: sigLength);
+    } on ICCError catch (e) {
+      // Our guessed sigLength (256, i.e. an RSA-2048 signature) is wrong for
+      // chips using a different AA key size (e.g. RSA-1024, 128 bytes) -
+      // these reply with the exact expected length instead of the signature.
+      // Retry once with that length rather than letting this bubble up as a
+      // hard failure: the caller's reconnection loop can't tell this
+      // deterministic protocol mismatch apart from a lost connection, so it
+      // burns several retries (each re-doing BAC/PACE) before giving up and
+      // failing the whole document read over what is really just a wrong Ne.
+      if (e.sw.sw1 == StatusWord.sw1WrongLengthWithExactLength && e.sw.sw2 != sigLength) {
+        _log.warning("AA signature length mismatch, retrying with length ${e.sw.sw2}");
+        return await icc.internalAuthenticate(data: challenge, ne: e.sw.sw2);
+      }
+      rethrow;
+    }
   }
 
   /// Initializes Secure Messaging session via BAC protocol using [keys].

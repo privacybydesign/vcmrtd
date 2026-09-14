@@ -56,6 +56,12 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
   Uint8List? _dg13RawBytes;
   Uint8List? _dg14RawBytes;
 
+  // Raw bytes for DGs that are also individually parsed above — needed
+  // verbatim (not re-derived) to verify their hash against EF.SOD. DG1 and
+  // DG6 are mandatory for driving licences, same as _dg1/_dg6 above.
+  late Uint8List _dg1RawBytes;
+  late Uint8List _dg6RawBytes;
+
   @override
   bool documentContainsDataGroup(DataGroups dg) {
     return com.dgTags.contains(_tagForDataGroup(dg));
@@ -130,11 +136,14 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
       dg12RawBytes: _dg12RawBytes,
       dg13RawBytes: _dg13RawBytes,
       dg14RawBytes: _dg14RawBytes,
+      dg1RawBytes: _dg1RawBytes,
+      dg6RawBytes: _dg6RawBytes,
     );
   }
 
   @override
   void parseDG1(Uint8List bytes) {
+    _dg1RawBytes = bytes;
     // Unwrap outer 0x61 tag
     final outerTlv = TLV.decode(bytes);
     final childrenBytes = outerTlv.value;
@@ -341,6 +350,7 @@ class DrivingLicenceParser extends DocumentParser<DrivingLicenceData> {
 
   @override
   void parseDG6(Uint8List bytes) {
+    _dg6RawBytes = bytes;
     // Unwrap outer 0x75 tag
     final outerTlv = TLV.fromBytes(bytes);
 

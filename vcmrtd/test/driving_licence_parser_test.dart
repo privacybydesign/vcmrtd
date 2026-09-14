@@ -38,9 +38,11 @@ void main() {
   test("parse all", () {
     final parser = DrivingLicenceParser(failDg1CategoriesGracefully: false);
 
-    parser.parseDG1(parseTestCase(dg1DiacriticsTest));
+    final dg1Bytes = parseTestCase(dg1DiacriticsTest);
+    final dg6Bytes = parseTestCase(dg6Test);
+    parser.parseDG1(dg1Bytes);
     parser.parseDG5(parseTestCase(dg5Test));
-    parser.parseDG6(parseTestCase(dg6Test));
+    parser.parseDG6(dg6Bytes);
     parser.parseDG11(Uint8List(0));
     parser.parseDG12(parseTestCase(dg12Test));
     parser.parseDG13(parseTestCase(dg13Test));
@@ -59,6 +61,11 @@ void main() {
 
     expect(document.photoImageData, isNotEmpty);
     expect(document.photoImageType, ImageType.jpeg);
+
+    // Passive Authentication needs DG1/DG6 exactly as stored on the chip,
+    // not re-derived from the parsed fields above.
+    expect(document.dg1RawBytes, dg1Bytes);
+    expect(document.dg6RawBytes, dg6Bytes);
   });
 }
 

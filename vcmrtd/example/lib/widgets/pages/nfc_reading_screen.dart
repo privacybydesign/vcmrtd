@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:vcmrtdapp/custom/custom_logger_extension.dart';
 import 'package:vcmrtdapp/providers/active_authenticiation_provider.dart';
 import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
+import 'package:vcmrtdapp/providers/proofing_session_provider.dart';
 import 'package:vcmrtdapp/widgets/common/animated_nfc_status_widget.dart';
 import 'package:vcmrtdapp/widgets/common/nfc_reading_animation.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_guidance_screen.dart';
@@ -105,12 +104,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
       'Reading was interrupted. Slowly lift your phone off the document and place '
       'it back down until it buzzes or beeps again.';
 
-  static const _stuckTipDelay = Duration(seconds: 2);
-
   late ScannedMRZ scannedMRZ;
-
-  Timer? _stuckTipTimer;
-  bool _connectionSeemsStuck = false;
 
   @override
   void didChangeDependencies() {
@@ -121,24 +115,8 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
 
   @override
   void dispose() {
-    _stuckTipTimer?.cancel();
     routeObserver.unsubscribe(this);
     super.dispose();
-  }
-
-  void _handleReaderStateChange(DocumentReaderState? previous, DocumentReaderState next) {
-    if (next is! DocumentReaderReconnecting) {
-      _stuckTipTimer?.cancel();
-      _stuckTipTimer = null;
-      if (_connectionSeemsStuck) setState(() => _connectionSeemsStuck = false);
-      return;
-    }
-
-    if (_stuckTipTimer != null || _connectionSeemsStuck) return;
-    _stuckTipTimer = Timer(_stuckTipDelay, () {
-      if (!mounted) return;
-      setState(() => _connectionSeemsStuck = true);
-    });
   }
 
   /// Fires when a route pushed on top of this one (face verification) is
@@ -170,7 +148,6 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
     };
 
     final state = ref.watch(readerProvider(scannedMRZ));
-    ref.listen(readerProvider(scannedMRZ), _handleReaderStateChange);
 
     if (state is DocumentReaderPending) {
       return NfcGuidanceScreen(
@@ -245,9 +222,13 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
   }
 
   /// The contextual tip to show for the current state, or null to hide it.
-  /// [_firstTip] only shows during [DocumentReaderConnecting] - the phase
-  /// before `nfc.connect()` has resolved, where the user still has to find
-  /// the chip - since every later
+  /// Surfaces the "seems stuck" tip the instant a connection is lost - both
+  /// while it's actively being retried, and after retries are exhausted with
+  /// a tag-lost/timeout failure - and swaps it back out the instant the
+  /// connection recovers, since a silent retry loop otherwise looks
+  /// identical to a healthy read to the user. [_firstTip] only shows during
+  /// [DocumentReaderConnecting] - the phase before `nfc.connect()` has
+  /// resolved, where the user still has to find the chip - since every later
   /// phase (including [DocumentReaderReadingCardAccess] and
   /// [DocumentReaderAuthenticating]) only runs once a connection is already
   /// established. Every state past that shows the steady "don't move" tip -
@@ -255,10 +236,11 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
   /// tied to the current phase would often swap out before it could actually
   /// be read.
   String? _tipForState(DocumentReaderState state, int? readingStep) {
-    final isTerminalConnectionFailure =
-        state is DocumentReaderFailed &&
-        (state.error == DocumentReadingError.tagLost || state.error == DocumentReadingError.timeoutWaitingForTag);
-    if (_connectionSeemsStuck || isTerminalConnectionFailure) {
+    final isConnectionLost =
+        state is DocumentReaderReconnecting ||
+        (state is DocumentReaderFailed &&
+            (state.error == DocumentReadingError.tagLost || state.error == DocumentReadingError.timeoutWaitingForTag));
+    if (isConnectionLost) {
       return _stuckTip;
     }
     if (readingStep == null) return null;
@@ -438,8 +420,24 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
       // independent of the active authentication toggle, so with the toggle off
       // the app would never learn that face verification applies.
       if (ref.read(activeAuthenticationProvider)) {
-        final startValidation = await ref.read(passportIssuerProvider).startSessionAtPassportIssuer();
-        nonceAndSessionId = startValidation.nonceAndSessionId;
+        final activeSession = ref.read(activeProofingSessionProvider);
+        if (activeSession != null) {
+          // Pinned to an identity-proofing-service session: the chip must
+          // sign that session's own aaChallenge, since the server verifies
+          // the AA response against it byte-for-byte and otherwise reports a
+          // genuine chip as CHIP_CLONE_DETECTED. A missing aaChallenge (older
+          // or mismatched server responses) just skips Active Authentication,
+          // the same as an unsupported chip does.
+          final aaChallenge = activeSession.info.aaChallenge;
+          if (aaChallenge != null && aaChallenge.isNotEmpty) {
+            nonceAndSessionId = NonceAndSessionId(nonce: aaChallenge, sessionId: activeSession.info.id);
+          }
+        } else {
+          // No pinned proofing session (standalone scan straight into the
+          // local wallet) — fall back to the legacy passport-issuer flow.
+          final startValidation = await ref.read(passportIssuerProvider).startSessionAtPassportIssuer();
+          nonceAndSessionId = startValidation.nonceAndSessionId;
+        }
       }
       final result = await ref
           .read(readerProvider(scannedMRZ).notifier)

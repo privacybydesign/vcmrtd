@@ -1,25 +1,28 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mrz_capture/mrz_capture.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:vcmrtd/vcmrtd.dart';
-import 'package:vcmrtdapp/providers/face_api_provider.dart';
-import 'package:vcmrtdapp/providers/passport_issuer_provider.dart';
+import 'package:vcmrtdapp/providers/proofing_session_provider.dart';
 import 'package:vcmrtdapp/providers/wallet_provider.dart';
+import 'package:vcmrtdapp/services/face_verification_outcome.dart';
+import 'package:vcmrtdapp/services/proofing_session_client.dart';
 
 import '../../widgets/pages/data_screen_widgets/personal_data_section.dart';
 import '../../widgets/pages/data_screen_widgets/security_content.dart';
-import '../../widgets/pages/data_screen_widgets/return_to_web.dart';
+import '../../widgets/pages/data_screen_widgets/submit_to_proofing_session.dart';
 import '../../widgets/pages/data_screen_widgets/web_banner.dart';
 
 import '../common/issuance_result_dialogs.dart';
-import 'data_screen_widgets/verify_result.dart';
 
 class PassportDataScreen extends ConsumerStatefulWidget {
   final DocumentData document;
   final RawDocumentData passportDataResult;
   final VoidCallback onBackPressed;
   final DocumentType documentType;
+  final FaceVerificationOutcome? faceVerification;
 
   const PassportDataScreen({
     super.key,
@@ -27,6 +30,7 @@ class PassportDataScreen extends ConsumerStatefulWidget {
     required this.onBackPressed,
     required this.passportDataResult,
     this.documentType = DocumentType.passport,
+    this.faceVerification,
   });
 
   @override
@@ -34,10 +38,12 @@ class PassportDataScreen extends ConsumerStatefulWidget {
 }
 
 class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
-  VerificationResponse? _verificationResponse;
+  bool _submittingToProofingSession = false;
 
   @override
   Widget build(BuildContext context) {
+    final activeProofingSession = ref.watch(activeProofingSessionProvider);
+
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -54,36 +60,31 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
                     PersonalDataSection(passport: widget.document as PassportData),
                     const SizedBox(height: 20),
                     SecurityContent(passport: widget.document as PassportData),
-                    const SizedBox(height: 20),
-                    ElevatedButton.icon(
-                      onPressed: _addToWallet,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      icon: const Icon(Icons.account_balance_wallet),
-                      label: const Text('Add to Wallet'),
-                    ),
-                    if (widget.passportDataResult.sessionId != null) ...[
+                    // A document scanned to fulfil a relying party's proofing
+                    // session is reported back to them, not kept in the
+                    // local wallet — so this and the submit section below
+                    // are mutually exclusive on activeProofingSession.
+                    if (activeProofingSession == null) ...[
                       const SizedBox(height: 20),
-                      if (_verificationResponse == null)
-                        ReturnToWebSection(
-                          isReturningToIssue: false,
-                          isReturningToVerify: false,
-                          onIssuePressed: _returnToIssue,
-                          onVerifyPressed: _verifyPassport,
-                        )
-                      else ...[
-                        const SizedBox(height: 20),
-                        VerifyResultSection(
-                          isExpired: _verificationResponse!.isExpired,
-                          authenticChip: _verificationResponse!.authenticChip,
-                          authenticContent: _verificationResponse!.authenticContent,
-                          faceMatch: _verificationResponse!.faceMatch,
+                      ElevatedButton.icon(
+                        onPressed: _addToWallet,
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
-                      ],
+                        icon: const Icon(Icons.account_balance_wallet),
+                        label: const Text('Add to Wallet'),
+                      ),
+                    ],
+                    if (activeProofingSession != null) ...[
+                      const SizedBox(height: 20),
+                      SubmitToProofingSessionSection(
+                        relyingParty: activeProofingSession.info.relyingParty,
+                        isSubmitting: _submittingToProofingSession,
+                        onSubmit: () => _submitToProofingSession(activeProofingSession),
+                      ),
                     ],
                   ],
                 ),
@@ -108,73 +109,52 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
     widget.onBackPressed();
   }
 
-  Future<void> _verifyPassport() async {
-    final issuer = ref.read(passportIssuerProvider);
-
+  Future<void> _submitToProofingSession(ActiveProofingSession session) async {
+    setState(() => _submittingToProofingSession = true);
     try {
-      final request = await _withLivenessTransaction(widget.passportDataResult);
-      final result = await issuer.verifyPassport(request);
-      setState(() {
-        _verificationResponse = result;
-      });
-    } catch (e) {
-      _showReturnErrorDialog(e.toString());
-    }
-  }
-
-  /// Runs a Regula liveness session (when a Face API is configured) and attaches
-  /// the resulting transaction id to [request], so the issuer can match the
-  /// live face against the chip portrait during verify.
-  Future<RawDocumentData> _withLivenessTransaction(RawDocumentData request) async {
-    final faceApiUrl = ref.read(faceApiUrlProvider);
-    if (faceApiUrl == null) return request;
-    final liveness = await ref.read(regulaFaceServiceProvider).captureLiveness();
-    return request.copyWith(livenessTransactionId: liveness.transactionId);
-  }
-
-  Future<void> _returnToIssue() async {
-    final issuer = ref.read(passportIssuerProvider);
-
-    try {
-      final response = await issuer.startIrmaIssuanceSession(widget.passportDataResult, widget.documentType);
-      await launchUrl(response.toUniversalLink(), mode: LaunchMode.externalApplication);
-      _showReturnSuccessDialog();
-    } catch (e) {
-      _showReturnErrorDialog(e.toString());
-    }
-  }
-
-  void _showReturnSuccessDialog() {
-    final docName = widget.documentType.displayName.toLowerCase();
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        icon: Icon(Icons.check_circle, color: Colors.green[600], size: 48),
-        title: const Text('Success!'),
-        content: Text(
-          'Your $docName data has been securely transmitted to the web application. '
-          'You can now close this app or scan another document.',
+      final passport = widget.document as PassportData;
+      final outcome = widget.faceVerification;
+      final packageInfo = await PackageInfo.fromPlatform();
+      await const ProofingSessionClient().submitResult(
+        session.ref,
+        status: 'approved',
+        requestedAttributes: session.info.requestedAttributes,
+        document: ProofingDocumentInfo.fromPassportData(passport),
+        photo: ProofingPhotoInfo.fromImage(passport.photoImageData, passport.photoImageType),
+        mrtdEvidence: ProofingMrtdEvidence.fromRawDocumentData(widget.passportDataResult, aaKeyDataGroup: 'DG15'),
+        biometrics: ProofingBiometricsInfo(
+          faceMatchScore: outcome?.matchScore,
+          faceVerified: outcome != null ? true : null,
+          livenessResult: outcome == null ? 'not_performed' : (outcome.livenessPassed ? 'passed' : 'failed'),
+          engine: outcome?.engine,
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              widget.onBackPressed();
-            },
-            child: const Text('Continue'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showReturnErrorDialog(String error) {
-    DialogHelpers.showErrorDialog(
-      context: context,
-      title: 'Return Failed',
-      message: 'Failed to return to web application:',
-      error: error,
-      onRetry: _returnToIssue,
-    );
+        device: ProofingDeviceInfo(
+          appVersion: '${packageInfo.version}+${packageInfo.buildNumber}',
+          devicePlatform: Platform.operatingSystem,
+        ),
+      );
+      ref.read(activeProofingSessionProvider.notifier).set(null);
+      if (!mounted) return;
+      DialogHelpers.showSuccessDialog(
+        context: context,
+        title: 'Submitted',
+        message: 'Your document identity and face verification result were sent to ${session.info.relyingParty}.',
+        onContinue: () {
+          Navigator.of(context).pop();
+          widget.onBackPressed();
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      DialogHelpers.showErrorDialog(
+        context: context,
+        title: 'Submit Failed',
+        message: 'Failed to submit the result to the relying party:',
+        error: e.toString(),
+        onRetry: () => _submitToProofingSession(session),
+      );
+    } finally {
+      if (mounted) setState(() => _submittingToProofingSession = false);
+    }
   }
 }
