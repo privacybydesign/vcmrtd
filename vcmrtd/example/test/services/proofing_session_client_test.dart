@@ -114,6 +114,7 @@ void main() {
       const evidence = ProofingMrtdEvidence(
         efSod: 'aabb',
         dataGroups: {'DG1': '1122', 'DG2': '3344'},
+        documentType: 'icao',
         aaKeyDataGroup: 'DG15',
         nonce: '0011223344556677',
         aaSignature: 'ccdd',
@@ -121,6 +122,7 @@ void main() {
       expect(evidence.toJson(), {
         'efSod': 'aabb',
         'dataGroups': {'DG1': '1122', 'DG2': '3344'},
+        'documentType': 'icao',
         'aaKeyDataGroup': 'DG15',
         'nonce': '0011223344556677',
         'aaSignature': 'ccdd',
@@ -128,10 +130,11 @@ void main() {
     });
 
     test('toJson omits AA fields entirely when unset, rather than sending nulls', () {
-      const evidence = ProofingMrtdEvidence(efSod: 'aabb', dataGroups: {'DG1': '1122'});
+      const evidence = ProofingMrtdEvidence(efSod: 'aabb', dataGroups: {'DG1': '1122'}, documentType: 'icao');
       expect(evidence.toJson(), {
         'efSod': 'aabb',
         'dataGroups': {'DG1': '1122'},
+        'documentType': 'icao',
       });
     });
 
@@ -142,9 +145,10 @@ void main() {
         nonce: Uint8List.fromList([0x01, 0x02]),
         aaSignature: Uint8List.fromList([0x03, 0x04]),
       );
-      final evidence = ProofingMrtdEvidence.fromRawDocumentData(result, aaKeyDataGroup: 'DG15');
+      final evidence = ProofingMrtdEvidence.fromRawDocumentData(result, aaKeyDataGroup: 'DG15', documentType: 'icao');
       expect(evidence.efSod, 'aabb');
       expect(evidence.dataGroups, {'DG1': '1122', 'DG15': '5F0102'});
+      expect(evidence.documentType, 'icao');
       expect(evidence.aaKeyDataGroup, 'DG15');
       expect(evidence.nonce, '0102');
       expect(evidence.aaSignature, '0304');
@@ -157,7 +161,7 @@ void main() {
         nonce: Uint8List.fromList([0x01, 0x02]),
         aaSignature: Uint8List.fromList([0x03, 0x04]),
       );
-      final evidence = ProofingMrtdEvidence.fromRawDocumentData(result, aaKeyDataGroup: 'DG15');
+      final evidence = ProofingMrtdEvidence.fromRawDocumentData(result, aaKeyDataGroup: 'DG15', documentType: 'icao');
       expect(evidence.aaKeyDataGroup, isNull);
       expect(evidence.nonce, isNull);
       expect(evidence.aaSignature, isNull);
@@ -165,7 +169,12 @@ void main() {
 
     test('fromRawDocumentData reports AA not attempted when no nonce/signature was captured', () {
       final result = RawDocumentData(dataGroups: {'DG1': '1122', 'DG13': '5F0102'}, efSod: 'aabb');
-      final evidence = ProofingMrtdEvidence.fromRawDocumentData(result, aaKeyDataGroup: 'DG13');
+      final evidence = ProofingMrtdEvidence.fromRawDocumentData(
+        result,
+        aaKeyDataGroup: 'DG13',
+        documentType: 'eu_driving_licence',
+      );
+      expect(evidence.documentType, 'eu_driving_licence');
       expect(evidence.aaKeyDataGroup, isNull);
       expect(evidence.nonce, isNull);
       expect(evidence.aaSignature, isNull);
@@ -202,7 +211,7 @@ void main() {
       _fakePassportData(personalNumber: 'ABC123', placeOfBirth: ['Stockholm', 'SWE']),
     );
     ProofingPhotoInfo photo() => ProofingPhotoInfo.fromImage(Uint8List.fromList([1, 2, 3]), ImageType.jpeg);
-    const mrtdEvidence = ProofingMrtdEvidence(efSod: 'aabb', dataGroups: {'DG1': '1122'});
+    const mrtdEvidence = ProofingMrtdEvidence(efSod: 'aabb', dataGroups: {'DG1': '1122'}, documentType: 'icao');
     const biometrics = ProofingBiometricsInfo(faceVerified: true, livenessResult: 'passed');
     const device = ProofingDeviceInfo(appVersion: '0.1.0+11', devicePlatform: 'ios');
 

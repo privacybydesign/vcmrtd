@@ -266,9 +266,20 @@ class ProofingMrtdEvidence {
   final String? nonce;
   final String? aaSignature;
 
+  /// Selects which Passive Authentication path identity-proofing-service
+  /// runs — "icao" (passports/ID cards, requires DG1+DG2) or
+  /// "eu_driving_licence" (generic hash/signature check against whatever
+  /// data groups were submitted, no DG2 requirement). Mirrors
+  /// api.mrtdEvidenceRequest.DocumentType/documentTypeICAO/
+  /// documentTypeEUDrivingLicence on the server; must match [aaKeyDataGroup]
+  /// ("DG15"->"icao", "DG13"->"eu_driving_licence") or the server will
+  /// route to the wrong verification path.
+  final String documentType;
+
   const ProofingMrtdEvidence({
     required this.efSod,
     required this.dataGroups,
+    required this.documentType,
     this.aaKeyDataGroup,
     this.nonce,
     this.aaSignature,
@@ -282,14 +293,21 @@ class ProofingMrtdEvidence {
   /// already handling) — Active Authentication is only reported as
   /// attempted when that data group was actually read AND a nonce/signature
   /// pair was actually captured; a chip that doesn't support AA (no such
-  /// data group) or where AA wasn't attempted reports neither.
-  factory ProofingMrtdEvidence.fromRawDocumentData(RawDocumentData result, {required String aaKeyDataGroup}) {
+  /// data group) or where AA wasn't attempted reports neither. [documentType]
+  /// must be the matching "icao"/"eu_driving_licence" value — see the field
+  /// doc comment.
+  factory ProofingMrtdEvidence.fromRawDocumentData(
+    RawDocumentData result, {
+    required String aaKeyDataGroup,
+    required String documentType,
+  }) {
     final nonce = result.nonce;
     final signature = result.aaSignature;
     final aaAttempted = result.dataGroups.containsKey(aaKeyDataGroup) && nonce != null && signature != null;
     return ProofingMrtdEvidence(
       efSod: result.efSod,
       dataGroups: result.dataGroups,
+      documentType: documentType,
       aaKeyDataGroup: aaAttempted ? aaKeyDataGroup : null,
       nonce: aaAttempted ? nonce.hex() : null,
       aaSignature: aaAttempted ? signature.hex() : null,
@@ -299,6 +317,7 @@ class ProofingMrtdEvidence {
   Map<String, dynamic> toJson() => {
     'efSod': efSod,
     'dataGroups': dataGroups,
+    'documentType': documentType,
     if (aaKeyDataGroup != null) 'aaKeyDataGroup': aaKeyDataGroup,
     if (nonce != null) 'nonce': nonce,
     if (aaSignature != null) 'aaSignature': aaSignature,
