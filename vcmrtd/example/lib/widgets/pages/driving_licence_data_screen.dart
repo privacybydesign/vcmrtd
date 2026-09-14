@@ -135,6 +135,7 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
         requestedAttributes: session.info.requestedAttributes,
         document: ProofingDocumentInfo.fromDrivingLicenceData(widget.drivingLicence),
         photo: ProofingPhotoInfo.fromImage(widget.drivingLicence.photoImageData, widget.drivingLicence.photoImageType),
+        selfie: outcome?.selfieImageBytes != null ? ProofingPhotoInfo.fromSelfie(outcome!.selfieImageBytes!) : null,
         mrtdEvidence: ProofingMrtdEvidence.fromRawDocumentData(
           widget.drivingLicenceDataResult,
           aaKeyDataGroup: 'DG13',

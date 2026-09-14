@@ -109,6 +109,21 @@ void main() {
     });
   });
 
+  group('ProofingPhotoInfo.fromSelfie', () {
+    test('detects a PNG signature (the on-device engine\'s encoding)', () {
+      final png = Uint8List.fromList([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3]);
+      final json = ProofingPhotoInfo.fromSelfie(png).toJson();
+      expect(json['mimeType'], 'image/png');
+      expect(json['imageBase64'], base64Encode(png));
+    });
+
+    test('falls back to image/jpeg for anything without a PNG signature', () {
+      final jpeg = Uint8List.fromList([0xFF, 0xD8, 0xFF, 0xE0, 1, 2, 3]);
+      expect(ProofingPhotoInfo.fromSelfie(jpeg).toJson()['mimeType'], 'image/jpeg');
+      expect(ProofingPhotoInfo.fromSelfie(Uint8List(0)).toJson()['mimeType'], 'image/jpeg');
+    });
+  });
+
   group('ProofingMrtdEvidence', () {
     test('toJson includes only the AA fields that are set', () {
       const evidence = ProofingMrtdEvidence(
@@ -211,6 +226,7 @@ void main() {
       _fakePassportData(personalNumber: 'ABC123', placeOfBirth: ['Stockholm', 'SWE']),
     );
     ProofingPhotoInfo photo() => ProofingPhotoInfo.fromImage(Uint8List.fromList([1, 2, 3]), ImageType.jpeg);
+    ProofingPhotoInfo selfie() => ProofingPhotoInfo.fromSelfie(Uint8List.fromList([4, 5, 6]));
     const mrtdEvidence = ProofingMrtdEvidence(efSod: 'aabb', dataGroups: {'DG1': '1122'}, documentType: 'icao');
     const biometrics = ProofingBiometricsInfo(faceVerified: true, livenessResult: 'passed');
     const device = ProofingDeviceInfo(appVersion: '0.1.0+11', devicePlatform: 'ios');
@@ -221,20 +237,22 @@ void main() {
         requestedAttributes: const [],
         document: document(),
         photo: photo(),
+        selfie: selfie(),
         mrtdEvidence: mrtdEvidence,
         biometrics: biometrics,
         device: device,
       );
-      expect(body.keys.toSet(), {'status', 'document', 'photo', 'mrtdEvidence', 'biometrics', 'device'});
+      expect(body.keys.toSet(), {'status', 'document', 'photo', 'selfie', 'mrtdEvidence', 'biometrics', 'device'});
       expect((body['document'] as Map)['personalNumber'], 'ABC123');
     });
 
-    test('"dg1" alone includes the document but drops the dg11 extras', () {
+    test('"dg1" alone includes the document but drops the dg11 extras, photo and selfie', () {
       final body = buildProofingResultBody(
         status: 'approved',
         requestedAttributes: const ['dg1'],
         document: document(),
         photo: photo(),
+        selfie: selfie(),
         mrtdEvidence: mrtdEvidence,
         biometrics: biometrics,
         device: device,
@@ -243,10 +261,22 @@ void main() {
       expect((body['document'] as Map).containsKey('personalNumber'), isFalse);
       expect((body['document'] as Map).containsKey('placeOfBirth'), isFalse);
       expect(body.containsKey('photo'), isFalse);
+      expect(body.containsKey('selfie'), isFalse);
       expect(body.containsKey('mrtdEvidence'), isFalse);
       expect(body.containsKey('biometrics'), isFalse);
       // device is operational metadata, never gated.
       expect(body.containsKey('device'), isTrue);
+    });
+
+    test('"selfie" gates the selfie independently of "dg2"/"face_image" (the document photo)', () {
+      final body = buildProofingResultBody(
+        status: 'approved',
+        requestedAttributes: const ['selfie'],
+        photo: photo(),
+        selfie: selfie(),
+      );
+      expect(body.containsKey('photo'), isFalse);
+      expect(body.containsKey('selfie'), isTrue);
     });
 
     test('"dg1" plus "dg11" includes the dg11 extras too', () {

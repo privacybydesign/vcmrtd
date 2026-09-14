@@ -213,8 +213,8 @@ class ProofingDocumentValidityInfo {
   };
 }
 
-/// The raw face image off the chip's DG2 data group. Mirrors api.photoInfo
-/// on the server.
+/// The raw face image off the chip's DG2 data group, or the live selfie
+/// captured during face verification. Mirrors api.photoInfo on the server.
 class ProofingPhotoInfo {
   final String imageBase64;
   final String mimeType;
@@ -229,6 +229,21 @@ class ProofingPhotoInfo {
       null => 'image/jpeg',
     },
   );
+
+  factory ProofingPhotoInfo.fromSelfie(Uint8List bytes) =>
+      ProofingPhotoInfo(imageBase64: base64Encode(bytes), mimeType: _sniffImageMimeType(bytes));
+
+  static const _pngSignature = [0x89, 0x50, 0x4E, 0x47];
+
+  static bool _isPng(Uint8List bytes) {
+    if (bytes.length < _pngSignature.length) return false;
+    for (var i = 0; i < _pngSignature.length; i++) {
+      if (bytes[i] != _pngSignature[i]) return false;
+    }
+    return true;
+  }
+
+  static String _sniffImageMimeType(Uint8List bytes) => _isPng(bytes) ? 'image/png' : 'image/jpeg';
 
   Map<String, dynamic> toJson() => {'imageBase64': imageBase64, 'mimeType': mimeType};
 }
@@ -368,6 +383,7 @@ const _attrDG2 = 'dg2';
 const _attrFaceImage = 'face_image';
 const _attrChipChecks = 'chip_checks';
 const _attrBiometrics = 'biometrics';
+const _attrSelfie = 'selfie';
 
 /// Whether any of [keys] was requested. Mirrors the server's attrRequested:
 /// an empty [requestedAttributes] list is unrestricted (matches everything)
@@ -401,6 +417,7 @@ Map<String, dynamic> buildProofingResultBody({
   required List<String> requestedAttributes,
   ProofingDocumentInfo? document,
   ProofingPhotoInfo? photo,
+  ProofingPhotoInfo? selfie,
   ProofingMrtdEvidence? mrtdEvidence,
   ProofingBiometricsInfo? biometrics,
   ProofingDeviceInfo? device,
@@ -408,6 +425,7 @@ Map<String, dynamic> buildProofingResultBody({
   final includeDocument = document != null && _attrRequested(requestedAttributes, [_attrDocument]);
   final includeDG11 = _attrRequested(requestedAttributes, [_attrDG11]);
   final includePhoto = photo != null && _attrRequested(requestedAttributes, [_attrDG2, _attrFaceImage]);
+  final includeSelfie = selfie != null && _attrRequested(requestedAttributes, [_attrSelfie]);
   final includeMrtdEvidence = mrtdEvidence != null && _attrRequested(requestedAttributes, [_attrChipChecks]);
   final includeBiometrics = biometrics != null && _attrRequested(requestedAttributes, [_attrBiometrics]);
 
@@ -416,6 +434,7 @@ Map<String, dynamic> buildProofingResultBody({
     if (errorCode != null) 'errorCode': errorCode,
     if (includeDocument) 'document': document.toJson(includeDG11Extras: includeDG11),
     if (includePhoto) 'photo': photo.toJson(),
+    if (includeSelfie) 'selfie': selfie.toJson(),
     if (includeMrtdEvidence) 'mrtdEvidence': mrtdEvidence.toJson(),
     if (includeBiometrics) 'biometrics': biometrics.toJson(),
     if (device != null) 'device': device.toJson(),
@@ -441,7 +460,7 @@ class ProofingSessionClient {
 
   /// Submits the outcome. [status] must be one of: approved, rejected,
   /// needs_review, cancelled. Body shape mirrors the server's
-  /// appResultRequest (document/photo/mrtdEvidence/biometrics/device) — each
+  /// appResultRequest (document/photo/selfie/mrtdEvidence/biometrics/device) — each
   /// part is sent only when [requestedAttributes] asked for it, [device]
   /// excepted. The server computes and stores its own chipChecks verdict
   /// from [mrtdEvidence] — this client has no way to send a self-reported
@@ -456,6 +475,7 @@ class ProofingSessionClient {
     required List<String> requestedAttributes,
     ProofingDocumentInfo? document,
     ProofingPhotoInfo? photo,
+    ProofingPhotoInfo? selfie,
     ProofingMrtdEvidence? mrtdEvidence,
     ProofingBiometricsInfo? biometrics,
     ProofingDeviceInfo? device,
@@ -470,6 +490,7 @@ class ProofingSessionClient {
           requestedAttributes: requestedAttributes,
           document: document,
           photo: photo,
+          selfie: selfie,
           mrtdEvidence: mrtdEvidence,
           biometrics: biometrics,
           device: device,

@@ -729,6 +729,7 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
           livenessMode: _selectedMode.name,
           matchScore: result.matchScore,
           livenessPassed: result.isLive,
+          selfieImageBytes: result.liveFace,
         ),
       );
     });

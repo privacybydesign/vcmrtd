@@ -121,6 +121,7 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen> {
         requestedAttributes: session.info.requestedAttributes,
         document: ProofingDocumentInfo.fromPassportData(passport),
         photo: ProofingPhotoInfo.fromImage(passport.photoImageData, passport.photoImageType),
+        selfie: outcome?.selfieImageBytes != null ? ProofingPhotoInfo.fromSelfie(outcome!.selfieImageBytes!) : null,
         mrtdEvidence: ProofingMrtdEvidence.fromRawDocumentData(
           widget.passportDataResult,
           aaKeyDataGroup: 'DG15',

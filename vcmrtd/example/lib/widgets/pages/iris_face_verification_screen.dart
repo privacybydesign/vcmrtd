@@ -119,7 +119,7 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
     _autoContinueTimer?.cancel();
     _autoContinueTimer = Timer(const Duration(seconds: 2), () {
       if (!mounted) return;
-      widget.onVerified(const FaceVerificationOutcome(engine: 'iris', livenessPassed: true));
+      widget.onVerified(FaceVerificationOutcome(engine: 'iris', livenessPassed: true, selfieImageBytes: result.face));
     });
   }
 
