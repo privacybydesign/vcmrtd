@@ -56,6 +56,22 @@ class ScannedPassportMRZ extends ScannedMRZ {
       documentType: documentType,
     );
   }
+
+  // Value equality: consumers (e.g. Riverpod `.family` providers keyed on a
+  // ScannedMRZ) may re-parse the same scan result into a new instance - two
+  // instances describing the same document must compare equal.
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ScannedPassportMRZ &&
+          documentNumber == other.documentNumber &&
+          countryCode == other.countryCode &&
+          documentType == other.documentType &&
+          dateOfBirth == other.dateOfBirth &&
+          dateOfExpiry == other.dateOfExpiry);
+
+  @override
+  int get hashCode => Object.hash(documentNumber, countryCode, documentType, dateOfBirth, dateOfExpiry);
 }
 
 // =====================
@@ -96,4 +112,21 @@ class ScannedDriverLicenseMRZ extends ScannedMRZ {
     final parsed = DrivingLicenceMrzParser().parse([mrzString]);
     return ScannedDriverLicenseMRZ.fromMRZResult(parsed, documentType: documentType);
   }
+
+  // Value equality: consumers (e.g. Riverpod `.family` providers keyed on a
+  // ScannedMRZ) may re-parse the same scan result into a new instance - two
+  // instances describing the same document must compare equal.
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ScannedDriverLicenseMRZ &&
+          documentNumber == other.documentNumber &&
+          countryCode == other.countryCode &&
+          documentType == other.documentType &&
+          version == other.version &&
+          randomData == other.randomData &&
+          configuration == other.configuration);
+
+  @override
+  int get hashCode => Object.hash(documentNumber, countryCode, documentType, version, randomData, configuration);
 }

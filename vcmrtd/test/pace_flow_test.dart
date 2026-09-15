@@ -148,7 +148,7 @@ class SimulatedEcdhChip extends ComProvider {
   // Step 4: the terminal verifies the chip's token against the token it
   // computed over its OWN ephemeral public key, so the chip must return the
   // token computed over the TERMINAL's ephemeral public key (captured in
-  // step 3 by the _CapturingEcdhChip subclass).
+  // step 3 by the CapturingEcdhChip subclass).
   Uint8List _step4(Uint8List cmd) {
     final inputData = PACE.generateEncodingInputData(
       crytpographicMechanism: protocol,
@@ -168,7 +168,7 @@ void main() {
       final protocol = efCardAccess.paceInfo!.protocol;
       final dba = DBAKey("T22000129", DateTime(1964, 8, 12), DateTime(2010, 10, 31), paceMode: true);
 
-      final chip = _CapturingEcdhChip(dbaKey: dba, protocol: protocol, paramId: 13);
+      final chip = CapturingEcdhChip(dbaKey: dba, protocol: protocol, paramId: 13);
       final icc = ICC(chip);
 
       final result = await PACE.initSession(paceKey: dba, icc: icc, efCardAccess: efCardAccess);
@@ -411,8 +411,8 @@ class _NeverChip extends ComProvider {
 
 /// Extends the simulated chip to capture the terminal's ephemeral public key
 /// from the step-3 command so step 4 can compute the matching chip auth token.
-class _CapturingEcdhChip extends SimulatedEcdhChip {
-  _CapturingEcdhChip({required super.dbaKey, required super.protocol, required super.paramId});
+class CapturingEcdhChip extends SimulatedEcdhChip {
+  CapturingEcdhChip({required super.dbaKey, required super.protocol, required super.paramId});
 
   @override
   Future<Uint8List> transceive(Uint8List cmd) async {

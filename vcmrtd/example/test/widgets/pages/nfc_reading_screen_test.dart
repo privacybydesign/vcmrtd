@@ -14,6 +14,7 @@ import 'package:vcmrtd/internal.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
 import 'package:vcmrtdapp/providers/reader_providers.dart';
+import 'package:vcmrtdapp/routing.dart';
 import 'package:vcmrtdapp/widgets/common/animated_nfc_status_widget.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_guidance_screen.dart';
@@ -59,6 +60,11 @@ class _FakeReader extends DocumentReader<PassportData> {
     state = DocumentReaderPending();
   }
 
+  /// Test-only hook to simulate a state transition, as the real reader would
+  /// emit one mid-[readDocument] - [initialState] only covers the state the
+  /// screen is built with, not changes after that.
+  void emit(DocumentReaderState newState) => state = newState;
+
   @override
   Future<(PassportData, RawDocumentData)?> readDocument({
     required IosNfcMessageMapper iosNfcMessages,
@@ -86,7 +92,7 @@ ScannedPassportMRZ _passportMrz() {
 
 /// Builds the screen wrapped in a GoRouter so context.pop works (used by the
 /// pending/guidance branch).
-Widget _app(DocumentType documentType, {void Function()? onCancel}) {
+Widget _app(DocumentType documentType) {
   final params = NfcReadingRouteParams(scannedMRZ: _passportMrz(), documentType: documentType);
   final router = GoRouter(
     initialLocation: '/',
@@ -97,7 +103,7 @@ Widget _app(DocumentType documentType, {void Function()? onCancel}) {
       ),
       GoRoute(
         path: '/',
-        builder: (_, __) => NfcReadingScreen(params: params, onCancel: onCancel ?? () {}, onSuccess: (_, __) {}),
+        builder: (_, __) => NfcReadingScreen(params: params, onSuccess: (_, __) {}),
       ),
     ],
   );
@@ -152,7 +158,7 @@ void main() {
         await tester.pumpWidget(_app(DocumentType.passport));
         await tester.pump(const Duration(milliseconds: 100));
 
-        expect(find.text('Scan passport'), findsOneWidget);
+        expect(find.text('2 of 4 · Read ${DocumentType.passport.displayName}'), findsOneWidget);
         expect(find.byType(AnimatedNFCStatusWidget), findsOneWidget);
 
         // Drain any continuous animations.
@@ -182,6 +188,62 @@ void main() {
 
       expect(find.byType(AnimatedNFCStatusWidget), findsOneWidget);
     });
+
+    testWidgets('failed state with a lost-connection error shows the reposition tip immediately', (tester) async {
+      _setLargeViewport(tester);
+      _FakeReader.initialState = DocumentReaderFailed(
+        error: DocumentReadingError.tagLost,
+        logs: 'logs',
+        sensitiveLogs: 'sensitive',
+      );
+      await tester.pumpWidget(_app(DocumentType.passport));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // A terminal tag-lost failure won't recover on its own, so there's
+      // nothing to debounce - the tip shows right away.
+      expect(find.textContaining('Slowly lift your phone off the document'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 600));
+    });
+
+    testWidgets('reconnecting state only shows the reposition tip once the connection has stayed lost for a bit', (
+      tester,
+    ) async {
+      _setLargeViewport(tester);
+      _FakeReader.initialState = DocumentReaderReadingDataGroup(dataGroup: 'DG2', progress: 0.4);
+      await tester.pumpWidget(_app(DocumentType.passport));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final reader =
+          ProviderScope.containerOf(
+                tester.element(find.byType(NfcReadingScreen)),
+              ).read(passportReaderProvider(_passportMrz()).notifier)
+              as _FakeReader;
+      reader.emit(DocumentReaderReconnecting(DocumentReaderReadingDataGroup(dataGroup: 'DG2', progress: 0.4)));
+      await tester.pump();
+
+      // A brief blip that's still within the debounce window must not
+      // read as "stuck" - a retry that resolves on its own would otherwise
+      // flash a tip about a connection that was never really lost.
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.textContaining('Slowly lift your phone off the document'), findsNothing);
+      // Still on the reading screen (not regressed to the guidance screen or
+      // a hard failure) since the retry budget isn't exhausted yet.
+      expect(find.byType(NfcGuidanceScreen), findsNothing);
+      expect(find.text('2 of 4 · Read ${DocumentType.passport.displayName}'), findsOneWidget);
+
+      // Once the connection has stayed lost past the debounce window, the
+      // tip is the only signal the user gets that this isn't a healthy
+      // read in progress.
+      await tester.pump(const Duration(seconds: 2));
+      expect(find.textContaining('Slowly lift your phone off the document'), findsOneWidget);
+
+      // Reading resumes: the tip must revert immediately, not stay stuck
+      // showing a stale warning.
+      reader.emit(DocumentReaderReadingDataGroup(dataGroup: 'DG2', progress: 0.6));
+      await tester.pump();
+      expect(find.textContaining('Slowly lift your phone off the document'), findsNothing);
+      expect(find.textContaining('Keep your phone and the document still'), findsOneWidget);
+    });
   });
 
   group('NfcReadingScreen — title per document type', () {
@@ -191,7 +253,7 @@ void main() {
       await tester.pumpWidget(_app(DocumentType.identityCard));
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('Scan identity card'), findsOneWidget);
+      expect(find.text('2 of 4 · Read ${DocumentType.identityCard.displayName}'), findsOneWidget);
       await tester.pump(const Duration(milliseconds: 600));
     });
   });
@@ -243,6 +305,64 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
+      expect(find.byType(NfcGuidanceScreen), findsOneWidget);
+    });
+  });
+
+  group('NfcReadingScreen — returning from a pushed route', () {
+    testWidgets('after a completed read resets to pending, instead of a dead-end success screen', (tester) async {
+      _setLargeViewport(tester);
+      // Simulates arriving back here after the user backs out of face
+      // verification: the read already succeeded, so there is nothing left
+      // to do on this screen if it stays in Success.
+      _FakeReader.initialState = DocumentReaderSuccess();
+
+      final params = NfcReadingRouteParams(scannedMRZ: _passportMrz(), documentType: DocumentType.passport);
+      final router = GoRouter(
+        initialLocation: '/',
+        // The app's real routing.dart registers this same observer; without
+        // it, NfcReadingScreen's RouteAware subscription never fires.
+        observers: [routeObserver],
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, __) => NfcReadingScreen(params: params, onSuccess: (_, __) {}),
+          ),
+          GoRoute(
+            path: '/next',
+            builder: (_, __) => const Scaffold(body: Text('face verification')),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            passportReaderProvider.overrideWith(_FakeReader.new),
+            identityCardReaderProvider.overrideWith(_FakeReader.new),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.byType(NfcGuidanceScreen), findsNothing);
+
+      router.push('/next');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('face verification'), findsOneWidget);
+
+      router.pop();
+      await tester.pump();
+      // NfcGuidanceScreen runs a repeating animation and a periodic NFC-status
+      // timer, so pumpAndSettle would never return here - a couple of bounded
+      // pumps is enough to observe the post-pop state.
+      await tester.pump(const Duration(milliseconds: 400));
+
+      // Back on the NFC screen: the completed read was reset, so the
+      // guidance screen (with a way forward) is shown, not the dead-end
+      // success checklist.
       expect(find.byType(NfcGuidanceScreen), findsOneWidget);
     });
   });

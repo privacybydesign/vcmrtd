@@ -18,6 +18,7 @@ import 'package:vcmrtdapp/widgets/pages/passport_data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/scanner_wrapper.dart';
 import 'package:vcmrtdapp/widgets/pages/manual_entry_route_params.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_reading_screen.dart';
+import 'package:vcmrtdapp/widgets/pages/settings_screen.dart';
 
 class _FakeScanner extends StatelessWidget {
   const _FakeScanner({required this.documentType, required this.onSuccess});
@@ -187,8 +188,13 @@ class _RouteExtensionHarness extends StatelessWidget {
           child: const Text('push nfc reading'),
         ),
         TextButton(
-          onPressed: () =>
-              context.pushFaceVerificationScreen(Uint8List.fromList(<int>[1, 2, 3]), issueDate: DateTime(2024, 2, 1)),
+          onPressed: () => context.pushFaceVerificationScreen(
+            Uint8List.fromList(<int>[1, 2, 3]),
+            issueDate: DateTime(2024, 2, 1),
+            document: _passportData(),
+            result: _rawDocument(),
+            documentType: DocumentType.passport,
+          ),
           child: const Text('push face verification'),
         ),
       ],
@@ -235,7 +241,7 @@ void main() {
       await tester.pump();
 
       expect(find.byType(ScannerWrapper), findsOneWidget);
-      expect(find.text('Scan ${DocumentType.identityCard.displayName}'), findsOneWidget);
+      expect(find.text('1 of 4 · Scan ${DocumentType.identityCard.displayName}'), findsOneWidget);
       expect(find.text('fake route scanner ${DocumentType.identityCard.name}'), findsOneWidget);
     });
 
@@ -255,8 +261,30 @@ void main() {
       expect(find.byType(ScannerWrapper), findsOneWidget);
     });
 
-    testWidgets('MRZ reader callbacks navigate to NFC reading and manual entry', (tester) async {
+    testWidgets('settings callback navigates to the settings screen and back', (tester) async {
       final router = createRouter(scannerBuilder: _scannerBuilder());
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(_routerApp(router));
+      await tester.pumpAndSettle();
+
+      tester.widget<DocumentTypeSelectionScreen>(find.byType(DocumentTypeSelectionScreen)).onSettingsPressed();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SettingsScreen), findsOneWidget);
+
+      tester.widget<SettingsScreen>(find.byType(SettingsScreen)).onBackPressed();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(DocumentTypeSelectionScreen), findsOneWidget);
+    });
+
+    testWidgets('MRZ reader callbacks navigate to NFC reading and manual entry', (tester) async {
+      // NFC success now jumps straight into the on-device camera screen (no
+      // more method-picker buffer in between), so a fake engine must be
+      // injected here to avoid bootstrapping a real camera/native worker.
+      final engine = FaceVerificationEngine.withWorker(_FakeWorker());
+      final router = createRouter(scannerBuilder: _scannerBuilder(), faceVerificationEngine: engine);
       addTearDown(router.dispose);
 
       await tester.pumpWidget(_routerApp(router));
@@ -280,7 +308,9 @@ void main() {
           .onSuccess(_passportData(), _rawDocument());
       await tester.pump();
       await tester.pump();
-      expect(find.byType(PassportDataScreen), findsOneWidget);
+      // NFC success jumps straight into face verification; the document data
+      // screen is shown afterwards (see the 'result route callbacks ...' test).
+      expect(find.byType(FaceVerificationEntryScreen), findsOneWidget);
 
       router.go(
         Uri(
@@ -327,7 +357,7 @@ void main() {
       expect(find.byType(DrivingLicenceDataScreen), findsOneWidget);
     });
 
-    testWidgets('result route callbacks navigate back and to face verification for passport and driving licence', (
+    testWidgets('result route back callbacks navigate to document selection for passport and driving licence', (
       tester,
     ) async {
       final engine = FaceVerificationEngine.withWorker(_FakeWorker());
@@ -346,43 +376,6 @@ void main() {
       await tester.pump();
       await tester.pump();
       expect(router.routeInformationProvider.value.uri.path, '/select_doc_type');
-
-      router.go(
-        '/result',
-        extra: {'document': _passportData(), 'result': _rawDocument(), 'document_type': DocumentType.identityCard},
-      );
-      await tester.pump();
-      await tester.pump();
-      final issueDate = DateTime(2024, 3, 4);
-      tester
-          .widgetList<PassportDataScreen>(find.byType(PassportDataScreen))
-          .last
-          .onFaceVerification(Uint8List.fromList([9]), issueDate);
-      await tester.pump();
-      await tester.pump();
-      // The route builds the method-picker entry screen; the picker -> camera
-      // screen transition is covered by face_verification_entry_screen_test.dart.
-      expect(find.byType(FaceVerificationEntryScreen), findsOneWidget);
-
-      router.go(
-        '/result',
-        extra: {
-          'document': _drivingLicenceData(),
-          'result': _rawDocument(),
-          'document_type': DocumentType.drivingLicence,
-        },
-      );
-      await tester.pump();
-      await tester.pump();
-
-      final drivingIssueDate = DateTime(2024, 4, 5);
-      tester
-          .widgetList<DrivingLicenceDataScreen>(find.byType(DrivingLicenceDataScreen))
-          .last
-          .onFaceVerification(Uint8List.fromList([7, 8]), drivingIssueDate);
-      await tester.pump();
-      await tester.pump();
-      expect(find.byType(FaceVerificationEntryScreen), findsOneWidget);
 
       router.go(
         '/result',
@@ -412,6 +405,9 @@ void main() {
         extra: {
           'nfcImageBytes': Uint8List.fromList([1]),
           'issueDate': issueDate,
+          'document': _passportData(),
+          'result': _rawDocument(),
+          'documentType': DocumentType.passport,
         },
       );
       await tester.pump();

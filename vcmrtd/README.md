@@ -129,7 +129,7 @@ final verification = await issuer.verifyPassport(result.rawData);
 
 ## Roadmap
 
-- [ ] **Face Verification**: Biometric face matching against DG2 facial image (planned)
+- [x] **Face Verification**: Biometric face matching against DG2 facial image — see the [`face_verification`](../face_verification) package
 - [x] PACE-CAM (Chip Authentication Mapping) support
 - [x] Extended Access Control (EAC) support
 

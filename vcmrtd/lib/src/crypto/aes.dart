@@ -1,6 +1,7 @@
 //  Created by Nejc Skerjanc, copyright © 2023 ZeroPass. All rights reserved.
 
 import 'dart:typed_data';
+
 import 'package:pointycastle/src/impl/base_block_cipher.dart';
 import 'package:vcmrtd/extensions.dart';
 import 'package:logging/logging.dart';

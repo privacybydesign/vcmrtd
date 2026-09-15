@@ -139,6 +139,56 @@ void main() {
         expect(scanned.countryCode, 'UTO');
       });
     });
+
+    group('equality', () {
+      ScannedPassportMRZ build({
+        String documentNumber = 'L898902C3',
+        String countryCode = 'UTO',
+        DateTime? dateOfBirth,
+        DateTime? dateOfExpiry,
+        DocumentType documentType = DocumentType.passport,
+      }) => ScannedPassportMRZ(
+        documentNumber: documentNumber,
+        countryCode: countryCode,
+        dateOfBirth: dateOfBirth ?? testDate1,
+        dateOfExpiry: dateOfExpiry ?? testDate2,
+        documentType: documentType,
+      );
+
+      test('is equal to itself', () {
+        final mrz = build();
+        expect(mrz, equals(mrz));
+      });
+
+      test('is equal to a distinct instance with the same fields, with matching hashCode', () {
+        expect(build(), equals(build()));
+        expect(build().hashCode, equals(build().hashCode));
+      });
+
+      test('is not equal when documentNumber differs', () {
+        expect(build(), isNot(equals(build(documentNumber: 'D23145890'))));
+      });
+
+      test('is not equal when countryCode differs', () {
+        expect(build(), isNot(equals(build(countryCode: 'NLD'))));
+      });
+
+      test('is not equal when documentType differs', () {
+        expect(build(), isNot(equals(build(documentType: DocumentType.identityCard))));
+      });
+
+      test('is not equal when dateOfBirth differs', () {
+        expect(build(), isNot(equals(build(dateOfBirth: DateTime(2000, 1, 1)))));
+      });
+
+      test('is not equal when dateOfExpiry differs', () {
+        expect(build(), isNot(equals(build(dateOfExpiry: DateTime(2030, 1, 1)))));
+      });
+
+      test('is not equal to an unrelated object', () {
+        expect(build(), isNot(equals('not a ScannedPassportMRZ')));
+      });
+    });
   });
 
   group('ScannedDriverLicenseMRZ', () {
@@ -191,6 +241,62 @@ void main() {
           () => ScannedDriverLicenseMRZ.fromManualEntry(mrzString: 'not-a-driving-licence-mrz'),
           throwsA(isA<Exception>()),
         );
+      });
+    });
+
+    group('equality', () {
+      ScannedDriverLicenseMRZ build({
+        String documentNumber = '123456789',
+        String countryCode = 'NLD',
+        String version = '1',
+        String randomData = 'RANDOM123',
+        String configuration = 'CONFIG',
+        DocumentType documentType = DocumentType.drivingLicence,
+      }) => ScannedDriverLicenseMRZ(
+        documentNumber: documentNumber,
+        countryCode: countryCode,
+        version: version,
+        randomData: randomData,
+        configuration: configuration,
+        documentType: documentType,
+      );
+
+      test('is equal to itself', () {
+        final mrz = build();
+        expect(mrz, equals(mrz));
+      });
+
+      test('is equal to a distinct instance with the same fields, with matching hashCode', () {
+        expect(build(), equals(build()));
+        expect(build().hashCode, equals(build().hashCode));
+      });
+
+      test('is not equal when documentNumber differs', () {
+        expect(build(), isNot(equals(build(documentNumber: '987654321'))));
+      });
+
+      test('is not equal when countryCode differs', () {
+        expect(build(), isNot(equals(build(countryCode: 'UTO'))));
+      });
+
+      test('is not equal when documentType differs', () {
+        expect(build(), isNot(equals(build(documentType: DocumentType.passport))));
+      });
+
+      test('is not equal when version differs', () {
+        expect(build(), isNot(equals(build(version: '2'))));
+      });
+
+      test('is not equal when randomData differs', () {
+        expect(build(), isNot(equals(build(randomData: 'OTHER'))));
+      });
+
+      test('is not equal when configuration differs', () {
+        expect(build(), isNot(equals(build(configuration: 'OTHER'))));
+      });
+
+      test('is not equal to an unrelated object', () {
+        expect(build(), isNot(equals('not a ScannedDriverLicenseMRZ')));
       });
     });
   });

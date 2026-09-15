@@ -1,6 +1,7 @@
 //  Created by Nejc Skerjanc, copyright © 2023 ZeroPass. All rights reserved.
 
 import 'dart:typed_data';
+
 import '../lds/asn1ObjectIdentifiers.dart';
 
 abstract class AccessKey {}

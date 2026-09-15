@@ -1,6 +1,18 @@
 ﻿import 'package:flutter/material.dart';
 
 class DialogHelpers {
+  static void showInfoDialog({required BuildContext context, required String title, required String message}) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: Icon(Icons.info_outline, color: Colors.blue[600], size: 48),
+        title: Text(title),
+        content: Text(message),
+        actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK'))],
+      ),
+    );
+  }
+
   static void showSuccessDialog({
     required BuildContext context,
     required String title,

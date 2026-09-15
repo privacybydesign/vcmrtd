@@ -816,6 +816,46 @@ void main() {
       expect(fake.storeConsistencySelfieCalls, 1);
     });
 
+    test('passive countdown restarts (requires fresh lock-on) if the face is lost mid-countdown', () async {
+      var now = 1000;
+      engine.debugSetNowProvider(() => now);
+      await engine.start(Uint8List(0), mode: LivenessMode.passive);
+
+      // Lock on and get the countdown running.
+      fake.emitFrame(_face());
+      await _drain(engine);
+      now += FaceVerificationTuning.passiveLockOnMs + 1;
+      fake.emitFrame(_face());
+      await _drain(engine);
+      expect(events.any((e) => e['type'] == 'passiveProgress' && e['started'] == true), isTrue);
+
+      // Advance partway through the countdown, then lose the face entirely.
+      now += 500;
+      events.clear();
+      fake.emitFrame(null);
+      await _drain(engine);
+
+      expect(events.any((e) => e['type'] == 'align' && e['tip'] == 'noFace'), isTrue);
+      expect(events.any((e) => e['type'] == 'passiveProgress' && e['started'] == false), isTrue);
+
+      // Face is back, but lock-on hasn't been held long enough yet — the
+      // countdown must not resume immediately from where it left off.
+      events.clear();
+      now += 1;
+      fake.emitFrame(_face());
+      await _drain(engine);
+      expect(events.any((e) => e['type'] == 'passiveProgress' && e['started'] == true), isFalse);
+
+      // Only after holding lock-on for the full period again does a new
+      // countdown start, from zero.
+      events.clear();
+      now += FaceVerificationTuning.passiveLockOnMs + 1;
+      fake.emitFrame(_face());
+      await _drain(engine);
+      final restarted = events.lastWhere((e) => e['type'] == 'passiveProgress' && e['started'] == true);
+      expect(restarted['elapsedMs'], lessThan(500));
+    });
+
     test('passive coarse tip and bbox helpers cover good and bad face cases', () {
       expect(engine.debugPassiveCoarseTip(null), 'noFace');
       expect(engine.debugPassiveCoarseTip(_face(bboxArea: 0.01)), 'tooFar');

@@ -347,11 +347,21 @@ class FaceVerificationEngine {
     // continuously for the lock-on period.
     if (_passiveStartMs == null) {
       if (_handlePassiveLockOn(tip, now)) return;
+    } else if (face == null) {
+      // Face dropped out of frame entirely mid-countdown: restart from
+      // scratch — require a fresh lock-on before the countdown resumes.
+      _passiveStartMs = null;
+      _passiveInOvalSinceMs = null;
+      _emitAlignTip('noFace');
+      _emitPassiveProgress(started: false, elapsedMs: 0);
+      return;
     }
 
     // Countdown running — fixed wall-clock duration from the start moment.
+    // Reaching here means the face is still present (a lost face already
+    // returned above), so any remaining tip is a milder misalignment —
+    // keep counting, but coach the user back.
     if (tip != null) {
-      // Misaligned mid-countdown: keep counting, but coach the user back.
       _emitAlignTip(tip);
     } else {
       _emitAlignTip('holdStill');
@@ -696,6 +706,7 @@ class FaceVerificationEngine {
       final antiSpoofPassed = passive.antiSpoofPassed;
       final rppgPassed = passive.rppgPassed;
       final finalPassed = passed && antiSpoofPassed && rppgPassed && !_consistencyFailed;
+      final selfie = _firstSelfie;
 
       _sendEvent({
         'type': 'complete',
@@ -704,6 +715,7 @@ class FaceVerificationEngine {
         'antiSpoofScore': antiSpoofScore,
         'antiSpoofPassed': antiSpoofPassed,
         'consistencyFailed': _consistencyFailed,
+        'liveFace': selfie != null ? Uint8List.fromList(img.encodePng(selfie)) : null,
         'rppg': {
           'hr': passive.rppgHr,
           'passed': passive.rppgPassed,

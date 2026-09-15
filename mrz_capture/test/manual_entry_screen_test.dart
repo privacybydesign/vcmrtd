@@ -27,7 +27,7 @@ void main() {
       await tester.pumpWidget(_screen(documentType: DocumentType.passport));
       await tester.pump();
 
-      expect(find.text('Enter Passport Details'), findsOneWidget);
+      expect(find.text('1 of 4 · Enter Passport details'), findsOneWidget);
       expect(find.text('Date of Birth'), findsOneWidget);
       expect(find.text('Expiry Date'), findsOneWidget);
       expect(find.textContaining('Where to find this information:'), findsOneWidget);

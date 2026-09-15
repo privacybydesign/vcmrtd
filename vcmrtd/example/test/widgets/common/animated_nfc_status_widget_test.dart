@@ -37,31 +37,36 @@ void main() {
       }
     });
 
-    testWidgets('reading state shows linear progress with percentage text', (tester) async {
+    testWidgets('reading state shows a circular progress ring with percentage text in its center', (tester) async {
       await tester.pumpWidget(
         _wrap(const AnimatedNFCStatusWidget(state: NFCReadingState.reading, message: 'Reading', progress: 0.42)),
       );
       await _pumpAnim(tester);
 
-      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+      final ring = tester.widget<CircularProgressIndicator>(find.byType(CircularProgressIndicator));
+      expect(ring.value, 0.42);
       expect(find.text('42%'), findsOneWidget);
     });
 
-    testWidgets('authenticating state shows indeterminate progress when progress is zero', (tester) async {
+    testWidgets('authenticating state shows an indeterminate ring and the state icon when progress is zero', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(const AnimatedNFCStatusWidget(state: NFCReadingState.authenticating, message: 'Auth')),
       );
       await _pumpAnim(tester);
 
-      expect(find.byType(LinearProgressIndicator), findsOneWidget);
-      // No percentage text when progress <= 0.
+      final ring = tester.widget<CircularProgressIndicator>(find.byType(CircularProgressIndicator));
+      expect(ring.value, isNull);
+      // No percentage text when progress <= 0; the state icon shows in the ring's center instead.
       expect(find.textContaining('%'), findsNothing);
+      expect(find.byIcon(Icons.security), findsOneWidget);
     });
 
-    testWidgets('non-progress states hide the progress indicator', (tester) async {
+    testWidgets('non-progress states hide the progress ring', (tester) async {
       await tester.pumpWidget(_wrap(const AnimatedNFCStatusWidget(state: NFCReadingState.waiting, message: 'Waiting')));
       await _pumpAnim(tester);
-      expect(find.byType(LinearProgressIndicator), findsNothing);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
     });
 
     testWidgets('error state shows retry button and fires callback', (tester) async {

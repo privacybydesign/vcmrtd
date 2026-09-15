@@ -1,0 +1,51 @@
+plugins {
+    id "com.android.library"
+    id "org.jetbrains.kotlin.android"
+}
+
+group = "foundation.privacybydesign.faceverificationiris"
+version = "1.0"
+
+// Whether the vendor-provided iris.aar (see android/libs/README.md) is
+// present. Not committed to this public repo, so CI builds without it —
+// in that case we compile the withoutIrisSdk source set instead of
+// withIrisSdk, so the module (and the app depending on it) still builds
+// cleanly, just without real face-verification functionality.
+def irisSdkPresent = file("libs/iris.aar").exists()
+
+android {
+    namespace = "foundation.privacybydesign.faceverificationiris"
+
+    compileSdk = 36
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    defaultConfig {
+        // The Iris SDK's own manifest requires API 26+.
+        minSdk = 26
+    }
+
+    sourceSets {
+        main.java.srcDirs += "src/main/kotlin"
+        main.java.srcDirs += irisSdkPresent ? "src/withIrisSdk/kotlin" : "src/withoutIrisSdk/kotlin"
+    }
+}
+
+dependencies {
+    // Iris identity/face-verification SDK — proprietary vendor .aar, not
+    // committed here (see android/libs/README.md). Resolved via a flatDir
+    // repo that the *consuming app's* settings.gradle must declare, pointing
+    // at this module's libs/ directory — that's app-level wiring, not
+    // something this package can declare for itself under Gradle's
+    // centralized repository management.
+    if (irisSdkPresent) {
+        implementation(group: "", name: "iris", ext: "aar")
+    }
+}

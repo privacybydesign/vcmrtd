@@ -34,7 +34,7 @@ class MRZCameraOverlay extends StatelessWidget {
       height = size.height * 0.75;
       width = height * _documentFrameRatio;
     }
-    final topOffset = (size.height - height) / 2 - 60.0;
+    final topOffset = (size.height - height) / 2;
     final leftOffset = (size.width - width) / 2;
 
     final rect = RRect.fromLTRBR(
