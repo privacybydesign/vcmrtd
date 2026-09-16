@@ -559,7 +559,7 @@ void main() {
       await tester.pump();
 
       final container = ProviderScope.containerOf(tester.element(find.byType(ProofingSessionConsentScreen)));
-      await tester.tap(find.widgetWithText(OutlinedButton, 'Decline'));
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Decline'));
       await tester.pumpAndSettle();
 
       expect(router.routeInformationProvider.value.uri.path, '/select_doc_type');

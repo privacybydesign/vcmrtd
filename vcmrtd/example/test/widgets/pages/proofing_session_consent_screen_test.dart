@@ -73,7 +73,7 @@ void main() {
       expect(consented, isTrue);
       expect(declined, isFalse);
 
-      await tester.tap(find.widgetWithText(OutlinedButton, 'Decline'));
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Decline'));
       expect(declined, isTrue);
     });
 
