@@ -530,7 +530,7 @@ void main() {
       final container = ProviderScope.containerOf(tester.element(find.byType(ProofingSessionConsentScreen)));
       expect(container.read(activeProofingSessionProvider), isNull);
 
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Continue'));
+      await tester.tap(find.text('Continue'));
       await tester.pumpAndSettle();
 
       expect(router.routeInformationProvider.value.uri.path, '/select_doc_type');
@@ -559,7 +559,7 @@ void main() {
       await tester.pump();
 
       final container = ProviderScope.containerOf(tester.element(find.byType(ProofingSessionConsentScreen)));
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Decline'));
+      await tester.tap(find.text('Decline'));
       await tester.pumpAndSettle();
 
       expect(router.routeInformationProvider.value.uri.path, '/select_doc_type');

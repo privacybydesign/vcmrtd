@@ -69,11 +69,11 @@ void main() {
         ),
       );
 
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Continue'));
+      await tester.tap(find.text('Continue'));
       expect(consented, isTrue);
       expect(declined, isFalse);
 
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Decline'));
+      await tester.tap(find.text('Decline'));
       expect(declined, isTrue);
     });
 
@@ -90,7 +90,7 @@ void main() {
       );
 
       expect(find.text('This request has expired.'), findsOneWidget);
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Continue'));
+      await tester.tap(find.text('Continue'));
       expect(consented, isFalse);
     });
   });
