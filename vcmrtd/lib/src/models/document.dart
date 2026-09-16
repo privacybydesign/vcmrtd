@@ -51,6 +51,17 @@ class PassportData implements DocumentData {
   final Uint8List? dg14RawBytes;
   final Uint8List? dg16RawBytes;
 
+  // Raw bytes for the DGs that are also individually parsed above (mrz,
+  // photo*, DG11/DG12 fields, aaPublicKey). Passive Authentication hashes
+  // the data group exactly as stored on the chip, so verifying it needs
+  // these bytes verbatim — the parsed fields above can't be re-derived back
+  // into a byte-identical encoding.
+  final Uint8List? dg1RawBytes;
+  final Uint8List? dg2RawBytes;
+  final Uint8List? dg11RawBytes;
+  final Uint8List? dg12RawBytes;
+  final Uint8List? dg15RawBytes;
+
   PassportData({
     required this.mrz,
     required this.photoImageData,
@@ -84,6 +95,11 @@ class PassportData implements DocumentData {
     this.dg13RawBytes,
     this.dg14RawBytes,
     this.dg16RawBytes,
+    this.dg1RawBytes,
+    this.dg2RawBytes,
+    this.dg11RawBytes,
+    this.dg12RawBytes,
+    this.dg15RawBytes,
   });
 
   /// The holder's name as it should be displayed to the user.
@@ -150,6 +166,14 @@ class DrivingLicenceData implements DocumentData {
   final Uint8List? dg13RawBytes;
   final Uint8List? dg14RawBytes;
 
+  // Raw bytes for the DGs that are also individually parsed above (holder
+  // fields, photoImageData). Passive Authentication hashes the data group
+  // exactly as stored on the chip, so verifying it needs these bytes
+  // verbatim — the parsed fields above can't be re-derived back into a
+  // byte-identical encoding.
+  final Uint8List? dg1RawBytes;
+  final Uint8List? dg6RawBytes;
+
   DrivingLicenceData({
     required this.issuingMemberState,
     required this.holderSurname,
@@ -183,5 +207,7 @@ class DrivingLicenceData implements DocumentData {
     this.dg12RawBytes,
     this.dg13RawBytes,
     this.dg14RawBytes,
+    this.dg1RawBytes,
+    this.dg6RawBytes,
   });
 }

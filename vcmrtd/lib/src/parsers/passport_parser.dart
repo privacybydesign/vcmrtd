@@ -54,6 +54,14 @@ class PassportParser extends DocumentParser<PassportData> {
   Uint8List? _dg14RawBytes;
   Uint8List? _dg16RawBytes;
 
+  // Raw bytes for DGs that are also individually parsed below — needed
+  // verbatim (not re-derived) to verify their hash against EF.SOD.
+  Uint8List? _dg1RawBytes;
+  Uint8List? _dg2RawBytes;
+  Uint8List? _dg11RawBytes;
+  Uint8List? _dg12RawBytes;
+  Uint8List? _dg15RawBytes;
+
   @override
   bool documentContainsDataGroup(DataGroups dg) {
     return com.dgTags.contains(_tagForDataGroup(dg));
@@ -126,11 +134,17 @@ class PassportParser extends DocumentParser<PassportData> {
       dg13RawBytes: _dg13RawBytes,
       dg14RawBytes: _dg14RawBytes,
       dg16RawBytes: _dg16RawBytes,
+      dg1RawBytes: _dg1RawBytes,
+      dg2RawBytes: _dg2RawBytes,
+      dg11RawBytes: _dg11RawBytes,
+      dg12RawBytes: _dg12RawBytes,
+      dg15RawBytes: _dg15RawBytes,
     );
   }
 
   @override
   PassportEfDG1? parseDG1(Uint8List bytes) {
+    _dg1RawBytes = bytes;
     final tlv = TLV.fromBytes(bytes);
 
     if (tlv.tag != PassportEfDG1.TAG.value) {
@@ -150,6 +164,7 @@ class PassportParser extends DocumentParser<PassportData> {
 
   @override
   void parseDG2(Uint8List bytes) {
+    _dg2RawBytes = bytes;
     final tlv = TLV.fromBytes(bytes);
     if (tlv.tag != PassportEfDG2.TAG.value) {
       throw EfParseError("Invalid DG2 tag=${tlv.tag.hex()}, expected tag=${PassportEfDG2.TAG.value.hex()}");
@@ -297,6 +312,7 @@ class PassportParser extends DocumentParser<PassportData> {
 
   @override
   void parseDG11(Uint8List bytes) {
+    _dg11RawBytes = bytes;
     final tlv = TLV.fromBytes(bytes);
     if (tlv.tag != PassportEfDG11.TAG.value) {
       throw EfParseError("Invalid DG11 tag=${tlv.tag.hex()}, expected tag=${PassportEfDG11.TAG.value.hex()}");
@@ -391,6 +407,7 @@ class PassportParser extends DocumentParser<PassportData> {
 
   @override
   void parseDG12(Uint8List bytes) {
+    _dg12RawBytes = bytes;
     final tlv = TLV.fromBytes(bytes);
     if (tlv.tag != PassportEfDG12.TAG.value) {
       throw EfParseError("Invalid DG12 tag=${tlv.tag.hex()}, expected tag=${PassportEfDG12.TAG.value.hex()}");
@@ -435,6 +452,7 @@ class PassportParser extends DocumentParser<PassportData> {
 
   @override
   void parseDG15(Uint8List bytes) {
+    _dg15RawBytes = bytes;
     final tlv = TLV.fromBytes(bytes);
     if (tlv.tag != PassportEfDG15.TAG.value) {
       throw EfParseError("Invalid DG15 tag=${tlv.tag.hex()}, expected tag=${PassportEfDG15.TAG.value.hex()}");

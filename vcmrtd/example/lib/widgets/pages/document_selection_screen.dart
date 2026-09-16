@@ -1,24 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtdapp/providers/proofing_session_provider.dart';
 import 'package:vcmrtdapp/providers/wallet_provider.dart';
 import 'package:vcmrtdapp/theme/text_styles.dart';
 import 'package:vcmrtdapp/widgets/pages/wallet_widgets.dart';
 
 /// Home screen: shows the scanning options when the wallet is empty, or just
 /// the wallet when it holds at least one card — a new scan is then started
-/// via the "+" button in the app bar. The advanced settings entry is always
-/// shown at the bottom, in both states.
+/// via the "+" button in the app bar. The QR scan and advanced settings
+/// entries are always shown at the bottom, in both states — except QR scan,
+/// hidden once a proofing session is already connected (see the app bar
+/// banner below): scanning another QR while one is pinned doesn't make
+/// sense, and there's nothing to gain from offering it.
 class DocumentTypeSelectionScreen extends ConsumerWidget {
   final Function(DocumentType) onDocumentTypeSelected;
   final VoidCallback onSettingsPressed;
+  final VoidCallback onScanQrPressed;
 
-  const DocumentTypeSelectionScreen({super.key, required this.onDocumentTypeSelected, required this.onSettingsPressed});
+  const DocumentTypeSelectionScreen({
+    super.key,
+    required this.onDocumentTypeSelected,
+    required this.onSettingsPressed,
+    required this.onScanQrPressed,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cards = ref.watch(walletProvider);
     final hasCards = cards.isNotEmpty;
+    final activeProofingSession = ref.watch(activeProofingSessionProvider);
+    final showQrScanOption = activeProofingSession == null;
 
     return Scaffold(
       appBar: AppBar(
@@ -34,6 +46,9 @@ class DocumentTypeSelectionScreen extends ConsumerWidget {
               onPressed: () => _showNewScanSheet(context),
             ),
         ],
+        bottom: activeProofingSession == null
+            ? null
+            : _ProofingSessionBanner(relyingParty: activeProofingSession.info.relyingParty),
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -46,8 +61,18 @@ class DocumentTypeSelectionScreen extends ConsumerWidget {
         ),
         child: SafeArea(
           child: hasCards
-              ? _WalletHome(cards: cards, onSettingsPressed: onSettingsPressed)
-              : _ScanOptionsHome(onDocumentTypeSelected: onDocumentTypeSelected, onSettingsPressed: onSettingsPressed),
+              ? _WalletHome(
+                  cards: cards,
+                  onSettingsPressed: onSettingsPressed,
+                  onScanQrPressed: onScanQrPressed,
+                  showQrScanOption: showQrScanOption,
+                )
+              : _ScanOptionsHome(
+                  onDocumentTypeSelected: onDocumentTypeSelected,
+                  onSettingsPressed: onSettingsPressed,
+                  onScanQrPressed: onScanQrPressed,
+                  showQrScanOption: showQrScanOption,
+                ),
         ),
       ),
     );
@@ -73,7 +98,14 @@ class DocumentTypeSelectionScreen extends ConsumerWidget {
 class _ScanOptionsHome extends StatelessWidget {
   final Function(DocumentType) onDocumentTypeSelected;
   final VoidCallback onSettingsPressed;
-  const _ScanOptionsHome({required this.onDocumentTypeSelected, required this.onSettingsPressed});
+  final VoidCallback onScanQrPressed;
+  final bool showQrScanOption;
+  const _ScanOptionsHome({
+    required this.onDocumentTypeSelected,
+    required this.onSettingsPressed,
+    required this.onScanQrPressed,
+    required this.showQrScanOption,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -86,6 +118,7 @@ class _ScanOptionsHome extends StatelessWidget {
             const _Header(),
             const SizedBox(height: 24),
             ..._documentTypeOptions(context, onDocumentTypeSelected),
+            if (showQrScanOption) ...[const SizedBox(height: 16), _qrScanOption(context, onScanQrPressed)],
             const SizedBox(height: 16),
             _advancedSettingsOption(context, onSettingsPressed),
           ],
@@ -101,7 +134,14 @@ class _ScanOptionsHome extends StatelessWidget {
 class _WalletHome extends StatelessWidget {
   final List<WalletCard> cards;
   final VoidCallback onSettingsPressed;
-  const _WalletHome({required this.cards, required this.onSettingsPressed});
+  final VoidCallback onScanQrPressed;
+  final bool showQrScanOption;
+  const _WalletHome({
+    required this.cards,
+    required this.onSettingsPressed,
+    required this.onScanQrPressed,
+    required this.showQrScanOption,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -110,9 +150,42 @@ class _WalletHome extends StatelessWidget {
         Expanded(child: WalletList(cards: cards)),
         Padding(
           padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-          child: _advancedSettingsOption(context, onSettingsPressed),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (showQrScanOption) ...[_qrScanOption(context, onScanQrPressed), const SizedBox(height: 16)],
+              _advancedSettingsOption(context, onSettingsPressed),
+            ],
+          ),
         ),
       ],
+    );
+  }
+}
+
+/// Slim app bar strip shown while a proofing session is pinned
+/// (activeProofingSessionProvider). Deliberately doesn't say "verified" or
+/// "authenticated" — connecting the session doesn't check anything, it's
+/// only where the eventual result gets sent.
+class _ProofingSessionBanner extends StatelessWidget implements PreferredSizeWidget {
+  final String relyingParty;
+  const _ProofingSessionBanner({required this.relyingParty});
+
+  @override
+  Size get preferredSize => const Size.fromHeight(32);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: preferredSize.height,
+      color: Colors.indigo[900],
+      alignment: Alignment.center,
+      child: Text(
+        'Connected — will send results to $relyingParty',
+        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+        overflow: TextOverflow.ellipsis,
+      ),
     );
   }
 }
@@ -173,6 +246,17 @@ List<Widget> _documentTypeOptions(BuildContext context, Function(DocumentType) o
       onTap: () => onDocumentTypeSelected(DocumentType.drivingLicence),
     ),
   ];
+}
+
+Widget _qrScanOption(BuildContext context, VoidCallback onScanQrPressed) {
+  return _OptionCard(
+    context: context,
+    title: 'Scan QR code',
+    subtitle: 'Scan any QR code with the camera',
+    icon: Icons.qr_code_scanner,
+    accentColor: const Color(0xFF9C27B0),
+    onTap: onScanQrPressed,
+  );
 }
 
 Widget _advancedSettingsOption(BuildContext context, VoidCallback onSettingsPressed) {

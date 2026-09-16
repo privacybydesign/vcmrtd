@@ -85,7 +85,7 @@ Widget _buildScreenWithPortrait() {
       engine: engine,
       nfcImageBytes: _fakePortraitPng(),
       onBackPressed: () {},
-      onVerified: () {},
+      onVerified: (_) {},
     ),
   );
 }
@@ -98,7 +98,7 @@ Widget _buildScreen() {
       engine: engine,
       nfcImageBytes: Uint8List(1),
       onBackPressed: () {},
-      onVerified: () {},
+      onVerified: (_) {},
     ),
   );
 }
@@ -111,7 +111,7 @@ Widget _buildScreenWithBack(VoidCallback onBackPressed) {
       engine: engine,
       nfcImageBytes: Uint8List(1),
       onBackPressed: onBackPressed,
-      onVerified: () {},
+      onVerified: (_) {},
     ),
   );
 }
@@ -123,7 +123,7 @@ Widget _buildScreenWithWorker(_FakeWorker2 worker) {
       engine: engine,
       nfcImageBytes: Uint8List(1),
       onBackPressed: () {},
-      onVerified: () {},
+      onVerified: (_) {},
     ),
   );
 }
@@ -137,7 +137,7 @@ Widget _buildScreenWithIssueDate(DateTime issueDate) {
       nfcImageBytes: Uint8List(1),
       photoIssueDate: issueDate,
       onBackPressed: () {},
-      onVerified: () {},
+      onVerified: (_) {},
     ),
   );
 }
@@ -628,7 +628,7 @@ void main() {
             engine: FaceVerificationEngine.withWorker(_FakeWorker2()),
             nfcImageBytes: Uint8List(1),
             onBackPressed: () => backCount++,
-            onVerified: () => verifiedCount++,
+            onVerified: (_) => verifiedCount++,
           ),
         ),
       );

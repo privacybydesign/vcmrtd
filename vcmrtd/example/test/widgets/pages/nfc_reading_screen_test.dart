@@ -205,7 +205,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 600));
     });
 
-    testWidgets('reconnecting state only shows the reposition tip once the connection has stayed lost for a bit', (
+    testWidgets('reconnecting state shows/hides the reposition tip the instant the connection is lost/restored', (
       tester,
     ) async {
       _setLargeViewport(tester);
@@ -221,21 +221,13 @@ void main() {
       reader.emit(DocumentReaderReconnecting(DocumentReaderReadingDataGroup(dataGroup: 'DG2', progress: 0.4)));
       await tester.pump();
 
-      // A brief blip that's still within the debounce window must not
-      // read as "stuck" - a retry that resolves on its own would otherwise
-      // flash a tip about a connection that was never really lost.
-      await tester.pump(const Duration(milliseconds: 600));
-      expect(find.textContaining('Slowly lift your phone off the document'), findsNothing);
+      // The tip must reflect a lost connection immediately - a silent retry
+      // loop otherwise looks identical to a healthy read in progress.
+      expect(find.textContaining('Slowly lift your phone off the document'), findsOneWidget);
       // Still on the reading screen (not regressed to the guidance screen or
       // a hard failure) since the retry budget isn't exhausted yet.
       expect(find.byType(NfcGuidanceScreen), findsNothing);
       expect(find.text('2 of 4 · Read ${DocumentType.passport.displayName}'), findsOneWidget);
-
-      // Once the connection has stayed lost past the debounce window, the
-      // tip is the only signal the user gets that this isn't a healthy
-      // read in progress.
-      await tester.pump(const Duration(seconds: 2));
-      expect(find.textContaining('Slowly lift your phone off the document'), findsOneWidget);
 
       // Reading resumes: the tip must revert immediately, not stay stuck
       // showing a stale warning.

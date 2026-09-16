@@ -28,6 +28,7 @@ import UIKit
         }
 
         DeepLinkPlugin.register(with: registrar(forPlugin: "DeepLinkPlugin")!)
+        ProofingDeepLinkPlugin.register(with: registrar(forPlugin: "ProofingDeepLinkPlugin")!)
 
         // Register image_channel for JP2 passport photo decoding (UIImage handles JPEG 2000 natively)
         ImageDecodeChannel.register(with: registrar(forPlugin: "ImageDecodeChannel")!)

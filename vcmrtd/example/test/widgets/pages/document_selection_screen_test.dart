@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:vcmrtdapp/providers/proofing_session_provider.dart';
 import 'package:vcmrtdapp/providers/wallet_provider.dart';
+import 'package:vcmrtdapp/services/proofing_session_client.dart';
 import 'package:vcmrtdapp/widgets/pages/document_selection_screen.dart';
 
 Uint8List _jpeg() => Uint8List.fromList(img.encodeJpg(img.Image(width: 2, height: 2)));
@@ -25,12 +27,17 @@ PassportData _passportData() {
   );
 }
 
-Widget _app({required Function(DocumentType) onDocumentTypeSelected, required VoidCallback onSettingsPressed}) {
+Widget _app({
+  required Function(DocumentType) onDocumentTypeSelected,
+  required VoidCallback onSettingsPressed,
+  VoidCallback? onScanQrPressed,
+}) {
   return ProviderScope(
     child: MaterialApp(
       home: DocumentTypeSelectionScreen(
         onDocumentTypeSelected: onDocumentTypeSelected,
         onSettingsPressed: onSettingsPressed,
+        onScanQrPressed: onScanQrPressed ?? () {},
       ),
     ),
   );
@@ -82,6 +89,58 @@ void main() {
       await tester.tap(find.text('Advanced settings'));
       expect(pressed, isTrue);
     });
+
+    testWidgets('tapping scan QR code calls onScanQrPressed', (tester) async {
+      var pressed = false;
+      await tester.pumpWidget(
+        _app(onDocumentTypeSelected: (_) {}, onSettingsPressed: () {}, onScanQrPressed: () => pressed = true),
+      );
+      await tester.pump();
+      await tester.scrollUntilVisible(find.text('Scan QR code'), 200);
+      await tester.tap(find.text('Scan QR code'));
+      expect(pressed, isTrue);
+    });
+
+    testWidgets('with a connected proofing session, hides the QR scan option and shows the app bar banner', (
+      tester,
+    ) async {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      container
+          .read(activeProofingSessionProvider.notifier)
+          .set(
+            ActiveProofingSession(
+              ref: const ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok'),
+              info: ProofingSessionInfo(
+                id: 'sess1',
+                relyingParty: 'acme-tenant',
+                requestedAttributes: const [],
+                expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+              ),
+              openedAt: DateTime.now(),
+            ),
+          );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: DocumentTypeSelectionScreen(
+              onDocumentTypeSelected: (_) {},
+              onSettingsPressed: () {},
+              onScanQrPressed: () {},
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('Scan QR code'), findsNothing);
+      expect(find.textContaining('acme-tenant'), findsOneWidget);
+      // Document type options are still offered — connecting a session
+      // doesn't skip picking passport/ID card/driving licence.
+      expect(find.text('Passport'), findsOneWidget);
+    });
   });
 
   group('DocumentTypeSelectionScreen with cards in the wallet', () {
@@ -94,7 +153,11 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: MaterialApp(
-            home: DocumentTypeSelectionScreen(onDocumentTypeSelected: (_) {}, onSettingsPressed: () {}),
+            home: DocumentTypeSelectionScreen(
+              onDocumentTypeSelected: (_) {},
+              onSettingsPressed: () {},
+              onScanQrPressed: () {},
+            ),
           ),
         ),
       );
@@ -104,6 +167,7 @@ void main() {
       expect(find.text('Passport'), findsNothing);
       expect(find.text('Identity Card'), findsNothing);
       expect(find.text('Driving Licence'), findsNothing);
+      expect(find.text('Scan QR code'), findsOneWidget);
       expect(find.text('Advanced settings'), findsOneWidget);
       expect(find.byIcon(Icons.add), findsOneWidget);
     });
@@ -118,7 +182,11 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: MaterialApp(
-            home: DocumentTypeSelectionScreen(onDocumentTypeSelected: (t) => selected = t, onSettingsPressed: () {}),
+            home: DocumentTypeSelectionScreen(
+              onDocumentTypeSelected: (t) => selected = t,
+              onSettingsPressed: () {},
+              onScanQrPressed: () {},
+            ),
           ),
         ),
       );
@@ -134,6 +202,45 @@ void main() {
       expect(selected, DocumentType.passport);
     });
 
+    testWidgets('with a connected proofing session, hides the QR scan option and shows the app bar banner', (
+      tester,
+    ) async {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      container.read(walletProvider.notifier).add(WalletCard.fromDocument(_passportData(), DocumentType.passport));
+      container
+          .read(activeProofingSessionProvider.notifier)
+          .set(
+            ActiveProofingSession(
+              ref: const ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok'),
+              info: ProofingSessionInfo(
+                id: 'sess1',
+                relyingParty: 'acme-tenant',
+                requestedAttributes: const [],
+                expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+              ),
+              openedAt: DateTime.now(),
+            ),
+          );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: DocumentTypeSelectionScreen(
+              onDocumentTypeSelected: (_) {},
+              onSettingsPressed: () {},
+              onScanQrPressed: () {},
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('Scan QR code'), findsNothing);
+      expect(find.textContaining('acme-tenant'), findsOneWidget);
+    });
+
     testWidgets('tapping a wallet card shows its details', (tester) async {
       final container = ProviderContainer();
       addTearDown(container.dispose);
@@ -143,7 +250,11 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: MaterialApp(
-            home: DocumentTypeSelectionScreen(onDocumentTypeSelected: (_) {}, onSettingsPressed: () {}),
+            home: DocumentTypeSelectionScreen(
+              onDocumentTypeSelected: (_) {},
+              onSettingsPressed: () {},
+              onScanQrPressed: () {},
+            ),
           ),
         ),
       );

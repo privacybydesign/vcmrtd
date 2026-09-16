@@ -14,6 +14,11 @@ import 'package:vcmrtdapp/widgets/pages/driving_licence_data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/manual_entry_route_params.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_reading_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/passport_data_screen.dart';
+import 'package:vcmrtdapp/providers/proofing_session_provider.dart';
+import 'package:vcmrtdapp/services/face_verification_outcome.dart';
+import 'package:vcmrtdapp/widgets/pages/proofing_session_consent_screen.dart';
+import 'package:vcmrtdapp/services/proofing_session_client.dart';
+import 'package:vcmrtdapp/widgets/pages/qr_scanner_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/scanner_wrapper.dart';
 import 'package:vcmrtdapp/widgets/pages/settings_screen.dart';
 
@@ -33,6 +38,47 @@ import 'package:vcmrtdapp/widgets/pages/settings_screen.dart';
 
 const _faceVerificationPath = '/face_verification';
 const _settingsPath = '/settings';
+const _qrScannerPath = '/qr_scanner';
+const _proofingConsentPath = '/proofing_consent';
+
+/// Exposes [_proofingConsentPath] so a tapped vcmrtd:// deep link
+/// (VcMrtdApp._openProofingLink in main.dart) can push the consent screen
+/// directly, the same way [_handleScannedQr] does for a scanned QR.
+const proofingConsentPath = _proofingConsentPath;
+
+/// Handles a scanned QR: if it's an identity-proofing session handoff, fetch
+/// what the relying party wants and hand it to [ProofingSessionConsentScreen]
+/// for the user to accept or decline before anything is pinned — see that
+/// route below, which is the only place [activeProofingSessionProvider] gets
+/// set. Any other QR content is left for the original debug behaviour — it's
+/// shown, not acted on, since this scanner isn't scoped to just proofing
+/// handoffs.
+Future<void> _handleScannedQr(BuildContext context, String value) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final router = GoRouter.of(context);
+  final container = ProviderScope.containerOf(context);
+
+  final sessionRef = ProofingSessionRef.parse(value);
+  if (sessionRef == null) {
+    router.pop();
+    messenger.showSnackBar(SnackBar(content: Text('QR code scanned: $value')));
+    return;
+  }
+
+  try {
+    final info = await container.read(proofingSessionClientProvider).fetchSession(sessionRef);
+    if (info.requestedAttributes.isEmpty) {
+      router.pop();
+      messenger.showSnackBar(const SnackBar(content: Text('This session does not specify what to collect')));
+      return;
+    }
+    router.pop();
+    router.push(_proofingConsentPath, extra: {'ref': sessionRef, 'info': info});
+  } catch (e) {
+    router.pop();
+    messenger.showSnackBar(SnackBar(content: Text('Could not connect to the relying party: $e')));
+  }
+}
 
 extension CustomRouteExtensions on BuildContext {
   void pushNfcReadingScreen(NfcReadingRouteParams params) {
@@ -72,6 +118,10 @@ extension CustomRouteExtensions on BuildContext {
   void pushSettingsScreen() {
     push(_settingsPath);
   }
+
+  void pushQrScannerScreen() {
+    push(_qrScannerPath);
+  }
 }
 
 final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
@@ -89,12 +139,40 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
               context.pushMrzReaderScreen(MrzReaderRouteParams(documentType: docType));
             },
             onSettingsPressed: context.pushSettingsScreen,
+            onScanQrPressed: context.pushQrScannerScreen,
           );
         },
       ),
       GoRoute(
         path: _settingsPath,
         builder: (context, state) => SettingsScreen(onBackPressed: context.pop),
+      ),
+      GoRoute(
+        path: _qrScannerPath,
+        builder: (context, state) => QrScannerScreen(
+          routeObserver: routeObserver,
+          onBack: context.pop,
+          onScanned: (value) => _handleScannedQr(context, value),
+        ),
+      ),
+      GoRoute(
+        path: _proofingConsentPath,
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          final sessionRef = extra['ref'] as ProofingSessionRef;
+          final info = extra['info'] as ProofingSessionInfo;
+
+          return ProofingSessionConsentScreen(
+            info: info,
+            onConsent: () {
+              ProviderScope.containerOf(context)
+                  .read(activeProofingSessionProvider.notifier)
+                  .set(ActiveProofingSession(ref: sessionRef, info: info, openedAt: DateTime.now()));
+              context.go('/select_doc_type');
+            },
+            onDecline: () => context.go('/select_doc_type'),
+          );
+        },
       ),
       GoRoute(
         path: '/mrz_reader',
@@ -156,17 +234,20 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
           final ty = s['document_type'] as DocumentType;
           final document = s['document'] as DocumentData;
           final result = s['result'] as RawDocumentData;
+          final faceVerification = s['face_verification'] as FaceVerificationOutcome?;
 
           return switch (ty) {
             DocumentType.passport || DocumentType.identityCard => PassportDataScreen(
               document: document,
               passportDataResult: result,
               documentType: ty,
+              faceVerification: faceVerification,
               onBackPressed: () => context.go('/select_doc_type'),
             ),
             DocumentType.drivingLicence => DrivingLicenceDataScreen(
               drivingLicence: document as DrivingLicenceData,
               drivingLicenceDataResult: result,
+              faceVerification: faceVerification,
               onBackPressed: () => context.go('/select_doc_type'),
             ),
           };
@@ -187,8 +268,15 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
           // Passing verification continues on to the document data screen; an
           // explicit cancel/back instead pops back to NFC reading, since that's
           // where this route was pushed from.
-          void goToResult() =>
-              context.go('/result', extra: {'document': document, 'result': result, 'document_type': documentType});
+          void goToResult(FaceVerificationOutcome outcome) => context.go(
+            '/result',
+            extra: {
+              'document': document,
+              'result': result,
+              'document_type': documentType,
+              'face_verification': outcome,
+            },
+          );
 
           if (faceVerificationEngine != null) {
             return FaceVerificationEntryScreen.withEngine(

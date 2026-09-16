@@ -137,6 +137,21 @@ void main() {
       expect(com.sent.first.hex().substring(2, 4), "88");
     });
 
+    test('activeAuthenticate retries once with the exact length on 0x6Cxx', () async {
+      // Chip actually holds an RSA-1024 AA key (128-byte signature) but the
+      // default guess asks for 256 - chip replies 6C80 ("should have asked
+      // for 128"), so the retry should re-send with ne=128 and succeed.
+      final sig = Uint8List.fromList(List.generate(128, (i) => i & 0xFF));
+      final wrongLen = Uint8List.fromList([0x6C, 0x80]);
+      final resp = Uint8List.fromList([...sig, 0x90, 0x00]);
+      final com = FakeComProvider([wrongLen, resp]);
+      final api = MrtdApi(com);
+      final challenge = "1122334455667788".parseHex();
+      final result = await api.activeAuthenticate(challenge);
+      expect(result, sig);
+      expect(com.sent.length, 2);
+    });
+
     test('readFileBySFI resumes large-file progress after a reconnect instead of restarting', () async {
       // 604-byte file: 4-byte BER header (tag + long-form length) + 600-byte
       // value, chunked at the default 256-byte max read into

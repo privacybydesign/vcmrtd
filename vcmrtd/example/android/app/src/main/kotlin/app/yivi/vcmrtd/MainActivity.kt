@@ -8,6 +8,7 @@ import io.flutter.plugins.GeneratedPluginRegistrant
 class MainActivity : FlutterActivity() {
 
     private lateinit var deepLinkPlugin: DeepLinkPlugin
+    private lateinit var proofingDeepLinkPlugin: ProofingDeepLinkPlugin
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         GeneratedPluginRegistrant.registerWith(flutterEngine)
@@ -15,6 +16,10 @@ class MainActivity : FlutterActivity() {
         // Initialize deep link plugin
         deepLinkPlugin = DeepLinkPlugin()
         flutterEngine.plugins.add(deepLinkPlugin)
+
+        // Initialize identity-proofing-service deep link plugin
+        proofingDeepLinkPlugin = ProofingDeepLinkPlugin()
+        flutterEngine.plugins.add(proofingDeepLinkPlugin)
 
         // Register image_channel for JP2 decoding (used for passport photo)
         ImageDecodeChannel.register(flutterEngine, applicationContext)
@@ -24,6 +29,9 @@ class MainActivity : FlutterActivity() {
         super.onNewIntent(intent)
         if (::deepLinkPlugin.isInitialized) {
             deepLinkPlugin.onNewIntent(intent)
+        }
+        if (::proofingDeepLinkPlugin.isInitialized) {
+            proofingDeepLinkPlugin.onNewIntent(intent)
         }
     }
 }
