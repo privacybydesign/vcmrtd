@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtdapp/services/proofing_session_client.dart';
 
@@ -328,6 +330,65 @@ void main() {
         photo: photo(),
       );
       expect(body.containsKey('photo'), isFalse);
+    });
+  });
+
+  group('ProofingSessionClient', () {
+    const ref = ProofingSessionRef(apiBase: 'https://proof.example.com', token: 'tok-1');
+
+    test('fetchSession parses a successful response into a ProofingSessionInfo', () async {
+      await http.runWithClient(
+        () async {
+          final info = await const ProofingSessionClient().fetchSession(ref);
+          expect(info.id, 'sess-1');
+          expect(info.relyingParty, 'Acme Corp');
+          expect(info.requestedAttributes, ['dg1']);
+        },
+        () => MockClient((request) async {
+          expect(request.method, 'GET');
+          expect(request.url.toString(), 'https://proof.example.com/api/proofing/app/tok-1');
+          return http.Response(
+            json.encode({
+              'id': 'sess-1',
+              'relyingParty': 'Acme Corp',
+              'requestedAttributes': ['dg1'],
+              'expiresAt': '2030-01-01T00:00:00Z',
+            }),
+            200,
+          );
+        }),
+      );
+    });
+
+    test('fetchSession throws when the server responds with a non-200 status', () async {
+      await http.runWithClient(() async {
+        expect(() => const ProofingSessionClient().fetchSession(ref), throwsA(isA<Exception>()));
+      }, () => MockClient((request) async => http.Response('not found', 404)));
+    });
+
+    test('submitResult posts the built body and succeeds on a 200 response', () async {
+      await http.runWithClient(
+        () async {
+          await const ProofingSessionClient().submitResult(ref, status: 'approved', requestedAttributes: const []);
+        },
+        () => MockClient((request) async {
+          expect(request.method, 'POST');
+          expect(request.url.toString(), 'https://proof.example.com/api/proofing/app/tok-1/result');
+          expect(request.headers['Content-Type'], 'application/json');
+          final body = json.decode(request.body) as Map<String, dynamic>;
+          expect(body['status'], 'approved');
+          return http.Response('', 200);
+        }),
+      );
+    });
+
+    test('submitResult throws when the server responds with a non-200 status', () async {
+      await http.runWithClient(() async {
+        expect(
+          () => const ProofingSessionClient().submitResult(ref, status: 'approved', requestedAttributes: const []),
+          throwsA(isA<Exception>()),
+        );
+      }, () => MockClient((request) async => http.Response('server error', 500)));
     });
   });
 }

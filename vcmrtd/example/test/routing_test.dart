@@ -1,4 +1,5 @@
-﻿import 'dart:async';
+import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
@@ -6,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:face_verification/face_verification.dart';
@@ -15,6 +18,7 @@ import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtdapp/widgets/pages/document_selection_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/driving_licence_data_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/passport_data_screen.dart';
+import 'package:vcmrtdapp/widgets/pages/qr_scanner_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/scanner_wrapper.dart';
 import 'package:vcmrtdapp/widgets/pages/manual_entry_route_params.dart';
 import 'package:vcmrtdapp/widgets/pages/nfc_reading_screen.dart';
@@ -330,6 +334,48 @@ void main() {
       expect(find.byType(ManualEntryScreen), findsOneWidget);
     });
 
+    testWidgets('a successful driving licence NFC read jumps into face verification with its own photo', (
+      tester,
+    ) async {
+      final engine = FaceVerificationEngine.withWorker(_FakeWorker());
+      final router = createRouter(scannerBuilder: _scannerBuilder(), faceVerificationEngine: engine);
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(_routerApp(router));
+      router.go(
+        Uri(
+          path: '/mrz_reader',
+          queryParameters: MrzReaderRouteParams(documentType: DocumentType.drivingLicence).toQueryParams(),
+        ).toString(),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      tester
+          .widget<ScannerWrapper>(find.byType(ScannerWrapper))
+          .onMrzScanned(
+            ScannedDriverLicenseMRZ(
+              documentNumber: '1234567890',
+              countryCode: 'NLD',
+              version: '1',
+              randomData: 'RANDOM123',
+              configuration: 'CONFIG',
+            ),
+          );
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(NfcReadingScreen), findsOneWidget);
+
+      tester
+          .widgetList<NfcReadingScreen>(find.byType(NfcReadingScreen))
+          .last
+          .onSuccess(_drivingLicenceData(), _rawDocument());
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byType(FaceVerificationEntryScreen), findsOneWidget);
+    });
+
     testWidgets('builds result route for passport and driving licence documents', (tester) async {
       tester.view.physicalSize = const Size(1200, 1600);
       tester.view.devicePixelRatio = 1.0;
@@ -564,6 +610,115 @@ void main() {
 
       expect(router.routeInformationProvider.value.uri.path, '/select_doc_type');
       expect(container.read(activeProofingSessionProvider), isNull);
+    });
+
+    testWidgets('scanning a QR that is not a session handoff pops back and reports the raw value', (tester) async {
+      final router = createRouter(scannerBuilder: _scannerBuilder());
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(_routerApp(router));
+      router.push('/qr_scanner');
+      await tester.pump();
+      await tester.pump();
+
+      final qrScreen = tester.widget<QrScannerScreen>(find.byType(QrScannerScreen));
+      qrScreen.onScanned('not a proofing session url');
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byType(QrScannerScreen), findsNothing);
+      expect(find.byType(DocumentTypeSelectionScreen), findsOneWidget);
+      expect(find.text('QR code scanned: not a proofing session url'), findsOneWidget);
+    });
+
+    testWidgets('scanning a session QR with no requestedAttributes pops back with an explanatory snackbar', (
+      tester,
+    ) async {
+      final router = createRouter(scannerBuilder: _scannerBuilder());
+      addTearDown(router.dispose);
+
+      await http.runWithClient(
+        () async {
+          await tester.pumpWidget(_routerApp(router));
+          router.push('/qr_scanner');
+          await tester.pump();
+          await tester.pump();
+
+          final qrScreen = tester.widget<QrScannerScreen>(find.byType(QrScannerScreen));
+          qrScreen.onScanned('https://proof.example.com/s/tok-empty');
+          await tester.pump();
+          await tester.pump();
+
+          expect(find.byType(QrScannerScreen), findsNothing);
+          expect(find.byType(DocumentTypeSelectionScreen), findsOneWidget);
+          expect(find.text('This session does not specify what to collect'), findsOneWidget);
+        },
+        () => MockClient((request) async {
+          return http.Response(
+            json.encode({
+              'id': 'sess-empty',
+              'relyingParty': 'Acme Corp',
+              'requestedAttributes': <String>[],
+              'expiresAt': DateTime.now().add(const Duration(minutes: 10)).toIso8601String(),
+            }),
+            200,
+          );
+        }),
+      );
+    });
+
+    testWidgets('scanning a valid session QR pops back then pushes the consent screen', (tester) async {
+      final router = createRouter(scannerBuilder: _scannerBuilder());
+      addTearDown(router.dispose);
+
+      await http.runWithClient(
+        () async {
+          await tester.pumpWidget(_routerApp(router));
+          router.push('/qr_scanner');
+          await tester.pump();
+          await tester.pump();
+
+          final qrScreen = tester.widget<QrScannerScreen>(find.byType(QrScannerScreen));
+          qrScreen.onScanned('https://proof.example.com/s/tok-1');
+          await tester.pumpAndSettle();
+
+          expect(find.byType(QrScannerScreen), findsNothing);
+          expect(find.byType(ProofingSessionConsentScreen), findsOneWidget);
+          expect(find.text('acme-tenant'), findsOneWidget);
+        },
+        () => MockClient((request) async {
+          return http.Response(
+            json.encode({
+              'id': 'sess-1',
+              'relyingParty': 'acme-tenant',
+              'requestedAttributes': ['dg1'],
+              'expiresAt': DateTime.now().add(const Duration(minutes: 10)).toIso8601String(),
+            }),
+            200,
+          );
+        }),
+      );
+    });
+
+    testWidgets('a session fetch failure pops back and reports the error', (tester) async {
+      final router = createRouter(scannerBuilder: _scannerBuilder());
+      addTearDown(router.dispose);
+
+      await http.runWithClient(() async {
+        await tester.pumpWidget(_routerApp(router));
+        router.push('/qr_scanner');
+        await tester.pump();
+        await tester.pump();
+
+        final qrScreen = tester.widget<QrScannerScreen>(find.byType(QrScannerScreen));
+        qrScreen.onScanned('https://proof.example.com/s/tok-down');
+        await tester.pump();
+        await tester.pump();
+
+        expect(find.byType(QrScannerScreen), findsNothing);
+        expect(find.byType(DocumentTypeSelectionScreen), findsOneWidget);
+        expect(find.textContaining('Could not connect to the relying party:'), findsOneWidget);
+      }, () => MockClient((request) async => http.Response('server error', 500)));
     });
 
     testWidgets('builds result route for identity card using passport data screen', (tester) async {
