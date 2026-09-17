@@ -1,3 +1,12 @@
+# Regula publishes only older FaceSDK/FaceCoreBasic releases to the CocoaPods
+# trunk; current ones (the versions flutter_face_api and flutter_face_core_basic
+# pin) live in their own spec repo. Declaring any source disables the implicit
+# trunk default, so trunk has to be listed explicitly alongside it. Trunk is
+# referenced by its CDN rather than the CocoaPods/Specs git mirror the vendor's
+# own example Podfile uses, to avoid cloning a multi-gigabyte repository.
+source 'https://cdn.cocoapods.org/'
+source 'https://github.com/regulaforensics/podspecs.git'
+
 # Uncomment this line to define a global platform for your project
 platform :ios, '16.0'
 
@@ -32,10 +41,11 @@ target 'Runner' do
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
 
-  # Required to expose TFLite C API symbols (e.g. TfLiteInterpreterOptionsCreate)
-  # to Flutter's FFI layer. Without this, release builds crash with
-  # "symbol not found" when tflite_flutter tries to dlsym these symbols.
-  pod 'TensorFlowLiteC'
+  # No explicit TensorFlowLiteC pod here. It used to be required so tflite_flutter
+  # could dlsym the TFLite C API symbols, but face_verification now depends on
+  # flutter_litert, whose podspec vendors TensorFlowLiteC.xcframework (plus the
+  # Metal, CoreML and LiteRt frameworks) itself. Adding the trunk pod as well
+  # gives Pods-Runner two frameworks with the same name and the install fails.
 
   target 'RunnerTests' do
     inherit! :search_paths
