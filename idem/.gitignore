@@ -41,3 +41,7 @@ lib/generated_plugin_registrant.dart
 
 !Gemfile.lock
 !pubspec.lock
+# Pin the resolved CocoaPods versions. Without this the vendor SDKs (Regula,
+# ML Kit, PassportReader) could change between CI runs with no commit in the
+# repo — the iOS counterpart to android/gradle/verification-metadata.xml.
+!ios/Podfile.lock

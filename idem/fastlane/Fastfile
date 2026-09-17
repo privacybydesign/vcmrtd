@@ -24,6 +24,7 @@ end
 
 lane :android_build do |options|
   android_build_appbundle(
+    flavor: options[:flavor],
     keystore_path: options[:keystore_path],
     keystore_password: options[:keystore_password],
     key_alias: options[:key_alias],
@@ -34,26 +35,28 @@ end
 lane :android_build_apk do |options|
   android_build_app(
     build_type: "apk",
+    flavor: options[:flavor],
     keystore_path: options[:keystore_path],
     keystore_password: options[:keystore_password],
     key_alias: options[:key_alias],
     key_password: options[:key_password]
   )
   Dir.chdir("..") do
-    sh("cp ./build/app/outputs/apk/release/*.apk ./fastlane/build/")
+    sh("cp ./build/app/outputs/apk/#{options[:flavor]}/release/*.apk ./fastlane/build/")
   end
 end
 
 lane :android_build_appbundle do |options|
   android_build_app(
     build_type: "appbundle",
+    flavor: options[:flavor],
     keystore_path: options[:keystore_path],
     keystore_password: options[:keystore_password],
     key_alias: options[:key_alias],
     key_password: options[:key_password]
   )
   Dir.chdir("..") do
-    sh("cp ./build/app/outputs/bundle/release/*.aab ./fastlane/build/")
+    sh("cp ./build/app/outputs/bundle/#{options[:flavor]}Release/*.aab ./fastlane/build/")
   end
 end
 
@@ -63,8 +66,9 @@ private_lane :android_build_app do |options|
   # In Fastlane it's not possible to mask secrets in the command, while showing the shell output of the command.
   # Therefore, we use environment variables to hide parameter values.
   puts "In the following command, parameter values are hidden using environment variables."
-  cmd = "flutter build $FASTLANE_BUILD_TYPE --release"
+  cmd = "flutter build $FASTLANE_BUILD_TYPE --flavor $FASTLANE_FLAVOR --release"
   ENV["FASTLANE_BUILD_TYPE"] = options[:build_type]
+  ENV["FASTLANE_FLAVOR"] = options[:flavor]
   if options[:keystore_path]
     ENV["FASTLANE_KEYSTORE_PATH"] = File.absolute_path(options[:keystore_path])
     ENV["FASTLANE_KEYSTORE_PASSWORD"] = options[:keystore_password]
@@ -81,6 +85,7 @@ end
 
 lane :ios_build do |options|
   ios_build_app(
+    flavor: options[:flavor],
     certificate_path: options[:certificate_path],
     certificate_password: options[:certificate_password],
     provisioning_profile_path: options[:provisioning_profile_path],
@@ -89,9 +94,22 @@ lane :ios_build do |options|
 end
 
 lane :ios_build_app do |options|
-  display_name = "Idem"
-  app_identifier = "foundation.privacybydesign.idem"
-  export_method = "app-store"
+  # There are no Xcode schemes per flavor: the identifier and display name are
+  # rewritten in Info.plist before the build instead, which is how irmamobile
+  # does it. With a distribution certificate, alpha means ad hoc and beta means
+  # app store.
+  case options[:flavor]
+  when "alpha"
+    display_name = "Idem Alpha"
+    app_identifier = "foundation.privacybydesign.idem.alpha"
+    export_method = "ad-hoc"
+  when "beta"
+    display_name = "Idem"
+    app_identifier = "foundation.privacybydesign.idem"
+    export_method = "app-store"
+  else
+    raise "Unsupported flavor: #{options[:flavor].inspect} (expected alpha or beta)"
+  end
 
   if options[:code_signing_identity]&.include?("Developer")
     export_method = "development"
@@ -125,7 +143,7 @@ lane :ios_build_app do |options|
 
   Dir.chdir("..") do
     sh("flutter", "build", "ipa", "--release", "--export-options-plist", "./ios/Runner/Flutter-Build-IPA.plist")
-    sh("cp ./build/ios/ipa/*.ipa ./fastlane/build/app-beta-ios-#{export_method}.ipa")
+    sh("cp ./build/ios/ipa/*.ipa ./fastlane/build/app-#{options[:flavor]}-ios-#{export_method}.ipa")
   end
 end
 
@@ -177,11 +195,15 @@ private_lane :set_provisioning_profile do |options|
       code_signing_identity: options[:code_signing_identity] || "iPhone Distribution"
     )
     # Set uuid in plist file for flutter
-    set_info_plist_value(
-      path: "ios/Runner/Flutter-Build-IPA.plist",
-      key: "provisioningProfiles",
-      subkey: "foundation.privacybydesign.idem",
-      value: uuid
-    )
+    # The export plist carries an entry per identifier; whichever one the build
+    # actually uses is selected by the app identifier set above.
+    ["foundation.privacybydesign.idem", "foundation.privacybydesign.idem.alpha"].each do |identifier|
+      set_info_plist_value(
+        path: "ios/Runner/Flutter-Build-IPA.plist",
+        key: "provisioningProfiles",
+        subkey: identifier,
+        value: uuid
+      )
+    end
   end
 end

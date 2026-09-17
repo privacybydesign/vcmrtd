@@ -6,6 +6,8 @@
   <dict>
     <key>foundation.privacybydesign.idem</key>
     <string>00000000-0000-0000-0000-000000000000</string>
+    <key>foundation.privacybydesign.idem.alpha</key>
+    <string>00000000-0000-0000-0000-000000000000</string>
   </dict>
   <key>method</key>
   <string>app-store</string>

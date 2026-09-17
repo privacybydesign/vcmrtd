@@ -1,5 +1,13 @@
 # Delivery workflow for the master branch.
 # We execute build stages in separate jobs to prevent artifact duplication.
+#
+# Two tracks:
+#   alpha — ad hoc (iOS) and alpha-flavor (Android) builds on every push, for
+#           internal distribution. Ad hoc builds do not need unique build
+#           numbers, so no version bump is required.
+#   beta  — app-store (iOS) and Play-upload-key (Android) builds, produced only
+#           when the version in idem/pubspec.yaml changes, because the stores
+#           reject a build number they have already seen.
 name: Delivery
 
 on:
@@ -9,11 +17,101 @@ on:
 concurrency: ${{ github.ref }}
 
 jobs:
-  version-check:
+  build-app-ios-alpha:
+    runs-on: macos-15 # MacOS version is pinned, because it determines which XCode version is used.
+    defaults:
+      run:
+        working-directory: ./idem
+    environment: ad-hoc-alpha
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Setup build environment
+        uses: ./.github/actions/setup-build-environment
+      - name: Decode binary environment secrets
+        env:
+          APPLE_DISTRIBUTION_CERTIFICATE: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE }}
+          APPLE_PROVISIONING_PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
+        run: |
+          mkdir -p ./fastlane/profiles
+          echo $APPLE_DISTRIBUTION_CERTIFICATE | base64 --decode > ./fastlane/profiles/apple_distribution.p12
+          echo $APPLE_PROVISIONING_PROFILE | base64 --decode > ./fastlane/profiles/ad_hoc_alpha.mobileprovision
+      - name: Build app
+        run: >
+          bundle exec fastlane ios_build_app
+          flavor:alpha
+          code_signing_identity:"iPhone Distribution"
+          certificate_path:profiles/apple_distribution.p12
+          certificate_password:${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+          provisioning_profile_path:profiles/ad_hoc_alpha.mobileprovision
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-alpha-ios
+          path: ./idem/fastlane/build/*.ipa
+  build-app-android-alpha:
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ./idem
+    environment: android-alpha
+    strategy:
+      matrix:
+        type: [apk, appbundle]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Setup build environment
+        uses: ./.github/actions/setup-build-environment
+      - name: Decode binary environment secrets
+        env:
+          ANDROID_SIGNING_KEYSTORE: ${{ secrets.ANDROID_SIGNING_KEYSTORE }}
+        run: |
+          mkdir -p ./fastlane/profiles
+          echo $ANDROID_SIGNING_KEYSTORE | base64 --decode > ./fastlane/profiles/keystore.jks
+      - name: Build app
+        run: >
+          bundle exec fastlane android_build_${{ matrix.type }}
+          flavor:alpha
+          keystore_path:profiles/keystore.jks
+          key_alias:${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
+          keystore_password:${{ secrets.ANDROID_SIGNING_KEYSTORE_PASSWORD }}
+          key_password:${{ secrets.ANDROID_SIGNING_KEYSTORE_PASSWORD }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-alpha-android-${{ matrix.type }}
+          path: |
+            ./idem/fastlane/build/*.apk
+            ./idem/fastlane/build/*.aab
+  bundle-app-alpha:
+    runs-on: ubuntu-latest
+    needs:
+      - build-app-ios-alpha
+      - build-app-android-alpha
+    steps:
+      - name: Download app-alpha-ios artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-alpha-ios
+      - name: Download app-alpha-android-apk artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-alpha-android-apk
+      - name: Download app-alpha-android-appbundle artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-alpha-android-appbundle
+      - name: Bundle all artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-bundle-alpha
+          path: .
+  version-check:
+    runs-on: ubuntu-latest
+    needs: bundle-app-alpha
     outputs:
       version-changed: ${{ steps.detection.outcome == 'success' }}
     steps:
@@ -24,7 +122,7 @@ jobs:
       - name: Detect version bump
         id: detection
         run: |
-          git diff -U0 ${{ github.event.before }} -- pubspec.yaml | egrep "^\+version: [0-9]+\.[0-9]+\.[0-9]+\+[0-9]+$"
+          git diff -U0 ${{ github.event.before }} -- ./idem/pubspec.yaml | egrep "^\+version: [0-9]+\.[0-9]+\.[0-9]+\+[0-9]+$"
         shell: bash
         continue-on-error: true
   build-app-ios-beta:
@@ -34,6 +132,7 @@ jobs:
         working-directory: ./idem
     needs: version-check
     if: needs.version-check.outputs.version-changed == 'true'
+    environment: app-store-beta
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -52,6 +151,7 @@ jobs:
       - name: Build app
         run: >
           bundle exec fastlane ios_build_app
+          flavor:beta
           code_signing_identity:"iPhone Distribution"
           certificate_path:profiles/apple_distribution.p12
           certificate_password:${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD }}
@@ -61,13 +161,13 @@ jobs:
           name: app-beta-ios
           path: ./idem/fastlane/build/*.ipa
   build-app-android-beta:
-    # The Android builds are only signed with a development key. Signing needs to be done manually still.
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ./idem
     needs: version-check
     if: needs.version-check.outputs.version-changed == 'true'
+    environment: android-beta
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -84,8 +184,9 @@ jobs:
       - name: Build app
         run: >
           bundle exec fastlane android_build_appbundle
+          flavor:beta
           keystore_path:profiles/keystore.jks
-          key_alias:vcmrtd-upload-key
+          key_alias:${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
           keystore_password:${{ secrets.ANDROID_SIGNING_KEYSTORE_PASSWORD }}
           key_password:${{ secrets.ANDROID_SIGNING_KEYSTORE_PASSWORD }}
       - uses: actions/upload-artifact@v4
