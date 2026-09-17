@@ -38,15 +38,14 @@ runs:
         path: |
           ${{ env.ANDROID_HOME }}
           ${{ env.FLUTTER_HOME }}
-        key: ci_scripts-${{ runner.os }}-${{ hashFiles('vcmrtd/ci_scripts/*') }}
+        key: ci_scripts-${{ runner.os }}-${{ hashFiles('ci_scripts/*') }}
     - name: Ensure Android SDK is installed
       if: runner.os == 'Linux'
-      run: ./vcmrtd/ci_scripts/install_android_sdk.sh
+      run: ./ci_scripts/install_android_sdk.sh
       shell: bash
     - name: Ensure Flutter is installed
       run: ./ci_scripts/install_flutter.sh
       shell: bash
-      working-directory: ./vcmrtd
     - name: Use correct Xcode version
       if: runner.os == 'macOS'
       run: sudo xcode-select --switch /Applications/Xcode_16.4.app

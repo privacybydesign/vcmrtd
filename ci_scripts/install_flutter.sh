@@ -41,10 +41,11 @@ if ! [ -x "$(command -v "flutter")" ]; then
   popd
 fi
 
-pushd example
-
 flutter config --no-analytics
-flutter doctor -v
+# These are SDK-wide commands, so they do not need to run inside a Flutter
+# project directory — and must not, since the app moved out of vcmrtd/example.
+# `flutter doctor -v` is dropped along with the pushd: it is purely diagnostic
+# and on macOS spends ~2 minutes enumerating iOS Simulator runtimes, which now
+# costs every pull request via the iOS build job. Build failures surface tool
+# problems loudly enough on their own.
 flutter precache
-
-popd
