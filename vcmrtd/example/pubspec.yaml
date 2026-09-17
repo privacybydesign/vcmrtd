@@ -23,8 +23,10 @@ dependencies:
     path: ../
   face_verification:
     path: ../../face_verification
-  face_verification_iris:
-    path: ../../face_verification/iris
+  iris_sdk_flutter:
+    git:
+      url: https://github.com/privacybydesign/iris-sdk-flutter.git
+      ref: v1.0.1
   mrz_capture:
     path: ../../mrz_capture
   flutter:

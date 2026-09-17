@@ -18,7 +18,7 @@ Future<void> _startVerification(WidgetTester tester) async {
 }
 
 void main() {
-  const channel = MethodChannel('face_verification_iris');
+  const channel = MethodChannel('iris_sdk_flutter');
   const imageChannel = MethodChannel('image_channel');
 
   tearDown(() {

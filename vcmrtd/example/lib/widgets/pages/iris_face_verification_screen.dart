@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:face_verification_iris/face_verification_iris.dart';
+import 'package:iris_sdk_flutter/iris_sdk_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
