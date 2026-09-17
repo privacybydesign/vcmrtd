@@ -29,9 +29,7 @@ The package depends on `vcmrtd` and the external `mrz_parser` package.
 
 A Flutter package for face verification and liveness detection. Supports active liveness (gesture challenges) and passive liveness (anti-spoofing + rPPG heart rate), plus face matching against the DG2 photo from the NFC chip. Runs entirely on-device in a background isolate using bundled TFLite models.
 
-The package also contains an optional `iris` sub-package, which provides an alternative face-verification engine based on the proprietary Iris SDK from passportreader.app. Unlike the on-device implementation, Iris provides its own full-screen native camera UI and returns the verification result to Flutter.
-
-The Iris vendor binaries (`iris.aar` and `Iris.xcframework`) are not committed to the repository. See the `face_verification/iris` package README for instructions on providing them locally.
+An alternative face-verification engine based on the proprietary Iris SDK from passportreader.app lives in its own repository, [iris-sdk-flutter](https://github.com/privacybydesign/iris-sdk-flutter), which ships the vendor binaries with the package. Unlike the on-device implementation, Iris provides its own full-screen native camera UI and returns the verification result to Flutter.
 
 ## Example app
 
@@ -71,7 +69,7 @@ Copyright (C) 2025-2026 Yivi B.V.
 
 This software is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
-The full licence text is in [LICENSE](LICENSE). The same text ships with each package: [vcmrtd/LICENSE](vcmrtd/LICENSE), [mrz_capture/LICENSE](mrz_capture/LICENSE), [face_verification/LICENSE](face_verification/LICENSE), and [face_verification/iris/LICENSE](face_verification/iris/LICENSE).
+The full licence text is in [LICENSE](LICENSE). The same text ships with each package: [vcmrtd/LICENSE](vcmrtd/LICENSE), [mrz_capture/LICENSE](mrz_capture/LICENSE), and [face_verification/LICENSE](face_verification/LICENSE).
 
 ## Funding
 
