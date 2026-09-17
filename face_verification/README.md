@@ -238,10 +238,10 @@ await engine.dispose();
 
 ## Example app
 
-A complete working implementation is included in the [`vcmrtd` example app](../vcmrtd/example). The relevant files are:
+A complete working implementation is included in the [Idem app](../idem). The relevant files are:
 
-- [`lib/widgets/pages/face_verification_screen.dart`](../vcmrtd/example/lib/widgets/pages/face_verification_screen.dart) — full UI: camera preview, alignment coaching, gesture prompts, passive countdown, result display
-- [`lib/widgets/pages/face_verification_entry_screen.dart`](../vcmrtd/example/lib/widgets/pages/face_verification_entry_screen.dart) — entry point that wires the engine to the screen
+- [`lib/widgets/pages/face_verification_screen.dart`](../idem/lib/widgets/pages/face_verification_screen.dart) — full UI: camera preview, alignment coaching, gesture prompts, passive countdown, result display
+- [`lib/widgets/pages/face_verification_entry_screen.dart`](../idem/lib/widgets/pages/face_verification_entry_screen.dart) — entry point that wires the engine to the screen
 
 The example demonstrates:
 - Initializing the engine and eagerly preparing the NFC photo
@@ -254,7 +254,7 @@ The example demonstrates:
 To run it:
 
 ```sh
-cd vcmrtd/example
+cd idem
 flutter pub get
 flutter run
 ```

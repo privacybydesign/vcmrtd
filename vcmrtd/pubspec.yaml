@@ -47,8 +47,8 @@ dev_dependencies:
     sdk: flutter
   test: ^1.16.5
   lints: ^6.0.0
-  vcmrtdapp:
-    path: example
+  idem:
+    path: ../idem
   go_router: ^17.3.0
   mrz_parser:
     git:

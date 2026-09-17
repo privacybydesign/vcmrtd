@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./vcmrtd/example
+        working-directory: ./idem
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -80,7 +80,7 @@ jobs:
         working-directory: ./vcmrtd
         run: flutter test --coverage
       - name: Run example tests with coverage
-        working-directory: ./vcmrtd/example
+        working-directory: ./idem
         run: flutter test --coverage
       - name: Run face_verification tests with coverage
         working-directory: ./face_verification
@@ -92,7 +92,7 @@ jobs:
         run: |
           mkdir -p coverage
           sed 's|SF:lib/|SF:vcmrtd/lib/|g' vcmrtd/coverage/lcov.info > coverage/lcov.info
-          sed 's|SF:lib/|SF:vcmrtd/example/lib/|g' vcmrtd/example/coverage/lcov.info >> coverage/lcov.info
+          sed 's|SF:lib/|SF:idem/lib/|g' idem/coverage/lcov.info >> coverage/lcov.info
           sed 's|SF:lib/|SF:face_verification/lib/|g' face_verification/coverage/lcov.info >> coverage/lcov.info
           sed 's|SF:lib/|SF:mrz_capture/lib/|g' mrz_capture/coverage/lcov.info >> coverage/lcov.info
       - name: SonarQube Scan
@@ -105,7 +105,7 @@ jobs:
     needs: lint
     defaults:
       run:
-        working-directory: ./vcmrtd/example
+        working-directory: ./idem
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -117,4 +117,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: prototypes-android
-          path: ./vcmrtd/example/build/app/outputs/apk/release/*.apk
+          path: ./idem/build/app/outputs/apk/release/*.apk
