@@ -6,13 +6,16 @@ Three workflows, all driving the Fastlane scripts in [`idem/fastlane`](../../ide
 
 | Track | Workflow | Trigger | iOS | Android |
 |---|---|---|---|---|
-| **dev** | Status checks | every pull request | unsigned (`--no-codesign`) | `alpha` + `beta`, APK and AAB, debug-signed |
+| **dev** | Status checks | every pull request | development-signed IPA, `alpha` | `alpha` + `beta`, APK and AAB, development-signed |
 | **alpha** | Delivery | every push to `master` | ad hoc, `…idem.alpha` | `alpha` flavor, APK and AAB |
 | **beta** | Delivery | build number increase in `idem/pubspec.yaml` | app store, `…idem` → **TestFlight** | `beta` flavor, AAB → **Play internal track** |
 
-The dev builds are deliberately unsigned so they need no secrets and still run on
-pull requests from forks. They exist to catch compile breakage — in particular on
-iOS, which previously was never built outside `master`.
+The dev builds are signed with a development certificate and a separate
+development keystore, never the distribution credentials. That way a pull request
+exercises the same signing path a release does, and a broken certificate or
+profile surfaces on the change that caused it rather than on the next merge to
+`master`. The cost is that these secrets are repository-level, so **builds on
+pull requests from forks fail** — GitHub never gives a fork a secret.
 
 Ad hoc builds do not need unique build numbers, so alpha runs on every push.
 
@@ -74,6 +77,23 @@ Secrets should be uploaded as
 [environment secrets](https://github.com/privacybydesign/vcmrtd/settings/environments)
 rather than repository secrets, so that a pull-request build can never reach a
 distribution certificate.
+
+### Repository-level — development signing for pull requests
+
+These are not in an environment: a pull request can come from any branch, so a
+deployment branch policy cannot apply, and an environment would relocate the
+secret without protecting it. They must never be distribution credentials.
+
+The ad-hoc profile is deliberately not reused here. It is only valid against an
+iOS Distribution certificate, so signing pull requests with it would make that
+certificate reachable from them — and a pull request runs the workflow file from
+its own branch, so anyone with write access can read what those jobs reach.
+
+- `APPLE_DEVELOPMENT_CERTIFICATE` — base64 PKCS#12 of an Apple Development certificate.
+- `APPLE_DEVELOPMENT_CERTIFICATE_PASSWORD`
+- `APPLE_DEVELOPMENT_PROVISIONING_PROFILE` — base64 development profile covering `foundation.privacybydesign.idem.alpha`.
+- `ANDROID_DEVELOPMENT_SIGNING_KEYSTORE` — base64 Java keystore, **generated with the key alias `idem-development`**, which the workflow passes literally.
+- `ANDROID_DEVELOPMENT_SIGNING_KEYSTORE_PASSWORD`
 
 ### `app-store-ad-hoc` — iOS internal distribution
 
