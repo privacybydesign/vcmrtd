@@ -1,10 +1,10 @@
 rubyvendor/
 twentyface_flutter/
 
-vcmrtd/example/fastlane/.env.default
-vcmrtd/example/fastlane/build
-vcmrtd/example/fastlane/profiles
-vcmrtd/example/fastlane/report.xml
+idem/fastlane/.env.default
+idem/fastlane/build
+idem/fastlane/profiles
+idem/fastlane/report.xml
 
 # ---
 # Flutter generated excludes below:

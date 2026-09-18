@@ -1,5 +1,13 @@
 # Delivery workflow for the master branch.
 # We execute build stages in separate jobs to prevent artifact duplication.
+#
+# Two tracks:
+#   alpha — ad hoc (iOS) and alpha-flavor (Android) builds on every push, for
+#           internal distribution. Ad hoc builds do not need unique build
+#           numbers, so no version bump is required.
+#   beta  — app-store (iOS) and Play-upload-key (Android) builds, produced only
+#           when the version in idem/pubspec.yaml changes, because the stores
+#           reject a build number they have already seen.
 name: Delivery
 
 on:
@@ -9,11 +17,101 @@ on:
 concurrency: ${{ github.ref }}
 
 jobs:
-  version-check:
+  build-app-ios-alpha:
+    runs-on: macos-15 # MacOS version is pinned, because it determines which XCode version is used.
+    defaults:
+      run:
+        working-directory: ./idem
+    environment: app-store-ad-hoc
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Setup build environment
+        uses: ./.github/actions/setup-build-environment
+      - name: Decode binary environment secrets
+        env:
+          APPLE_DISTRIBUTION_CERTIFICATE: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE }}
+          APPLE_PROVISIONING_PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
+        run: |
+          mkdir -p ./fastlane/profiles
+          echo $APPLE_DISTRIBUTION_CERTIFICATE | base64 --decode > ./fastlane/profiles/apple_distribution.p12
+          echo $APPLE_PROVISIONING_PROFILE | base64 --decode > ./fastlane/profiles/ad_hoc_alpha.mobileprovision
+      - name: Build app
+        run: >
+          bundle exec fastlane ios_build_app
+          flavor:alpha
+          code_signing_identity:"iPhone Distribution"
+          certificate_path:profiles/apple_distribution.p12
+          certificate_password:${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+          provisioning_profile_path:profiles/ad_hoc_alpha.mobileprovision
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-alpha-ios
+          path: ./idem/fastlane/build/*.ipa
+  build-app-android-alpha:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./vcmrtd/example
+        working-directory: ./idem
+    environment: android-alpha
+    strategy:
+      matrix:
+        type: [apk, appbundle]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Setup build environment
+        uses: ./.github/actions/setup-build-environment
+      - name: Decode binary environment secrets
+        env:
+          ANDROID_SIGNING_KEYSTORE: ${{ secrets.ANDROID_SIGNING_KEYSTORE }}
+        run: |
+          mkdir -p ./fastlane/profiles
+          echo $ANDROID_SIGNING_KEYSTORE | base64 --decode > ./fastlane/profiles/keystore.jks
+      - name: Build app
+        run: >
+          bundle exec fastlane android_build_${{ matrix.type }}
+          flavor:alpha
+          keystore_path:profiles/keystore.jks
+          key_alias:${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
+          keystore_password:${{ secrets.ANDROID_SIGNING_KEYSTORE_PASSWORD }}
+          key_password:${{ secrets.ANDROID_SIGNING_KEYSTORE_PASSWORD }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-alpha-android-${{ matrix.type }}
+          path: |
+            ./idem/fastlane/build/*.apk
+            ./idem/fastlane/build/*.aab
+  bundle-app-alpha:
+    runs-on: ubuntu-latest
+    needs:
+      - build-app-ios-alpha
+      - build-app-android-alpha
+    steps:
+      - name: Download app-alpha-ios artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-alpha-ios
+      - name: Download app-alpha-android-apk artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-alpha-android-apk
+      - name: Download app-alpha-android-appbundle artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-alpha-android-appbundle
+      - name: Bundle all artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-bundle-alpha
+          path: .
+  version-check:
+    runs-on: ubuntu-latest
+    needs: bundle-app-alpha
     outputs:
       version-changed: ${{ steps.detection.outcome == 'success' }}
     steps:
@@ -21,19 +119,51 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Detect version bump
+      # The stores key a release on the build number (the +N suffix), and reject
+      # one they have already seen. So the beta track triggers on that number
+      # increasing, not on any change to the version line — bumping only the
+      # semver would otherwise produce a build that both stores refuse.
+      - name: Detect build number increase
         id: detection
         run: |
-          git diff -U0 ${{ github.event.before }} -- pubspec.yaml | egrep "^\+version: [0-9]+\.[0-9]+\.[0-9]+\+[0-9]+$"
+          build_number() {
+            sed -n 's/^version: [0-9]*\.[0-9]*\.[0-9]*+\([0-9]*\)$/\1/p' | head -n1
+          }
+          before=$(git show "${{ github.event.before }}:idem/pubspec.yaml" 2>/dev/null | build_number)
+          after=$(build_number < ./idem/pubspec.yaml)
+
+          echo "before=${before:-<none>} after=${after:-<none>}"
+
+          if [ -z "$after" ]; then
+            echo "No parseable build number in idem/pubspec.yaml"
+            exit 1
+          fi
+          # No previous revision (first push, force push, or a reworked history)
+          # is not a bump; requiring a real increase keeps this from firing by
+          # accident and burning a build number.
+          if [ -z "$before" ]; then
+            echo "Could not read the previous build number; treating as no bump"
+            exit 1
+          fi
+          [ "$after" -gt "$before" ]
         shell: bash
         continue-on-error: true
+  # Every other merge to master validates the same upload path without
+  # publishing, so a credential, entitlement or manifest problem is caught on
+  # the merge that introduced it rather than on the release that needed it.
+  dry-run:
+    needs: version-check
+    if: needs.version-check.outputs.version-changed != 'true'
+    uses: ./.github/workflows/dry-run-distribution.yml
+    secrets: inherit
   build-app-ios-beta:
     runs-on: macos-15 # MacOS version is pinned, because it determines which XCode version is used.
     defaults:
       run:
-        working-directory: ./vcmrtd/example
+        working-directory: ./idem
     needs: version-check
     if: needs.version-check.outputs.version-changed == 'true'
+    environment: app-store-beta
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -52,6 +182,7 @@ jobs:
       - name: Build app
         run: >
           bundle exec fastlane ios_build_app
+          flavor:beta
           code_signing_identity:"iPhone Distribution"
           certificate_path:profiles/apple_distribution.p12
           certificate_password:${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD }}
@@ -59,15 +190,27 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: app-beta-ios
-          path: ./vcmrtd/example/fastlane/build/*.ipa
+          path: ./idem/fastlane/build/*.ipa
+      # Uploading after the artifact step means a TestFlight outage or a
+      # rejected build still leaves a downloadable IPA on the run.
+      - name: Decode App Store Connect API key
+        env:
+          APP_STORE_CONNECT_KEY: ${{ secrets.APP_STORE_CONNECT_KEY }}
+        run: echo $APP_STORE_CONNECT_KEY | base64 --decode > ./fastlane/profiles/app_store_connect_key.p8
+      - name: Upload to TestFlight
+        run: >
+          bundle exec fastlane ios_upload_testflight
+          key_id:${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          issuer_id:${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          key_filepath:profiles/app_store_connect_key.p8
   build-app-android-beta:
-    # The Android builds are only signed with a development key. Signing needs to be done manually still.
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./vcmrtd/example
+        working-directory: ./idem
     needs: version-check
     if: needs.version-check.outputs.version-changed == 'true'
+    environment: android-beta
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -84,16 +227,26 @@ jobs:
       - name: Build app
         run: >
           bundle exec fastlane android_build_appbundle
+          flavor:beta
           keystore_path:profiles/keystore.jks
-          key_alias:vcmrtd-upload-key
+          key_alias:${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
           keystore_password:${{ secrets.ANDROID_SIGNING_KEYSTORE_PASSWORD }}
           key_password:${{ secrets.ANDROID_SIGNING_KEYSTORE_PASSWORD }}
       - uses: actions/upload-artifact@v4
         with:
           name: app-beta-android
           path: |
-            ./vcmrtd/example/fastlane/build/*.apk
-            ./vcmrtd/example/fastlane/build/*.aab
+            ./idem/fastlane/build/*.apk
+            ./idem/fastlane/build/*.aab
+      # See the note in build-app-ios-beta on step ordering.
+      - name: Decode Play service account key
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: echo $GOOGLE_PLAY_SERVICE_ACCOUNT_JSON | base64 --decode > ./fastlane/profiles/play_service_account.json
+      - name: Upload to the Play Store
+        run: >
+          bundle exec fastlane android_upload_play_store
+          json_key_path:profiles/play_service_account.json
   bundle-app-beta:
     runs-on: ubuntu-latest
     needs:

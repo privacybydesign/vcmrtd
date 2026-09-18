@@ -1,0 +1,97 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+android {
+    namespace = "foundation.privacybydesign.idem"
+    compileSdk = 36
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    defaultConfig {
+        applicationId = "foundation.privacybydesign.idem"
+        minSdk = 26 //flutter.minSdkVersion
+        targetSdk = 36 //flutter.targetSdkVersion
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
+    }
+
+    // Two distribution tracks, mirroring irmamobile: alpha installs alongside
+    // beta via the applicationId suffix, so a tester can carry both.
+    flavorDimensions "track"
+    productFlavors {
+        alpha {
+            dimension "track"
+            applicationIdSuffix ".alpha"
+        }
+        beta {
+            dimension "track"
+        }
+    }
+
+    signingConfigs {
+        if (project.hasProperty("keyStoreFile")) {
+            release {
+                storeFile file(project.property("keyStoreFile"))
+                storePassword project.property("keyStorePassword")
+                keyAlias project.property("keyAlias")
+                keyPassword project.property("keyPassword")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            // Flutter does not support building for x86 in release mode.
+            ndk {
+                abiFilters "armeabi-v7a", "arm64-v8a", "x86_64"
+            }
+
+            if (project.hasProperty("keyStoreFile")) {
+                signingConfig signingConfigs.release
+            } else {
+                // For testing purposes we sign with dummy credentials if no key properties are given.
+                signingConfig signingConfigs.debug
+            }
+        }
+    }
+
+    bundle {
+        // Store archive and code transparency cannot be combined yet.
+        // https://stackoverflow.com/questions/74275816/code-verification-error-when-uploading-aab-files-added-after-transparency-meta
+        storeArchive {
+            enable = false
+        }
+        if (project.hasProperty("keyStoreFile")) {
+            codeTransparency {
+                signing {
+                    storeFile file(project.property("keyStoreFile"))
+                    storePassword project.property("keyStorePassword")
+                    keyAlias project.property("keyAlias")
+                    keyPassword project.property("keyPassword")
+                }
+            }
+        }
+    }
+}
+
+flutter {
+    source = "../.."
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.3.10"
+    // Gemalto JP2 Decoder
+    // https://mvnrepository.com/artifact/com.gemalto.jp2/jp2-android
+    implementation 'com.gemalto.jp2:jp2-android:1.0.3'
+}

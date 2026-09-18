@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./vcmrtd/example
+        working-directory: ./idem
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -79,8 +79,8 @@ jobs:
       - name: Run vcmrtd tests with coverage
         working-directory: ./vcmrtd
         run: flutter test --coverage
-      - name: Run example tests with coverage
-        working-directory: ./vcmrtd/example
+      - name: Run app tests with coverage
+        working-directory: ./idem
         run: flutter test --coverage
       - name: Run face_verification tests with coverage
         working-directory: ./face_verification
@@ -92,7 +92,7 @@ jobs:
         run: |
           mkdir -p coverage
           sed 's|SF:lib/|SF:vcmrtd/lib/|g' vcmrtd/coverage/lcov.info > coverage/lcov.info
-          sed 's|SF:lib/|SF:vcmrtd/example/lib/|g' vcmrtd/example/coverage/lcov.info >> coverage/lcov.info
+          sed 's|SF:lib/|SF:idem/lib/|g' idem/coverage/lcov.info >> coverage/lcov.info
           sed 's|SF:lib/|SF:face_verification/lib/|g' face_verification/coverage/lcov.info >> coverage/lcov.info
           sed 's|SF:lib/|SF:mrz_capture/lib/|g' mrz_capture/coverage/lcov.info >> coverage/lcov.info
       - name: SonarQube Scan
@@ -100,12 +100,24 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  build-prototypes-android:
+  # Development builds, signed with a development certificate and a separate
+  # development keystore — never the distribution credentials, which stay in the
+  # protected environments used by delivery.yml.
+  #
+  # Signing here means a pull request exercises the same signing path a release
+  # does, so a broken certificate or profile surfaces on the change that caused
+  # it. The cost is that these secrets are repository-level, so builds on pull
+  # requests from forks will fail — forks are never given secrets.
+  build-app-android:
     runs-on: ubuntu-latest
     needs: lint
     defaults:
       run:
-        working-directory: ./vcmrtd/example
+        working-directory: ./idem
+    strategy:
+      matrix:
+        flavor: [alpha, beta]
+        type: [apk, appbundle]
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -113,8 +125,58 @@ jobs:
           submodules: true
       - name: Setup build environment
         uses: ./.github/actions/setup-build-environment
-      - run: flutter build apk -t lib/main.dart
+      - name: Decode binary environment secrets
+        env:
+          ANDROID_DEVELOPMENT_SIGNING_KEYSTORE: ${{ secrets.ANDROID_DEVELOPMENT_SIGNING_KEYSTORE }}
+        run: |
+          mkdir -p ./fastlane/profiles
+          echo $ANDROID_DEVELOPMENT_SIGNING_KEYSTORE | base64 --decode > ./fastlane/profiles/keystore.jks
+      - name: Build
+        run: >
+          bundle exec fastlane android_build_${{ matrix.type }}
+          flavor:${{ matrix.flavor }}
+          keystore_path:profiles/keystore.jks
+          key_alias:idem-development
+          keystore_password:${{ secrets.ANDROID_DEVELOPMENT_SIGNING_KEYSTORE_PASSWORD }}
+          key_password:${{ secrets.ANDROID_DEVELOPMENT_SIGNING_KEYSTORE_PASSWORD }}
       - uses: actions/upload-artifact@v4
         with:
-          name: prototypes-android
-          path: ./vcmrtd/example/build/app/outputs/apk/release/*.apk
+          name: app-dev-android-${{ matrix.flavor }}-${{ matrix.type }}
+          path: ./idem/fastlane/build/*
+  # Catches iOS compile and signing breakage on every pull request, which
+  # nothing did before: the iOS build only ever ran on master, if at all.
+  # A development identity makes ios_build_app export with the development
+  # method, so the IPA installs on the devices in the development profile.
+  build-app-ios:
+    runs-on: macos-15 # MacOS version is pinned, because it determines which XCode version is used.
+    needs: lint
+    defaults:
+      run:
+        working-directory: ./idem
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Setup build environment
+        uses: ./.github/actions/setup-build-environment
+      - name: Decode binary environment secrets
+        env:
+          APPLE_DEVELOPMENT_CERTIFICATE: ${{ secrets.APPLE_DEVELOPMENT_CERTIFICATE }}
+          APPLE_DEVELOPMENT_PROVISIONING_PROFILE: ${{ secrets.APPLE_DEVELOPMENT_PROVISIONING_PROFILE }}
+        run: |
+          mkdir -p ./fastlane/profiles
+          echo $APPLE_DEVELOPMENT_CERTIFICATE | base64 --decode > ./fastlane/profiles/ios_development.p12
+          echo $APPLE_DEVELOPMENT_PROVISIONING_PROFILE | base64 --decode > ./fastlane/profiles/development.mobileprovision
+      - name: Build
+        run: >
+          bundle exec fastlane ios_build_app
+          flavor:alpha
+          certificate_path:profiles/ios_development.p12
+          certificate_password:${{ secrets.APPLE_DEVELOPMENT_CERTIFICATE_PASSWORD }}
+          provisioning_profile_path:profiles/development.mobileprovision
+          code_signing_identity:"iPhone Developer"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-dev-ios
+          path: ./idem/fastlane/build/*.ipa

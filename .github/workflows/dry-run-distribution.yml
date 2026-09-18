@@ -1,0 +1,112 @@
+# Exercises the full store-upload path without publishing anything.
+#
+# Kept separate from delivery.yml so that a manual run cannot accidentally
+# trigger the alpha or beta jobs there. Nothing here uploads: the iOS job runs
+# Apple's validation via deliver's verify_only, and the Android job uses
+# supply's validate_only. No build number is consumed, so this can be run as
+# often as needed — including before the very first real release, to shake out
+# credential and entitlement problems while they are still cheap to fix.
+name: Distribution dry run
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Which store upload path to validate
+        type: choice
+        options: [both, ios, android]
+        default: both
+  # Called by delivery.yml for merges to master that do not bump the build
+  # number. workflow_call has no choice type, so the input is a plain string.
+  workflow_call:
+    inputs:
+      platform:
+        type: string
+        default: both
+
+concurrency: dry-run-${{ github.ref }}
+
+jobs:
+  dry-run-ios:
+    if: inputs.platform == 'both' || inputs.platform == 'ios'
+    runs-on: macos-15 # MacOS version is pinned, because it determines which XCode version is used.
+    defaults:
+      run:
+        working-directory: ./idem
+    environment: app-store-beta
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Setup build environment
+        uses: ./.github/actions/setup-build-environment
+      - name: Decode binary environment secrets
+        env:
+          APPLE_DISTRIBUTION_CERTIFICATE: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE }}
+          APPLE_PROVISIONING_PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
+          APP_STORE_CONNECT_KEY: ${{ secrets.APP_STORE_CONNECT_KEY }}
+        run: |
+          mkdir -p ./fastlane/profiles
+          echo $APPLE_DISTRIBUTION_CERTIFICATE | base64 --decode > ./fastlane/profiles/apple_distribution.p12
+          echo $APPLE_PROVISIONING_PROFILE | base64 --decode > ./fastlane/profiles/app_store_beta.mobileprovision
+          echo $APP_STORE_CONNECT_KEY | base64 --decode > ./fastlane/profiles/app_store_connect_key.p8
+      - name: Build app
+        run: >
+          bundle exec fastlane ios_build_app
+          flavor:beta
+          code_signing_identity:"iPhone Distribution"
+          certificate_path:profiles/apple_distribution.p12
+          certificate_password:${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+          provisioning_profile_path:profiles/app_store_beta.mobileprovision
+      - name: Verify against App Store Connect (no upload)
+        run: >
+          bundle exec fastlane ios_verify_app_store
+          key_id:${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          issuer_id:${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          key_filepath:profiles/app_store_connect_key.p8
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dry-run-ios
+          path: ./idem/fastlane/build/*.ipa
+  dry-run-android:
+    if: inputs.platform == 'both' || inputs.platform == 'android'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./idem
+    environment: android-beta
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Setup build environment
+        uses: ./.github/actions/setup-build-environment
+      - name: Decode binary environment secrets
+        env:
+          ANDROID_SIGNING_KEYSTORE: ${{ secrets.ANDROID_SIGNING_KEYSTORE }}
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          mkdir -p ./fastlane/profiles
+          echo $ANDROID_SIGNING_KEYSTORE | base64 --decode > ./fastlane/profiles/keystore.jks
+          echo $GOOGLE_PLAY_SERVICE_ACCOUNT_JSON | base64 --decode > ./fastlane/profiles/play_service_account.json
+      - name: Build app
+        run: >
+          bundle exec fastlane android_build_appbundle
+          flavor:beta
+          keystore_path:profiles/keystore.jks
+          key_alias:${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
+          keystore_password:${{ secrets.ANDROID_SIGNING_KEYSTORE_PASSWORD }}
+          key_password:${{ secrets.ANDROID_SIGNING_KEYSTORE_PASSWORD }}
+      - name: Validate against the Play Store (no upload)
+        run: >
+          bundle exec fastlane android_upload_play_store
+          json_key_path:profiles/play_service_account.json
+          validate_only:true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dry-run-android
+          path: ./idem/fastlane/build/*.aab
