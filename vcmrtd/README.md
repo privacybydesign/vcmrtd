@@ -137,9 +137,9 @@ final verification = await issuer.verifyPassport(result.rawData);
 
 Full documentation is available at [privacybydesign.github.io/vcmrtd](https://privacybydesign.github.io/vcmrtd)
 
-## Example App
+## Idem (app)
 
-The repository includes a complete example application demonstrating:
+The repository includes [Idem](../idem), an app built on this library, demonstrating:
 
 - MRZ scanning via camera or manual entry
 - NFC document reading with progress indication

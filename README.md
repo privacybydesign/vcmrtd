@@ -31,9 +31,9 @@ A Flutter package for face verification and liveness detection. Supports active 
 
 An alternative face-verification engine based on the proprietary Iris SDK from passportreader.app lives in its own repository, [iris-sdk-flutter](https://github.com/privacybydesign/iris-sdk-flutter), which ships the vendor binaries with the package. Unlike the on-device implementation, Iris provides its own full-screen native camera UI and returns the verification result to Flutter.
 
-## Example app
+## Idem (app)
 
-The [`vcmrtd/example`](vcmrtd/example/) app demonstrates the full flow: MRZ scanning, NFC reading, face verification, and Verifiable Credential issuance.
+[`idem`](idem/) is the app built on these packages. It runs the full flow: MRZ scanning, NFC chip reading, face verification, and Verifiable Credential issuance.
 
 The app supports choosing between the on-device `face_verification` engine and the Iris engine through the advanced settings.
 
@@ -48,7 +48,7 @@ The app supports choosing between the on-device `face_verification` engine and t
 </p>
 
 ```sh
-cd vcmrtd/example
+cd idem
 flutter pub get
 flutter run
 ```

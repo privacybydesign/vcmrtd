@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The label lives in the flavor manifests rather than main/, so alpha and
+         beta can be told apart on a device that has both installed. -->
+    <application android:label="Idem Alpha" />
+</manifest>

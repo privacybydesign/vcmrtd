@@ -1,0 +1,302 @@
+before_all do
+  skip_docs()
+  # Ensure that build and profiles directories are present in fastlane directory.
+  sh("mkdir -p ./build/ ./profiles/")
+end
+
+# The app and the library are siblings at the repo root, so each is linted in
+# its own package directory. (Before the app moved out of vcmrtd/example, a
+# single chdir into vcmrtd covered both.)
+lane :lint do
+  ["vcmrtd", "idem"].each do |package|
+    Dir.chdir("../../#{package}") do
+      sh("dart", "format", "--line-length", "120", "--set-exit-if-changed", ".")
+      sh("flutter", "analyze", "--no-fatal-infos")
+    end
+  end
+end
+
+lane :unit_test do
+  Dir.chdir("..") do
+    sh("flutter", "test")
+  end
+end
+
+lane :android_build do |options|
+  android_build_appbundle(
+    flavor: options[:flavor],
+    keystore_path: options[:keystore_path],
+    keystore_password: options[:keystore_password],
+    key_alias: options[:key_alias],
+    key_password: options[:key_password]
+  )
+end
+
+lane :android_build_apk do |options|
+  android_build_app(
+    build_type: "apk",
+    flavor: options[:flavor],
+    keystore_path: options[:keystore_path],
+    keystore_password: options[:keystore_password],
+    key_alias: options[:key_alias],
+    key_password: options[:key_password]
+  )
+  Dir.chdir("..") do
+    sh("cp ./build/app/outputs/apk/#{options[:flavor]}/release/*.apk ./fastlane/build/")
+  end
+end
+
+lane :android_build_appbundle do |options|
+  android_build_app(
+    build_type: "appbundle",
+    flavor: options[:flavor],
+    keystore_path: options[:keystore_path],
+    keystore_password: options[:keystore_password],
+    key_alias: options[:key_alias],
+    key_password: options[:key_password]
+  )
+  Dir.chdir("..") do
+    sh("cp ./build/app/outputs/bundle/#{options[:flavor]}Release/*.aab ./fastlane/build/")
+  end
+end
+
+private_lane :android_build_app do |options|
+  commit = last_git_commit()
+
+  # In Fastlane it's not possible to mask secrets in the command, while showing the shell output of the command.
+  # Therefore, we use environment variables to hide parameter values.
+  puts "In the following command, parameter values are hidden using environment variables."
+  cmd = "flutter build $FASTLANE_BUILD_TYPE --flavor $FASTLANE_FLAVOR --release"
+  ENV["FASTLANE_BUILD_TYPE"] = options[:build_type]
+  ENV["FASTLANE_FLAVOR"] = options[:flavor]
+  if options[:keystore_path]
+    ENV["FASTLANE_KEYSTORE_PATH"] = File.absolute_path(options[:keystore_path])
+    ENV["FASTLANE_KEYSTORE_PASSWORD"] = options[:keystore_password]
+    ENV["FASTLANE_KEY_ALIAS"] = options[:key_alias]
+    ENV["FASTLANE_KEY_PASSWORD"] = options[:key_password]
+    cmd += " -PkeyStoreFile=$FASTLANE_KEYSTORE_PATH -PkeyStorePassword=$FASTLANE_KEYSTORE_PASSWORD"
+    cmd += " -PkeyAlias=$FASTLANE_KEY_ALIAS -PkeyPassword=$FASTLANE_KEY_PASSWORD"
+  end
+
+  Dir.chdir("..") do
+    sh(cmd)
+  end
+end
+
+lane :ios_build do |options|
+  ios_build_app(
+    flavor: options[:flavor],
+    certificate_path: options[:certificate_path],
+    certificate_password: options[:certificate_password],
+    provisioning_profile_path: options[:provisioning_profile_path],
+    code_signing_identity: options[:code_signing_identity]
+  )
+end
+
+lane :ios_build_app do |options|
+  # There are no Xcode schemes per flavor: the identifier and display name are
+  # rewritten in Info.plist before the build instead, which is how irmamobile
+  # does it. With a distribution certificate, alpha means ad hoc and beta means
+  # app store.
+  case options[:flavor]
+  when "alpha"
+    display_name = "Idem Alpha"
+    app_identifier = "foundation.privacybydesign.idem.alpha"
+    export_method = "ad-hoc"
+  when "beta"
+    display_name = "Idem"
+    app_identifier = "foundation.privacybydesign.idem"
+    export_method = "app-store"
+  else
+    raise "Unsupported flavor: #{options[:flavor].inspect} (expected alpha or beta)"
+  end
+
+  if options[:code_signing_identity]&.include?("Developer")
+    export_method = "development"
+  end
+
+  update_app_identifier(
+    xcodeproj: "ios/Runner.xcodeproj",
+    plist_path: "Runner/Info.plist",
+    app_identifier: app_identifier
+  )
+  update_info_plist(
+    xcodeproj: "ios/Runner.xcodeproj",
+    plist_path: "Runner/Info.plist",
+    display_name: display_name
+  )
+  commit = last_git_commit()
+
+  set_provisioning_profile(
+    provisioning_profile_path: options[:provisioning_profile_path],
+    certificate_path: options[:certificate_path],
+    certificate_password: options[:certificate_password],
+    code_signing_identity: options[:code_signing_identity]
+  )
+
+  # Set export method in plist file.
+  set_info_plist_value(
+    path: "ios/Runner/Flutter-Build-IPA.plist",
+    key: "method",
+    value: export_method
+  )
+
+  Dir.chdir("..") do
+    sh("flutter", "build", "ipa", "--release", "--export-options-plist", "./ios/Runner/Flutter-Build-IPA.plist")
+    sh("cp ./build/ios/ipa/*.ipa ./fastlane/build/app-#{options[:flavor]}-ios-#{export_method}.ipa")
+  end
+end
+
+# Uploads the app-store IPA to TestFlight. Internal testers only: no external
+# beta review is requested, so a human still decides when to widen the audience
+# or submit to App Store review.
+#
+# Authentication uses an App Store Connect API key rather than an Apple ID, so
+# there is no 2FA session to keep alive in CI.
+lane :ios_upload_testflight do |options|
+  api_key = app_store_connect_api_key(
+    key_id: options[:key_id],
+    issuer_id: options[:issuer_id],
+    key_filepath: File.absolute_path(options[:key_filepath])
+  )
+
+  ipa = options[:ipa_path] ? File.absolute_path(options[:ipa_path]) : Dir[File.absolute_path("build/*.ipa")].first
+  raise "No IPA found to upload to TestFlight" if ipa.nil?
+
+  upload_to_testflight(
+    api_key: api_key,
+    ipa: ipa,
+    # Apple can take half an hour to process a build; waiting for it would just
+    # burn macOS runner minutes.
+    skip_waiting_for_build_processing: true,
+    skip_submission: true,
+    distribute_external: false
+  )
+end
+
+# Uploads the app bundle to the Play Store's internal track — the closest
+# analogue to TestFlight. Promoting to closed/open testing or production stays
+# a manual decision in the Play Console.
+#
+# The store listing is never touched: this repository holds no metadata, and
+# supply would otherwise try to reconcile the listing with an empty directory.
+lane :android_upload_play_store do |options|
+  aab = options[:aab_path] ? File.absolute_path(options[:aab_path]) : Dir[File.absolute_path("build/*.aab")].first
+  raise "No app bundle found to upload to the Play Store" if aab.nil?
+
+  upload_to_play_store(
+    package_name: "foundation.privacybydesign.idem",
+    json_key: File.absolute_path(options[:json_key_path]),
+    aab: aab,
+    track: "internal",
+    release_status: "completed",
+    # Passed as a string from the command line, so compare rather than trust.
+    validate_only: options[:validate_only].to_s == "true",
+    skip_upload_metadata: true,
+    skip_upload_images: true,
+    skip_upload_screenshots: true,
+    skip_upload_changelogs: true
+  )
+end
+
+# Runs Apple's own validation over the IPA without uploading it, so nothing is
+# submitted and no build number is consumed. Catches the class of problem that
+# otherwise only surfaces on a real upload: missing privacy manifest, export
+# compliance, entitlements that disagree with the provisioning profile.
+#
+# upload_to_testflight has no dry-run mode, so this goes through deliver.
+lane :ios_verify_app_store do |options|
+  api_key = app_store_connect_api_key(
+    key_id: options[:key_id],
+    issuer_id: options[:issuer_id],
+    key_filepath: File.absolute_path(options[:key_filepath])
+  )
+
+  ipa = options[:ipa_path] ? File.absolute_path(options[:ipa_path]) : Dir[File.absolute_path("build/*.ipa")].first
+  raise "No IPA found to verify" if ipa.nil?
+
+  upload_to_app_store(
+    api_key: api_key,
+    ipa: ipa,
+    verify_only: true,
+    skip_metadata: true,
+    skip_screenshots: true,
+    run_precheck_before_submit: false,
+    force: true
+  )
+end
+
+private_lane :set_provisioning_profile do |options|
+  # When a certificate path is given, we ensure it is properly installed.
+  if options[:certificate_path]
+    keychain_path = File.absolute_path("profiles/fastlane.keychain")
+    certificate_password = options[:certificate_password] || ""
+    create_keychain(
+      path: keychain_path,
+      password: certificate_password,
+      unlock: true,
+      timeout: 600
+    )
+    import_certificate(
+      certificate_path: File.absolute_path(options[:certificate_path]),
+      certificate_password: certificate_password,
+      keychain_path: keychain_path,
+      keychain_password: certificate_password
+    )
+  end
+
+  # When a provisioning profile is given, we ensure it is installed and selected in the project.
+  # Otherwise, we use the profile that is currently selected in XCode.
+  if options[:provisioning_profile_path]
+    provisioning_profile_path = File.absolute_path(options[:provisioning_profile_path])
+
+    # Get uuid of provisioning profile
+    uuid_regex = /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/
+    uuid = ""
+    File.open(provisioning_profile_path, "r:BINARY") do |file|
+      file.each_line do |line|
+        encoded_line = line.encode("UTF-8", invalid: :replace, undef: :replace)
+        match_data = encoded_line.match(uuid_regex)
+        if match_data
+          uuid = match_data[0]
+          break
+        end
+      end
+    end
+
+    install_provisioning_profile(
+      path: provisioning_profile_path
+    )
+
+    # The Runner target is committed with CODE_SIGN_STYLE = Automatic so the
+    # project still opens and builds in Xcode without per-developer setup. Xcode
+    # refuses to combine that with a manually installed profile — "Runner has
+    # conflicting provisioning settings" — and fails the archive. Switch the
+    # target to manual signing for this build only; the committed project is
+    # untouched because CI works on a fresh checkout.
+    update_code_signing_settings(
+      path: "ios/Runner.xcodeproj",
+      targets: ["Runner"],
+      use_automatic_signing: false,
+      code_sign_identity: options[:code_signing_identity] || "iPhone Distribution"
+    )
+
+    update_project_provisioning(
+      xcodeproj: "ios/Runner.xcodeproj",
+      profile: provisioning_profile_path,
+      target_filter: "^Runner$",
+      code_signing_identity: options[:code_signing_identity] || "iPhone Distribution"
+    )
+    # Set uuid in plist file for flutter
+    # The export plist carries an entry per identifier; whichever one the build
+    # actually uses is selected by the app identifier set above.
+    ["foundation.privacybydesign.idem", "foundation.privacybydesign.idem.alpha"].each do |identifier|
+      set_info_plist_value(
+        path: "ios/Runner/Flutter-Build-IPA.plist",
+        key: "provisioningProfiles",
+        subkey: identifier,
+        value: uuid
+      )
+    end
+  end
+end
