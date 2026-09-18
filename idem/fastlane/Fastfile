@@ -267,6 +267,20 @@ private_lane :set_provisioning_profile do |options|
     install_provisioning_profile(
       path: provisioning_profile_path
     )
+
+    # The Runner target is committed with CODE_SIGN_STYLE = Automatic so the
+    # project still opens and builds in Xcode without per-developer setup. Xcode
+    # refuses to combine that with a manually installed profile — "Runner has
+    # conflicting provisioning settings" — and fails the archive. Switch the
+    # target to manual signing for this build only; the committed project is
+    # untouched because CI works on a fresh checkout.
+    update_code_signing_settings(
+      path: "ios/Runner.xcodeproj",
+      targets: ["Runner"],
+      use_automatic_signing: false,
+      code_sign_identity: options[:code_signing_identity] || "iPhone Distribution"
+    )
+
     update_project_provisioning(
       xcodeproj: "ios/Runner.xcodeproj",
       profile: provisioning_profile_path,
