@@ -1,0 +1,4 @@
+# Used by supply (Play Store) and pilot/deliver (App Store Connect).
+app_identifier("foundation.privacybydesign.idem")
+package_name("foundation.privacybydesign.idem")
+team_id("T5VXGLDWLZ")

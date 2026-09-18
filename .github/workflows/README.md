@@ -1,6 +1,6 @@
 # GitHub Actions workflows
 
-Two workflows, both driving the Fastlane scripts in [`idem/fastlane`](../../idem/fastlane/README.md).
+Three workflows, all driving the Fastlane scripts in [`idem/fastlane`](../../idem/fastlane/README.md).
 
 ## Three builds
 
@@ -8,15 +8,54 @@ Two workflows, both driving the Fastlane scripts in [`idem/fastlane`](../../idem
 |---|---|---|---|---|
 | **dev** | Status checks | every pull request | unsigned (`--no-codesign`) | `alpha` + `beta`, APK and AAB, debug-signed |
 | **alpha** | Delivery | every push to `master` | ad hoc, `…idem.alpha` | `alpha` flavor, APK and AAB |
-| **beta** | Delivery | version bump in `idem/pubspec.yaml` | app store, `…idem` | `beta` flavor, AAB with the Play upload key |
+| **beta** | Delivery | build number increase in `idem/pubspec.yaml` | app store, `…idem` → **TestFlight** | `beta` flavor, AAB → **Play internal track** |
 
 The dev builds are deliberately unsigned so they need no secrets and still run on
 pull requests from forks. They exist to catch compile breakage — in particular on
 iOS, which previously was never built outside `master`.
 
-Ad hoc builds do not need unique build numbers, so alpha runs on every push. The
-stores reject a build number they have already seen, so beta runs only when the
-`version:` line in `idem/pubspec.yaml` changes.
+Ad hoc builds do not need unique build numbers, so alpha runs on every push.
+
+The stores reject a build number they have already seen, so beta triggers on the
+build number — the `+N` suffix in `idem/pubspec.yaml` — actually increasing.
+Changing only the semver does not trigger it, because the resulting upload would
+be refused by both stores.
+
+## Automatic distribution
+
+A merge to `master` that increases the build number builds both platforms and
+uploads them:
+
+- **iOS → TestFlight**, internal testers only. No external beta review is
+  requested, so widening the audience or submitting to App Store review stays a
+  manual decision.
+- **Android → Play internal track**, the closest analogue to TestFlight.
+  Promoting to closed/open testing or production stays manual.
+
+Uploads run *after* the artifact upload step, so a failed or rejected upload
+still leaves a downloadable build on the workflow run. The Play store listing is
+never touched — this repository holds no metadata.
+
+The first release on each store has to be done by hand: neither tool can create
+an app record, and Play generally wants the first bundle through the console to
+establish Play App Signing.
+
+### Dry run
+
+`Distribution dry run` (`dry-run-distribution.yml`) exercises the whole upload
+path without publishing. It runs two ways:
+
+- **Automatically**, on every merge to `master` that does *not* increase the
+  build number — the exact complement of the beta trigger. Delivery calls it as
+  a reusable workflow, so every merge either ships or validates, never neither.
+- **Manually**, from the Actions tab, where you can pick a single platform.
+
+iOS runs Apple's binary validation through deliver's `verify_only`; Android uses
+supply's `validate_only`. Nothing is uploaded and no build number is consumed,
+so it is safe to run repeatedly — including before the first real release, to
+find credential, entitlement and privacy-manifest problems while they are still
+cheap to fix. It is a separate workflow so that a manual run cannot set the
+alpha or beta jobs going.
 
 ## Flavors
 
@@ -47,6 +86,15 @@ distribution certificate.
 - `APPLE_DISTRIBUTION_CERTIFICATE`, `APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD`
 - `APPLE_PROVISIONING_PROFILE` — base64 **app store** profile for `foundation.privacybydesign.idem`.
 
+Additionally for `app-store-beta`, for the TestFlight upload:
+
+- `APP_STORE_CONNECT_KEY` — base64 of the `.p8` App Store Connect API key.
+- `APP_STORE_CONNECT_KEY_ID`
+- `APP_STORE_CONNECT_ISSUER_ID`
+
+An API key is used rather than an Apple ID so there is no 2FA session to keep
+alive in CI. It needs the App Manager role.
+
 ### `android-alpha` and `android-beta`
 
 - `ANDROID_SIGNING_KEYSTORE` — base64 Java keystore.
@@ -55,6 +103,12 @@ distribution certificate.
 
 For `android-beta` this must be the upload key registered with Google Play. It
 also signs the app bundle's code transparency file.
+
+`android-beta` additionally needs, for the Play upload:
+
+- `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` — base64 of the service account key, granted
+  release permissions in the Play Console. The grant takes a while to propagate
+  after it is issued.
 
 Instructions for generating certificates, profiles and keystores are in the
 [Fastlane README](../../idem/fastlane/README.md).
