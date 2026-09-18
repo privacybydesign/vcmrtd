@@ -48,7 +48,9 @@ runs:
       shell: bash
     - name: Use correct Xcode version
       if: runner.os == 'macOS'
-      run: sudo xcode-select --switch /Applications/Xcode_16.4.app
+      # Apple rejects uploads built with an SDK older than iOS 26, which means
+      # Xcode 26 or later. 16.4 is the image default, so this must be explicit.
+      run: sudo xcode-select --switch /Applications/Xcode_26.3.app
       shell: bash
     - name: Check Cocoapods cache
       id: cocoapods-cache
