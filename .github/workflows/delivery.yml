@@ -22,7 +22,7 @@ jobs:
     defaults:
       run:
         working-directory: ./idem
-    environment: ad-hoc-alpha
+    environment: app-store-ad-hoc
     steps:
       - name: Check out repository
         uses: actions/checkout@v4

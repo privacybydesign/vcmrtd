@@ -75,7 +75,7 @@ Secrets should be uploaded as
 rather than repository secrets, so that a pull-request build can never reach a
 distribution certificate.
 
-### `ad-hoc-alpha` — iOS internal distribution
+### `app-store-ad-hoc` — iOS internal distribution
 
 - `APPLE_DISTRIBUTION_CERTIFICATE` — base64 PKCS#12 distribution certificate. Expires yearly.
 - `APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD`
