@@ -17,12 +17,19 @@ class NfcGuidanceScreen extends StatefulWidget {
   final VoidCallback? onTroubleshooting;
   final DocumentType documentType;
 
+  /// Step badge numbers — default to vcmrtd's fixed 4-step sequence (this
+  /// screen is always step 2 there); see NfcReadingScreen's matching fields.
+  final int stepNumber;
+  final int totalSteps;
+
   const NfcGuidanceScreen({
     super.key,
     required this.onStartReading,
     required this.onBack,
     this.onTroubleshooting,
     required this.documentType,
+    this.stepNumber = 2,
+    this.totalSteps = 4,
   });
 
   @override
@@ -135,8 +142,8 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
     return StepBadgeTopBar(
       icon: PlatformIcons(context).back,
       onBack: widget.onBack,
-      current: 2,
-      total: 4,
+      current: widget.stepNumber,
+      total: widget.totalSteps,
       label: 'Read ${widget.documentType.displayName}',
     );
   }

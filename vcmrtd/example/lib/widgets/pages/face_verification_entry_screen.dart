@@ -31,6 +31,14 @@ class FaceVerificationEntryScreen extends StatelessWidget {
   // Test-only: injects a pre-built on-device engine.
   final FaceVerificationEngine? testEngine;
 
+  /// Step badge numbers — default to vcmrtd's fixed 4-step sequence (this
+  /// screen is always step 3 there) so any caller not passing these
+  /// explicitly keeps today's behaviour; routing.dart passes a session's
+  /// actual FlowStepPlan values when a QR/deep-link flow governs the
+  /// numbering.
+  final int stepNumber;
+  final int totalSteps;
+
   const FaceVerificationEntryScreen({
     super.key,
     required this.nfcImageBytes,
@@ -39,6 +47,8 @@ class FaceVerificationEntryScreen extends StatelessWidget {
     required this.engineChoice,
     required this.livenessMode,
     this.photoIssueDate,
+    this.stepNumber = 3,
+    this.totalSteps = 4,
   }) : testEngine = null;
 
   const FaceVerificationEntryScreen.withEngine({
@@ -50,6 +60,8 @@ class FaceVerificationEntryScreen extends StatelessWidget {
     required this.engineChoice,
     required this.livenessMode,
     this.photoIssueDate,
+    this.stepNumber = 3,
+    this.totalSteps = 4,
   }) : testEngine = engine;
 
   @override
@@ -60,6 +72,8 @@ class FaceVerificationEntryScreen extends StatelessWidget {
           nfcImageBytes: nfcImageBytes,
           onBackPressed: onBackPressed,
           onVerified: onVerified,
+          stepNumber: stepNumber,
+          totalSteps: totalSteps,
         );
       case FaceEngineChoice.onDevice:
         final engine = testEngine;
@@ -71,6 +85,8 @@ class FaceVerificationEntryScreen extends StatelessWidget {
             onBackPressed: onBackPressed,
             onVerified: onVerified,
             photoIssueDate: photoIssueDate,
+            stepNumber: stepNumber,
+            totalSteps: totalSteps,
           );
         }
         return FlutterFaceVerificationScreen(
@@ -79,6 +95,8 @@ class FaceVerificationEntryScreen extends StatelessWidget {
           onBackPressed: onBackPressed,
           onVerified: onVerified,
           photoIssueDate: photoIssueDate,
+          stepNumber: stepNumber,
+          totalSteps: totalSteps,
         );
     }
   }

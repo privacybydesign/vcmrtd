@@ -34,6 +34,13 @@ class ScannerWrapper extends StatefulWidget {
   final DocumentType documentType;
   final ScannerWidgetBuilder? scannerBuilder;
 
+  /// Step badge numbers — default to vcmrtd's fixed 4-step sequence (this
+  /// screen is always step 1) so any caller not passing these explicitly
+  /// keeps today's behaviour; routing.dart passes a session's actual
+  /// [FlowStepPlan] values when a QR/deep-link flow governs the numbering.
+  final int stepNumber;
+  final int totalSteps;
+
   const ScannerWrapper({
     super.key,
     required this.onMrzScanned,
@@ -41,6 +48,8 @@ class ScannerWrapper extends StatefulWidget {
     required this.onBack,
     this.documentType = DocumentType.passport,
     this.scannerBuilder,
+    this.stepNumber = 1,
+    this.totalSteps = 4,
   });
 
   @override
@@ -107,7 +116,7 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
                     onPressed: widget.onBack,
                   ),
                 ),
-                StepBadge(current: 1, total: 4, label: 'Scan ${_getDocumentTypeName()}'),
+                StepBadge(current: widget.stepNumber, total: widget.totalSteps, label: 'Scan ${_getDocumentTypeName()}'),
               ],
             ),
           ),

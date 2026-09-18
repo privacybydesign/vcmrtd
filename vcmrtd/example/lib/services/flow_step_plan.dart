@@ -1,0 +1,70 @@
+import 'proofing_session_client.dart';
+
+/// How many "X of N" screens a session will actually show, and which number
+/// each stage gets — computed once from [ProofingSessionInfo.steps] so every
+/// screen's step badge reflects what THIS session's flow actually does,
+/// rather than vcmrtd's fixed default sequence.
+///
+/// Steps are treated as an unordered "which capabilities this flow needs"
+/// set, not a literal display order — identity-proofing-service's own
+/// flow.Validate doesn't check array order either, only presence/absence
+/// (confirmed with that service directly). Numbering always follows the
+/// fixed technical precedence document_capture -> nfc_read ->
+/// face_verification -> result, since that's the order the underlying data
+/// dependencies actually require (nfc_read needs document_capture's MRZ;
+/// face_match needs either nfc_read's DG2 or a supplied referencePhoto).
+///
+/// document_capture is NOT guaranteed present — a flow can be e.g.
+/// `["selfie", "face_match"]` alone (pure biometric verification against a
+/// relying-party-supplied reference photo, no document scan at all). The
+/// only hard dependency the server enforces is nfc_read requiring
+/// document_capture; every other combination, including document_capture's
+/// own absence, is legitimate.
+///
+/// Null steps (no pinned session, or one created without a flow) always
+/// produces the unchanged 4-step default: document_capture, nfc_read,
+/// face_verification, result — matching every screen's previous hard-coded
+/// numbering exactly, so normal (non-QR) app usage is unaffected.
+class FlowStepPlan {
+  final int totalSteps;
+  final int? documentCaptureStepNumber;
+  final int? nfcReadStepNumber;
+  final int? faceVerificationStepNumber;
+  final int resultStepNumber;
+
+  const FlowStepPlan._({
+    required this.totalSteps,
+    required this.documentCaptureStepNumber,
+    required this.nfcReadStepNumber,
+    required this.faceVerificationStepNumber,
+    required this.resultStepNumber,
+  });
+
+  static const FlowStepPlan defaultPlan = FlowStepPlan._(
+    totalSteps: 4,
+    documentCaptureStepNumber: 1,
+    nfcReadStepNumber: 2,
+    faceVerificationStepNumber: 3,
+    resultStepNumber: 4,
+  );
+
+  factory FlowStepPlan.fromSteps(List<String>? steps) {
+    if (steps == null) return defaultPlan;
+
+    var next = 1;
+    final documentCaptureStepNumber = steps.contains(stepDocumentCapture) ? next++ : null;
+    final nfcReadStepNumber = steps.contains(stepNfcRead) ? next++ : null;
+    final faceVerificationStepNumber = stepsRequestAny(steps, [stepSelfie, stepLiveness, stepFaceMatch])
+        ? next++
+        : null;
+    final resultStepNumber = next;
+
+    return FlowStepPlan._(
+      totalSteps: resultStepNumber,
+      documentCaptureStepNumber: documentCaptureStepNumber,
+      nfcReadStepNumber: nfcReadStepNumber,
+      faceVerificationStepNumber: faceVerificationStepNumber,
+      resultStepNumber: resultStepNumber,
+    );
+  }
+}

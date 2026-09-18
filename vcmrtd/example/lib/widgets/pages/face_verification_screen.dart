@@ -97,6 +97,12 @@ class FlutterFaceVerificationScreen extends StatefulWidget {
   /// this mode; there is no in-screen picker.
   final LivenessMode mode;
 
+  /// Step badge numbers — default to vcmrtd's fixed 4-step sequence (this
+  /// screen is always step 3 there); see FaceVerificationEntryScreen's
+  /// matching fields.
+  final int stepNumber;
+  final int totalSteps;
+
   const FlutterFaceVerificationScreen({
     super.key,
     required this.nfcImageBytes,
@@ -104,6 +110,8 @@ class FlutterFaceVerificationScreen extends StatefulWidget {
     required this.onVerified,
     this.photoIssueDate,
     this.mode = LivenessMode.passive,
+    this.stepNumber = 3,
+    this.totalSteps = 4,
   }) : testEngine = null;
 
   const FlutterFaceVerificationScreen.withEngine({
@@ -114,6 +122,8 @@ class FlutterFaceVerificationScreen extends StatefulWidget {
     required this.onVerified,
     this.photoIssueDate,
     this.mode = LivenessMode.passive,
+    this.stepNumber = 3,
+    this.totalSteps = 4,
   }) : testEngine = engine;
 
   @override
@@ -790,7 +800,7 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
         alignment: Alignment.center,
         children: [
           Align(alignment: Alignment.centerLeft, child: _buildBackButton()),
-          const StepBadge(current: 3, total: 4, label: 'Face Verification'),
+          StepBadge(current: widget.stepNumber, total: widget.totalSteps, label: 'Face Verification'),
         ],
       ),
     ),

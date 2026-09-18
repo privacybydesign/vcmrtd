@@ -76,11 +76,25 @@ class NfcReadingRouteParams {
 }
 
 class NfcReadingScreen extends ConsumerStatefulWidget {
-  const NfcReadingScreen({required this.params, required this.onSuccess, super.key});
+  const NfcReadingScreen({
+    required this.params,
+    required this.onSuccess,
+    this.stepNumber = 2,
+    this.totalSteps = 4,
+    super.key,
+  });
 
   final NfcReadingRouteParams params;
 
   final Function(DocumentData, RawDocumentData) onSuccess;
+
+  /// Step badge numbers — default to vcmrtd's fixed 4-step sequence (this
+  /// screen is always step 2 there) so any caller not passing these
+  /// explicitly keeps today's behaviour; routing.dart passes a session's
+  /// actual FlowStepPlan values when a QR/deep-link flow governs the
+  /// numbering.
+  final int stepNumber;
+  final int totalSteps;
 
   @override
   ConsumerState<NfcReadingScreen> createState() => _NfcReadingScreenState();
@@ -154,6 +168,8 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
         onStartReading: startReading,
         onBack: context.pop,
         documentType: widget.params.documentType,
+        stepNumber: widget.stepNumber,
+        totalSteps: widget.totalSteps,
       );
     }
 
@@ -346,8 +362,8 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
     return StepBadgeTopBar(
       icon: Icons.arrow_back,
       onBack: () => _handleBack(context),
-      current: 2,
-      total: 4,
+      current: widget.stepNumber,
+      total: widget.totalSteps,
       label: 'Read ${widget.params.documentType.displayName}',
     );
   }

@@ -19,12 +19,22 @@ class DrivingLicenceDataScreen extends ConsumerStatefulWidget {
 
   final FaceVerificationOutcome? faceVerification;
 
+  /// Step badge numbers — default to vcmrtd's fixed 4-step sequence (this
+  /// screen is always the last, step 4, there) so any caller not passing
+  /// these explicitly keeps today's behaviour; routing.dart passes a
+  /// session's actual FlowStepPlan values when a QR/deep-link flow governs
+  /// the numbering.
+  final int stepNumber;
+  final int totalSteps;
+
   const DrivingLicenceDataScreen({
     super.key,
     required this.drivingLicence,
     required this.drivingLicenceDataResult,
     required this.onBackPressed,
     this.faceVerification,
+    this.stepNumber = 4,
+    this.totalSteps = 4,
   });
 
   @override
@@ -90,8 +100,8 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
   Widget _buildTopBar(BuildContext context) => StepBadgeTopBar(
     icon: Icons.arrow_back,
     onBack: widget.onBackPressed,
-    current: 4,
-    total: 4,
+    current: widget.stepNumber,
+    total: widget.totalSteps,
     label: 'Driving Licence Data',
   );
 

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +9,8 @@ import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtdapp/providers/face_engine_provider.dart';
 import 'package:vcmrtdapp/providers/liveness_mode_provider.dart';
 import 'package:vcmrtdapp/utils/document_dates.dart';
+import 'package:vcmrtdapp/services/flow_step_plan.dart';
+import 'package:vcmrtdapp/widgets/pages/document_capture_only_result_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/document_selection_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/face_verification_entry_screen.dart';
 import 'package:vcmrtdapp/widgets/pages/driving_licence_data_screen.dart';
@@ -37,9 +40,92 @@ import 'package:vcmrtdapp/widgets/pages/settings_screen.dart';
 }
 
 const _faceVerificationPath = '/face_verification';
+const _documentCaptureResultPath = '/document_capture_result';
 const _settingsPath = '/settings';
 const _qrScannerPath = '/qr_scanner';
 const _proofingConsentPath = '/proofing_consent';
+
+/// The pinned session's flow steps, or null if there is no pinned session or
+/// it wasn't created against a flow — the single place every route builder
+/// below reads this from, to compute its [FlowStepPlan] (and, for
+/// /nfc_reading, to also decide whether face verification runs next).
+List<String>? _activeSteps(BuildContext context) =>
+    ProviderScope.containerOf(context).read(activeProofingSessionProvider)?.info.steps;
+
+/// Where a just-captured document (MRZ scan or manual entry) leads next,
+/// given the pinned session's flow. Shared by /mrz_reader's onMrzScanned and
+/// /manual_entry's onManualEntryComplete, since both just produce a
+/// [ScannedMRZ] and from here on the decision is identical.
+///
+/// A null [ProofingSessionInfo.steps] — no pinned session at all, or one
+/// created without a flow — means every step is implicitly wanted, so this
+/// always falls through to the unchanged nfc_read path: opening the app
+/// outside a QR/deep-link session always runs the full
+/// document_capture -> nfc_read -> face_verification sequence, never a
+/// flow-driven subset.
+void _afterDocumentCaptured(BuildContext context, ScannedMRZ scannedMrz, DocumentType documentType) {
+  final activeSession = ProviderScope.containerOf(context).read(activeProofingSessionProvider);
+  final steps = activeSession?.info.steps;
+
+  if (steps == null || steps.contains(stepNfcRead)) {
+    context.pushNfcReadingScreen(NfcReadingRouteParams(scannedMRZ: scannedMrz, documentType: documentType));
+    return;
+  }
+
+  // steps is non-null and omits "nfc_read" here, so this is a genuine
+  // document_capture-only (or document_capture + selfie/liveness/face_match)
+  // flow, not a fallback for something broken - the server guarantees
+  // "nfc_read" never appears without "document_capture", but not the
+  // reverse. There's no chip read at all in this branch, so there's no
+  // DocumentData/RawDocumentData to carry forward, only what the scan/manual
+  // entry itself produced.
+  if (stepsRequestAny(steps, [stepSelfie, stepLiveness, stepFaceMatch])) {
+    final referencePhoto = activeSession!.info.referencePhoto;
+    context.pushFaceVerificationScreenForScannedMrz(
+      // Null when the flow doesn't need an identity comparison (selfie- or
+      // liveness-only) - FaceVerificationEntryScreen already runs fine
+      // without a comparison photo in that case, same as it always has.
+      referencePhotoBytes: referencePhoto != null ? base64Decode(referencePhoto.imageBase64) : null,
+      scannedMrz: scannedMrz,
+      documentType: documentType,
+    );
+    return;
+  }
+
+  context.pushDocumentCaptureOnlyResultScreen(session: activeSession!, scannedMrz: scannedMrz);
+}
+
+/// Where accepting a session's consent leads next — normally vcmrtd's own
+/// document-scan entry point, but a flow whose steps omit "document_capture"
+/// skips that entirely. The server guarantees "nfc_read" never appears
+/// without "document_capture", so the only thing such a flow can still ask
+/// for is selfie/liveness/face_match — a real, supported configuration (pure
+/// biometric verification against a supplied referencePhoto, no document
+/// scan at all), not a fallback for something broken.
+///
+/// Uses `go` rather than `push` throughout, matching the unconditional
+/// `context.go('/select_doc_type')` this replaces — none of these entry
+/// points should leave the consent screen underneath them in the stack.
+void _afterConsent(BuildContext context, ActiveProofingSession session) {
+  final steps = session.info.steps;
+  if (steps == null || steps.contains(stepDocumentCapture)) {
+    context.go('/select_doc_type');
+    return;
+  }
+
+  if (stepsRequestAny(steps, [stepSelfie, stepLiveness, stepFaceMatch])) {
+    final referencePhoto = session.info.referencePhoto;
+    context.go(
+      _faceVerificationPath,
+      extra: {'nfcImageBytes': referencePhoto != null ? base64Decode(referencePhoto.imageBase64) : null},
+    );
+    return;
+  }
+
+  // Degenerate: a flow with none of document_capture/nfc_read/selfie/
+  // liveness/face_match at all - nothing to capture, submit immediately.
+  context.go(_documentCaptureResultPath, extra: {'session': session});
+}
 
 /// Exposes [_proofingConsentPath] so a tapped vcmrtd:// deep link
 /// (VcMrtdApp._openProofingLink in main.dart) can push the consent screen
@@ -115,6 +201,41 @@ extension CustomRouteExtensions on BuildContext {
     );
   }
 
+  /// Same route as [pushFaceVerificationScreen], for a session with no chip
+  /// read to carry a DocumentData/RawDocumentData forward from — see
+  /// [_afterDocumentCaptured]/[_afterConsent]. [referencePhotoBytes] is the
+  /// relying party's supplied comparison image (api.referencePhoto), used in
+  /// place of DG2 for face_match; null when the flow doesn't need an
+  /// identity comparison at all. [scannedMrz]/[documentType] are null for a
+  /// flow whose steps omit "document_capture" too (no document scan
+  /// happened at all, not just no chip read).
+  void pushFaceVerificationScreenForScannedMrz({
+    Uint8List? referencePhotoBytes,
+    ScannedMRZ? scannedMrz,
+    DocumentType? documentType,
+  }) {
+    push(
+      _faceVerificationPath,
+      extra: {'nfcImageBytes': referencePhotoBytes, 'scannedMrz': scannedMrz, 'documentType': documentType},
+    );
+  }
+
+  /// Terminal route for a session with no chip-read document data to show a
+  /// review screen for (see [_afterDocumentCaptured]/[_afterConsent]) —
+  /// submits [scannedMrz] (if any — null for a flow that skipped
+  /// document_capture entirely) plus [faceVerification] (if that ran)
+  /// directly.
+  void pushDocumentCaptureOnlyResultScreen({
+    required ActiveProofingSession session,
+    ScannedMRZ? scannedMrz,
+    FaceVerificationOutcome? faceVerification,
+  }) {
+    push(
+      _documentCaptureResultPath,
+      extra: {'session': session, 'scannedMrz': scannedMrz, 'faceVerification': faceVerification},
+    );
+  }
+
   void pushSettingsScreen() {
     push(_settingsPath);
   }
@@ -165,10 +286,9 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
           return ProofingSessionConsentScreen(
             info: info,
             onConsent: () {
-              ProviderScope.containerOf(context)
-                  .read(activeProofingSessionProvider.notifier)
-                  .set(ActiveProofingSession(ref: sessionRef, info: info, openedAt: DateTime.now()));
-              context.go('/select_doc_type');
+              final session = ActiveProofingSession(ref: sessionRef, info: info, openedAt: DateTime.now());
+              ProviderScope.containerOf(context).read(activeProofingSessionProvider.notifier).set(session);
+              _afterConsent(context, session);
             },
             onDecline: () => context.go('/select_doc_type'),
           );
@@ -178,18 +298,17 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
         path: '/mrz_reader',
         builder: (context, state) {
           final params = MrzReaderRouteParams.fromQueryParams(state.uri.queryParameters);
+          final plan = FlowStepPlan.fromSteps(_activeSteps(context));
           return ScannerWrapper(
             documentType: params.documentType,
-            onMrzScanned: (result) {
-              context.pushNfcReadingScreen(
-                NfcReadingRouteParams(scannedMRZ: result, documentType: params.documentType),
-              );
-            },
+            onMrzScanned: (result) => _afterDocumentCaptured(context, result, params.documentType),
             onManualEntry: () {
               context.pushManualEntryScreen(ManualEntryRouteParams(documentType: params.documentType));
             },
             onBack: context.pop,
             scannerBuilder: scannerBuilder,
+            stepNumber: plan.documentCaptureStepNumber ?? FlowStepPlan.defaultPlan.documentCaptureStepNumber!,
+            totalSteps: plan.totalSteps,
           );
         },
       ),
@@ -200,11 +319,7 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
           return ManualEntryScreen(
             documentType: params.documentType,
             onBack: context.pop,
-            onManualEntryComplete: (scannedMrz) {
-              context.pushNfcReadingScreen(
-                NfcReadingRouteParams(scannedMRZ: scannedMrz, documentType: params.documentType),
-              );
-            },
+            onManualEntryComplete: (scannedMrz) => _afterDocumentCaptured(context, scannedMrz, params.documentType),
           );
         },
       ),
@@ -212,9 +327,33 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
         path: '/nfc_reading',
         builder: (context, state) {
           final params = NfcReadingRouteParams.fromQueryParams(state.uri.queryParameters);
+          final steps = _activeSteps(context);
+          final plan = FlowStepPlan.fromSteps(steps);
           return NfcReadingScreen(
             params: params,
+            stepNumber: plan.nfcReadStepNumber ?? FlowStepPlan.defaultPlan.nfcReadStepNumber!,
+            totalSteps: plan.totalSteps,
             onSuccess: (document, result) {
+              if (!stepsRequestAny(steps, [stepSelfie, stepLiveness, stepFaceMatch])) {
+                // None of the face-verification screen's outputs were asked
+                // for - go straight to the result instead of collecting a
+                // selfie/liveness/match nobody requested. Safe to skip as a
+                // whole rather than partially: the server guarantees
+                // "face_match" never appears without "nfc_read" being
+                // present too (flow.Validate), and we're already past NFC
+                // reading here, so there's no case where skipping loses a
+                // comparison photo we'd otherwise have needed.
+                context.go(
+                  '/result',
+                  extra: {
+                    'document': document,
+                    'result': result,
+                    'document_type': params.documentType,
+                    'face_verification': null,
+                  },
+                );
+                return;
+              }
               final (nfcImageBytes, issueDate) = _faceVerificationInputFor(document, params.documentType);
               context.pushFaceVerificationScreen(
                 nfcImageBytes,
@@ -235,6 +374,7 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
           final document = s['document'] as DocumentData;
           final result = s['result'] as RawDocumentData;
           final faceVerification = s['face_verification'] as FaceVerificationOutcome?;
+          final plan = FlowStepPlan.fromSteps(_activeSteps(context));
 
           return switch (ty) {
             DocumentType.passport || DocumentType.identityCard => PassportDataScreen(
@@ -243,14 +383,30 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
               documentType: ty,
               faceVerification: faceVerification,
               onBackPressed: () => context.go('/select_doc_type'),
+              stepNumber: plan.resultStepNumber,
+              totalSteps: plan.totalSteps,
             ),
             DocumentType.drivingLicence => DrivingLicenceDataScreen(
               drivingLicence: document as DrivingLicenceData,
               drivingLicenceDataResult: result,
               faceVerification: faceVerification,
               onBackPressed: () => context.go('/select_doc_type'),
+              stepNumber: plan.resultStepNumber,
+              totalSteps: plan.totalSteps,
             ),
           };
+        },
+      ),
+      GoRoute(
+        path: _documentCaptureResultPath,
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          return DocumentCaptureOnlyResultScreen(
+            session: extra['session'] as ActiveProofingSession,
+            scannedMrz: extra['scannedMrz'] as ScannedMRZ?,
+            faceVerification: extra['faceVerification'] as FaceVerificationOutcome?,
+            onBackPressed: () => context.go('/select_doc_type'),
+          );
         },
       ),
       GoRoute(
@@ -259,24 +415,38 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
           final extra = state.extra as Map<String, dynamic>;
           final nfcImageBytes = extra['nfcImageBytes'] as Uint8List?;
           final issueDate = extra['issueDate'] as DateTime?;
-          final document = extra['document'] as DocumentData;
-          final result = extra['result'] as RawDocumentData;
-          final documentType = extra['documentType'] as DocumentType;
+          final document = extra['document'] as DocumentData?;
+          final result = extra['result'] as RawDocumentData?;
+          final scannedMrz = extra['scannedMrz'] as ScannedMRZ?;
+          final documentType = extra['documentType'] as DocumentType?;
           final engineChoice = ProviderScope.containerOf(context).read(faceEngineProvider);
           final livenessMode = ProviderScope.containerOf(context).read(livenessModeProvider);
+          final plan = FlowStepPlan.fromSteps(_activeSteps(context));
 
-          // Passing verification continues on to the document data screen; an
-          // explicit cancel/back instead pops back to NFC reading, since that's
-          // where this route was pushed from.
-          void goToResult(FaceVerificationOutcome outcome) => context.go(
-            '/result',
-            extra: {
-              'document': document,
-              'result': result,
-              'document_type': documentType,
-              'face_verification': outcome,
-            },
-          );
+          // Passing verification continues on to the document data screen
+          // when this ran after a chip read (document/result set); a
+          // session with no chip data (see _afterDocumentCaptured/
+          // _afterConsent) has nothing for that screen to show, so it
+          // submits directly instead. An explicit cancel/back pops back to
+          // wherever this was pushed from either way.
+          void goToResult(FaceVerificationOutcome outcome) {
+            if (document != null && result != null) {
+              context.go(
+                '/result',
+                extra: {
+                  'document': document,
+                  'result': result,
+                  'document_type': documentType,
+                  'face_verification': outcome,
+                },
+              );
+              return;
+            }
+            final session = ProviderScope.containerOf(context).read(activeProofingSessionProvider)!;
+            context.pushDocumentCaptureOnlyResultScreen(session: session, scannedMrz: scannedMrz, faceVerification: outcome);
+          }
+
+          final stepNumber = plan.faceVerificationStepNumber ?? FlowStepPlan.defaultPlan.faceVerificationStepNumber!;
 
           if (faceVerificationEngine != null) {
             return FaceVerificationEntryScreen.withEngine(
@@ -287,6 +457,8 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
               engineChoice: engineChoice,
               livenessMode: livenessMode,
               photoIssueDate: issueDate,
+              stepNumber: stepNumber,
+              totalSteps: plan.totalSteps,
             );
           }
 
@@ -297,6 +469,8 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
             engineChoice: engineChoice,
             livenessMode: livenessMode,
             photoIssueDate: issueDate,
+            stepNumber: stepNumber,
+            totalSteps: plan.totalSteps,
           );
         },
       ),

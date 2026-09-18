@@ -20,9 +20,15 @@ mixin ProofingResultSubmission<T extends ConsumerStatefulWidget> on ConsumerStat
 
   Future<void> submitProofingResult({
     required ActiveProofingSession session,
-    required ProofingDocumentInfo document,
-    required ProofingPhotoInfo photo,
-    required ProofingMrtdEvidence mrtdEvidence,
+    // Null when the flow's steps don't include "document_capture" at all
+    // (e.g. a selfie/face_match-only flow verifying against a supplied
+    // referencePhoto, no document scan) - see DocumentCaptureOnlyResultScreen.
+    ProofingDocumentInfo? document,
+    // Null for a document_capture-only session (no chip read happened, so
+    // there's no DG2 photo and no efSod/dataGroups to report as evidence) -
+    // see DocumentCaptureOnlyResultScreen.
+    ProofingPhotoInfo? photo,
+    ProofingMrtdEvidence? mrtdEvidence,
     required FaceVerificationOutcome? faceVerification,
     required VoidCallback onBackPressed,
   }) async {
@@ -54,7 +60,9 @@ mixin ProofingResultSubmission<T extends ConsumerStatefulWidget> on ConsumerStat
       DialogHelpers.showSuccessDialog(
         context: context,
         title: 'Submitted',
-        message: 'Your document identity and face verification result were sent to ${session.info.relyingParty}.',
+        message: outcome == null
+            ? 'Your document identity was sent to ${session.info.relyingParty}.'
+            : 'Your document identity and face verification result were sent to ${session.info.relyingParty}.',
         onContinue: () {
           Navigator.of(context).pop();
           onBackPressed();

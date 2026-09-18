@@ -19,6 +19,14 @@ class PassportDataScreen extends ConsumerStatefulWidget {
   final DocumentType documentType;
   final FaceVerificationOutcome? faceVerification;
 
+  /// Step badge numbers — default to vcmrtd's fixed 4-step sequence (this
+  /// screen is always the last, step 4, there) so any caller not passing
+  /// these explicitly keeps today's behaviour; routing.dart passes a
+  /// session's actual FlowStepPlan values when a QR/deep-link flow governs
+  /// the numbering.
+  final int stepNumber;
+  final int totalSteps;
+
   const PassportDataScreen({
     super.key,
     required this.document,
@@ -26,6 +34,8 @@ class PassportDataScreen extends ConsumerStatefulWidget {
     required this.passportDataResult,
     this.documentType = DocumentType.passport,
     this.faceVerification,
+    this.stepNumber = 4,
+    this.totalSteps = 4,
   });
 
   @override
@@ -73,8 +83,8 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen>
   Widget _buildTopBar(BuildContext context) => StepBadgeTopBar(
     icon: Icons.arrow_back,
     onBack: widget.onBackPressed,
-    current: 4,
-    total: 4,
+    current: widget.stepNumber,
+    total: widget.totalSteps,
     label: '${widget.documentType.displayName} Data',
   );
 

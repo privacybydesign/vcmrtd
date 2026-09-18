@@ -32,11 +32,19 @@ class IrisFaceVerificationScreen extends StatefulWidget {
   // Test-only: injects a verifier so tests don't have to hit the real plugin.
   final IrisFaceVerifier? testVerifier;
 
+  /// Step badge numbers — default to vcmrtd's fixed 4-step sequence (this
+  /// screen is always step 3 there); see FaceVerificationEntryScreen's
+  /// matching fields.
+  final int stepNumber;
+  final int totalSteps;
+
   const IrisFaceVerificationScreen({
     super.key,
     required this.nfcImageBytes,
     required this.onBackPressed,
     required this.onVerified,
+    this.stepNumber = 3,
+    this.totalSteps = 4,
   }) : testVerifier = null;
 
   const IrisFaceVerificationScreen.withVerifier({
@@ -45,6 +53,8 @@ class IrisFaceVerificationScreen extends StatefulWidget {
     required this.nfcImageBytes,
     required this.onBackPressed,
     required this.onVerified,
+    this.stepNumber = 3,
+    this.totalSteps = 4,
   }) : testVerifier = verifier;
 
   @override
@@ -192,8 +202,8 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
     icon: Icons.arrow_back,
     tooltip: 'Back',
     onBack: widget.onBackPressed,
-    current: 3,
-    total: 4,
+    current: widget.stepNumber,
+    total: widget.totalSteps,
     label: 'Face Verification',
   );
 

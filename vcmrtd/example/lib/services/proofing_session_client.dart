@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
+import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtd/extensions.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtdapp/utils/document_dates.dart';
@@ -62,12 +63,44 @@ class ProofingSessionInfo {
   /// Authentication should be skipped for this session.
   final String? aaChallenge;
 
+  /// The ordered capture steps a tenant-defined "flow" wants for this
+  /// session, drawn from "document_capture"/"nfc_read"/"selfie"/"liveness"/
+  /// "face_match". Null when the session wasn't created against a flow
+  /// definition (today's default for every session), in which case vcmrtd's
+  /// own hard-coded screen sequence applies.
+  ///
+  /// Only partially acted on (see routing.dart): the face-verification
+  /// screen is skipped when none of "selfie"/"liveness"/"face_match" are
+  /// present. Every step is independently optional server-side — a flow can
+  /// ask for "face_match" without "nfc_read" (in which case [referencePhoto]
+  /// carries the comparison image instead of DG2) — but vcmrtd can't act on
+  /// "document_capture"/"nfc_read" being absent yet: skipping the NFC read
+  /// still needs a routing path from the MRZ scan straight to face
+  /// verification, which hasn't been built (needs explicit sign-off - see
+  /// [referencePhoto]'s doc comment for why it's parsed but unused so far).
+  final List<String>? steps;
+
+  /// The comparison photo the relying party supplied at session creation for
+  /// face_match, present when the resolved flow's steps ask for "face_match"
+  /// without "nfc_read" (mirrors api.appSessionView.referencePhoto — required
+  /// server-side in exactly that case, since there's no DG2 to fall back to).
+  /// Null whenever "nfc_read" is present or in flow-less sessions, where DG2
+  /// remains the comparison source as before.
+  ///
+  /// Parsed but not consumed by any screen yet: using it means running face
+  /// verification straight after the MRZ/document scan, bypassing NFC
+  /// reading entirely - the same not-yet-approved routing change
+  /// [steps] documents above. Nothing reads this field until that lands.
+  final ProofingPhotoInfo? referencePhoto;
+
   ProofingSessionInfo({
     required this.id,
     required this.relyingParty,
     required this.requestedAttributes,
     required this.expiresAt,
     this.aaChallenge,
+    this.steps,
+    this.referencePhoto,
   });
 
   factory ProofingSessionInfo.fromJson(Map<String, dynamic> json) => ProofingSessionInfo(
@@ -76,7 +109,29 @@ class ProofingSessionInfo {
     requestedAttributes: (json['requestedAttributes'] as List<dynamic>? ?? const []).cast<String>(),
     expiresAt: DateTime.parse(json['expiresAt'] as String),
     aaChallenge: json['aaChallenge'] as String?,
+    steps: (json['steps'] as List<dynamic>?)?.cast<String>(),
+    referencePhoto: json['referencePhoto'] != null
+        ? ProofingPhotoInfo.fromJson(json['referencePhoto'] as Map<String, dynamic>)
+        : null,
   );
+}
+
+/// [ProofingSessionInfo.steps] values. Mirrors flow.Step in
+/// identity-proofing-service's backend/internal/flow/flow.go — keep in sync
+/// with that list.
+const stepDocumentCapture = 'document_capture';
+const stepNfcRead = 'nfc_read';
+const stepSelfie = 'selfie';
+const stepLiveness = 'liveness';
+const stepFaceMatch = 'face_match';
+
+/// Whether [steps] calls for any of [anyOf]. A null [steps] means the
+/// session wasn't created against a flow definition, so every step is
+/// implicitly wanted — same "unrestricted" rule [_attrRequested] applies to
+/// requestedAttributes, applied here to steps instead.
+bool stepsRequestAny(List<String>? steps, List<String> anyOf) {
+  if (steps == null) return true;
+  return anyOf.any(steps.contains);
 }
 
 /// The identity read off the document's DG1/MRZ, plus DG11 extras when the
@@ -163,6 +218,29 @@ class ProofingDocumentInfo {
     placeOfBirth: data.placeOfBirth.isNotEmpty ? data.placeOfBirth : null,
   );
 
+  /// Builds from a "document_capture"-only scan (no "nfc_read" - see
+  /// routing.dart's _afterDocumentCaptured) — the OCR/VIZ read or manual
+  /// entry that derives the BAC/PACE key, not a chip read. Only the handful
+  /// of fields that capture actually produces are set: no name, no sex, no
+  /// nationality, no personalNumber/placeOfBirth (DG11-only), no
+  /// [validity] (nothing here has had its check digits verified the way a
+  /// chip-read [PassportMRZ] has). This is deliberately a partial result,
+  /// not a stand-in for a full one.
+  factory ProofingDocumentInfo.fromScannedMrz(ScannedMRZ mrz) => switch (mrz) {
+    ScannedPassportMRZ() => ProofingDocumentInfo(
+      type: documentTypeToString(mrz.documentType),
+      number: mrz.documentNumber,
+      issuingState: mrz.countryCode,
+      dateOfBirth: mrz.dateOfBirth,
+      dateOfExpiry: mrz.dateOfExpiry,
+    ),
+    ScannedDriverLicenseMRZ() => ProofingDocumentInfo(
+      type: documentTypeToString(mrz.documentType),
+      number: mrz.documentNumber,
+      issuingState: mrz.countryCode,
+    ),
+  };
+
   /// [includeDG11Extras] false omits personalNumber/placeOfBirth — used when
   /// the session's requestedAttributes asked for "dg1" but not "dg11", the
   /// same split the server's buildResult applies to documentInfo.
@@ -220,6 +298,9 @@ class ProofingPhotoInfo {
   final String mimeType;
 
   const ProofingPhotoInfo({required this.imageBase64, required this.mimeType});
+
+  factory ProofingPhotoInfo.fromJson(Map<String, dynamic> json) =>
+      ProofingPhotoInfo(imageBase64: json['imageBase64'] as String, mimeType: json['mimeType'] as String);
 
   factory ProofingPhotoInfo.fromImage(Uint8List bytes, ImageType? type) => ProofingPhotoInfo(
     imageBase64: base64Encode(bytes),
@@ -442,8 +523,8 @@ Map<String, dynamic> buildProofingResultBody({
 }
 
 /// Talks to identity-proofing-service's app-facing session API
-/// (`/api/proofing/app/{token}`) — the vcmrtd-side counterpart of the
-/// relying party's `/api/proofing/sessions` API. Separate from
+/// (`/api/v1/app/{token}`) — the vcmrtd-side counterpart of the
+/// relying party's `/api/v1/sessions` API. Separate from
 /// [PassportIssuer]/[DefaultPassportIssuer]: that talks to go-passport-issuer
 /// for a different purpose (nonce-based active authentication, server-side
 /// verification, IRMA issuance) and this doesn't touch that contract.
@@ -451,7 +532,7 @@ class ProofingSessionClient {
   const ProofingSessionClient();
 
   Future<ProofingSessionInfo> fetchSession(ProofingSessionRef ref) async {
-    final response = await http.get(Uri.parse('${ref.apiBase}/api/proofing/app/${ref.token}'));
+    final response = await http.get(Uri.parse('${ref.apiBase}/api/v1/app/${ref.token}'));
     if (response.statusCode != 200) {
       throw Exception('Fetching the session failed: ${response.statusCode} ${response.body}');
     }
@@ -481,7 +562,7 @@ class ProofingSessionClient {
     ProofingDeviceInfo? device,
   }) async {
     final response = await http.post(
-      Uri.parse('${ref.apiBase}/api/proofing/app/${ref.token}/result'),
+      Uri.parse('${ref.apiBase}/api/v1/app/${ref.token}/result'),
       headers: {'Content-Type': 'application/json'},
       body: json.encode(
         buildProofingResultBody(

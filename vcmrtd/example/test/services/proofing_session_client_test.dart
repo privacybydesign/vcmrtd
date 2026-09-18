@@ -346,7 +346,92 @@ void main() {
         },
         () => MockClient((request) async {
           expect(request.method, 'GET');
-          expect(request.url.toString(), 'https://proof.example.com/api/proofing/app/tok-1');
+          expect(request.url.toString(), 'https://proof.example.com/api/v1/app/tok-1');
+          return http.Response(
+            json.encode({
+              'id': 'sess-1',
+              'relyingParty': 'Acme Corp',
+              'requestedAttributes': ['dg1'],
+              'expiresAt': '2030-01-01T00:00:00Z',
+            }),
+            200,
+          );
+        }),
+      );
+    });
+
+    test('fetchSession parses an optional steps list when the response carries one', () async {
+      await http.runWithClient(
+        () async {
+          final info = await const ProofingSessionClient().fetchSession(ref);
+          expect(info.steps, ['document_capture', 'nfc_read', 'selfie', 'liveness', 'face_match']);
+        },
+        () => MockClient((request) async {
+          return http.Response(
+            json.encode({
+              'id': 'sess-1',
+              'relyingParty': 'Acme Corp',
+              'requestedAttributes': ['dg1'],
+              'expiresAt': '2030-01-01T00:00:00Z',
+              'steps': ['document_capture', 'nfc_read', 'selfie', 'liveness', 'face_match'],
+            }),
+            200,
+          );
+        }),
+      );
+    });
+
+    test('fetchSession leaves steps null when the response omits it', () async {
+      await http.runWithClient(
+        () async {
+          final info = await const ProofingSessionClient().fetchSession(ref);
+          expect(info.steps, isNull);
+        },
+        () => MockClient((request) async {
+          return http.Response(
+            json.encode({
+              'id': 'sess-1',
+              'relyingParty': 'Acme Corp',
+              'requestedAttributes': ['dg1'],
+              'expiresAt': '2030-01-01T00:00:00Z',
+            }),
+            200,
+          );
+        }),
+      );
+    });
+
+    test('fetchSession parses referencePhoto when the response carries one', () async {
+      await http.runWithClient(
+        () async {
+          final info = await const ProofingSessionClient().fetchSession(ref);
+          expect(info.referencePhoto, isNotNull);
+          expect(info.referencePhoto!.imageBase64, 'aGVsbG8=');
+          expect(info.referencePhoto!.mimeType, 'image/jpeg');
+        },
+        () => MockClient((request) async {
+          return http.Response(
+            json.encode({
+              'id': 'sess-1',
+              'relyingParty': 'Acme Corp',
+              'requestedAttributes': ['dg1'],
+              'expiresAt': '2030-01-01T00:00:00Z',
+              'steps': ['document_capture', 'selfie', 'face_match'],
+              'referencePhoto': {'imageBase64': 'aGVsbG8=', 'mimeType': 'image/jpeg'},
+            }),
+            200,
+          );
+        }),
+      );
+    });
+
+    test('fetchSession leaves referencePhoto null when the response omits it', () async {
+      await http.runWithClient(
+        () async {
+          final info = await const ProofingSessionClient().fetchSession(ref);
+          expect(info.referencePhoto, isNull);
+        },
+        () => MockClient((request) async {
           return http.Response(
             json.encode({
               'id': 'sess-1',
@@ -373,7 +458,7 @@ void main() {
         },
         () => MockClient((request) async {
           expect(request.method, 'POST');
-          expect(request.url.toString(), 'https://proof.example.com/api/proofing/app/tok-1/result');
+          expect(request.url.toString(), 'https://proof.example.com/api/v1/app/tok-1/result');
           expect(request.headers['Content-Type'], 'application/json');
           final body = json.decode(request.body) as Map<String, dynamic>;
           expect(body['status'], 'approved');
