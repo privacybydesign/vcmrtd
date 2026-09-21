@@ -52,6 +52,13 @@ const _proofingConsentPath = '/proofing_consent';
 List<String>? _activeSteps(BuildContext context) =>
     ProviderScope.containerOf(context).read(activeProofingSessionProvider)?.info.steps;
 
+/// The pinned session's selfieLocation, defaulting to "browser" (matching
+/// [ProofingSessionInfo.selfieLocation]'s own default) when there's no
+/// pinned session at all — meaningless in that case since [_activeSteps]
+/// being null already means vcmrtd's unconditional default sequence applies.
+String _activeSelfieLocation(BuildContext context) =>
+    ProviderScope.containerOf(context).read(activeProofingSessionProvider)?.info.selfieLocation ?? 'browser';
+
 /// Where a just-captured document (MRZ scan or manual entry) leads next,
 /// given the pinned session's flow. Shared by /mrz_reader's onMrzScanned and
 /// /manual_entry's onManualEntryComplete, since both just produce a
@@ -79,7 +86,7 @@ void _afterDocumentCaptured(BuildContext context, ScannedMRZ scannedMrz, Documen
   // reverse. There's no chip read at all in this branch, so there's no
   // DocumentData/RawDocumentData to carry forward, only what the scan/manual
   // entry itself produced.
-  if (stepsRequestAny(steps, [stepSelfie, stepLiveness, stepFaceMatch])) {
+  if (stepsRequestAny(steps, [stepFaceVerification, stepSelfie, stepLiveness, stepFaceMatch])) {
     final referencePhoto = activeSession!.info.referencePhoto;
     context.pushFaceVerificationScreenForScannedMrz(
       // Null when the flow doesn't need an identity comparison (selfie- or
@@ -113,7 +120,7 @@ void _afterConsent(BuildContext context, ActiveProofingSession session) {
     return;
   }
 
-  if (stepsRequestAny(steps, [stepSelfie, stepLiveness, stepFaceMatch])) {
+  if (stepsRequestAny(steps, [stepFaceVerification, stepSelfie, stepLiveness, stepFaceMatch])) {
     final referencePhoto = session.info.referencePhoto;
     context.go(
       _faceVerificationPath,
@@ -298,7 +305,7 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
         path: '/mrz_reader',
         builder: (context, state) {
           final params = MrzReaderRouteParams.fromQueryParams(state.uri.queryParameters);
-          final plan = FlowStepPlan.fromSteps(_activeSteps(context));
+          final plan = FlowStepPlan.fromSteps(_activeSteps(context), selfieLocation: _activeSelfieLocation(context));
           return ScannerWrapper(
             documentType: params.documentType,
             onMrzScanned: (result) => _afterDocumentCaptured(context, result, params.documentType),
@@ -328,21 +335,30 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
         builder: (context, state) {
           final params = NfcReadingRouteParams.fromQueryParams(state.uri.queryParameters);
           final steps = _activeSteps(context);
-          final plan = FlowStepPlan.fromSteps(steps);
+          final selfieLocation = _activeSelfieLocation(context);
+          final plan = FlowStepPlan.fromSteps(steps, selfieLocation: selfieLocation);
           return NfcReadingScreen(
             params: params,
             stepNumber: plan.nfcReadStepNumber ?? FlowStepPlan.defaultPlan.nfcReadStepNumber!,
             totalSteps: plan.totalSteps,
             onSuccess: (document, result) {
-              if (!stepsRequestAny(steps, [stepSelfie, stepLiveness, stepFaceMatch])) {
-                // None of the face-verification screen's outputs were asked
-                // for - go straight to the result instead of collecting a
-                // selfie/liveness/match nobody requested. Safe to skip as a
-                // whole rather than partially: the server guarantees
-                // "face_match" never appears without "nfc_read" being
-                // present too (flow.Validate), and we're already past NFC
-                // reading here, so there's no case where skipping loses a
-                // comparison photo we'd otherwise have needed.
+              if (!nativeFaceVerificationRequested(steps, selfieLocation)) {
+                // Either none of the face-verification screen's outputs were
+                // asked for at all, or they were but the session's
+                // selfieLocation says the browser hosted flow performs that
+                // stage instead of this app (see
+                // nativeFaceVerificationRequested) - either way, go straight
+                // to the result screen instead of collecting a selfie
+                // ourselves. Safe to skip as a whole rather than partially:
+                // the server guarantees "face_match" never appears without
+                // "nfc_read" being present too (flow.Validate), and we're
+                // already past NFC reading here, so there's no case where
+                // skipping loses a comparison photo we'd otherwise have
+                // needed. The result screen's own submission logic (see
+                // ProofingResultSubmission.submitProofingResult) is what
+                // actually tells apart "nothing to submit" from "hand off to
+                // the browser" - both reach it the same way, with
+                // face_verification: null.
                 context.go(
                   '/result',
                   extra: {
@@ -374,7 +390,7 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
           final document = s['document'] as DocumentData;
           final result = s['result'] as RawDocumentData;
           final faceVerification = s['face_verification'] as FaceVerificationOutcome?;
-          final plan = FlowStepPlan.fromSteps(_activeSteps(context));
+          final plan = FlowStepPlan.fromSteps(_activeSteps(context), selfieLocation: _activeSelfieLocation(context));
 
           return switch (ty) {
             DocumentType.passport || DocumentType.identityCard => PassportDataScreen(
@@ -421,7 +437,7 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
           final documentType = extra['documentType'] as DocumentType?;
           final engineChoice = ProviderScope.containerOf(context).read(faceEngineProvider);
           final livenessMode = ProviderScope.containerOf(context).read(livenessModeProvider);
-          final plan = FlowStepPlan.fromSteps(_activeSteps(context));
+          final plan = FlowStepPlan.fromSteps(_activeSteps(context), selfieLocation: _activeSelfieLocation(context));
 
           // Passing verification continues on to the document data screen
           // when this ran after a chip read (document/result set); a

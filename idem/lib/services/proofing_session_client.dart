@@ -93,6 +93,16 @@ class ProofingSessionInfo {
   /// [steps] documents above. Nothing reads this field until that lands.
   final ProofingPhotoInfo? referencePhoto;
 
+  /// Which client performs the selfie/liveness/face_match cluster: "browser"
+  /// (the default — identity-proofing-service's own browser hosted flow does
+  /// it, not this app) or "native" (vcmrtd does it on-device, as it always
+  /// has). Mirrors api.appSessionView.SelfieLocation on the server, which is
+  /// always resolved (never null/empty) — "browser" even for a session with
+  /// no flow at all, though it's meaningless there since [steps] being null
+  /// already means vcmrtd's unconditional default sequence applies regardless
+  /// of this field.
+  final String selfieLocation;
+
   ProofingSessionInfo({
     required this.id,
     required this.relyingParty,
@@ -101,6 +111,7 @@ class ProofingSessionInfo {
     this.aaChallenge,
     this.steps,
     this.referencePhoto,
+    this.selfieLocation = 'browser',
   });
 
   factory ProofingSessionInfo.fromJson(Map<String, dynamic> json) => ProofingSessionInfo(
@@ -113,7 +124,23 @@ class ProofingSessionInfo {
     referencePhoto: json['referencePhoto'] != null
         ? ProofingPhotoInfo.fromJson(json['referencePhoto'] as Map<String, dynamic>)
         : null,
+    selfieLocation: json['selfieLocation'] as String? ?? 'browser',
   );
+}
+
+/// Whether [steps] asks for a face-verification stage that THIS APP should
+/// perform itself: it must actually request one (see [stepsRequestAny]) AND
+/// [selfieLocation] must not be exactly "browser" — any other value
+/// (today only "native", but also an unrecognised future one) means vcmrtd
+/// stays the performer, so a client this old never silently drops a face
+/// check the session actually needs just because it doesn't recognise a new
+/// location value. A null [steps] (no flow at all) always means vcmrtd's own
+/// unconditional face step, regardless of [selfieLocation] — see
+/// [ProofingSessionInfo.selfieLocation]'s doc comment.
+bool nativeFaceVerificationRequested(List<String>? steps, String selfieLocation) {
+  if (steps == null) return true;
+  if (!stepsRequestAny(steps, [stepFaceVerification, stepSelfie, stepLiveness, stepFaceMatch])) return false;
+  return selfieLocation != 'browser';
 }
 
 /// [ProofingSessionInfo.steps] values. Mirrors flow.Step in
@@ -121,6 +148,16 @@ class ProofingSessionInfo {
 /// with that list.
 const stepDocumentCapture = 'document_capture';
 const stepNfcRead = 'nfc_read';
+// stepFaceVerification is the aggregate "the complete live face-verification
+// stage" step (flow.StepFaceVerification server-side) — distinct from the
+// three granular sub-steps below, which a flow can also list individually.
+// Every stepsRequestAny([stepSelfie, stepLiveness, stepFaceMatch]) call site
+// must also include this one, or a flow that lists "face_verification"
+// (rather than spelling out selfie/liveness/face_match) is silently treated
+// as not needing any face step at all: vcmrtd skips its own
+// face-verification screen and submits the result straight after NFC,
+// before the browser hosted flow ever gets a chance to run it either.
+const stepFaceVerification = 'face_verification';
 const stepSelfie = 'selfie';
 const stepLiveness = 'liveness';
 const stepFaceMatch = 'face_match';
@@ -522,6 +559,38 @@ Map<String, dynamic> buildProofingResultBody({
   };
 }
 
+/// Builds the JSON body for `POST .../steps/nfc` — the nfc_read step, used
+/// instead of [buildProofingResultBody]/`POST .../result` whenever the
+/// session's face-verification stage is deferred to the browser hosted flow
+/// (see [nativeFaceVerificationRequested]). Only document/photo/device are
+/// gated by [requestedAttributes], the same as the single-shot body;
+/// [mrtdEvidence] is always included, unconditionally — unlike the result
+/// body's `chip_checks`-gated inclusion, this is the raw evidence the step
+/// endpoint needs to run Passive/Active Authentication itself, not part of
+/// what the relying party asked to receive back, and the endpoint rejects a
+/// submission without it (`mrtdEvidence is required`). There is no
+/// status/errorCode/selfie/biometrics here — the server decides the session's
+/// status once every step (including the browser's own selfie submission)
+/// has landed (see identity-proofing-service's evaluateSessionCompletion).
+Map<String, dynamic> buildProofingNfcStepBody({
+  required List<String> requestedAttributes,
+  ProofingDocumentInfo? document,
+  ProofingPhotoInfo? photo,
+  required ProofingMrtdEvidence mrtdEvidence,
+  ProofingDeviceInfo? device,
+}) {
+  final includeDocument = document != null && _attrRequested(requestedAttributes, [_attrDocument]);
+  final includeDG11 = _attrRequested(requestedAttributes, [_attrDG11]);
+  final includePhoto = photo != null && _attrRequested(requestedAttributes, [_attrDG2, _attrFaceImage]);
+
+  return {
+    if (includeDocument) 'document': document.toJson(includeDG11Extras: includeDG11),
+    if (includePhoto) 'photo': photo.toJson(),
+    'mrtdEvidence': mrtdEvidence.toJson(),
+    if (device != null) 'device': device.toJson(),
+  };
+}
+
 /// Talks to identity-proofing-service's app-facing session API
 /// (`/api/v1/app/{token}`) — the vcmrtd-side counterpart of the
 /// relying party's `/api/v1/sessions` API. Separate from
@@ -580,6 +649,40 @@ class ProofingSessionClient {
     );
     if (response.statusCode != 200) {
       throw Exception('Submitting the result failed: ${response.statusCode} ${response.body}');
+    }
+  }
+
+  /// Submits the nfc_read step and stops there — used instead of
+  /// [submitResult] whenever [nativeFaceVerificationRequested] is false: the
+  /// session's flow wants face verification, but performed by the browser
+  /// hosted flow, not this app. The server holds the session at whatever
+  /// status the accumulated steps imply (typically in_progress) until the
+  /// browser's own `POST .../steps/selfie` lands — see
+  /// identity-proofing-service's evaluateSessionCompletion. See
+  /// [buildProofingNfcStepBody].
+  Future<void> submitNfcStep(
+    ProofingSessionRef ref, {
+    required List<String> requestedAttributes,
+    ProofingDocumentInfo? document,
+    ProofingPhotoInfo? photo,
+    required ProofingMrtdEvidence mrtdEvidence,
+    ProofingDeviceInfo? device,
+  }) async {
+    final response = await http.post(
+      Uri.parse('${ref.apiBase}/api/v1/app/${ref.token}/steps/nfc'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(
+        buildProofingNfcStepBody(
+          requestedAttributes: requestedAttributes,
+          document: document,
+          photo: photo,
+          mrtdEvidence: mrtdEvidence,
+          device: device,
+        ),
+      ),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Submitting the nfc step failed: ${response.statusCode} ${response.body}');
     }
   }
 }

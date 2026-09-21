@@ -48,6 +48,38 @@ void main() {
       expect(plan.resultStepNumber, 2);
     });
 
+    test('the aggregate "face_verification" step is recognised same as the granular sub-steps', () {
+      final plan = FlowStepPlan.fromSteps(['document_capture', 'nfc_read', 'face_verification']);
+      expect(plan.totalSteps, 4);
+      expect(plan.documentCaptureStepNumber, 1);
+      expect(plan.nfcReadStepNumber, 2);
+      expect(plan.faceVerificationStepNumber, 3);
+      expect(plan.resultStepNumber, 4);
+    });
+
+    test('selfieLocation "browser" drops face_verification out of THIS APP\'s own step count entirely, even '
+        'though the flow lists it', () {
+      final plan = FlowStepPlan.fromSteps([
+        'document_capture',
+        'nfc_read',
+        'face_verification',
+      ], selfieLocation: 'browser');
+      expect(plan.totalSteps, 3);
+      expect(plan.documentCaptureStepNumber, 1);
+      expect(plan.nfcReadStepNumber, 2);
+      expect(plan.faceVerificationStepNumber, isNull);
+      expect(plan.resultStepNumber, 3);
+    });
+
+    test('selfieLocation "browser" has no effect when the flow has no face stage at all', () {
+      final plan = FlowStepPlan.fromSteps(['document_capture', 'nfc_read'], selfieLocation: 'browser');
+      expect(plan.totalSteps, 3);
+      expect(plan.documentCaptureStepNumber, 1);
+      expect(plan.nfcReadStepNumber, 2);
+      expect(plan.faceVerificationStepNumber, isNull);
+      expect(plan.resultStepNumber, 3);
+    });
+
     test('array order never affects numbering - only presence does', () {
       final reversed = FlowStepPlan.fromSteps(['face_match', 'nfc_read', 'document_capture']);
       expect(reversed.documentCaptureStepNumber, 1);

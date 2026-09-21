@@ -451,6 +451,47 @@ void main() {
       }, () => MockClient((request) async => http.Response('not found', 404)));
     });
 
+    test('fetchSession parses selfieLocation when the response carries one', () async {
+      await http.runWithClient(
+        () async {
+          final info = await const ProofingSessionClient().fetchSession(ref);
+          expect(info.selfieLocation, 'native');
+        },
+        () => MockClient((request) async {
+          return http.Response(
+            json.encode({
+              'id': 'sess-1',
+              'relyingParty': 'Acme Corp',
+              'requestedAttributes': ['dg1'],
+              'expiresAt': '2030-01-01T00:00:00Z',
+              'selfieLocation': 'native',
+            }),
+            200,
+          );
+        }),
+      );
+    });
+
+    test('fetchSession defaults selfieLocation to "browser" when the response omits it', () async {
+      await http.runWithClient(
+        () async {
+          final info = await const ProofingSessionClient().fetchSession(ref);
+          expect(info.selfieLocation, 'browser');
+        },
+        () => MockClient((request) async {
+          return http.Response(
+            json.encode({
+              'id': 'sess-1',
+              'relyingParty': 'Acme Corp',
+              'requestedAttributes': ['dg1'],
+              'expiresAt': '2030-01-01T00:00:00Z',
+            }),
+            200,
+          );
+        }),
+      );
+    });
+
     test('submitResult posts the built body and succeeds on a 200 response', () async {
       await http.runWithClient(
         () async {
@@ -474,6 +515,86 @@ void main() {
           throwsA(isA<Exception>()),
         );
       }, () => MockClient((request) async => http.Response('server error', 500)));
+    });
+
+    test('submitNfcStep posts to .../steps/nfc with mrtdEvidence always included, no status', () async {
+      await http.runWithClient(
+        () async {
+          await const ProofingSessionClient().submitNfcStep(
+            ref,
+            requestedAttributes: const [],
+            mrtdEvidence: const ProofingMrtdEvidence(efSod: 'aa', dataGroups: {'DG1': 'bb'}, documentType: 'icao'),
+          );
+        },
+        () => MockClient((request) async {
+          expect(request.method, 'POST');
+          expect(request.url.toString(), 'https://proof.example.com/api/v1/app/tok-1/steps/nfc');
+          final body = json.decode(request.body) as Map<String, dynamic>;
+          expect(body.containsKey('status'), isFalse);
+          expect(body['mrtdEvidence'], isNotNull);
+          return http.Response('', 200);
+        }),
+      );
+    });
+
+    test('submitNfcStep throws when the server responds with a non-200 status', () async {
+      await http.runWithClient(() async {
+        expect(
+          () => const ProofingSessionClient().submitNfcStep(
+            ref,
+            requestedAttributes: const [],
+            mrtdEvidence: const ProofingMrtdEvidence(efSod: 'aa', dataGroups: {'DG1': 'bb'}, documentType: 'icao'),
+          ),
+          throwsA(isA<Exception>()),
+        );
+      }, () => MockClient((request) async => http.Response('server error', 500)));
+    });
+  });
+
+  group('nativeFaceVerificationRequested', () {
+    test('null steps always means vcmrtd runs it, regardless of selfieLocation', () {
+      expect(nativeFaceVerificationRequested(null, 'browser'), isTrue);
+      expect(nativeFaceVerificationRequested(null, 'native'), isTrue);
+    });
+
+    test('steps with no face stage at all means neither client runs it', () {
+      expect(nativeFaceVerificationRequested(['document_capture', 'nfc_read'], 'browser'), isFalse);
+      expect(nativeFaceVerificationRequested(['document_capture', 'nfc_read'], 'native'), isFalse);
+    });
+
+    test('a face stage with selfieLocation "browser" defers to the browser hosted flow', () {
+      expect(nativeFaceVerificationRequested(['document_capture', 'nfc_read', 'face_verification'], 'browser'), isFalse);
+      expect(nativeFaceVerificationRequested(['nfc_read', 'document_capture', 'selfie'], 'browser'), isFalse);
+    });
+
+    test('a face stage with selfieLocation "native" (or anything else) runs on-device', () {
+      expect(nativeFaceVerificationRequested(['document_capture', 'nfc_read', 'face_verification'], 'native'), isTrue);
+      expect(nativeFaceVerificationRequested(['selfie', 'face_match'], 'native'), isTrue);
+    });
+  });
+
+  group('buildProofingNfcStepBody', () {
+    final mrtdEvidence = const ProofingMrtdEvidence(efSod: 'aa', dataGroups: {'DG1': 'bb'}, documentType: 'icao');
+
+    test('mrtdEvidence is always included, unlike buildProofingResultBody\'s chip_checks gating', () {
+      final body = buildProofingNfcStepBody(requestedAttributes: const [], mrtdEvidence: mrtdEvidence);
+      expect(body['mrtdEvidence'], isNotNull);
+      expect(body.containsKey('status'), isFalse);
+      expect(body.containsKey('selfie'), isFalse);
+      expect(body.containsKey('biometrics'), isFalse);
+    });
+
+    test('document and photo are still gated by requestedAttributes', () {
+      final doc = ProofingDocumentInfo(type: 'P');
+      final photo = const ProofingPhotoInfo(imageBase64: 'img', mimeType: 'image/jpeg');
+      final body = buildProofingNfcStepBody(
+        requestedAttributes: const ['dg1'],
+        document: doc,
+        photo: photo,
+        mrtdEvidence: mrtdEvidence,
+      );
+      expect(body['document'], isNotNull);
+      expect(body.containsKey('photo'), isFalse);
     });
   });
 }

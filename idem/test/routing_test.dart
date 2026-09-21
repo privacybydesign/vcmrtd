@@ -459,6 +459,7 @@ void main() {
                 requestedAttributes: const [],
                 expiresAt: DateTime.now().add(const Duration(minutes: 10)),
                 steps: const [stepDocumentCapture, stepNfcRead, stepLiveness],
+                selfieLocation: 'native',
               ),
               openedAt: DateTime.now(),
             ),
@@ -485,6 +486,114 @@ void main() {
       await tester.pump();
 
       expect(find.byType(FaceVerificationEntryScreen), findsOneWidget);
+    });
+
+    testWidgets('NFC success also runs face verification when the session steps ask for the aggregate '
+        '"face_verification" step (not just the granular selfie/liveness/face_match names)', (tester) async {
+      final engine = FaceVerificationEngine.withWorker(_FakeWorker());
+      final router = createRouter(scannerBuilder: _scannerBuilder(), faceVerificationEngine: engine);
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(_routerApp(router));
+      await tester.pump();
+
+      final container = ProviderScope.containerOf(tester.element(find.byType(DocumentTypeSelectionScreen)));
+      container
+          .read(activeProofingSessionProvider.notifier)
+          .set(
+            ActiveProofingSession(
+              ref: const ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok'),
+              info: ProofingSessionInfo(
+                id: 'sess1',
+                relyingParty: 'acme-tenant',
+                requestedAttributes: const [],
+                expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+                steps: const [stepDocumentCapture, stepNfcRead, stepFaceVerification],
+                selfieLocation: 'native',
+              ),
+              openedAt: DateTime.now(),
+            ),
+          );
+
+      router.go(
+        Uri(
+          path: '/mrz_reader',
+          queryParameters: MrzReaderRouteParams(documentType: DocumentType.passport).toQueryParams(),
+        ).toString(),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      tester.widget<ScannerWrapper>(find.byType(ScannerWrapper)).onMrzScanned(_scannedPassport(DocumentType.passport));
+      await tester.pump();
+      await tester.pump();
+
+      tester
+          .widgetList<NfcReadingScreen>(find.byType(NfcReadingScreen))
+          .last
+          .onSuccess(_passportData(), _rawDocument());
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byType(FaceVerificationEntryScreen), findsOneWidget);
+    });
+
+    testWidgets('NFC success skips its own face verification and goes straight to the result route when '
+        'selfieLocation is "browser", even though the session steps do ask for a face stage', (tester) async {
+      final router = createRouter(scannerBuilder: _scannerBuilder());
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(_routerApp(router));
+      await tester.pump();
+
+      final container = ProviderScope.containerOf(tester.element(find.byType(DocumentTypeSelectionScreen)));
+      container
+          .read(activeProofingSessionProvider.notifier)
+          .set(
+            ActiveProofingSession(
+              ref: const ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok'),
+              info: ProofingSessionInfo(
+                id: 'sess1',
+                relyingParty: 'acme-tenant',
+                requestedAttributes: const [],
+                expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+                steps: const [stepDocumentCapture, stepNfcRead, stepFaceVerification],
+                selfieLocation: 'browser',
+              ),
+              openedAt: DateTime.now(),
+            ),
+          );
+
+      router.go(
+        Uri(
+          path: '/mrz_reader',
+          queryParameters: MrzReaderRouteParams(documentType: DocumentType.passport).toQueryParams(),
+        ).toString(),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      tester.widget<ScannerWrapper>(find.byType(ScannerWrapper)).onMrzScanned(_scannedPassport(DocumentType.passport));
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(NfcReadingScreen), findsOneWidget);
+
+      tester
+          .widgetList<NfcReadingScreen>(find.byType(NfcReadingScreen))
+          .last
+          .onSuccess(_passportData(), _rawDocument());
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byType(FaceVerificationEntryScreen), findsNothing);
+      expect(find.byType(PassportDataScreen), findsOneWidget);
+      // 3 total, not 4: face_verification is deferred to the browser, so it
+      // never occupies a step slot of THIS APP's own sequence (document
+      // capture, nfc read, result) - see FlowStepPlan.fromSteps's
+      // selfieLocation parameter.
+      final resultScreen = tester.widget<PassportDataScreen>(find.byType(PassportDataScreen));
+      expect(resultScreen.totalSteps, 3);
+      expect(resultScreen.stepNumber, 3);
     });
 
     testWidgets('MRZ scan skips NFC reading entirely and auto-submits when steps is just document_capture', (
