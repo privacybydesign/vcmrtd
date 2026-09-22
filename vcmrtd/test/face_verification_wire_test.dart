@@ -14,6 +14,7 @@ void main() {
       }
       expect(FaceVerificationMethod.regula.wireName, 'regula');
       expect(FaceVerificationMethod.iris.wireName, 'iris');
+      expect(FaceVerificationMethod.irisOndevice.wireName, 'iris_ondevice');
     });
 
     test('an unknown or non-string wire value parses to null', () {
@@ -58,6 +59,21 @@ void main() {
           'preferred_method': 'iris',
         },
         'client': {'platform': 'android', 'flavor': 'play', 'app_version': '8.3.0'},
+      });
+    });
+
+    test('a build with the on-device method declares it too', () {
+      final body = DefaultPassportIssuer.startValidationBody(
+        const StartValidationRequest(
+          capabilities: [
+            FaceVerificationMethod.regula,
+            FaceVerificationMethod.iris,
+            FaceVerificationMethod.irisOndevice,
+          ],
+        ),
+      );
+      expect(body!['face_verification'], {
+        'capabilities': ['regula', 'iris', 'iris_ondevice'],
       });
     });
 
@@ -112,6 +128,24 @@ void main() {
         'face_verification': {'method': 'iris', 'face_api_url': 'https://faceapi.example'},
       });
       expect(result.faceVerification?.method, FaceVerificationMethod.iris);
+      expect(result.faceVerification?.faceApiUrl, isNull);
+    });
+
+    test('method iris_ondevice → on-device Iris, with nothing to address', () {
+      final result = DefaultPassportIssuer.parseStartValidationResponse({
+        ...base,
+        'face_verification': {'method': 'iris_ondevice'},
+      });
+      expect(result.faceVerification?.method, FaceVerificationMethod.irisOndevice);
+      expect(result.faceVerification?.faceApiUrl, isNull);
+    });
+
+    test('method iris_ondevice ignores a face_api_url the issuer happens to include', () {
+      final result = DefaultPassportIssuer.parseStartValidationResponse({
+        ...base,
+        'face_verification': {'method': 'iris_ondevice', 'face_api_url': 'https://faceapi.example'},
+      });
+      expect(result.faceVerification?.method, FaceVerificationMethod.irisOndevice);
       expect(result.faceVerification?.faceApiUrl, isNull);
     });
 
@@ -239,6 +273,60 @@ void main() {
       expect(restored.faceSessionId, 'fs_1');
       expect(restored.faceAttempt, 3);
       expect(restored.faceDurationMs, 99);
+    });
+  });
+
+  group('RawDocumentData on-device Iris fields', () {
+    RawDocumentData document() => RawDocumentData(
+      dataGroups: const {'DG1': 'aa', 'DG2': 'bb'},
+      efSod: '0102',
+      sessionId: 'session-1',
+      nonce: Uint8List.fromList([1, 2, 3, 4]),
+      aaSignature: Uint8List.fromList([9, 9]),
+    );
+
+    test('are omitted from JSON when unset', () {
+      final json = document().toJson();
+      expect(json.containsKey('face_ondevice_passed'), isFalse);
+      expect(json.containsKey('face_ondevice_portrait_sha256'), isFalse);
+    });
+
+    test('a passing verdict is serialised with the portrait it was obtained against', () {
+      final json = document().copyWith(faceOndevicePassed: true, faceOndevicePortraitSha256: 'ab12').toJson();
+      expect(json['face_ondevice_passed'], isTrue);
+      expect(json['face_ondevice_portrait_sha256'], 'ab12');
+    });
+
+    // The whole point of reporting failures: `false` must reach the issuer as
+    // `false`, not be dropped as if the step had never run. Absent means "not
+    // attempted" and is answered with a different error.
+    test('a failing verdict is serialised as false, not omitted', () {
+      final json = document().copyWith(faceOndevicePassed: false, faceOndevicePortraitSha256: 'ab12').toJson();
+      expect(json.containsKey('face_ondevice_passed'), isTrue);
+      expect(json['face_ondevice_passed'], isFalse);
+    });
+
+    test('round-trip through JSON keeps both values, including false', () {
+      final restored = RawDocumentData.fromJson(
+        document().copyWith(faceOndevicePassed: false, faceOndevicePortraitSha256: 'ab12').toJson(),
+      );
+      expect(restored.faceOndevicePassed, isFalse);
+      expect(restored.faceOndevicePortraitSha256, 'ab12');
+    });
+
+    test('copyWith preserves them alongside the recording fields', () {
+      final copy = document().copyWith(
+        faceOndevicePassed: true,
+        faceOndevicePortraitSha256: 'ab12',
+        faceAttempt: 2,
+        faceDurationMs: 3300,
+      );
+      expect(copy.faceOndevicePassed, isTrue);
+      expect(copy.faceOndevicePortraitSha256, 'ab12');
+      expect(copy.faceAttempt, 2);
+      expect(copy.faceDurationMs, 3300);
+      expect(copy.faceSessionId, isNull);
+      expect(copy.livenessTransactionId, isNull);
     });
   });
 }

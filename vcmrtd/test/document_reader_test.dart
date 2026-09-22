@@ -300,7 +300,12 @@ class FakeDocumentParser extends DocumentParser<DocumentData> {
   DocumentData createDocument() => _StubDocument();
 }
 
-class _StubDocument implements DocumentData {}
+class _StubDocument implements DocumentData {
+  // The reader never looks at the portrait; this stub only has to satisfy the
+  // contract.
+  @override
+  ChipPortrait? get portrait => null;
+}
 
 // --------------------------------------------------------------------------
 // Harness

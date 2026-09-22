@@ -11,8 +11,9 @@ import 'package:vcmrtd/vcmrtd.dart';
 ///
 /// The wallet declares which of these it can run ([StartValidationRequest]);
 /// the issuer assigns one per document session ([FaceVerificationConfig]).
-/// Both methods keep the verdict on the issuer side; they differ in how the
-/// live face reaches it.
+/// [regula] and [iris] keep the verdict on the issuer side and differ only in
+/// how the live face reaches it; [irisOndevice] does not, and trades that
+/// guarantee for sending no frames at all.
 enum FaceVerificationMethod {
   /// A Regula liveness capture (native SDK or the web capture page) whose
   /// transaction id the issuer matches against the chip portrait.
@@ -20,7 +21,15 @@ enum FaceVerificationMethod {
 
   /// A Yivi capture screen streaming camera frames to the Yivi-run Iris
   /// verifier, which matches them against the portrait the issuer supplied.
-  iris('iris');
+  iris('iris'),
+
+  /// The vendor's Iris SDK running on the device, matching the live face
+  /// against the chip portrait the wallet just read. Only the verdict travels:
+  /// no frames leave the phone, and the issuer has nothing to check it
+  /// against — unlike the other two methods, which keep the verdict on the
+  /// issuer side. See
+  /// `irmamobile/docs/on-device-iris-face-verification-plan.md` §3.
+  irisOndevice('iris_ondevice');
 
   const FaceVerificationMethod(this.wireName);
 
@@ -232,13 +241,15 @@ class DefaultPassportIssuer implements PassportIssuer {
   ///
   /// The `face_verification` announcement is optional: issuers with face
   /// verification disabled (and issuer versions that predate it) omit the
-  /// field. Four shapes are recognised:
+  /// field. Five shapes are recognised:
   ///
   /// - absent → no face verification;
   /// - `{"method": "regula", "face_api_url": "https://…"}` → Regula;
   /// - `{"face_api_url": "https://…"}` (issuers before the method field) →
   ///   Regula, the only method those issuers know;
-  /// - `{"method": "iris"}` → Iris, no Face API URL.
+  /// - `{"method": "iris"}` → Iris, no Face API URL;
+  /// - `{"method": "iris_ondevice"}` → on-device Iris; nothing to address, so
+  ///   no URL either.
   ///
   /// A malformed announcement — not an object, a Regula one without a
   /// `face_api_url` that passes [isValidFaceApiUrl], or a method this build
@@ -261,6 +272,8 @@ class DefaultPassportIssuer implements PassportIssuer {
           }
         case FaceVerificationMethod.iris:
           faceVerification = const FaceVerificationConfig(method: FaceVerificationMethod.iris);
+        case FaceVerificationMethod.irisOndevice:
+          faceVerification = const FaceVerificationConfig(method: FaceVerificationMethod.irisOndevice);
         case null:
           break;
       }

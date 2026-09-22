@@ -4,7 +4,30 @@ import '../../vcmrtd.dart';
 
 enum ImageType { jpeg, jpeg2000 }
 
-abstract class DocumentData {}
+/// The holder's portrait as the chip stores it: the bytes of the face image in
+/// DG2 (passports, ID cards) or DG6 (driving licences), untouched.
+///
+/// [type] is what the document declared, which can be absent on a driving
+/// licence. Nothing here re-encodes the image: a consumer that hands the bytes
+/// to a decoder gets exactly what was on the chip, which is what any check
+/// against the issuer's copy of the same portrait depends on.
+class ChipPortrait {
+  const ChipPortrait({required this.bytes, this.type});
+
+  final Uint8List bytes;
+  final ImageType? type;
+}
+
+abstract class DocumentData {
+  /// The holder's portrait from the chip, or `null` when this document carried
+  /// none that could be parsed.
+  ///
+  /// Deliberately part of the contract rather than a per-type extra: a
+  /// document type that cannot answer this cannot take part in the face
+  /// verification methods that match against the chip portrait, and that is
+  /// worth a compile error rather than a silent `null`.
+  ChipPortrait? get portrait;
+}
 
 class PassportData implements DocumentData {
   // From DG1
@@ -101,6 +124,10 @@ class PassportData implements DocumentData {
     this.dg12RawBytes,
     this.dg15RawBytes,
   });
+
+  @override
+  ChipPortrait? get portrait =>
+      photoImageData.isEmpty ? null : ChipPortrait(bytes: photoImageData, type: photoImageType);
 
   /// The holder's name as it should be displayed to the user.
   ///
@@ -210,4 +237,8 @@ class DrivingLicenceData implements DocumentData {
     this.dg1RawBytes,
     this.dg6RawBytes,
   });
+
+  @override
+  ChipPortrait? get portrait =>
+      photoImageData.isEmpty ? null : ChipPortrait(bytes: photoImageData, type: photoImageType);
 }

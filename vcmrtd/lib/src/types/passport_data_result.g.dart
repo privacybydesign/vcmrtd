@@ -14,6 +14,8 @@ RawDocumentData _$RawDocumentDataFromJson(Map<String, dynamic> json) => RawDocum
   aaSignature: const Uint8ListConverter().fromJson(json['aa_signature'] as String?),
   livenessTransactionId: json['liveness_transaction_id'] as String?,
   faceSessionId: json['face_session_id'] as String?,
+  faceOndevicePassed: json['face_ondevice_passed'] as bool?,
+  faceOndevicePortraitSha256: json['face_ondevice_portrait_sha256'] as String?,
   faceAttempt: (json['face_attempt'] as num?)?.toInt(),
   faceDurationMs: (json['face_duration_ms'] as num?)?.toInt(),
 );
@@ -26,6 +28,8 @@ Map<String, dynamic> _$RawDocumentDataToJson(RawDocumentData instance) => <Strin
   'aa_signature': const Uint8ListConverter().toJson(instance.aaSignature),
   'liveness_transaction_id': ?instance.livenessTransactionId,
   'face_session_id': ?instance.faceSessionId,
+  'face_ondevice_passed': ?instance.faceOndevicePassed,
+  'face_ondevice_portrait_sha256': ?instance.faceOndevicePortraitSha256,
   'face_attempt': ?instance.faceAttempt,
   'face_duration_ms': ?instance.faceDurationMs,
 };
