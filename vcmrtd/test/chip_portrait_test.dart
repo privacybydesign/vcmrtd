@@ -74,6 +74,16 @@ void main() {
       expect(_licence(photo: Uint8List(0), type: ImageType.jpeg).portrait, isNull);
     });
 
+    // The expected digest comes from an implementation that is not this one
+    // (python3 hashlib over the same eight bytes), so the test would catch a
+    // hash that is self-consistently wrong.
+    test('hashes the chip bytes, lowercase hex', () {
+      expect(
+        _passport(photo: photo).portrait!.sha256Hex,
+        '2f72b05b5b0036473db3d81b6cd4d0d97ab8b0d3972ffcf4ccda2112cd0450c2',
+      );
+    });
+
     // The issuer compares its own SHA-256 of the portrait with the wallet's,
     // so anything that re-encoded the bytes on the way out would break the
     // check in a way no unit test of the hash itself would catch.

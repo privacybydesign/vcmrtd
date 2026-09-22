@@ -1,5 +1,7 @@
 import 'dart:typed_data';
 
+import 'package:crypto/crypto.dart';
+
 import '../../vcmrtd.dart';
 
 enum ImageType { jpeg, jpeg2000 }
@@ -16,6 +18,15 @@ class ChipPortrait {
 
   final Uint8List bytes;
   final ImageType? type;
+
+  /// SHA-256 of [bytes] as lowercase hex.
+  ///
+  /// The on-device face verification method sends this with its verdict and
+  /// the issuer compares it with its own hash of the portrait it
+  /// authenticated, so a verdict cannot be carried over to another document.
+  /// Both sides hash the chip's bytes untouched; anything that re-encoded the
+  /// image on either side would break the comparison.
+  String get sha256Hex => sha256.convert(bytes).toString();
 }
 
 abstract class DocumentData {
