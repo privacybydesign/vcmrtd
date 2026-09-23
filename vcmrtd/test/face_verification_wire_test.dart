@@ -289,6 +289,7 @@ void main() {
       final json = document().toJson();
       expect(json.containsKey('face_ondevice_passed'), isFalse);
       expect(json.containsKey('face_ondevice_portrait_sha256'), isFalse);
+      expect(json.containsKey('face_ondevice_distance'), isFalse);
     });
 
     test('a passing verdict is serialised with the portrait it was obtained against', () {
@@ -312,6 +313,29 @@ void main() {
       );
       expect(restored.faceOndevicePassed, isFalse);
       expect(restored.faceOndevicePortraitSha256, 'ab12');
+    });
+
+    // Recording only: the issuer logs it under its own score kind and gates on
+    // the verdict alone. Nothing populates it while the vendor's mobile SDK
+    // reports no distance, so what is pinned here is that the wire carries it
+    // the moment something does.
+    test('a reported distance is serialised and round-trips', () {
+      final json = document()
+          .copyWith(faceOndevicePassed: true, faceOndevicePortraitSha256: 'ab12', faceOndeviceDistance: 0.41)
+          .toJson();
+      expect(json['face_ondevice_distance'], 0.41);
+
+      final restored = RawDocumentData.fromJson(json);
+      expect(restored.faceOndeviceDistance, 0.41);
+      expect(restored.faceOndevicePassed, isTrue);
+    });
+
+    // A distance is as interesting on a rejection as on a pass, so it is not
+    // tied to a passing verdict.
+    test('a distance rides along with a failing verdict too', () {
+      final json = document().copyWith(faceOndevicePassed: false, faceOndeviceDistance: 0.93).toJson();
+      expect(json['face_ondevice_passed'], isFalse);
+      expect(json['face_ondevice_distance'], 0.93);
     });
 
     test('copyWith preserves them alongside the recording fields', () {
