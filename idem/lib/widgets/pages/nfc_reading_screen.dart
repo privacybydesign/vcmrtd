@@ -6,6 +6,7 @@ import 'package:idem/custom/custom_logger_extension.dart';
 import 'package:idem/providers/active_authenticiation_provider.dart';
 import 'package:idem/providers/passport_issuer_provider.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
+import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/widgets/common/animated_nfc_status_widget.dart';
 import 'package:idem/widgets/common/nfc_reading_animation.dart';
 import 'package:idem/widgets/pages/nfc_guidance_screen.dart';
@@ -420,6 +421,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
   }
 
   Future<void> startReading() async {
+    markActiveProofingStepStarted(ProviderScope.containerOf(context), stepNfcRead);
     try {
       final readerProvider = switch (widget.params.documentType) {
         DocumentType.passport => passportReaderProvider,

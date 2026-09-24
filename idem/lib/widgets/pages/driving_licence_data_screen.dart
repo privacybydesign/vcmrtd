@@ -8,7 +8,7 @@ import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/providers/wallet_provider.dart';
 import 'package:idem/services/face_verification_outcome.dart';
-import 'package:idem/services/proofing_session_client.dart';
+import 'package:idem/services/proofing_chip_evidence.dart';
 import '../../widgets/pages/data_screen_widgets/proofing_result_submission.dart';
 import '../../widgets/pages/data_screen_widgets/web_banner.dart';
 
@@ -18,6 +18,11 @@ class DrivingLicenceDataScreen extends ConsumerStatefulWidget {
   final VoidCallback onBackPressed;
 
   final FaceVerificationOutcome? faceVerification;
+
+  /// Set when every step was already sent to the session as it completed -
+  /// see [DocumentWalletOrSubmitSection.submittedTo].
+  final String? submittedTo;
+  final bool browserFaceStep;
 
   /// Step badge numbers — default to vcmrtd's fixed 4-step sequence (this
   /// screen is always the last, step 4, there) so any caller not passing
@@ -33,6 +38,8 @@ class DrivingLicenceDataScreen extends ConsumerStatefulWidget {
     required this.drivingLicenceDataResult,
     required this.onBackPressed,
     this.faceVerification,
+    this.submittedTo,
+    this.browserFaceStep = false,
     this.stepNumber = 4,
     this.totalSteps = 4,
   });
@@ -86,6 +93,9 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
                       isSubmitting: submittingToProofingSession,
                       onAddToWallet: _addToWallet,
                       onSubmit: () => _submitToProofingSession(activeProofingSession!),
+                      submittedTo: widget.submittedTo,
+                      browserFaceStep: widget.browserFaceStep,
+                      onDone: widget.onBackPressed,
                     ),
                   ],
                 ),
@@ -111,15 +121,16 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
   }
 
   Future<void> _submitToProofingSession(ActiveProofingSession session) {
+    final evidence = ProofingChipEvidence.from(
+      widget.drivingLicence,
+      widget.drivingLicenceDataResult,
+      DocumentType.drivingLicence,
+    );
     return submitProofingResult(
       session: session,
-      document: ProofingDocumentInfo.fromDrivingLicenceData(widget.drivingLicence),
-      photo: ProofingPhotoInfo.fromImage(widget.drivingLicence.photoImageData, widget.drivingLicence.photoImageType),
-      mrtdEvidence: ProofingMrtdEvidence.fromRawDocumentData(
-        widget.drivingLicenceDataResult,
-        aaKeyDataGroup: 'DG13',
-        documentType: 'eu_driving_licence',
-      ),
+      document: evidence.document,
+      photo: evidence.photo,
+      mrtdEvidence: evidence.mrtdEvidence,
       faceVerification: widget.faceVerification,
       onBackPressed: widget.onBackPressed,
     );

@@ -68,3 +68,70 @@ class SubmitToProofingSessionSection extends StatelessWidget {
     );
   }
 }
+
+/// Shown on the document data screen instead of [SubmitToProofingSessionSection]
+/// when every step was already sent to the session as it completed, so
+/// there's nothing left to submit - just a confirmation.
+class SubmittedToProofingSessionSection extends StatelessWidget {
+  final String relyingParty;
+  final bool browserFaceStep;
+  final VoidCallback? onDone;
+
+  const SubmittedToProofingSessionSection({
+    super.key,
+    required this.relyingParty,
+    this.browserFaceStep = false,
+    this.onDone,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.green, size: 28),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Sent to $relyingParty',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: Colors.black),
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 30),
+            Text(
+              browserFaceStep
+                  ? 'Your document identity was sent to $relyingParty. Finish face verification in the browser '
+                        'tab where you started this session.'
+                  : 'Everything this verification needed from this device was sent to $relyingParty.',
+              style: TextStyle(fontSize: 15, color: Colors.grey[700], height: 1.4),
+            ),
+            if (onDone != null) ...[
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: onDone,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: const Text('Done'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}

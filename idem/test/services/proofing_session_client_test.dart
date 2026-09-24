@@ -4,10 +4,35 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/services/proofing_session_client.dart';
 
 void main() {
+  group('ProofingChipAccess', () {
+    test('round-trips a driving licence key through the server view into the NFC screen\'s MRZ', () {
+      final key = ProofingChipAccess.fromScannedMrz(
+        ScannedDriverLicenseMRZ(
+          documentNumber: 'DL123',
+          countryCode: 'NLD',
+          version: '1',
+          randomData: 'RND',
+          configuration: 'CFG',
+        ),
+        DocumentType.drivingLicence,
+      );
+      final json = key.toJson();
+      expect(json['documentType'], 'drivers_license');
+      final mrz = ProofingChipAccess.fromJson(json)!.toScannedMrz() as ScannedDriverLicenseMRZ;
+      expect([mrz.documentNumber, mrz.version, mrz.randomData, mrz.configuration], ['DL123', '1', 'RND', 'CFG']);
+    });
+
+    test('an incomplete key opens nothing', () {
+      expect(ProofingChipAccess.fromJson({'documentType': 'passport'}), isNull);
+      expect(ProofingChipAccess.fromJson({'documentType': 'passport', 'documentNumber': 'X1'})!.toScannedMrz(), isNull);
+    });
+  });
+
   group('ProofingSessionRef.parse', () {
     test('parses the https qr payload (https://{host}/s/{token})', () {
       final ref = ProofingSessionRef.parse('https://proof.example.com/s/abc123');
@@ -532,7 +557,14 @@ void main() {
           final body = json.decode(request.body) as Map<String, dynamic>;
           expect(body.containsKey('status'), isFalse);
           expect(body['mrtdEvidence'], isNotNull);
-          return http.Response('', 200);
+          return http.Response(
+            json.encode({
+              'status': 'in_progress',
+              'completedSteps': ['document_capture', 'nfc_read'],
+              'currentStep': 'face_verification',
+            }),
+            200,
+          );
         }),
       );
     });
@@ -563,7 +595,10 @@ void main() {
     });
 
     test('a face stage with selfieLocation "browser" defers to the browser hosted flow', () {
-      expect(nativeFaceVerificationRequested(['document_capture', 'nfc_read', 'face_verification'], 'browser'), isFalse);
+      expect(
+        nativeFaceVerificationRequested(['document_capture', 'nfc_read', 'face_verification'], 'browser'),
+        isFalse,
+      );
       expect(nativeFaceVerificationRequested(['nfc_read', 'document_capture', 'selfie'], 'browser'), isFalse);
     });
 
@@ -595,6 +630,16 @@ void main() {
       );
       expect(body['document'], isNotNull);
       expect(body.containsKey('photo'), isFalse);
+    });
+
+    test('the photo is sent anyway when a face step follows - it is what that step compares against', () {
+      final body = buildProofingNfcStepBody(
+        requestedAttributes: const ['dg1'],
+        photo: const ProofingPhotoInfo(imageBase64: 'img', mimeType: 'image/jpeg'),
+        mrtdEvidence: mrtdEvidence,
+        faceStepFollows: true,
+      );
+      expect(body['photo'], {'imageBase64': 'img', 'mimeType': 'image/jpeg'});
     });
   });
 }

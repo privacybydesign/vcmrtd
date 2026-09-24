@@ -21,6 +21,12 @@ import 'proofing_session_client.dart';
 /// document_capture; every other combination, including document_capture's
 /// own absence, is legitimate.
 ///
+/// A flow has no separate result step: its last capture step also submits
+/// the session (routing.dart's _submitProofingSession), so a flow where this
+/// app does one step shows "1 of 1". The document data screen still shown
+/// after a chip read when the browser does the face step reuses the last
+/// step's number ([resultStepNumber] == [totalSteps]).
+///
 /// Null steps (no pinned session, or one created without a flow) always
 /// produces the unchanged 4-step default: document_capture, nfc_read,
 /// face_verification, result — matching every screen's previous hard-coded
@@ -64,7 +70,8 @@ class FlowStepPlan {
     final documentCaptureStepNumber = steps.contains(stepDocumentCapture) ? next++ : null;
     final nfcReadStepNumber = steps.contains(stepNfcRead) ? next++ : null;
     final faceVerificationStepNumber = nativeFaceVerificationRequested(steps, selfieLocation) ? next++ : null;
-    final resultStepNumber = next;
+    // The last step submits; a degenerate flow with none still counts one.
+    final resultStepNumber = next > 1 ? next - 1 : 1;
 
     return FlowStepPlan._(
       totalSteps: resultStepNumber,

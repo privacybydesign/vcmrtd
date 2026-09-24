@@ -7,20 +7,25 @@ import 'package:vcmrtd/extensions.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/utils/document_dates.dart';
 
-/// Points at one identity-proofing session, resolved from a scanned QR code
-/// or deep link. See identity-proofing-service's docs/session-model.md for
-/// the API this talks to.
-///
-/// The `qr` field of that service's create-session response is a plain URL
-/// (`https://{host}/s/{token}`); its `deepLink` is a custom-scheme URL
-/// (`vcmrtd://verify?token=...&api=...`). Both encode the same two things —
-/// which API to call, and the token that authorises acting on the session —
-/// so [parse] accepts either shape.
+/// Points at one identity-proofing session this device claimed. See
+/// identity-proofing-service's docs/session-model.md for the API this talks
+/// to. [token] only identifies the session in the `/api/v1/app/{token}`
+/// paths; [deviceToken] is what authorizes this device.
 class ProofingSessionRef {
   final String apiBase;
   final String token;
 
-  const ProofingSessionRef({required this.apiBase, required this.token});
+  /// This device's credential for the session (`X-Device-Token`), issued by
+  /// [ProofingSessionClient.claimHandover]. The server rejects every call
+  /// without the current device's token, so knowing the session token alone
+  /// isn't enough to act on it. Kept in memory only - a killed app loses it,
+  /// and the web app hands the session back over with a fresh handover QR.
+  final String? deviceToken;
+
+  const ProofingSessionRef({required this.apiBase, required this.token, this.deviceToken});
+
+  ProofingSessionRef withDeviceToken(String deviceToken) =>
+      ProofingSessionRef(apiBase: apiBase, token: token, deviceToken: deviceToken);
 
   static ProofingSessionRef? parse(String raw) {
     final uri = Uri.tryParse(raw);
@@ -45,6 +50,87 @@ class ProofingSessionRef {
     return null;
   }
 }
+
+/// A scanned QR code or tapped deep link pointing at a session: a
+/// short-lived, single-use grant token ([ProofingHandoverLink]) - the empty
+/// native slot's claim token, or a handover from the device that held it.
+/// A link carrying the session token itself ([ProofingSessionTokenLink]) is
+/// still recognised, only to tell the user it no longer works: the session
+/// token doesn't authorize a device. Neither creates a session.
+sealed class ProofingSessionLink {
+  const ProofingSessionLink();
+
+  String get apiBase;
+
+  /// Accepts `vcmrtd://verify?handover=...&api=...` (the claim/handover QR's
+  /// and deep link's shape) plus the old session-token shapes
+  /// [ProofingSessionRef.parse] accepts.
+  static ProofingSessionLink? parse(String raw) {
+    final uri = Uri.tryParse(raw);
+    if (uri != null && uri.scheme == 'vcmrtd' && uri.queryParameters.containsKey('handover')) {
+      final handover = uri.queryParameters['handover'];
+      final api = uri.queryParameters['api'];
+      if (handover == null || handover.isEmpty || api == null || api.isEmpty) return null;
+      return ProofingHandoverLink(apiBase: api, handoverToken: handover);
+    }
+    // The Web App's own handover QR (`https://.../proofing?handover=...`)
+    // moves the browser part to another browser, not to this app.
+    if (uri != null &&
+        (uri.scheme == 'https' || uri.scheme == 'http') &&
+        (uri.queryParameters['handover'] ?? '').isNotEmpty) {
+      return ProofingBrowserHandoverLink('${uri.scheme}://${uri.authority}');
+    }
+    final ref = ProofingSessionRef.parse(raw);
+    return ref == null ? null : ProofingSessionTokenLink(ref);
+  }
+}
+
+/// A handover QR for the Web App's browser slot: recognised only to tell the
+/// user to open it in a browser instead.
+class ProofingBrowserHandoverLink extends ProofingSessionLink {
+  @override
+  final String apiBase;
+  const ProofingBrowserHandoverLink(this.apiBase);
+}
+
+class ProofingSessionTokenLink extends ProofingSessionLink {
+  final ProofingSessionRef ref;
+  const ProofingSessionTokenLink(this.ref);
+
+  @override
+  String get apiBase => ref.apiBase;
+}
+
+class ProofingHandoverLink extends ProofingSessionLink {
+  @override
+  final String apiBase;
+  final String handoverToken;
+  const ProofingHandoverLink({required this.apiBase, required this.handoverToken});
+}
+
+/// This device's own access to a session, as the server sees it
+/// (api.appSessionView.device).
+class ProofingDeviceAccess {
+  /// False once another device took over this device's slot - see
+  /// [ProofingSessionInfo.accessLost].
+  final bool authorized;
+  final String? role; // "native" | "web"
+  final String? state; // "active" | "inactive"
+
+  const ProofingDeviceAccess({required this.authorized, this.role, this.state});
+
+  factory ProofingDeviceAccess.fromJson(Map<String, dynamic> json) => ProofingDeviceAccess(
+    authorized: json['authorized'] as bool? ?? false,
+    role: json['role'] as String?,
+    state: json['state'] as String?,
+  );
+}
+
+/// [ProofingSessionInfo.lifecycle] values.
+const proofingLifecycleActive = 'ACTIVE';
+const proofingLifecycleComplete = 'COMPLETE';
+const proofingLifecycleExpired = 'EXPIRED';
+const proofingLifecycleCancelled = 'CANCELLED';
 
 /// What the app needs after fetching a session: what to collect, who's
 /// asking, how long it has. Mirrors api.appSessionView on the server.
@@ -103,6 +189,54 @@ class ProofingSessionInfo {
   /// of this field.
   final String selfieLocation;
 
+  /// The session's server-side status (api.appSessionView.status) — see
+  /// [proofingSessionFinished]. A flow session stays "in_progress" after its
+  /// last step; it only gets its outcome once submitted
+  /// ([ProofingSessionClient.submitSession]).
+  final String status;
+
+  /// How many times the relying party has reset this session
+  /// (`POST /api/v1/sessions/{id}/reset`). An increase means the server has
+  /// dropped every step collected so far and the user has to start over —
+  /// see ProofingSessionWatcher.
+  final int resetCount;
+
+  /// Opaque value to pass back as `?since=` to
+  /// [ProofingSessionClient.waitForChange]. Null from a server that predates
+  /// session reset, in which case there is nothing to watch for.
+  final String? changeKey;
+
+  /// The server's own view of where the session stands: ACTIVE, COMPLETE
+  /// (submitted - it has its outcome), EXPIRED or CANCELLED. Null from a
+  /// server that predates device handover.
+  final String? lifecycle;
+
+  /// Every step of the flow has a result and the session is waiting to be
+  /// submitted ([ProofingSessionClient.submitSession]) - by this device or
+  /// the other one holding a slot.
+  final bool readyToSubmit;
+
+  /// The step the server expects next ("" once every step is done), and the
+  /// steps it already holds a result for. The server decides these - the app
+  /// never derives them from its own local progress.
+  final String? currentStep;
+  final List<String> completedSteps;
+
+  /// This device's access to the session; null before claiming, or from a
+  /// server that predates device handover.
+  final ProofingDeviceAccess? device;
+
+  /// The chip access key the MRZ step stored, present only while
+  /// [currentStep] is nfc_read - so a device that took the session over
+  /// reads the chip without rescanning the MRZ.
+  final ProofingChipAccess? chipAccess;
+
+  /// The photo the face step compares against (the chip's DG2, or the
+  /// relying party's referencePhoto), present only while the face step is
+  /// current and runs in this app - so a device that took over can run it
+  /// without reading the chip itself.
+  final ProofingPhotoInfo? faceReference;
+
   ProofingSessionInfo({
     required this.id,
     required this.relyingParty,
@@ -112,7 +246,30 @@ class ProofingSessionInfo {
     this.steps,
     this.referencePhoto,
     this.selfieLocation = 'browser',
+    this.status = 'opened',
+    this.resetCount = 0,
+    this.changeKey,
+    this.lifecycle,
+    this.readyToSubmit = false,
+    this.currentStep,
+    this.completedSteps = const [],
+    this.device,
+    this.chipAccess,
+    this.faceReference,
   });
+
+  /// Why this device can no longer act on the session, judging by the view
+  /// alone, or null while it still may. An error response (see
+  /// [ProofingSessionAccessException]) is the other way the server says so.
+  ProofingAccessDenial? get accessLost {
+    if (device != null && !device!.authorized) return ProofingAccessDenial.handedOver;
+    if (lifecycle == proofingLifecycleExpired || status == 'expired') return ProofingAccessDenial.expired;
+    if (lifecycle == proofingLifecycleCancelled || status == 'cancelled') return ProofingAccessDenial.cancelled;
+    // Deliberately not compared against [expiresAt] on this device's clock:
+    // the server decides expiry, and a skewed phone clock mustn't end a
+    // session that's still valid.
+    return null;
+  }
 
   factory ProofingSessionInfo.fromJson(Map<String, dynamic> json) => ProofingSessionInfo(
     id: json['id'] as String,
@@ -125,7 +282,327 @@ class ProofingSessionInfo {
         ? ProofingPhotoInfo.fromJson(json['referencePhoto'] as Map<String, dynamic>)
         : null,
     selfieLocation: json['selfieLocation'] as String? ?? 'browser',
+    status: json['status'] as String? ?? 'opened',
+    resetCount: json['resetCount'] as int? ?? 0,
+    changeKey: json['changeKey'] as String?,
+    lifecycle: json['lifecycle'] as String?,
+    readyToSubmit: json['readyToSubmit'] as bool? ?? false,
+    currentStep: json['currentStep'] as String?,
+    completedSteps: (json['completedSteps'] as List<dynamic>? ?? const []).cast<String>(),
+    device: json['device'] is Map<String, dynamic>
+        ? ProofingDeviceAccess.fromJson(json['device'] as Map<String, dynamic>)
+        : null,
+    chipAccess: json['chipAccess'] is Map<String, dynamic>
+        ? ProofingChipAccess.fromJson(json['chipAccess'] as Map<String, dynamic>)
+        : null,
+    faceReference: json['faceReference'] is Map<String, dynamic>
+        ? ProofingPhotoInfo.fromJson(json['faceReference'] as Map<String, dynamic>)
+        : null,
   );
+}
+
+/// What opens the chip (BAC/PACE, or BAP for a driving licence), derived
+/// from the MRZ. Sent with the document_capture step and handed back by the
+/// server while nfc_read is the current step (api.appSessionView.chipAccess),
+/// so another device can resume straight at the chip read.
+class ProofingChipAccess {
+  final DocumentType documentType;
+  final String documentNumber;
+  final String countryCode;
+  final DateTime? dateOfBirth;
+  final DateTime? dateOfExpiry;
+  final String? version;
+  final String? randomData;
+  final String? configuration;
+
+  const ProofingChipAccess({
+    required this.documentType,
+    required this.documentNumber,
+    this.countryCode = '',
+    this.dateOfBirth,
+    this.dateOfExpiry,
+    this.version,
+    this.randomData,
+    this.configuration,
+  });
+
+  factory ProofingChipAccess.fromScannedMrz(ScannedMRZ mrz, DocumentType documentType) => switch (mrz) {
+    ScannedPassportMRZ() => ProofingChipAccess(
+      documentType: documentType,
+      documentNumber: mrz.documentNumber,
+      countryCode: mrz.countryCode,
+      dateOfBirth: mrz.dateOfBirth,
+      dateOfExpiry: mrz.dateOfExpiry,
+    ),
+    ScannedDriverLicenseMRZ() => ProofingChipAccess(
+      documentType: documentType,
+      documentNumber: mrz.documentNumber,
+      countryCode: mrz.countryCode,
+      version: mrz.version,
+      randomData: mrz.randomData,
+      configuration: mrz.configuration,
+    ),
+  };
+
+  /// Null when the stored key is incomplete (e.g. from another client).
+  static ProofingChipAccess? fromJson(Map<String, dynamic> json) {
+    final type = switch (json['documentType']) {
+      'passport' => DocumentType.passport,
+      'identity_card' => DocumentType.identityCard,
+      'drivers_license' => DocumentType.drivingLicence,
+      _ => null,
+    };
+    final number = json['documentNumber'] as String?;
+    if (type == null || number == null || number.isEmpty) return null;
+    return ProofingChipAccess(
+      documentType: type,
+      documentNumber: number,
+      countryCode: json['countryCode'] as String? ?? '',
+      dateOfBirth: DateTime.tryParse(json['dateOfBirth'] as String? ?? ''),
+      dateOfExpiry: DateTime.tryParse(json['dateOfExpiry'] as String? ?? ''),
+      version: json['version'] as String?,
+      randomData: json['randomData'] as String?,
+      configuration: json['configuration'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'documentType': switch (documentType) {
+      DocumentType.passport => 'passport',
+      DocumentType.identityCard => 'identity_card',
+      DocumentType.drivingLicence => 'drivers_license',
+    },
+    'documentNumber': documentNumber,
+    if (countryCode.isNotEmpty) 'countryCode': countryCode,
+    if (dateOfBirth != null) 'dateOfBirth': ProofingDocumentInfo._dateOnly(dateOfBirth!),
+    if (dateOfExpiry != null) 'dateOfExpiry': ProofingDocumentInfo._dateOnly(dateOfExpiry!),
+    if (version != null) 'version': version,
+    if (randomData != null) 'randomData': randomData,
+    if (configuration != null) 'configuration': configuration,
+  };
+
+  /// The MRZ the NFC reading screen needs, or null when this key can't open
+  /// the chip (a passport key without its dates, a licence key without its
+  /// MRZ fields).
+  ScannedMRZ? toScannedMrz() {
+    if (documentType == DocumentType.drivingLicence) {
+      if (version == null || randomData == null || configuration == null) return null;
+      return ScannedDriverLicenseMRZ(
+        documentNumber: documentNumber,
+        countryCode: countryCode,
+        version: version!,
+        randomData: randomData!,
+        configuration: configuration!,
+      );
+    }
+    if (dateOfBirth == null || dateOfExpiry == null) return null;
+    return ScannedPassportMRZ(
+      documentNumber: documentNumber,
+      countryCode: countryCode,
+      dateOfBirth: dateOfBirth!,
+      dateOfExpiry: dateOfExpiry!,
+      documentType: documentType,
+    );
+  }
+}
+
+/// What a claim returns: this device's credential (folded into [ref]) and
+/// the session's current state.
+class ProofingSessionClaim {
+  final ProofingSessionRef ref;
+  final ProofingSessionInfo info;
+  const ProofingSessionClaim({required this.ref, required this.info});
+}
+
+/// What a step endpoint (or `POST .../submit`) returns once the server
+/// stored that step's result (api.stepResponse): the server, not the app,
+/// decides what comes next.
+class ProofingStepResponse {
+  final String status;
+  final List<String> completedSteps;
+  final String? currentStep;
+  final String? lifecycle;
+  final String? errorCode;
+
+  /// Every step has a result: the session waits for a submit - see
+  /// [ProofingSessionInfo.readyToSubmit].
+  final bool readyToSubmit;
+
+  /// The server already had this step: nothing was stored, this is just
+  /// the current state (a retry, or the other device got there first).
+  final bool alreadyRecorded;
+
+  const ProofingStepResponse({
+    required this.status,
+    this.completedSteps = const [],
+    this.currentStep,
+    this.lifecycle,
+    this.errorCode,
+    this.readyToSubmit = false,
+    this.alreadyRecorded = false,
+  });
+
+  factory ProofingStepResponse.fromJson(Map<String, dynamic> json) => ProofingStepResponse(
+    status: json['status'] as String? ?? '',
+    completedSteps: (json['completedSteps'] as List<dynamic>? ?? const []).cast<String>(),
+    currentStep: json['currentStep'] as String?,
+    lifecycle: json['lifecycle'] as String?,
+    errorCode: json['errorCode'] as String?,
+    readyToSubmit: json['readyToSubmit'] as bool? ?? false,
+    alreadyRecorded: json['alreadyRecorded'] as bool? ?? false,
+  );
+
+  /// The same shape from a session view, for a caller that had to fetch the
+  /// session instead (see [ProofingStepsIncompleteException]).
+  factory ProofingStepResponse.fromSessionInfo(ProofingSessionInfo info) => ProofingStepResponse(
+    status: info.status,
+    completedSteps: info.completedSteps,
+    currentStep: info.currentStep,
+    lifecycle: info.lifecycle,
+    readyToSubmit: info.readyToSubmit,
+  );
+
+  /// Whether the session was submitted and has its outcome. Keyed on
+  /// lifecycle alone: an empty or missing currentStep doesn't mean complete
+  /// (after the last step the session waits for [readyToSubmit]'s submit,
+  /// and the server omits currentStep for a session without a flow).
+  bool get complete => lifecycle == proofingLifecycleComplete;
+}
+
+/// `POST .../submit` refused because not every step has a result yet (409
+/// steps_incomplete) - e.g. a reset landed in between. Not an access
+/// refusal: the app continues at the server's current step.
+class ProofingStepsIncompleteException implements Exception {
+  const ProofingStepsIncompleteException();
+
+  @override
+  String toString() => 'ProofingStepsIncompleteException';
+}
+
+/// Whether [status] means the session has an outcome and can no longer
+/// change (or be reset): needs_review plus every terminal status.
+bool proofingSessionFinished(String status) =>
+    const ['needs_review', 'approved', 'rejected', 'expired', 'cancelled'].contains(status);
+
+/// Why the server refused this device access to a session.
+enum ProofingAccessDenial {
+  /// Another device took the session over (403 device_handed_over).
+  handedOver,
+
+  /// The session expired (410 session_expired).
+  expired,
+
+  /// The session was cancelled.
+  cancelled,
+
+  /// No valid device credential for a session that is bound to a device
+  /// (401 device_unauthorized).
+  unauthorized,
+
+  /// The session is already finished, so nothing can be submitted anymore
+  /// (409 session_complete).
+  complete,
+
+  /// The session doesn't exist (anymore) - a plain 404/410 without a code.
+  gone,
+
+  /// A plain session QR scanned after another device already claimed it
+  /// (409 device_already_claimed): the user needs the handover QR instead.
+  alreadyClaimed,
+
+  /// Handover token unknown (404 handover_invalid), expired (410
+  /// handover_expired) or already claimed (409 handover_used).
+  handoverInvalid,
+  handoverExpired,
+  handoverUsed,
+
+  /// A link carrying the session token itself (410 claim_token_required, or
+  /// recognised locally): it can't claim anything any more.
+  claimTokenRequired,
+
+  /// The browser's own handover QR, scanned in this app.
+  browserHandover;
+
+  /// Whether this ends the local verification for good: the app must drop
+  /// the session, not retry. The rest only refuse one claim attempt.
+  bool get endsSession => switch (this) {
+    handedOver || expired || cancelled || unauthorized || complete || gone => true,
+    alreadyClaimed ||
+    handoverInvalid ||
+    handoverExpired ||
+    handoverUsed ||
+    claimTokenRequired ||
+    browserHandover => false,
+  };
+
+  /// What to tell the user.
+  String get message => switch (this) {
+    handedOver => 'This verification session has been handed over to another device.',
+    expired => 'This verification session has expired. Please start a new verification.',
+    cancelled => 'This verification session was cancelled. Please start a new verification.',
+    unauthorized => 'This device is no longer allowed to continue this verification session.',
+    complete => 'This verification session is already complete.',
+    gone => 'This verification session no longer exists. Please start a new verification.',
+    alreadyClaimed =>
+      'This verification session is already open on another device. To continue here, scan the handover QR code '
+          'shown in the browser.',
+    handoverInvalid => 'This handover QR code is not valid. Ask for a new one in the browser.',
+    handoverExpired => 'This handover QR code has expired. Ask for a new one in the browser.',
+    handoverUsed => 'This handover QR code was already used. Ask for a new one in the browser.',
+    claimTokenRequired =>
+      'This QR code is from an older version of the verification service and can no longer be used. '
+          'Ask for a new one in the browser.',
+    browserHandover =>
+      'This QR code moves the browser part of the verification to another browser. Open it with your '
+          "phone's camera instead, or scan the QR code the browser shows for the IDEM app.",
+  };
+}
+
+/// Thrown by every [ProofingSessionClient] call when the server refuses this
+/// device access to the session - see [ProofingAccessDenial].
+class ProofingSessionAccessException implements Exception {
+  final ProofingAccessDenial reason;
+  final int statusCode;
+  const ProofingSessionAccessException(this.reason, this.statusCode);
+
+  @override
+  String toString() => 'ProofingSessionAccessException(${reason.name}, $statusCode)';
+}
+
+/// Maps a refused response to a [ProofingSessionAccessException], or null if
+/// [response] isn't an access refusal (success, or an ordinary failure such
+/// as a 400 for a malformed body). The server's `code` decides; the status
+/// code alone only for the unambiguous cases, since 409 also means e.g.
+/// "the face_match reference isn't there yet".
+ProofingSessionAccessException? proofingAccessDenialFor(http.Response response) {
+  final reason = switch (_errorCodeOf(response)) {
+    'device_handed_over' => ProofingAccessDenial.handedOver,
+    'session_expired' => ProofingAccessDenial.expired,
+    'device_unauthorized' => ProofingAccessDenial.unauthorized,
+    'session_complete' => ProofingAccessDenial.complete,
+    'device_already_claimed' => ProofingAccessDenial.alreadyClaimed,
+    'handover_invalid' => ProofingAccessDenial.handoverInvalid,
+    'handover_expired' => ProofingAccessDenial.handoverExpired,
+    'handover_used' => ProofingAccessDenial.handoverUsed,
+    'claim_token_required' => ProofingAccessDenial.claimTokenRequired,
+    _ => switch (response.statusCode) {
+      401 || 403 => ProofingAccessDenial.unauthorized,
+      404 || 410 => ProofingAccessDenial.gone,
+      _ => null,
+    },
+  };
+  return reason == null ? null : ProofingSessionAccessException(reason, response.statusCode);
+}
+
+/// The `code` of an error response, or null when it has none (or isn't JSON).
+String? _errorCodeOf(http.Response response) {
+  try {
+    final body = json.decode(response.body);
+    if (body is Map<String, dynamic>) return body['code'] as String?;
+  } catch (_) {
+    // not JSON
+  }
+  return null;
 }
 
 /// Whether [steps] asks for a face-verification stage that THIS APP should
@@ -571,17 +1048,25 @@ Map<String, dynamic> buildProofingResultBody({
 /// submission without it (`mrtdEvidence is required`). There is no
 /// status/errorCode/selfie/biometrics here — the server decides the session's
 /// status once every step (including the browser's own selfie submission)
-/// has landed (see identity-proofing-service's evaluateSessionCompletion).
+/// has landed and the session is submitted (see
+/// [ProofingSessionClient.submitSession]).
+///
+/// [faceStepFollows]: the flow has a face step, so the photo is sent
+/// whatever requestedAttributes says - it's what that step compares against
+/// (server-side, or on a device that takes the session over), and the same
+/// DG2 is in [mrtdEvidence] anyway.
 Map<String, dynamic> buildProofingNfcStepBody({
   required List<String> requestedAttributes,
   ProofingDocumentInfo? document,
   ProofingPhotoInfo? photo,
   required ProofingMrtdEvidence mrtdEvidence,
   ProofingDeviceInfo? device,
+  bool faceStepFollows = false,
 }) {
   final includeDocument = document != null && _attrRequested(requestedAttributes, [_attrDocument]);
   final includeDG11 = _attrRequested(requestedAttributes, [_attrDG11]);
-  final includePhoto = photo != null && _attrRequested(requestedAttributes, [_attrDG2, _attrFaceImage]);
+  final includePhoto =
+      photo != null && (faceStepFollows || _attrRequested(requestedAttributes, [_attrDG2, _attrFaceImage]));
 
   return {
     if (includeDocument) 'document': document.toJson(includeDG11Extras: includeDG11),
@@ -597,14 +1082,88 @@ Map<String, dynamic> buildProofingNfcStepBody({
 /// [PassportIssuer]/[DefaultPassportIssuer]: that talks to go-passport-issuer
 /// for a different purpose (nonce-based active authentication, server-side
 /// verification, IRMA issuance) and this doesn't touch that contract.
+///
+/// Every call after claiming carries the device credential
+/// ([ProofingSessionRef.deviceToken]) and throws
+/// [ProofingSessionAccessException] when the server refuses this device -
+/// expired, handed over to another device, already complete.
 class ProofingSessionClient {
   const ProofingSessionClient();
 
+  static Map<String, String> _headers(ProofingSessionRef ref, {bool json = false}) => {
+    if (json) 'Content-Type': 'application/json',
+    if (ref.deviceToken != null) 'X-Device-Token': ref.deviceToken!,
+  };
+
+  static Uri _appUri(ProofingSessionRef ref, [String path = '']) =>
+      Uri.parse('${ref.apiBase}/api/v1/app/${ref.token}$path');
+
+  /// Throws for anything but a 200: a [ProofingSessionAccessException] when
+  /// the server refused this device access, a plain [Exception] otherwise.
+  static void _check(http.Response response, String what) {
+    if (response.statusCode == 200) return;
+    final denial = proofingAccessDenialFor(response);
+    if (denial != null) throw denial;
+    if (response.statusCode == 429)
+      throw Exception('$what failed: too many attempts, please wait a moment and try again');
+    throw Exception('$what failed: ${response.statusCode} ${response.body}');
+  }
+
+  /// Claims the native slot with a grant token (single-use, short-lived):
+  /// the empty slot's claim token, or a handover from the device holding
+  /// it, which the server then revokes. The session itself - and every step
+  /// already done - stays as it was.
+  Future<ProofingSessionClaim> claimHandover(ProofingHandoverLink link) async {
+    final response = await http.post(
+      Uri.parse('${link.apiBase}/api/v1/app/handover/${Uri.encodeComponent(link.handoverToken)}/claim'),
+    );
+    _check(response, 'Taking over the session');
+    return _claimFromJson(link.apiBase, json.decode(response.body) as Map<String, dynamic>);
+  }
+
+  static ProofingSessionClaim _claimFromJson(String apiBase, Map<String, dynamic> body) => ProofingSessionClaim(
+    ref: ProofingSessionRef(
+      apiBase: apiBase,
+      token: body['token'] as String,
+      deviceToken: body['deviceToken'] as String,
+    ),
+    info: ProofingSessionInfo.fromJson(body['session'] as Map<String, dynamic>),
+  );
+
+  /// The session's current state, as the server sees it.
   Future<ProofingSessionInfo> fetchSession(ProofingSessionRef ref) async {
-    final response = await http.get(Uri.parse('${ref.apiBase}/api/v1/app/${ref.token}'));
-    if (response.statusCode != 200) {
-      throw Exception('Fetching the session failed: ${response.statusCode} ${response.body}');
-    }
+    final response = await http.get(_appUri(ref), headers: _headers(ref));
+    _check(response, 'Fetching the session');
+    return ProofingSessionInfo.fromJson(json.decode(response.body));
+  }
+
+  /// Long-polls `GET /api/v1/app/{token}/events` until the session's view
+  /// differs from [since] (a previous [ProofingSessionInfo.changeKey]) or
+  /// the server's wait window elapses, then returns the current view. Unlike
+  /// [fetchSession] this never marks anything server-side; it's purely for
+  /// noticing changes such as a reset or a handover.
+  /// [httpClient], when given, carries the request, so closing it aborts
+  /// the wait (see ProofingSessionWatcher.pause).
+  Future<ProofingSessionInfo> waitForChange(ProofingSessionRef ref, String since, {http.Client? httpClient}) async {
+    final uri = _appUri(ref, '/events').replace(queryParameters: {'since': since});
+    final response = await (httpClient?.get(uri, headers: _headers(ref)) ?? http.get(uri, headers: _headers(ref)));
+    _check(response, 'Watching the session');
+    return ProofingSessionInfo.fromJson(json.decode(response.body));
+  }
+
+  /// Tells the server whether this device is actively working on the
+  /// session (app in the foreground) or not (backgrounded) - see
+  /// ProofingSessionCoordinator. Returns the session's current state, which
+  /// is what the app checks before it lets the user continue. Refused with
+  /// 409 session_complete once the session was submitted, so the
+  /// coordinator stops reporting at that point.
+  Future<ProofingSessionInfo> reportDeviceState(ProofingSessionRef ref, {required bool active}) async {
+    final response = await http.post(
+      _appUri(ref, '/device/state'),
+      headers: _headers(ref, json: true),
+      body: json.encode({'state': active ? 'active' : 'inactive'}),
+    );
+    _check(response, 'Reporting the device state');
     return ProofingSessionInfo.fromJson(json.decode(response.body));
   }
 
@@ -618,6 +1177,10 @@ class ProofingSessionClient {
   /// the calling session's `ProofingSessionInfo.requestedAttributes`, so
   /// nothing is filtered against a list the app made up itself. See
   /// [buildProofingResultBody].
+  ///
+  /// Only for sessions without a flow (the step endpoints require one) and
+  /// flows the step endpoints can't carry yet (document_capture without
+  /// nfc_read, a face step without a chip read).
   Future<void> submitResult(
     ProofingSessionRef ref, {
     required String status,
@@ -631,8 +1194,8 @@ class ProofingSessionClient {
     ProofingDeviceInfo? device,
   }) async {
     final response = await http.post(
-      Uri.parse('${ref.apiBase}/api/v1/app/${ref.token}/result'),
-      headers: {'Content-Type': 'application/json'},
+      _appUri(ref, '/result'),
+      headers: _headers(ref, json: true),
       body: json.encode(
         buildProofingResultBody(
           status: status,
@@ -647,30 +1210,55 @@ class ProofingSessionClient {
         ),
       ),
     );
-    if (response.statusCode != 200) {
-      throw Exception('Submitting the result failed: ${response.statusCode} ${response.body}');
-    }
+    _check(response, 'Submitting the result');
   }
 
-  /// Submits the nfc_read step and stops there — used instead of
-  /// [submitResult] whenever [nativeFaceVerificationRequested] is false: the
-  /// session's flow wants face verification, but performed by the browser
-  /// hosted flow, not this app. The server holds the session at whatever
-  /// status the accumulated steps imply (typically in_progress) until the
-  /// browser's own `POST .../steps/selfie` lands — see
-  /// identity-proofing-service's evaluateSessionCompletion. See
+  /// Tells the server the user just began [step] (`POST .../steps/{step}/start`)
+  /// — called the moment the step starts, not when its evidence is
+  /// submitted, so the session moves to in_progress and the audit log gets
+  /// that step's own in_progress row right away. Idempotent server-side.
+  /// Callers go through [markActiveProofingStepStarted], which never lets a
+  /// failure here interrupt the user.
+  Future<void> markStepStarted(ProofingSessionRef ref, String step) async {
+    final response = await http.post(_appUri(ref, '/steps/$step/start'), headers: _headers(ref));
+    _check(response, 'Marking step $step started');
+  }
+
+  /// Submits the document_capture step - the identity read off the MRZ scan
+  /// or typed in manually - the moment it's captured, with the [chipAccess]
+  /// key so another device can resume at the chip read. The server then
+  /// names the next step; a later [submitNfcStep] with a chip-read
+  /// `document` replaces this copy.
+  Future<ProofingStepResponse> submitDocumentCaptureStep(
+    ProofingSessionRef ref, {
+    required ProofingDocumentInfo document,
+    ProofingChipAccess? chipAccess,
+  }) async {
+    final response = await http.post(
+      _appUri(ref, '/steps/document_capture'),
+      headers: _headers(ref, json: true),
+      body: json.encode({'document': document.toJson(), 'chipAccess': ?chipAccess?.toJson()}),
+    );
+    _check(response, 'Submitting the document step');
+    return ProofingStepResponse.fromJson(json.decode(response.body));
+  }
+
+  /// Submits the nfc_read step the moment the chip read completes, whether
+  /// or not a face step follows. Its chip-read `document` replaces the
+  /// MRZ copy [submitDocumentCaptureStep] sent. See
   /// [buildProofingNfcStepBody].
-  Future<void> submitNfcStep(
+  Future<ProofingStepResponse> submitNfcStep(
     ProofingSessionRef ref, {
     required List<String> requestedAttributes,
     ProofingDocumentInfo? document,
     ProofingPhotoInfo? photo,
     required ProofingMrtdEvidence mrtdEvidence,
     ProofingDeviceInfo? device,
+    bool faceStepFollows = false,
   }) async {
     final response = await http.post(
-      Uri.parse('${ref.apiBase}/api/v1/app/${ref.token}/steps/nfc'),
-      headers: {'Content-Type': 'application/json'},
+      _appUri(ref, '/steps/nfc'),
+      headers: _headers(ref, json: true),
       body: json.encode(
         buildProofingNfcStepBody(
           requestedAttributes: requestedAttributes,
@@ -678,11 +1266,45 @@ class ProofingSessionClient {
           photo: photo,
           mrtdEvidence: mrtdEvidence,
           device: device,
+          faceStepFollows: faceStepFollows,
         ),
       ),
     );
-    if (response.statusCode != 200) {
-      throw Exception('Submitting the nfc step failed: ${response.statusCode} ${response.body}');
+    _check(response, 'Submitting the nfc step');
+    return ProofingStepResponse.fromJson(json.decode(response.body));
+  }
+
+  /// Submits the face step this app performed itself (selfieLocation
+  /// "native") the moment it completes: the live selfie only - the server
+  /// computes liveness and the face match against the DG2 photo it already
+  /// holds from [submitNfcStep], never trusting an on-device score.
+  Future<ProofingStepResponse> submitSelfieStep(ProofingSessionRef ref, {required ProofingPhotoInfo selfie}) async {
+    final response = await http.post(
+      _appUri(ref, '/steps/selfie'),
+      headers: _headers(ref, json: true),
+      body: json.encode({'image': selfie.imageBase64, 'mimeType': selfie.mimeType}),
+    );
+    _check(response, 'Submitting the face verification step');
+    return ProofingStepResponse.fromJson(json.decode(response.body));
+  }
+
+  /// Submits the session once every step of its flow has a result
+  /// ([ProofingSessionInfo.readyToSubmit]) - only now does the server give
+  /// it its outcome (lifecycle COMPLETE, status approved/rejected/...).
+  /// Either device holding a slot may submit, and submitting again (a
+  /// double tap, a retry after a network error, the other device having
+  /// submitted first) just returns the finished state with alreadyRecorded,
+  /// so this is safe to retry. Throws [ProofingStepsIncompleteException]
+  /// when a step still lacks a result.
+  ///
+  /// Flow sessions only: a session without a flow still sends its single
+  /// result through [submitResult].
+  Future<ProofingStepResponse> submitSession(ProofingSessionRef ref) async {
+    final response = await http.post(_appUri(ref, '/submit'), headers: _headers(ref));
+    if (response.statusCode == 409 && _errorCodeOf(response) == 'steps_incomplete') {
+      throw const ProofingStepsIncompleteException();
     }
+    _check(response, 'Submitting the verification');
+    return ProofingStepResponse.fromJson(json.decode(response.body));
   }
 }

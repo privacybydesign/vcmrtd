@@ -73,8 +73,11 @@ class ProofingDeepLinkPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         }
     }
 
-    /** Cold start via a vcmrtd:// link. */
+    /** Cold start via a vcmrtd:// link. Reopening the app from recents
+     *  replays the intent it was first launched with - an already used
+     *  claim/handover link - so that one is ignored. */
     private fun handleIntent(intent: Intent) {
+        if (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
         initialLink = extractUrl(intent)
     }
 

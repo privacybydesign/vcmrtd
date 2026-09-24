@@ -5,7 +5,7 @@ import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/providers/wallet_provider.dart';
 import 'package:idem/services/face_verification_outcome.dart';
-import 'package:idem/services/proofing_session_client.dart';
+import 'package:idem/services/proofing_chip_evidence.dart';
 
 import '../../widgets/pages/data_screen_widgets/personal_data_section.dart';
 import '../../widgets/pages/data_screen_widgets/proofing_result_submission.dart';
@@ -18,6 +18,11 @@ class PassportDataScreen extends ConsumerStatefulWidget {
   final VoidCallback onBackPressed;
   final DocumentType documentType;
   final FaceVerificationOutcome? faceVerification;
+
+  /// Set when every step was already sent to the session as it completed -
+  /// see [DocumentWalletOrSubmitSection.submittedTo].
+  final String? submittedTo;
+  final bool browserFaceStep;
 
   /// Step badge numbers — default to vcmrtd's fixed 4-step sequence (this
   /// screen is always the last, step 4, there) so any caller not passing
@@ -34,6 +39,8 @@ class PassportDataScreen extends ConsumerStatefulWidget {
     required this.passportDataResult,
     this.documentType = DocumentType.passport,
     this.faceVerification,
+    this.submittedTo,
+    this.browserFaceStep = false,
     this.stepNumber = 4,
     this.totalSteps = 4,
   });
@@ -69,6 +76,9 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen>
                       isSubmitting: submittingToProofingSession,
                       onAddToWallet: _addToWallet,
                       onSubmit: () => _submitToProofingSession(activeProofingSession!),
+                      submittedTo: widget.submittedTo,
+                      browserFaceStep: widget.browserFaceStep,
+                      onDone: widget.onBackPressed,
                     ),
                   ],
                 ),
@@ -94,16 +104,12 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen>
   }
 
   Future<void> _submitToProofingSession(ActiveProofingSession session) {
-    final passport = widget.document as PassportData;
+    final evidence = ProofingChipEvidence.from(widget.document, widget.passportDataResult, widget.documentType);
     return submitProofingResult(
       session: session,
-      document: ProofingDocumentInfo.fromPassportData(passport),
-      photo: ProofingPhotoInfo.fromImage(passport.photoImageData, passport.photoImageType),
-      mrtdEvidence: ProofingMrtdEvidence.fromRawDocumentData(
-        widget.passportDataResult,
-        aaKeyDataGroup: 'DG15',
-        documentType: 'icao',
-      ),
+      document: evidence.document,
+      photo: evidence.photo,
+      mrtdEvidence: evidence.mrtdEvidence,
       faceVerification: widget.faceVerification,
       onBackPressed: widget.onBackPressed,
     );

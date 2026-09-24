@@ -1,4 +1,4 @@
-﻿// Scanner wrapper for new navigation flow
+// Scanner wrapper for new navigation flow
 // Provides callbacks for the scanner page to integrate with navigation
 
 import 'package:flutter/material.dart';
@@ -116,7 +116,11 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
                     onPressed: widget.onBack,
                   ),
                 ),
-                StepBadge(current: widget.stepNumber, total: widget.totalSteps, label: 'Scan ${_getDocumentTypeName()}'),
+                StepBadge(
+                  current: widget.stepNumber,
+                  total: widget.totalSteps,
+                  label: 'Scan ${_getDocumentTypeName()}',
+                ),
               ],
             ),
           ),

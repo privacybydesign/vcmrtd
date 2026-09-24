@@ -51,22 +51,25 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>DeepLinkMrtdAppHost</key>
+	<string>mrtd.app</string>
+	<key>DeepLinkMrtdValidatePath</key>
+	<string>/validate</string>
+	<key>DeepLinkPassportIssuerHost</key>
+	<string>passport-issuer.yivi.app</string>
+	<key>DeepLinkPassportIssuerStartPath</key>
+	<string>/start-app</string>
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NFCReaderUsageDescription</key>
 	<string>This app uses NFC to read biometric passports.</string>
-	<key>com.apple.developer.nfc.readersession.iso7816.select-identifiers</key>
-	<array>
-		<string>A00000045645444C2D3031</string>
-		<string>A00000000386980701</string>
-		<string>A0000002471001</string>
-		<string>A0000002472001</string>
-		<string>00000000000000</string>
-	</array>
-	<key>com.apple.developer.nfc.readersession.felica.systemcodes</key>
-	<array>
-		<string>8008</string>
-	</array>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>The camera will be used for scanning your passport</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
@@ -88,38 +91,21 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>DeepLinkPassportIssuerHost</key>
-	<string>passport-issuer.yivi.app</string>
-	<key>DeepLinkMrtdAppHost</key>
-	<string>mrtd.app</string>
-	<key>DeepLinkMrtdValidatePath</key>
-	<string>/validate</string>
-	<key>DeepLinkPassportIssuerStartPath</key>
-	<string>/start-app</string>
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:passport-issuer.yivi.app</string>
 	</array>
-	<!-- Allows plain http:// (not just https://) to local-network addresses
-	     only (private IPs like 10.x.x.x/192.168.x.x, .local hosts) — needed
-	     to test the identity-proofing-service QR/deep-link flow against a
-	     local dev server, which has no TLS cert. Does not weaken App
-	     Transport Security for anything actually on the internet, unlike
-	     NSAllowsArbitraryLoads, so this is safe to leave in for release
-	     builds too (there's only one Info.plist here, no separate
-	     debug/release one the way Android's manifest merging allows). -->
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsLocalNetworking</key>
-		<true/>
-	</dict>
-	<!-- Flutter's built-in auto deep-linking defaults to true and races ahead
-	     of ProofingDeepLinkPlugin / DeepLinkPlugin: it forwards any opened URL
-	     straight to go_router's navigation channel as a raw location, which
-	     throws GoException ("no routes for location: vcmrtd://verify?...")
-	     since no GoRoute matches it. Disabled so only our own plugins handle
-	     incoming links. -->
-	<key>FlutterDeepLinkingEnabled</key>
-	<false/>
+	<key>com.apple.developer.nfc.readersession.felica.systemcodes</key>
+	<array>
+		<string>8008</string>
+	</array>
+	<key>com.apple.developer.nfc.readersession.iso7816.select-identifiers</key>
+	<array>
+		<string>A00000045645444C2D3031</string>
+		<string>A00000000386980701</string>
+		<string>A0000002471001</string>
+		<string>A0000002472001</string>
+		<string>00000000000000</string>
+	</array>
 </dict>
 </plist>

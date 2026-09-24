@@ -41,50 +41,51 @@ void main() {
     );
   });
 
-  testWidgets('auto-submits a partial document built from the scanned MRZ, with no photo/mrtdEvidence', (
-    tester,
-  ) async {
+  testWidgets('auto-submits a partial document built from the scanned MRZ, with no photo/mrtdEvidence', (tester) async {
     Map<String, dynamic>? sentBody;
     final session = _fakeProofingSession();
 
-    await http.runWithClient(() async {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
-      container.read(activeProofingSessionProvider.notifier).set(session);
-      var backCount = 0;
+    await http.runWithClient(
+      () async {
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+        container.read(activeProofingSessionProvider.notifier).set(session);
+        var backCount = 0;
 
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: MaterialApp(
-            home: DocumentCaptureOnlyResultScreen(
-              session: session,
-              scannedMrz: _scannedPassport(),
-              onBackPressed: () => backCount++,
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              home: DocumentCaptureOnlyResultScreen(
+                session: session,
+                scannedMrz: _scannedPassport(),
+                onBackPressed: () => backCount++,
+              ),
             ),
           ),
-        ),
-      );
-      await tester.pump();
+        );
+        await tester.pump();
 
-      expect(sentBody, isNotNull);
-      final document = sentBody!['document'] as Map<String, dynamic>;
-      expect(document['number'], 'L898902C3');
-      expect(document['issuingState'], 'UTO');
-      expect(document.containsKey('personalNumber'), isFalse);
-      expect(document.containsKey('firstName'), isFalse);
-      expect(sentBody!.containsKey('photo'), isFalse);
-      expect(sentBody!.containsKey('mrtdEvidence'), isFalse);
+        expect(sentBody, isNotNull);
+        final document = sentBody!['document'] as Map<String, dynamic>;
+        expect(document['number'], 'L898902C3');
+        expect(document['issuingState'], 'UTO');
+        expect(document.containsKey('personalNumber'), isFalse);
+        expect(document.containsKey('firstName'), isFalse);
+        expect(sentBody!.containsKey('photo'), isFalse);
+        expect(sentBody!.containsKey('mrtdEvidence'), isFalse);
 
-      expect(find.text('Submitted'), findsOneWidget);
-      expect(container.read(activeProofingSessionProvider), isNull);
+        expect(find.text('Submitted'), findsOneWidget);
+        expect(container.read(activeProofingSessionProvider), isNull);
 
-      await tester.tap(find.text('Continue'));
-      await tester.pumpAndSettle();
-      expect(backCount, 1);
-    }, () => MockClient((request) async {
-      sentBody = json.decode(request.body) as Map<String, dynamic>;
-      return http.Response('{}', 200);
-    }));
+        await tester.tap(find.text('Continue'));
+        await tester.pumpAndSettle();
+        expect(backCount, 1);
+      },
+      () => MockClient((request) async {
+        sentBody = json.decode(request.body) as Map<String, dynamic>;
+        return http.Response('{}', 200);
+      }),
+    );
   });
 }
