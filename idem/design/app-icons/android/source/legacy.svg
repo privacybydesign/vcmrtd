@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080" role="img" aria-labelledby="title desc">
+  <title id="title">Idem Android legacy launcher icon</title>
+  <desc id="desc">The Idem mark on white for legacy and Play Store raster exports.</desc>
+  <defs>
+    <mask id="document-cutouts">
+      <rect width="1024" height="1024" fill="#fff"/>
+      <path d="M376 264h192v464H376c-24 0-42-18-42-42V306c0-24 18-42 42-42Z" fill="#000"/>
+      <rect x="190" y="438" width="124" height="38" rx="19" fill="#000"/>
+      <rect x="190" y="510" width="92" height="38" rx="19" fill="#000"/>
+    </mask>
+    <clipPath id="person-left"><rect width="560" height="1024"/></clipPath>
+  </defs>
+
+  <rect width="1080" height="1080" fill="#fff"/>
+  <g transform="translate(79.2 79.2) scale(.9)">
+    <path d="M184 176h376v656H184c-44 0-80-36-80-80V256c0-44 36-80 80-80Z" fill="#6A2E4A" mask="url(#document-cutouts)"/>
+    <path d="M104 600 390 176h170v656H322Z" fill="#BA3353" mask="url(#document-cutouts)"/>
+    <rect x="190" y="438" width="124" height="38" rx="19" fill="#97C6DD"/>
+    <rect x="190" y="510" width="92" height="38" rx="19" fill="#97C6DD"/>
+    <g fill="#E02146">
+      <circle cx="560" cy="412" r="75"/>
+      <path d="M436 646c0-81 52-137 124-137s124 56 124 137c0 16-12 28-28 28H464c-16 0-28-12-28-28Z"/>
+    </g>
+    <circle cx="560" cy="412" r="75" fill="#6A2E4A" clip-path="url(#person-left)"/>
+    <path d="M436 646c0-81 52-137 124-137s124 56 124 137c0 16-12 28-28 28H464c-16 0-28-12-28-28Z" fill="#6A2E4A" clip-path="url(#person-left)"/>
+    <path d="M700 202h106c45 0 82 37 82 82v108" fill="none" stroke="#E02146" stroke-width="56" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M700 806h106c45 0 82-37 82-82V616" fill="none" stroke="#BA3353" stroke-width="56" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
