@@ -8,6 +8,7 @@ runs:
         distribution: temurin
         java-version: 17
     - uses: ruby/setup-ruby@v1
+      id: setup-ruby
       with:
         ruby-version: 3.4
     - name: Check Ruby cache
@@ -16,7 +17,9 @@ runs:
         SEGMENT_DOWNLOAD_TIMEOUT_MINS: "1"
       with:
         path: idem/rubyvendor/
-        key: ruby-${{ runner.os }}-${{ hashFiles('idem/Gemfile.lock') }}
+        # Native gems link against the exact Ruby build, so a patch bump of the
+        # runner's Ruby must not restore gems compiled for the previous one.
+        key: ruby-${{ runner.os }}-${{ steps.setup-ruby.outputs.ruby-prefix }}-${{ hashFiles('idem/Gemfile.lock') }}
     - run: bundle install
       shell: bash
       working-directory: ./idem
