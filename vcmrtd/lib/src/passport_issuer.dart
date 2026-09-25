@@ -6,6 +6,48 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:vcmrtd/vcmrtd.dart';
 
+/// A face verification method, as named on the wire between the wallet and the
+/// passport issuer.
+///
+/// The wallet declares which of these it can run ([StartValidationRequest]);
+/// the issuer assigns one per document session ([FaceVerificationConfig]).
+/// [regula] and [iris] keep the verdict on the issuer side and differ only in
+/// how the live face reaches it; [irisOndevice] does not, and trades that
+/// guarantee for sending no frames at all.
+enum FaceVerificationMethod {
+  /// A Regula liveness capture (native SDK or the web capture page) whose
+  /// transaction id the issuer matches against the chip portrait.
+  regula('regula'),
+
+  /// A Yivi capture screen streaming camera frames to the Yivi-run Iris
+  /// verifier, which matches them against the portrait the issuer supplied.
+  iris('iris'),
+
+  /// The vendor's Iris SDK running on the device, matching the live face
+  /// against the chip portrait the wallet just read. Only the verdict travels:
+  /// no frames leave the phone, and the issuer has nothing to check it
+  /// against — unlike the other two methods, which keep the verdict on the
+  /// issuer side. See
+  /// `irmamobile/docs/on-device-iris-face-verification-plan.md` §3.
+  irisOndevice('iris_ondevice');
+
+  const FaceVerificationMethod(this.wireName);
+
+  /// The value used in JSON, e.g. `"regula"`.
+  final String wireName;
+
+  /// The method named by a wire value, or `null` for anything this build does
+  /// not know. Unknown values are ignored rather than rejected so a newer
+  /// issuer can name a method this wallet cannot run without breaking the
+  /// parse; the flow then fails closed at issuance.
+  static FaceVerificationMethod? tryParse(Object? wireName) {
+    for (final method in values) {
+      if (method.wireName == wireName) return method;
+    }
+    return null;
+  }
+}
+
 /// Face verification configuration the issuer announces for one document
 /// session.
 ///
@@ -15,13 +57,71 @@ import 'package:vcmrtd/vcmrtd.dart';
 /// verification step when it is absent. There is deliberately no `enabled`
 /// flag inside.
 class FaceVerificationConfig {
+  /// The method the issuer assigned to this session. Issuers that predate the
+  /// method field announce only a `face_api_url`; the parser reads that as
+  /// [FaceVerificationMethod.regula], which is the only method they know.
+  final FaceVerificationMethod method;
+
   /// Browser/app-reachable origin of the Regula Face API the liveness session
   /// must run against — the same service the issuer matches against, so the
   /// liveness transaction id resolves at issuance. Always an absolute https
-  /// URL; an announcement carrying anything else is treated as absent.
-  final String faceApiUrl;
+  /// URL when [method] is [FaceVerificationMethod.regula]; a Regula
+  /// announcement carrying anything else is treated as absent. `null` for
+  /// every other method.
+  final String? faceApiUrl;
 
-  const FaceVerificationConfig({required this.faceApiUrl});
+  const FaceVerificationConfig({this.method = FaceVerificationMethod.regula, this.faceApiUrl});
+}
+
+/// Coarse labels describing the wallet build, sent with the start-validation
+/// request so the issuer can record face verification attempts per platform,
+/// flavor and version. Never stored with document data.
+class ClientInfo {
+  /// `android` or `ios`.
+  final String platform;
+
+  /// The distribution flavor, e.g. `play`, `appstore` or `fdroid`.
+  final String flavor;
+
+  /// The app version as shown to the user, e.g. `8.3.0`.
+  final String appVersion;
+
+  const ClientInfo({required this.platform, required this.flavor, required this.appVersion});
+
+  Map<String, dynamic> toJson() => {'platform': platform, 'flavor': flavor, 'app_version': appVersion};
+}
+
+/// What the wallet tells the issuer when it starts a document session.
+///
+/// The [capabilities] are a fact about the build, not a preference: the issuer
+/// picks the method. [previousMethod] and [attempt] are set on a retry within
+/// one document flow so the issuer keeps the same method while it is still a
+/// candidate. [preferredMethod] is a tester override the issuer honours only
+/// when configured to (staging).
+class StartValidationRequest {
+  final List<FaceVerificationMethod> capabilities;
+  final FaceVerificationMethod? previousMethod;
+  final int? attempt;
+  final FaceVerificationMethod? preferredMethod;
+  final ClientInfo? client;
+
+  const StartValidationRequest({
+    required this.capabilities,
+    this.previousMethod,
+    this.attempt,
+    this.preferredMethod,
+    this.client,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'face_verification': {
+      'capabilities': [for (final m in capabilities) m.wireName],
+      if (previousMethod != null) 'previous_method': previousMethod!.wireName,
+      if (attempt != null) 'attempt': attempt,
+      if (preferredMethod != null) 'preferred_method': preferredMethod!.wireName,
+    },
+    if (client != null) 'client': client!.toJson(),
+  };
 }
 
 /// Result of starting a validation session at the passport issuer:
@@ -43,7 +143,11 @@ abstract class PassportIssuer {
   /// Starts a session at the passport issuer server, which will return a nonce and
   /// session id to be used during passport reading to prove the readout is not a replay,
   /// along with the issuer's face verification announcement (when it applies).
-  Future<StartValidationResult> startSessionAtPassportIssuer();
+  ///
+  /// [request] declares what this wallet can run (see [StartValidationRequest]).
+  /// Without one no body is sent, which is what wallets before the capability
+  /// declaration did; the issuer then treats the wallet as Regula-only.
+  Future<StartValidationResult> startSessionAtPassportIssuer({StartValidationRequest? request});
 
   /// Initiates the issuance session at the irma server and returns a session pointer,
   /// which the app will use to start the normal issuance session flow.
@@ -96,10 +200,12 @@ class DefaultPassportIssuer implements PassportIssuer {
 
   // Start a passport issuer session (so not irma session yet)
   @override
-  Future<StartValidationResult> startSessionAtPassportIssuer() async {
+  Future<StartValidationResult> startSessionAtPassportIssuer({StartValidationRequest? request}) async {
+    final body = startValidationBody(request);
     final storeResp = await http.post(
       Uri.parse('$hostName/api/start-validation'),
       headers: {'Content-Type': 'application/json'},
+      body: body == null ? null : json.encode(body),
     );
     if (storeResp.statusCode != 200) {
       throw Exception('Store failed: ${storeResp.statusCode} ${storeResp.body}');
@@ -107,6 +213,12 @@ class DefaultPassportIssuer implements PassportIssuer {
 
     return parseStartValidationResponse(json.decode(storeResp.body));
   }
+
+  /// The JSON body sent to `/api/start-validation`, or `null` when there is
+  /// nothing to declare. `null` keeps the request byte-identical to what
+  /// wallets before the capability declaration send.
+  @visibleForTesting
+  static Map<String, dynamic>? startValidationBody(StartValidationRequest? request) => request?.toJson();
 
   /// Whether a server-supplied `face_api_url` may be used as the destination
   /// of the liveness session.
@@ -129,24 +241,48 @@ class DefaultPassportIssuer implements PassportIssuer {
   ///
   /// The `face_verification` announcement is optional: issuers with face
   /// verification disabled (and issuer versions that predate it) omit the
-  /// field. A malformed announcement — not an object, or without a
-  /// `face_api_url` that passes [isValidFaceApiUrl] — is treated as absent
-  /// rather than rejected: the issuer guarantees a well-formed one, and the
-  /// fallback (skipping the step) can never produce an unverified issuance
-  /// because the issuer rejects issuance without a liveness transaction
-  /// whenever it requires one.
+  /// field. Five shapes are recognised:
+  ///
+  /// - absent → no face verification;
+  /// - `{"method": "regula", "face_api_url": "https://…"}` → Regula;
+  /// - `{"face_api_url": "https://…"}` (issuers before the method field) →
+  ///   Regula, the only method those issuers know;
+  /// - `{"method": "iris"}` → Iris, no Face API URL;
+  /// - `{"method": "iris_ondevice"}` → on-device Iris; nothing to address, so
+  ///   no URL either.
+  ///
+  /// A malformed announcement — not an object, a Regula one without a
+  /// `face_api_url` that passes [isValidFaceApiUrl], or a method this build
+  /// does not know — is treated as absent rather than rejected: skipping the
+  /// step can never produce an unverified issuance because the issuer rejects
+  /// issuance without the evidence it assigned.
   @visibleForTesting
   static StartValidationResult parseStartValidationResponse(dynamic response) {
     FaceVerificationConfig? faceVerification;
-    if (response['face_verification'] case {
-      'face_api_url': final String faceApiUrl,
-    } when isValidFaceApiUrl(faceApiUrl)) {
-      faceVerification = FaceVerificationConfig(faceApiUrl: faceApiUrl);
-    } else if (response['face_verification'] != null) {
+    final announcement = response['face_verification'];
+    if (announcement is Map) {
+      final method = announcement.containsKey('method')
+          ? FaceVerificationMethod.tryParse(announcement['method'])
+          : FaceVerificationMethod.regula;
+      final faceApiUrl = announcement['face_api_url'];
+      switch (method) {
+        case FaceVerificationMethod.regula:
+          if (faceApiUrl is String && isValidFaceApiUrl(faceApiUrl)) {
+            faceVerification = FaceVerificationConfig(method: FaceVerificationMethod.regula, faceApiUrl: faceApiUrl);
+          }
+        case FaceVerificationMethod.iris:
+          faceVerification = const FaceVerificationConfig(method: FaceVerificationMethod.iris);
+        case FaceVerificationMethod.irisOndevice:
+          faceVerification = const FaceVerificationConfig(method: FaceVerificationMethod.irisOndevice);
+        case null:
+          break;
+      }
+    }
+    if (faceVerification == null && announcement != null) {
       // Absence is routine, but a rejected announcement means the issuer sent a
       // shape this parser does not recognise — without a log the app just looks
       // like face verification never applied.
-      debugPrint('vcmrtd: ignoring malformed face_verification announcement: ${response['face_verification']}');
+      debugPrint('vcmrtd: ignoring malformed face_verification announcement: $announcement');
     }
     return StartValidationResult(
       nonceAndSessionId: NonceAndSessionId(
