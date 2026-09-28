@@ -27,6 +27,8 @@ flutter run --flavor alpha --dart-define=BRAND=cm   # CM.com (Android needs a fl
 ```
 A brand is a `ThemeData` plus a `BrandTheme` extension (`lib/theme/brand_theme.dart`) whose colours and styles only override the widgets' own defaults, so the Idem build stays as it was. Brands live in `lib/theme/brands/`, are listed in `AppBrand` (`lib/theme/app_brand.dart`), and keep their logos and fonts under `assets/brands/<name>/`.
 
+A brand can also opt into the guided layout by giving its `BrandTheme` a `GuidedStyle`. The CM.com brand does. The flow screens then use the redesigned layout from the CM.com mockups: a dark hero on the home screen, a three-step progress bar, and camera screens with a scrim and cut-out frame. The shared pieces live in `lib/widgets/guided/`. Screens without a guided version (manual entry, settings, the wallet, the driving-licence result) keep the classic layout with the brand's colours.
+
 The define changes the Flutter UI only. App name, launcher icon and bundle ID are still Idem's.
 
 ## Backend Integration

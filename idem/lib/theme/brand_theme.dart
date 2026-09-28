@@ -26,6 +26,7 @@ class BrandTheme extends ThemeExtension<BrandTheme> {
     this.proofingBannerColor,
     this.primaryButtonStyle,
     this.secondaryButtonStyle,
+    this.guided,
   });
 
   static const idem = BrandTheme(appBarTitle: 'VCMRTD');
@@ -75,6 +76,10 @@ class BrandTheme extends ThemeExtension<BrandTheme> {
   /// Style for the alternative action next to a primary one (decline).
   final ButtonStyle? secondaryButtonStyle;
 
+  /// When set, screens use the guided layout (dark hero, step progress, flat
+  /// bordered cards) instead of the classic Idem layout.
+  final GuidedStyle? guided;
+
   @override
   BrandTheme copyWith() => this;
 
@@ -84,4 +89,86 @@ class BrandTheme extends ThemeExtension<BrandTheme> {
 
 extension BrandContext on BuildContext {
   BrandTheme get brand => Theme.of(this).extension<BrandTheme>() ?? BrandTheme.idem;
+}
+
+/// Palette and assets for the guided layout. Only brands that opt into that
+/// layout provide one, so it has no defaults.
+@immutable
+class GuidedStyle {
+  const GuidedStyle({
+    required this.logoOnDarkAsset,
+    required this.markAsset,
+    required this.headingFontFamily,
+    required this.ink,
+    required this.slate,
+    required this.bodyText,
+    required this.muted,
+    required this.placeholder,
+    required this.border,
+    required this.subtleBorder,
+    required this.surface,
+    required this.neutralTile,
+    required this.buttonGrey,
+    required this.heroMuted,
+    required this.heroEyebrow,
+    required this.heroAccent,
+    required this.action,
+    required this.actionTint,
+    required this.actionTintStrong,
+    required this.stepLabel,
+    required this.stepLabelOnDark,
+    required this.badgeBackground,
+    required this.illustrationDocument,
+    required this.success,
+    required this.successBright,
+    required this.successTint,
+    required this.successText,
+    required this.primaryButtonStyle,
+    required this.secondaryButtonStyle,
+  });
+
+  final String logoOnDarkAsset;
+  final String markAsset;
+  final String headingFontFamily;
+
+  /// Primary text, and the background of dark (hero and camera) areas.
+  final Color ink;
+  final Color slate;
+  final Color bodyText;
+  final Color muted;
+  final Color placeholder;
+  final Color border;
+  final Color subtleBorder;
+  final Color surface;
+  final Color neutralTile;
+  final Color buttonGrey;
+
+  /// Secondary text on dark areas.
+  final Color heroMuted;
+  final Color heroEyebrow;
+
+  /// Highlight on dark areas (step numbers, progress).
+  final Color heroAccent;
+
+  final Color action;
+  final Color actionTint;
+  final Color actionTintStrong;
+  final Color stepLabel;
+  final Color stepLabelOnDark;
+  final Color badgeBackground;
+
+  /// Document colour in the guided illustrations.
+  final Color illustrationDocument;
+  final Color success;
+
+  /// Success on dark areas.
+  final Color successBright;
+  final Color successTint;
+  final Color successText;
+
+  final ButtonStyle primaryButtonStyle;
+  final ButtonStyle secondaryButtonStyle;
+
+  TextStyle heading(double size, {FontWeight weight = FontWeight.w700, Color? color, double height = 1.2}) =>
+      TextStyle(fontFamily: headingFontFamily, fontSize: size, fontWeight: weight, color: color ?? ink, height: height);
 }

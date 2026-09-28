@@ -1,0 +1,189 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:idem/theme/brand_theme.dart';
+
+/// Building blocks shared by the guided layout's screens (see [GuidedStyle]).
+
+extension GuidedContext on BuildContext {
+  /// The active brand's guided style, or null for the classic layout.
+  GuidedStyle? get guided => brand.guided;
+}
+
+/// 44×44 round icon button used in the guided top bars.
+class GuidedRoundButton extends StatelessWidget {
+  const GuidedRoundButton({
+    super.key,
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+    this.onDark = false,
+    this.outlined = false,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+  final bool onDark;
+
+  /// A thin ring instead of a filled background (the home hero's settings button).
+  final bool outlined;
+
+  @override
+  Widget build(BuildContext context) {
+    final g = context.guided!;
+    final foreground = onDark ? Colors.white : g.ink;
+    final background = outlined
+        ? Colors.transparent
+        : onDark
+        ? Colors.white.withValues(alpha: 0.16)
+        : g.buttonGrey;
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: background,
+        shape: CircleBorder(side: outlined ? BorderSide(color: Colors.white.withValues(alpha: 0.24)) : BorderSide.none),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onPressed,
+          child: SizedBox(width: 44, height: 44, child: Icon(icon, size: 20, color: foreground)),
+        ),
+      ),
+    );
+  }
+}
+
+/// Top bar of a guided flow screen: a button on the left, a title or mark in
+/// the middle, and an optional button on the right (kept balanced with a spacer).
+class GuidedTopBar extends StatelessWidget {
+  const GuidedTopBar({super.key, required this.leading, this.center, this.trailing});
+
+  final Widget leading;
+  final Widget? center;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Row(
+        children: [
+          leading,
+          Expanded(child: Center(child: center)),
+          trailing ?? const SizedBox(width: 44, height: 44),
+        ],
+      ),
+    );
+  }
+}
+
+/// Title in a guided top bar.
+class GuidedTopBarTitle extends StatelessWidget {
+  const GuidedTopBarTitle(this.text, {super.key, this.onDark = false});
+
+  final String text;
+  final bool onDark;
+
+  @override
+  Widget build(BuildContext context) {
+    final g = context.guided!;
+    return Text(
+      text,
+      style: g.heading(16, weight: FontWeight.w600, color: onDark ? Colors.white : g.ink),
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+}
+
+/// Three-segment progress bar: scan document, read chip, selfie check.
+class GuidedStepBar extends StatelessWidget {
+  const GuidedStepBar({super.key, required this.step, this.onDark = false});
+
+  /// 1-based step that's current; that many segments are filled.
+  final int step;
+  final bool onDark;
+
+  static const stepCount = 3;
+
+  @override
+  Widget build(BuildContext context) {
+    final g = context.guided!;
+    final filled = onDark ? g.heroAccent : g.action;
+    final empty = onDark ? Colors.white.withValues(alpha: 0.2) : g.border;
+    return Semantics(
+      label: 'Step $step of $stepCount',
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+        child: Row(
+          children: [
+            for (var i = 1; i <= stepCount; i++) ...[
+              if (i > 1) const SizedBox(width: 6),
+              Expanded(
+                child: Container(
+                  height: 4,
+                  decoration: BoxDecoration(color: i <= step ? filled : empty, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// "Step N of 3" over a guided heading.
+class GuidedStepLabel extends StatelessWidget {
+  const GuidedStepLabel({super.key, required this.step, this.onDark = false});
+
+  final int step;
+  final bool onDark;
+
+  @override
+  Widget build(BuildContext context) {
+    final g = context.guided!;
+    return Text(
+      'Step $step of ${GuidedStepBar.stepCount}',
+      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: onDark ? g.stepLabelOnDark : g.stepLabel),
+    );
+  }
+}
+
+/// Full-width pill button in the guided primary (filled) or secondary (outlined) style.
+class GuidedButton extends StatelessWidget {
+  const GuidedButton({super.key, required this.label, required this.onPressed, this.icon, this.secondary = false});
+
+  final String label;
+  final VoidCallback? onPressed;
+  final IconData? icon;
+  final bool secondary;
+
+  @override
+  Widget build(BuildContext context) {
+    final g = context.guided!;
+    final style = (secondary ? g.secondaryButtonStyle : g.primaryButtonStyle).copyWith(
+      minimumSize: const WidgetStatePropertyAll(Size.fromHeight(52)),
+    );
+    final child = Text(label);
+    return icon == null
+        ? ElevatedButton(onPressed: onPressed, style: style, child: child)
+        : ElevatedButton.icon(onPressed: onPressed, style: style, icon: Icon(icon, size: 20), label: child);
+  }
+}
+
+/// Status bar icons for a guided screen: light on the dark screens, dark on
+/// the white ones. The bar itself is transparent so the screen shows through.
+class GuidedStatusBar extends StatelessWidget {
+  const GuidedStatusBar({super.key, required this.onDark, required this.child});
+
+  final bool onDark;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = onDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: style.copyWith(statusBarColor: Colors.transparent),
+      child: child,
+    );
+  }
+}

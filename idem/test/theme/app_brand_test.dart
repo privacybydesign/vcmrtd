@@ -3,12 +3,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/theme/app_brand.dart';
 import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/theme/brands/cm_theme.dart';
 import 'package:idem/widgets/pages/document_selection_screen.dart';
-import 'package:idem/widgets/pages/proofing_session_consent_screen.dart';
 
 double _contrast(Color a, Color b) {
   final la = a.computeLuminance();
@@ -98,28 +96,5 @@ void main() {
       expect(find.text('VCMRTD'), findsNothing);
       expect(find.text('Powered by Idem'), findsOneWidget);
     });
-  });
-
-  testWidgets('the consent screen uses the brand button styles', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AppBrand.cm.theme,
-        home: ProofingSessionConsentScreen(
-          info: ProofingSessionInfo(
-            id: 'session-1',
-            relyingParty: 'CM.com',
-            requestedAttributes: const ['dg1'],
-            expiresAt: DateTime.now().add(const Duration(minutes: 10)),
-          ),
-          onConsent: () {},
-          onDecline: () {},
-        ),
-      ),
-    );
-    ElevatedButton buttonWith(String label) => tester.widget<ElevatedButton>(
-      find.ancestor(of: find.text(label), matching: find.byWidgetPredicate((w) => w is ElevatedButton)),
-    );
-    expect(buttonWith('Continue').style, same(cmBrandTheme.primaryButtonStyle));
-    expect(buttonWith('Decline').style, same(cmBrandTheme.secondaryButtonStyle));
   });
 }

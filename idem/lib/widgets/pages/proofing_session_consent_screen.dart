@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/theme/brand_theme.dart';
+import 'package:idem/widgets/guided/guided_widgets.dart';
 
 /// Shown right after the app fetches a scanned/deep-linked proofing session,
 /// before anything else happens: who's asking, what they want, and an
@@ -18,6 +19,8 @@ class ProofingSessionConsentScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final expiresIn = info.expiresAt.difference(DateTime.now());
     final expired = expiresIn.isNegative;
+    final guided = context.guided;
+    if (guided != null) return _buildGuided(context, guided, expiresIn: expiresIn, expired: expired);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Identity proofing request')),
@@ -110,6 +113,145 @@ class ProofingSessionConsentScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+extension on ProofingSessionConsentScreen {
+  /// Guided layout: who is asking, a list of what they'll receive, and the
+  /// two choices. Shows the brand mark only when the brand itself is asking.
+  Widget _buildGuided(BuildContext context, GuidedStyle g, {required Duration expiresIn, required bool expired}) {
+    final brand = context.brand;
+    final party = info.relyingParty;
+    final isBrand = party.toLowerCase().contains(brand.appBarTitle.toLowerCase());
+    return GuidedStatusBar(
+      onDark: false,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              GuidedTopBar(
+                leading: GuidedRoundButton(icon: Icons.close, tooltip: 'Decline', onPressed: onDecline),
+                center: const GuidedTopBarTitle('Request'),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 32, 20, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 88,
+                          height: 88,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: g.actionTint.withValues(alpha: 0.5),
+                            border: Border.all(color: g.actionTintStrong),
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: isBrand
+                              ? Image.asset(g.markAsset, width: 56, height: 56, excludeFromSemantics: true)
+                              : Text(
+                                  party.isEmpty ? '?' : party[0].toUpperCase(),
+                                  style: g.heading(36, color: g.action),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        '$party wants to verify your identity',
+                        textAlign: TextAlign.center,
+                        style: g.heading(24, height: 1.25),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        expired
+                            ? 'This request has expired.'
+                            : 'This request expires in ${_formatDuration(expiresIn)}.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: expired ? const Color(0xFFD1293D) : g.bodyText,
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      Text(
+                        'They will receive',
+                        style: g.heading(16, weight: FontWeight.w600, color: g.slate),
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: g.subtleBorder),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          children: [
+                            for (final (i, (icon, label)) in _requestedAttributes(info.requestedAttributes).indexed)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                decoration: BoxDecoration(
+                                  border: i == 0 ? null : Border(top: BorderSide(color: g.subtleBorder)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(icon, size: 20, color: g.action),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        label,
+                                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: g.ink),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    GuidedButton(label: 'Continue', onPressed: expired ? null : onConsent),
+                    const SizedBox(height: 12),
+                    GuidedButton(label: 'Decline', secondary: true, onPressed: onDecline),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+const _attributeIcons = {
+  'dg1': Icons.badge_outlined,
+  'dg11': Icons.person_outline,
+  'dg2': Icons.portrait_outlined,
+  'face_image': Icons.portrait_outlined,
+  'chip_checks': Icons.verified_user_outlined,
+  'biometrics': Icons.face,
+};
+
+/// [_requestedAttributeLabels] with an icon per entry, for the guided list.
+List<(IconData, String)> _requestedAttributes(List<String> requested) {
+  if (requested.isEmpty) return [(Icons.list_alt, _requestedAttributeLabels(requested).single)];
+  final seen = <String>{};
+  return [
+    for (final key in requested)
+      if (seen.add(_attributeLabels[key] ?? key))
+        (_attributeIcons[key] ?? Icons.check_circle_outline, _attributeLabels[key] ?? key),
+  ];
 }
 
 const _attributeLabels = {

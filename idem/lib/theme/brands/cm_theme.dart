@@ -7,6 +7,10 @@ abstract final class CmColors {
   static const slate = Color(0xFF212E39);
   static const bodyText = Color(0xFF344055);
   static const muted = Color(0xFF6F7786);
+  static const placeholder = Color(0xFFAEB3BB);
+  static const buttonGrey = Color(0xFFF5F5F6);
+  static const neutralTile = Color(0xFFEAEBEE);
+  static const cardBorder = Color(0xFFD6D9DD);
   static const border = Color(0xFFEAEBEE);
   static const surface = Color(0xFFFBFBFC);
 
@@ -15,11 +19,20 @@ abstract final class CmColors {
   static const brandBlue = Color(0xFF007FFF);
   static const action = Color(0xFF036BD2);
   static const blueTint = Color(0xFFE5F2FF);
+  static const blueTintStrong = Color(0xFFCCE5FF);
+  static const heroBlue = Color(0xFF33A0FF);
+  static const heroEyebrow = Color(0xFF99CCFF);
+  static const heroMuted = Color(0xFFD6D9DD);
 
   static const purple = Color(0xFF5412C7);
   static const purpleTint = Color(0xFFF0E8FE);
+  static const purpleOnDark = Color(0xFFC29FFA);
+  static const navy = Color(0xFF13156A);
 
   static const success = Color(0xFF2A9066);
+  static const successBright = Color(0xFF3DDC97);
+  static const successTint = Color(0xFFE9F9F1);
+  static const successText = Color(0xFF1F6B4C);
 }
 
 abstract final class CmFonts {
@@ -69,6 +82,37 @@ final cmBrandTheme = BrandTheme(
   proofingBannerColor: CmColors.purple,
   primaryButtonStyle: _primaryButtonStyle,
   secondaryButtonStyle: _secondaryButtonStyle,
+  guided: GuidedStyle(
+    logoOnDarkAsset: 'assets/brands/cm/logo_horizontal_white.png',
+    markAsset: 'assets/brands/cm/mark.png',
+    headingFontFamily: CmFonts.heading,
+    ink: CmColors.ink,
+    slate: CmColors.slate,
+    bodyText: CmColors.bodyText,
+    muted: CmColors.muted,
+    placeholder: CmColors.placeholder,
+    border: CmColors.cardBorder,
+    subtleBorder: CmColors.border,
+    surface: CmColors.surface,
+    neutralTile: CmColors.neutralTile,
+    buttonGrey: CmColors.buttonGrey,
+    heroMuted: CmColors.heroMuted,
+    heroEyebrow: CmColors.heroEyebrow,
+    heroAccent: CmColors.heroBlue,
+    action: CmColors.action,
+    actionTint: CmColors.blueTint,
+    actionTintStrong: CmColors.blueTintStrong,
+    stepLabel: CmColors.purple,
+    stepLabelOnDark: CmColors.purpleOnDark,
+    badgeBackground: CmColors.purpleTint,
+    illustrationDocument: CmColors.navy,
+    success: CmColors.success,
+    successBright: CmColors.successBright,
+    successTint: CmColors.successTint,
+    successText: CmColors.successText,
+    primaryButtonStyle: _primaryButtonStyle,
+    secondaryButtonStyle: _secondaryButtonStyle,
+  ),
 );
 
 ThemeData cmTheme() {
