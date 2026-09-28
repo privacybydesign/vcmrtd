@@ -23,7 +23,7 @@ flutter run
 ## White-label builds
 The brand is picked at compile time. Without a define you get the stock Idem app:
 ```bash
-flutter run --dart-define=BRAND=cm   # CM.com
+flutter run --flavor alpha --dart-define=BRAND=cm   # CM.com (Android needs a flavor: alpha or beta)
 ```
 A brand is a `ThemeData` plus a `BrandTheme` extension (`lib/theme/brand_theme.dart`) whose colours and styles only override the widgets' own defaults, so the Idem build stays as it was. Brands live in `lib/theme/brands/`, are listed in `AppBrand` (`lib/theme/app_brand.dart`), and keep their logos and fonts under `assets/brands/<name>/`.
 
