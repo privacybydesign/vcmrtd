@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/providers/wallet_provider.dart';
 import 'package:idem/services/face_verification_outcome.dart';
@@ -70,19 +71,19 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
                       WebBanner(sessionId: widget.drivingLicenceDataResult.sessionId!),
                     _buildPhotoSection(imageData),
                     const SizedBox(height: 24),
-                    _buildSection('Personal Information', [
-                      _buildDataRow('Surname', widget.drivingLicence.holderSurname),
-                      _buildDataRow('Other Names', widget.drivingLicence.holderOtherName),
-                      _buildDataRow('Date of Birth', _formatDate(widget.drivingLicence.dateOfBirth)),
-                      _buildDataRow('Place of Birth', widget.drivingLicence.placeOfBirth),
+                    _buildSection(context.l10n.docPersonalInformation, [
+                      _buildDataRow(context.l10n.docSurname, widget.drivingLicence.holderSurname),
+                      _buildDataRow(context.l10n.docOtherNames, widget.drivingLicence.holderOtherName),
+                      _buildDataRow(context.l10n.docDateOfBirth, _formatDate(widget.drivingLicence.dateOfBirth)),
+                      _buildDataRow(context.l10n.docPlaceOfBirth, widget.drivingLicence.placeOfBirth),
                     ]),
                     const SizedBox(height: 24),
-                    _buildSection('Document Information', [
-                      _buildDataRow('Document Number', widget.drivingLicence.documentNumber),
-                      _buildDataRow('Issuing Member State', widget.drivingLicence.issuingMemberState),
-                      _buildDataRow('Issuing Authority', widget.drivingLicence.issuingAuthority),
-                      _buildDataRow('Date of Issue', _formatDate(widget.drivingLicence.dateOfIssue)),
-                      _buildDataRow('Date of Expiry', _formatDate(widget.drivingLicence.dateOfExpiry)),
+                    _buildSection(context.l10n.docDocumentInformation, [
+                      _buildDataRow(context.l10n.docDocumentNumber, widget.drivingLicence.documentNumber),
+                      _buildDataRow(context.l10n.docIssuingMemberState, widget.drivingLicence.issuingMemberState),
+                      _buildDataRow(context.l10n.docIssuingAuthority, widget.drivingLicence.issuingAuthority),
+                      _buildDataRow(context.l10n.docDateOfIssue, _formatDate(widget.drivingLicence.dateOfIssue)),
+                      _buildDataRow(context.l10n.docDateOfExpiry, _formatDate(widget.drivingLicence.dateOfExpiry)),
                     ]),
                     if (widget.drivingLicence.categories.isNotEmpty) ...[
                       const SizedBox(height: 24),
@@ -112,7 +113,7 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
     onBack: widget.onBackPressed,
     current: widget.stepNumber,
     total: widget.totalSteps,
-    label: 'Driving Licence Data',
+    label: context.l10n.docDrivingLicenceDataTitle,
   );
 
   void _addToWallet() {
@@ -155,13 +156,16 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
                 width: 200,
                 height: 250,
                 color: CupertinoColors.systemGrey6,
-                child: const Center(
+                child: Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(CupertinoIcons.photo, size: 48, color: CupertinoColors.systemGrey),
-                      SizedBox(height: 8),
-                      Text('Unable to load photo', style: TextStyle(color: CupertinoColors.systemGrey)),
+                      const Icon(CupertinoIcons.photo, size: 48, color: CupertinoColors.systemGrey),
+                      const SizedBox(height: 8),
+                      Text(
+                        context.l10n.docUnableToLoadPhoto,
+                        style: const TextStyle(color: CupertinoColors.systemGrey),
+                      ),
                     ],
                   ),
                 ),
@@ -188,7 +192,7 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Categories', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        Text(context.l10n.docCategories, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
         ...categories.map((cat) => _buildCategoryCard(cat)),
       ],
@@ -209,9 +213,9 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
         children: [
           Row(
             children: [
-              const Text(
-                'Category',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: CupertinoColors.systemGrey),
+              Text(
+                context.l10n.docCategory,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: CupertinoColors.systemGrey),
               ),
               const SizedBox(width: 8),
               Text(
@@ -221,8 +225,8 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
             ],
           ),
           const SizedBox(height: 12),
-          _buildDataRow('Date of issue', category.dateOfIssue),
-          _buildDataRow('Date of expiry', category.dateOfExpiry),
+          _buildDataRow(context.l10n.docCategoryDateOfIssue, category.dateOfIssue),
+          _buildDataRow(context.l10n.docCategoryDateOfExpiry, category.dateOfExpiry),
         ],
       ),
     );
@@ -241,7 +245,7 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
               style: const TextStyle(fontWeight: FontWeight.w600, color: CupertinoColors.systemGrey),
             ),
           ),
-          Expanded(child: Text(value ?? 'N/A', style: const TextStyle(fontSize: 16))),
+          Expanded(child: Text(value ?? context.l10n.docNotAvailable, style: const TextStyle(fontSize: 16))),
         ],
       ),
     );

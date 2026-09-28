@@ -14,6 +14,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:face_verification/face_verification.dart';
 import 'package:idem/widgets/pages/face_verification_entry_screen.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:idem/routing.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:idem/widgets/pages/document_capture_only_result_screen.dart';
@@ -170,7 +171,13 @@ ScannerWidgetBuilder _scannerBuilder() {
 }
 
 Widget _routerApp(GoRouter router) {
-  return ProviderScope(child: MaterialApp.router(routerConfig: router));
+  return ProviderScope(
+    child: MaterialApp.router(
+      routerConfig: router,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+    ),
+  );
 }
 
 class _RouteExtensionHarness extends StatelessWidget {
@@ -319,7 +326,7 @@ void main() {
       await tester.pump();
 
       expect(find.byType(ScannerWrapper), findsOneWidget);
-      expect(find.text('1 of 4 · Scan ${DocumentType.identityCard.displayName}'), findsOneWidget);
+      expect(find.text('1 of 4 · Scan ID card'), findsOneWidget);
       expect(find.text('fake route scanner ${DocumentType.identityCard.name}'), findsOneWidget);
     });
 
@@ -1418,6 +1425,47 @@ void main() {
                 'relyingParty': 'acme-tenant',
                 'requestedAttributes': ['dg1'],
                 'expiresAt': DateTime.now().add(const Duration(minutes: 10)).toIso8601String(),
+              },
+            }),
+            200,
+          );
+        }),
+      );
+    });
+
+    testWidgets('a scanned session switches to its language before the consent screen', (tester) async {
+      final router = createRouter(scannerBuilder: _scannerBuilder());
+      addTearDown(router.dispose);
+
+      await http.runWithClient(
+        () async {
+          await tester.pumpWidget(_routerApp(router));
+          router.push('/qr_scanner');
+          await tester.pump();
+          await tester.pump();
+
+          final qrScreen = tester.widget<QrScannerScreen>(find.byType(QrScannerScreen));
+          qrScreen.onScanned('vcmrtd://verify?handover=grant-1&api=https://proof.example.com');
+          await tester.pumpAndSettle();
+
+          final container = ProviderScope.containerOf(tester.element(find.byType(ProofingSessionConsentScreen)));
+          final locale = container.read(appLocaleProvider);
+          // The session language is global; hand the next tests English back.
+          container.read(appLocaleProvider.notifier).useSessionLanguage('en');
+          expect(locale, const Locale('nl'));
+        },
+        () => MockClient((request) async {
+          if (request.url.path != '/api/v1/app/handover/grant-1/claim') return http.Response('{}', 404);
+          return http.Response(
+            json.encode({
+              'token': 'tok-1',
+              'deviceToken': 'dev-1',
+              'session': {
+                'id': 'sess-1',
+                'relyingParty': 'acme-tenant',
+                'requestedAttributes': ['dg1'],
+                'expiresAt': DateTime.now().add(const Duration(minutes: 10)).toIso8601String(),
+                'language': 'nl',
               },
             }),
             200,

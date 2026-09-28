@@ -9,6 +9,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vcmrtd/internal.dart';
 import 'package:vcmrtd/vcmrtd.dart';
@@ -113,7 +114,11 @@ Widget _app(DocumentType documentType) {
       passportReaderProvider.overrideWith(_FakeReader.new),
       identityCardReaderProvider.overrideWith(_FakeReader.new),
     ],
-    child: MaterialApp.router(routerConfig: router),
+    child: MaterialApp.router(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      routerConfig: router,
+    ),
   );
 }
 
@@ -334,7 +339,11 @@ void main() {
             passportReaderProvider.overrideWith(_FakeReader.new),
             identityCardReaderProvider.overrideWith(_FakeReader.new),
           ],
-          child: MaterialApp.router(routerConfig: router),
+          child: MaterialApp.router(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            routerConfig: router,
+          ),
         ),
       );
       await tester.pump(const Duration(milliseconds: 600));

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mrz_capture/mrz_capture.dart';
@@ -56,6 +57,8 @@ void main() {
           UncontrolledProviderScope(
             container: container,
             child: MaterialApp(
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
               home: DocumentCaptureOnlyResultScreen(
                 session: session,
                 scannedMrz: _scannedPassport(),

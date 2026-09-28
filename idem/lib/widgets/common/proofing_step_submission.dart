@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/services/proofing_session_client.dart';
 
@@ -29,7 +30,7 @@ Future<ProofingStepResponse?> submitProofingStep(
             children: [
               const CircularProgressIndicator(),
               const SizedBox(width: 20),
-              Expanded(child: Text('Sending $what to ${session.info.relyingParty}...')),
+              Expanded(child: Text(context.l10n.faceSubmitSending(what, session.info.relyingParty))),
             ],
           ),
         ),
@@ -47,11 +48,11 @@ Future<ProofingStepResponse?> submitProofingStep(
         context: context,
         barrierDismissible: false,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('Could not send'),
-          content: Text('Sending $what to ${session.info.relyingParty} failed:\n\n$e'),
+          title: Text(context.l10n.faceSubmitCouldNotSend),
+          content: Text(context.l10n.faceSubmitFailed(what, session.info.relyingParty, '$e')),
           actions: [
-            TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Cancel')),
-            TextButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: const Text('Retry')),
+            TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: Text(context.l10n.faceCancel)),
+            TextButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: Text(context.l10n.faceRetry)),
           ],
         ),
       );

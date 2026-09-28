@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/services/face_verification_outcome.dart';
 import 'package:idem/services/proofing_chip_evidence.dart';
@@ -61,10 +62,10 @@ mixin ProofingResultSubmission<T extends ConsumerStatefulWidget> on ConsumerStat
       if (!mounted) return;
       DialogHelpers.showSuccessDialog(
         context: context,
-        title: 'Submitted',
+        title: context.l10n.proofingSubmittedTitle,
         message: faceVerification == null
-            ? 'Your document identity was sent to ${session.info.relyingParty}.'
-            : 'Your document identity and face verification result were sent to ${session.info.relyingParty}.',
+            ? context.l10n.proofingSubmittedDocument(session.info.relyingParty)
+            : context.l10n.proofingSubmittedDocumentAndFace(session.info.relyingParty),
         onContinue: () {
           Navigator.of(context).pop();
           onBackPressed();
@@ -77,8 +78,8 @@ mixin ProofingResultSubmission<T extends ConsumerStatefulWidget> on ConsumerStat
       if (!mounted) return;
       DialogHelpers.showErrorDialog(
         context: context,
-        title: 'Submit Failed',
-        message: 'Failed to submit the result to the relying party:',
+        title: context.l10n.proofingSubmitFailedTitle,
+        message: context.l10n.proofingSubmitFailedMessage,
         error: e.toString(),
         onRetry: () => submitProofingResult(
           session: session,
@@ -150,7 +151,7 @@ class DocumentWalletOrSubmitSection extends StatelessWidget {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               icon: const Icon(Icons.account_balance_wallet),
-              label: const Text('Add to Wallet'),
+              label: Text(context.l10n.proofingAddToWallet),
             )
           : SubmitToProofingSessionSection(
               relyingParty: session.info.relyingParty,

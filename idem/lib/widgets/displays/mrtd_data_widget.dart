@@ -3,6 +3,7 @@
 
 import 'package:expandable/expandable.dart';
 import 'package:flutter/material.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 
@@ -32,7 +33,7 @@ class MrtdDataWidget extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             PlatformTextButton(
-              child: const Text('Copy'),
+              child: Text(context.l10n.docCopy),
               onPressed: () => Clipboard.setData(ClipboardData(text: dataText)),
               padding: const EdgeInsets.all(8),
             ),

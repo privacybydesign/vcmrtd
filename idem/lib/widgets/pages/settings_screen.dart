@@ -4,19 +4,21 @@ import 'package:face_verification/face_verification.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mrz_capture/mrz_capture.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:idem/providers/active_authenticiation_provider.dart';
 import 'package:idem/providers/face_engine_provider.dart';
 import 'package:idem/providers/liveness_mode_provider.dart';
 import 'package:idem/providers/ocr_engine_provider.dart';
 
-String _faceEngineLabel(FaceEngineChoice choice) => switch (choice) {
-  FaceEngineChoice.onDevice => 'Open source',
+String _faceEngineLabel(AppLocalizations l10n, FaceEngineChoice choice) => switch (choice) {
+  FaceEngineChoice.regula => 'Regula',
+  FaceEngineChoice.onDevice => l10n.docFaceEngineOpenSource,
   FaceEngineChoice.iris => 'Iris SDK',
 };
 
-String _livenessModeLabel(LivenessMode mode) => switch (mode) {
-  LivenessMode.passive => 'Passive',
-  LivenessMode.active => 'Active',
+String _livenessModeLabel(AppLocalizations l10n, LivenessMode mode) => switch (mode) {
+  LivenessMode.passive => l10n.docLivenessPassive,
+  LivenessMode.active => l10n.docLivenessActive,
 };
 
 String _ocrEngineLabel(OcrEngine engine) => switch (engine) {
@@ -34,43 +36,52 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Settings'),
-        leading: IconButton(tooltip: 'Back', icon: const Icon(Icons.arrow_back), onPressed: onBackPressed),
+        title: Text(l10n.docSettingsTitle),
+        leading: IconButton(tooltip: l10n.docBack, icon: const Icon(Icons.arrow_back), onPressed: onBackPressed),
       ),
       body: ListView(
         children: [
           SwitchListTile(
-            title: const Text('Active authentication'),
-            subtitle: const Text('Perform active authentication when reading the document'),
+            title: Text(l10n.docActiveAuthentication),
+            subtitle: Text(l10n.docActiveAuthenticationSubtitle),
             value: ref.watch(activeAuthenticationProvider),
             onChanged: (value) => ref.read(activeAuthenticationProvider.notifier).set(value),
           ),
           const Divider(height: 1),
           ListTile(
-            title: const Text('Face verification engine'),
-            subtitle: Text(_faceEngineLabel(ref.watch(faceEngineProvider))),
+            title: Text(l10n.docFaceEngine),
+            subtitle: Text(_faceEngineLabel(l10n, ref.watch(faceEngineProvider))),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _pickOption<FaceEngineChoice>(
               context: context,
-              title: 'Face verification engine',
+              title: l10n.docFaceEngine,
               current: ref.read(faceEngineProvider),
-              options: const [(FaceEngineChoice.onDevice, 'Open source'), (FaceEngineChoice.iris, 'Iris SDK')],
+              options: [
+                (FaceEngineChoice.regula, _faceEngineLabel(l10n, FaceEngineChoice.regula)),
+                (FaceEngineChoice.onDevice, _faceEngineLabel(l10n, FaceEngineChoice.onDevice)),
+                (FaceEngineChoice.iris, _faceEngineLabel(l10n, FaceEngineChoice.iris)),
+              ],
               onSelected: (choice) => ref.read(faceEngineProvider.notifier).set(choice),
             ),
           ),
-          if (ref.watch(faceEngineProvider) == FaceEngineChoice.onDevice) ...[
+          // Regula falls back to on-device when a session doesn't offer it.
+          if (ref.watch(faceEngineProvider) != FaceEngineChoice.iris) ...[
             const Divider(height: 1),
             ListTile(
-              title: const Text('Liveness detection'),
-              subtitle: Text(_livenessModeLabel(ref.watch(livenessModeProvider))),
+              title: Text(l10n.docLivenessDetection),
+              subtitle: Text(_livenessModeLabel(l10n, ref.watch(livenessModeProvider))),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _pickOption<LivenessMode>(
                 context: context,
-                title: 'Liveness detection',
+                title: l10n.docLivenessDetection,
                 current: ref.read(livenessModeProvider),
-                options: const [(LivenessMode.passive, 'Passive'), (LivenessMode.active, 'Active')],
+                options: [
+                  (LivenessMode.passive, l10n.docLivenessPassive),
+                  (LivenessMode.active, l10n.docLivenessActive),
+                ],
                 onSelected: (mode) => ref.read(livenessModeProvider.notifier).set(mode),
               ),
             ),
@@ -78,12 +89,12 @@ class SettingsScreen extends ConsumerWidget {
           if (showOcrEngineForTesting ?? Platform.isAndroid) ...[
             const Divider(height: 1),
             ListTile(
-              title: const Text('OCR engine'),
+              title: Text(l10n.docOcrEngine),
               subtitle: Text(_ocrEngineLabel(ref.watch(ocrEngineProvider))),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _pickOption<OcrEngine>(
                 context: context,
-                title: 'OCR engine',
+                title: l10n.docOcrEngine,
                 current: ref.read(ocrEngineProvider),
                 options: const [
                   (OcrEngine.googleMlKit, 'Google ML Kit'),

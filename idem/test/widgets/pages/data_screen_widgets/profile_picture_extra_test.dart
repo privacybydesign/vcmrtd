@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/services/jpeg2000_converter.dart';
@@ -27,6 +28,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: ProfilePictureWidget(imageData: Uint8List.fromList([3, 1, 4, 1, 5]), imageType: ImageType.jpeg2000),
         ),
@@ -45,6 +48,8 @@ void main() {
     // Non-decodable bytes tagged as JPEG -> Image.memory errorBuilder fires.
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: ProfilePictureWidget(imageData: Uint8List.fromList([0, 1, 2, 3]), imageType: ImageType.jpeg),
         ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/widgets/pages/proofing_session_consent_screen.dart';
 
@@ -15,7 +16,11 @@ ProofingSessionInfo _info({
   );
 }
 
-Widget _app(Widget child) => MaterialApp(home: child);
+Widget _app(Widget child) => MaterialApp(
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
+  home: child,
+);
 
 void main() {
   group('ProofingSessionConsentScreen', () {

@@ -6,7 +6,10 @@ import 'package:go_router/go_router.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:face_verification/face_verification.dart';
 import 'package:mrz_capture/mrz_capture.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:idem/providers/face_engine_provider.dart';
+import 'package:idem/providers/face_api_provider.dart';
+import 'package:idem/providers/passport_issuer_provider.dart';
 import 'package:idem/providers/liveness_mode_provider.dart';
 import 'package:idem/utils/document_dates.dart';
 import 'package:idem/services/flow_step_plan.dart';
@@ -205,8 +208,8 @@ void _continueAtServerStep(
       if (chipRead) return showChipResult(browserFaceStep: true);
       _finishProofingSession(
         context,
-        title: 'Continue in the browser',
-        message: 'Finish face verification in the browser where you started this session.',
+        title: context.l10n.proofingContinueInBrowserTitle,
+        message: context.l10n.proofingContinueInBrowserFace,
       );
       return;
     }
@@ -241,8 +244,8 @@ void _continueAtServerStep(
   // A step this app doesn't perform: another client has it.
   _finishProofingSession(
     context,
-    title: 'Continue in the browser',
-    message: 'The next step of this verification continues in the browser where you started it.',
+    title: context.l10n.proofingContinueInBrowserTitle,
+    message: context.l10n.proofingContinueInBrowserNextStep,
   );
 }
 
@@ -312,8 +315,8 @@ bool _resumeAtServerStep(BuildContext context, ActiveProofingSession session) {
   if (info.lifecycle == proofingLifecycleComplete) {
     _finishProofingSession(
       context,
-      title: 'Nothing left to do',
-      message: 'This verification session is already complete.',
+      title: context.l10n.proofingNothingLeftTitle,
+      message: context.l10n.proofingSessionAlreadyComplete,
     );
     return true;
   }
@@ -356,11 +359,12 @@ Future<void> _submitProofingSession(BuildContext context, ActiveProofingSession 
   final container = ProviderScope.containerOf(context);
   final router = GoRouter.of(context);
   final client = container.read(proofingSessionClientProvider);
+  final l10n = context.l10n;
   var stepsIncomplete = false;
   final response = await submitProofingStep(
     context,
     session: session,
-    what: 'your verification',
+    what: l10n.proofingWhatVerification,
     submit: () async {
       try {
         return await client.submitSession(session.ref);
@@ -388,8 +392,8 @@ Future<void> _submitProofingSession(BuildContext context, ActiveProofingSession 
   );
   _showInfoAfterNavigation(
     router,
-    title: 'Not finished yet',
-    message: '${session.info.relyingParty} still needs another step before this verification can be submitted.',
+    title: l10n.proofingNotFinishedTitle,
+    message: l10n.proofingNotFinishedMessage(session.info.relyingParty),
   );
 }
 
@@ -410,7 +414,7 @@ Future<ProofingStepResponse?> _submitDocumentCaptureStep(
   return submitProofingStep(
     context,
     session: session,
-    what: 'your document details',
+    what: context.l10n.proofingWhatDocumentDetails,
     submit: () => client.submitDocumentCaptureStep(
       session.ref,
       document: ProofingDocumentInfo.fromScannedMrz(scannedMrz),
@@ -435,7 +439,7 @@ Future<ProofingStepResponse?> _submitNfcStep(
   return submitProofingStep(
     context,
     session: session,
-    what: 'your document identity',
+    what: context.l10n.proofingWhatDocumentIdentity,
     submit: () async => client.submitNfcStep(
       session.ref,
       requestedAttributes: session.info.requestedAttributes,
@@ -461,12 +465,13 @@ Future<ProofingStepResponse?> _submitFaceStep(
   ActiveProofingSession session,
   FaceVerificationOutcome outcome,
 ) async {
+  final transactionId = outcome.livenessTransactionId;
   final selfie = outcome.selfieImageBytes;
-  if (selfie == null) {
+  if (transactionId == null && selfie == null) {
     DialogHelpers.showInfoDialog(
       context: context,
-      title: 'Face verification incomplete',
-      message: 'No selfie was captured, so there is nothing to send. Please try again.',
+      title: context.l10n.proofingFaceIncompleteTitle,
+      message: context.l10n.proofingFaceIncompleteMessage,
     );
     return null;
   }
@@ -474,8 +479,10 @@ Future<ProofingStepResponse?> _submitFaceStep(
   return submitProofingStep(
     context,
     session: session,
-    what: 'your face verification',
-    submit: () => client.submitSelfieStep(session.ref, selfie: ProofingPhotoInfo.fromSelfie(selfie)),
+    what: context.l10n.proofingWhatFaceVerification,
+    submit: () => transactionId != null
+        ? client.submitSelfieStep(session.ref, livenessTransactionId: transactionId)
+        : client.submitSelfieStep(session.ref, selfie: ProofingPhotoInfo.fromSelfie(selfie!)),
   );
 }
 
@@ -503,23 +510,25 @@ Future<String?> openProofingSessionLink(
   VoidCallback? beforePush,
 }) async {
   final link = ProofingSessionLink.parse(value);
-  if (link == null) return 'This is not a verification link.';
+  if (link == null) return currentL10n.proofingNotAVerificationLink;
   try {
     final claim = await container.read(proofingSessionCoordinatorProvider).connect(link);
+    // The session's language from its first screen on, consent included.
+    container.read(appLocaleProvider.notifier).useSessionLanguage(claim.info.language);
     // Took over a session this app had pinned with an older credential: that
     // one is revoked now, so it mustn't be used for anything any more.
     final pinned = container.read(activeProofingSessionProvider);
     if (pinned != null && pinned.ref.token == claim.ref.token && pinned.ref.deviceToken != claim.ref.deviceToken) {
       container.read(activeProofingSessionProvider.notifier).set(null);
     }
-    if (claim.info.requestedAttributes.isEmpty) return 'This session does not specify what to collect';
+    if (claim.info.requestedAttributes.isEmpty) return currentL10n.proofingSessionNoAttributes;
     beforePush?.call();
     router.push(_proofingConsentPath, extra: {'ref': claim.ref, 'info': claim.info});
     return null;
   } on ProofingSessionAccessException catch (e) {
     return e.reason.message;
   } catch (e) {
-    return 'Could not connect to the relying party: $e';
+    return currentL10n.proofingConnectFailed('$e');
   }
 }
 
@@ -534,7 +543,7 @@ Future<void> _handleScannedQr(BuildContext context, String value) async {
 
   if (ProofingSessionLink.parse(value) == null) {
     router.pop();
-    messenger.showSnackBar(SnackBar(content: Text('QR code scanned: $value')));
+    messenger.showSnackBar(SnackBar(content: Text(context.l10n.proofingQrScanned(value))));
     return;
   }
 
@@ -837,6 +846,27 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
           final documentType = extra['documentType'] as DocumentType?;
           final engineChoice = ProviderScope.containerOf(context).read(faceEngineProvider);
           final livenessMode = ProviderScope.containerOf(context).read(livenessModeProvider);
+          final providers = ProviderScope.containerOf(context);
+          final proofingSession = providers.read(activeProofingSessionProvider);
+          // Without a QR session, Regula runs against the passport issuer, which matches too.
+          final issuerFace = proofingSession == null && result != null
+              ? providers.read(issuerFaceVerificationProvider)
+              : null;
+          final faceVerification = proofingSession != null
+              ? proofingSession.info.faceVerification
+              : issuerFace == null
+              ? null
+              : ProofingFaceVerification(provider: faceProviderRegula, faceApiUrl: issuerFace.faceApiUrl, tag: '');
+          final Future<FaceMatch?> Function(String)? matchFace = issuerFace == null
+              ? null
+              : (transactionId) async {
+                  final issuer = providers.read(passportIssuerProvider);
+                  final raw = result!.copyWith(livenessTransactionId: transactionId);
+                  final response = documentType == DocumentType.drivingLicence
+                      ? await issuer.verifyDrivingLicence(raw)
+                      : await issuer.verifyPassport(raw);
+                  return response.faceMatch;
+                };
           final plan = FlowStepPlan.fromSteps(_activeSteps(context), selfieLocation: _activeSelfieLocation(context));
 
           // Passing verification continues on to the document data screen
@@ -899,6 +929,8 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
               onVerified: goToResult,
               engineChoice: engineChoice,
               livenessMode: livenessMode,
+              faceVerification: faceVerification,
+              matchFace: matchFace,
               photoIssueDate: issueDate,
               stepNumber: stepNumber,
               totalSteps: plan.totalSteps,
@@ -911,6 +943,8 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
             onVerified: goToResult,
             engineChoice: engineChoice,
             livenessMode: livenessMode,
+            faceVerification: faceVerification,
+            matchFace: matchFace,
             photoIssueDate: issueDate,
             stepNumber: stepNumber,
             totalSteps: plan.totalSteps,

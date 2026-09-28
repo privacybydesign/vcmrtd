@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:idem/l10n/l10n.dart';
 
 /// Shown on the document data screen when the current scan was handed off
 /// from a relying party's browser session (see routing.dart's QR handling
@@ -34,7 +35,7 @@ class SubmitToProofingSessionSection extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Identity proofing session',
+                    context.l10n.proofingSessionSectionTitle,
                     style: Theme.of(
                       context,
                     ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: Colors.black),
@@ -44,8 +45,7 @@ class SubmitToProofingSessionSection extends StatelessWidget {
             ),
             const Divider(height: 30),
             Text(
-              'This scan is for a session opened by $relyingParty. Send the document identity and '
-              'face verification result back to them.',
+              context.l10n.proofingSubmitSectionBody(relyingParty),
               style: TextStyle(fontSize: 15, color: Colors.grey[700], height: 1.4),
             ),
             const SizedBox(height: 16),
@@ -54,7 +54,7 @@ class SubmitToProofingSessionSection extends StatelessWidget {
               icon: isSubmitting
                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.send),
-              label: Text(isSubmitting ? 'Submitting...' : 'Submit to $relyingParty'),
+              label: Text(isSubmitting ? context.l10n.proofingSubmitting : context.l10n.proofingSubmitTo(relyingParty)),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 backgroundColor: Colors.white,
@@ -100,7 +100,7 @@ class SubmittedToProofingSessionSection extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Sent to $relyingParty',
+                    context.l10n.proofingSentTo(relyingParty),
                     style: Theme.of(
                       context,
                     ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: Colors.black),
@@ -111,9 +111,8 @@ class SubmittedToProofingSessionSection extends StatelessWidget {
             const Divider(height: 30),
             Text(
               browserFaceStep
-                  ? 'Your document identity was sent to $relyingParty. Finish face verification in the browser '
-                        'tab where you started this session.'
-                  : 'Everything this verification needed from this device was sent to $relyingParty.',
+                  ? context.l10n.proofingSentBrowserFace(relyingParty)
+                  : context.l10n.proofingSentEverything(relyingParty),
               style: TextStyle(fontSize: 15, color: Colors.grey[700], height: 1.4),
             ),
             if (onDone != null) ...[
@@ -126,7 +125,7 @@ class SubmittedToProofingSessionSection extends StatelessWidget {
                   foregroundColor: Colors.black,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-                child: const Text('Done'),
+                child: Text(context.l10n.proofingDone),
               ),
             ],
           ],

@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/widgets/pages/nfc_guidance_screen.dart';
@@ -12,6 +13,8 @@ void main() {
     testWidgets('renders scaffold for passport document type', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: NfcGuidanceScreen(onStartReading: () {}, onBack: () {}, documentType: DocumentType.passport),
         ),
       );
@@ -22,6 +25,8 @@ void main() {
     testWidgets('renders scaffold for driving licence document type', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: NfcGuidanceScreen(onStartReading: () {}, onBack: () {}, documentType: DocumentType.drivingLicence),
         ),
       );
@@ -33,6 +38,8 @@ void main() {
       var called = false;
       await tester.pumpWidget(
         MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: NfcGuidanceScreen(
             onStartReading: () {},
             onBack: () => called = true,
@@ -48,6 +55,8 @@ void main() {
     testWidgets('onTroubleshooting button not shown when null', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: NfcGuidanceScreen(onStartReading: () {}, onBack: () {}, documentType: DocumentType.passport),
         ),
       );
@@ -58,6 +67,8 @@ void main() {
     testWidgets('onTroubleshooting button shown when provided', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: NfcGuidanceScreen(
             onStartReading: () {},
             onBack: () {},
@@ -74,7 +85,11 @@ void main() {
   group('ProfilePictureWidget', () {
     testWidgets('shows placeholder icon when imageData is null', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(home: Scaffold(body: ProfilePictureWidget(imageData: null, imageType: null))),
+        const MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(body: ProfilePictureWidget(imageData: null, imageType: null)),
+        ),
       );
       expect(find.byIcon(Icons.person), findsOneWidget);
       expect(find.text('No Photo'), findsOneWidget);
@@ -86,6 +101,8 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: ProfilePictureWidget(imageData: jpeg, imageType: ImageType.jpeg),
           ),

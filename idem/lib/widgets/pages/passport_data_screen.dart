@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/providers/wallet_provider.dart';
 import 'package:idem/services/face_verification_outcome.dart';
@@ -95,7 +96,7 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen>
     onBack: widget.onBackPressed,
     current: widget.stepNumber,
     total: widget.totalSteps,
-    label: '${widget.documentType.displayName} Data',
+    label: context.l10n.docDocumentDataTitle(widget.documentType.name),
   );
 
   void _addToWallet() {

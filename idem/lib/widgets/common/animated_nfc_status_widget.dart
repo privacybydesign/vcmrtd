@@ -2,6 +2,7 @@
 // Animated NFC status display widget with beautiful state-based animations
 
 import 'package:flutter/material.dart';
+import 'package:idem/l10n/l10n.dart';
 
 /// Enumeration of NFC reading states for animation control
 enum NFCReadingState { waiting, connecting, reading, authenticating, success, error, idle, cancelling }
@@ -309,7 +310,7 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget> with 
         child: ElevatedButton.icon(
           onPressed: widget.onRetry,
           icon: const Icon(Icons.refresh),
-          label: const Text('Try Again'),
+          label: Text(context.l10n.commonTryAgain),
           style: ElevatedButton.styleFrom(backgroundColor: _getStateColor(), foregroundColor: Colors.white),
         ),
       );
@@ -328,7 +329,7 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget> with 
         child: OutlinedButton.icon(
           onPressed: widget.onCancel,
           icon: const Icon(Icons.close),
-          label: const Text('Cancel'),
+          label: Text(context.l10n.commonCancel),
           style: OutlinedButton.styleFrom(
             foregroundColor: const Color(0xFFF44336), // Material red
             side: const BorderSide(color: Color(0xFFF44336)),

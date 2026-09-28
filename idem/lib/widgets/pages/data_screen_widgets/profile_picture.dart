@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import '../../displays/passport_image_widget.dart';
 import 'package:flutter/services.dart';
@@ -25,7 +26,7 @@ class ProfilePictureWidget extends StatelessWidget {
           children: [
             Icon(Icons.person, size: 50, color: Colors.grey[400]),
             const SizedBox(height: 8),
-            Text('No Photo', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+            Text(context.l10n.docNoPhoto, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
           ],
         ),
       );

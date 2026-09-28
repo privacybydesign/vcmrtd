@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:mrz_capture/mrz_capture.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:idem/services/face_verification_outcome.dart';
 
 /// Runs the Iris SDK's face-verification flow.
@@ -67,7 +68,7 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
   late final IrisFaceVerifier _verifier = widget.testVerifier ?? IrisFaceVerifier();
 
   _Status _status = _Status.intro;
-  String _launchMessage = 'Preparing your document photo…';
+  String _launchMessage = currentL10n.facePreparingDocumentPhoto;
   Uint8List? _documentPhoto;
   IrisVerificationResult? _result;
   String? _error;
@@ -83,7 +84,7 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
     _autoContinueTimer?.cancel();
     setState(() {
       _status = _Status.launching;
-      _launchMessage = 'Preparing your document photo…';
+      _launchMessage = context.l10n.facePreparingDocumentPhoto;
       _result = null;
       _error = null;
     });
@@ -92,7 +93,7 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
     if (portrait == null) {
       if (!mounted) return;
       setState(() {
-        _error = 'Could not read the reference portrait for the Iris SDK.';
+        _error = context.l10n.faceIrisReadPortraitError;
         _status = _Status.result;
       });
       return;
@@ -101,7 +102,7 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
     if (!mounted) return;
     setState(() {
       _documentPhoto = portrait;
-      _launchMessage = 'Opening the Iris camera…';
+      _launchMessage = context.l10n.faceOpeningIrisCamera;
     });
 
     try {
@@ -135,16 +136,16 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
 
   static String _describeError(Object e) {
     if (e is MissingPluginException) {
-      return 'The Iris SDK is not available on this device.';
+      return currentL10n.faceIrisUnavailable;
     }
     if (e is PlatformException) {
       return switch (e.code) {
-        'NO_ACTIVITY' => 'Could not open the camera. Please try again.',
-        'ALREADY_RUNNING' => 'A verification is already in progress.',
-        _ => e.message ?? 'Verification failed (${e.code}).',
+        'NO_ACTIVITY' => currentL10n.faceIrisNoActivity,
+        'ALREADY_RUNNING' => currentL10n.faceIrisAlreadyRunning,
+        _ => e.message ?? currentL10n.faceIrisFailedCode(e.code),
       };
     }
-    return 'Verification failed: $e';
+    return currentL10n.faceIrisFailedError('$e');
   }
 
   static const MethodChannel _imageChannel = MethodChannel('image_channel');
@@ -200,11 +201,11 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
 
   Widget _buildTopBar(BuildContext context) => StepBadgeTopBar(
     icon: Icons.arrow_back,
-    tooltip: 'Back',
+    tooltip: context.l10n.faceBack,
     onBack: widget.onBackPressed,
     current: widget.stepNumber,
     total: widget.totalSteps,
-    label: 'Face Verification',
+    label: context.l10n.faceStepLabel,
   );
 
   Widget _buildIntro() {
@@ -215,18 +216,16 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
         children: [
           const Icon(Icons.verified_user, size: 64, color: Colors.green),
           const SizedBox(height: 16),
-          const Text(
-            'Verify with the Iris SDK',
+          Text(
+            context.l10n.faceIrisIntroTitle,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'The Iris SDK opens its own full-screen camera to check that a live '
-            'person is present, then compares that face against the portrait '
-            'stored on your document.',
+          Text(
+            context.l10n.faceIrisIntroBody,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: Colors.grey),
+            style: const TextStyle(fontSize: 13, color: Colors.grey),
           ),
           const SizedBox(height: 28),
           Container(
@@ -235,16 +234,19 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
               color: Colors.black.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: const Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('What to expect', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                SizedBox(height: 10),
-                _IntroStepRow(number: '1', text: 'A camera screen from the Iris SDK will open'),
-                SizedBox(height: 6),
-                _IntroStepRow(number: '2', text: 'Look directly at the camera and follow any prompts'),
-                SizedBox(height: 6),
-                _IntroStepRow(number: '3', text: 'Hold still until it finishes — this only takes a moment'),
+                Text(
+                  context.l10n.faceIrisWhatToExpect,
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 10),
+                _IntroStepRow(number: '1', text: context.l10n.faceIrisStep1),
+                const SizedBox(height: 6),
+                _IntroStepRow(number: '2', text: context.l10n.faceIrisStep2),
+                const SizedBox(height: 6),
+                _IntroStepRow(number: '3', text: context.l10n.faceIrisStep3),
               ],
             ),
           ),
@@ -258,7 +260,7 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             icon: const Icon(Icons.face),
-            label: const Text('Start Verification'),
+            label: Text(context.l10n.faceStartVerification),
           ),
         ],
       ),
@@ -280,7 +282,7 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
       return _ResultView(
         icon: Icons.error_outline,
         color: Colors.red,
-        title: 'Something Went Wrong',
+        title: context.l10n.faceSomethingWentWrong,
         subtitle: error,
         onRetry: _runVerification,
       );
@@ -290,8 +292,8 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
       IrisVerificationOutcome.matched => _ResultView(
         icon: Icons.check_circle,
         color: Colors.green,
-        title: 'Identity Verified',
-        subtitle: 'The live face matched the document photo.',
+        title: context.l10n.faceIdentityVerified,
+        subtitle: context.l10n.faceIrisMatchedSubtitle,
         documentPhoto: _documentPhoto,
         liveFace: switch (_result?.face) {
           final face? when face.isNotEmpty => face,
@@ -302,18 +304,16 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
       IrisVerificationOutcome.failed => _ResultView(
         icon: Icons.cancel,
         color: Colors.red,
-        title: 'Verification Failed',
-        subtitle:
-            'The live face did not match the document photo. Make sure '
-            "you're well lit and looking at the camera, then try again.",
+        title: context.l10n.faceVerificationFailed,
+        subtitle: context.l10n.faceIrisFailedSubtitle,
         documentPhoto: _documentPhoto,
         onRetry: _runVerification,
       ),
       IrisVerificationOutcome.cancelled => _ResultView(
         icon: Icons.info_outline,
         color: Colors.orange,
-        title: 'Cancelled',
-        subtitle: 'You cancelled the verification. Tap below to try again.',
+        title: context.l10n.faceCancelled,
+        subtitle: context.l10n.faceIrisCancelledSubtitle,
         onRetry: _runVerification,
       ),
     };
@@ -390,19 +390,19 @@ class _ResultView extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (documentPhoto != null) _Thumbnail(label: 'Document photo', bytes: documentPhoto!),
+                if (documentPhoto != null) _Thumbnail(label: context.l10n.faceDocumentPhoto, bytes: documentPhoto!),
                 if (documentPhoto != null && liveFace != null) const SizedBox(width: 16),
-                if (liveFace != null) _Thumbnail(label: 'Live capture', bytes: liveFace!),
+                if (liveFace != null) _Thumbnail(label: context.l10n.faceLiveCapture, bytes: liveFace!),
               ],
             ),
           ],
           const SizedBox(height: 32),
           if (isContinuing)
-            const Center(
-              child: Text('Continuing…', style: TextStyle(color: Colors.grey)),
+            Center(
+              child: Text(context.l10n.faceContinuing, style: const TextStyle(color: Colors.grey)),
             )
           else if (onRetry != null)
-            OutlinedButton(onPressed: onRetry, child: const Text('Try Again')),
+            OutlinedButton(onPressed: onRetry, child: Text(context.l10n.faceTryAgain)),
         ],
       ),
     );

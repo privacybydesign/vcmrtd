@@ -136,6 +136,18 @@ void main() {
       );
     });
 
+    test('a Regula face step sends only the liveness transaction id', () async {
+      const ref = ProofingSessionRef(apiBase: _api, token: 'tok-1', deviceToken: 'dev-1');
+      await http.runWithClient(
+        () => const ProofingSessionClient().submitSelfieStep(ref, livenessTransactionId: 'tx-7'),
+        () => MockClient((request) async {
+          expect(request.url.path, '/api/v1/app/tok-1/steps/selfie');
+          expect(json.decode(request.body), {'livenessTransactionId': 'tx-7'});
+          return _json({'status': 'in_progress', 'lifecycle': 'ACTIVE'});
+        }),
+      );
+    });
+
     test('submitSession posts with only the device token and returns the outcome', () async {
       const ref = ProofingSessionRef(apiBase: _api, token: 'tok-1', deviceToken: 'dev-1');
       await http.runWithClient(

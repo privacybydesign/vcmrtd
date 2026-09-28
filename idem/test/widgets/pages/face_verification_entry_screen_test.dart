@@ -6,10 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:face_verification/face_verification.dart';
+import 'package:idem/l10n/l10n.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:idem/providers/face_engine_provider.dart';
+import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/widgets/pages/face_verification_entry_screen.dart';
 import 'package:idem/widgets/pages/face_verification_screen.dart';
 import 'package:idem/widgets/pages/iris_face_verification_screen.dart';
+import 'package:idem/widgets/pages/regula_face_verification_screen.dart';
 
 class _FakeWorker implements FaceVerificationWorker {
   final StreamController<WorkerFrameResult> _frames = StreamController<WorkerFrameResult>.broadcast(sync: true);
@@ -64,6 +68,8 @@ void main() {
     final engine = FaceVerificationEngine.withWorker(_FakeWorker());
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: FaceVerificationEntryScreen.withEngine(
           engine: engine,
           nfcImageBytes: Uint8List.fromList([1]),
@@ -89,6 +95,8 @@ void main() {
     final engine = FaceVerificationEngine.withWorker(_FakeWorker());
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: FaceVerificationEntryScreen.withEngine(
           engine: engine,
           nfcImageBytes: Uint8List(1),
@@ -110,6 +118,8 @@ void main() {
     final engine = FaceVerificationEngine.withWorker(_FakeWorker());
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: FaceVerificationEntryScreen.withEngine(
           engine: engine,
           nfcImageBytes: Uint8List(1),
@@ -124,6 +134,45 @@ void main() {
     await tester.pump();
 
     expect(find.byType(IrisFaceVerificationScreen), findsOneWidget);
+    expect(find.byType(FlutterFaceVerificationScreen), findsNothing);
+  });
+
+  const regula = ProofingFaceVerification(provider: 'regula', faceApiUrl: 'https://faceapi.test', tag: 'ips:s1');
+
+  test('Regula follows the session\'s flow, else the setting when a server offers it', () {
+    expect(FaceVerificationEntryScreen.effectiveEngine(FaceEngineChoice.regula, regula), FaceEngineChoice.regula);
+    expect(FaceVerificationEntryScreen.effectiveEngine(FaceEngineChoice.regula, null), FaceEngineChoice.onDevice);
+    // A session's flow chose Regula: the setting can't override it.
+    expect(FaceVerificationEntryScreen.effectiveEngine(FaceEngineChoice.iris, regula), FaceEngineChoice.regula);
+    expect(FaceVerificationEntryScreen.effectiveEngine(FaceEngineChoice.onDevice, regula), FaceEngineChoice.regula);
+    // The passport issuer's offer (no tag) leaves the choice to the user.
+    const issuer = ProofingFaceVerification(provider: 'regula', faceApiUrl: 'https://faceapi.test', tag: '');
+    expect(FaceVerificationEntryScreen.effectiveEngine(FaceEngineChoice.iris, issuer), FaceEngineChoice.iris);
+    expect(FaceVerificationEntryScreen.effectiveEngine(FaceEngineChoice.regula, issuer), FaceEngineChoice.regula);
+  });
+
+  testWidgets('regula choice with an announcing session opens the Regula screen', (tester) async {
+    final engine = FaceVerificationEngine.withWorker(_FakeWorker());
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: FaceVerificationEntryScreen.withEngine(
+            engine: engine,
+            nfcImageBytes: Uint8List(1),
+            onBackPressed: () {},
+            onVerified: (_) {},
+            engineChoice: FaceEngineChoice.regula,
+            livenessMode: LivenessMode.passive,
+            faceVerification: regula,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(RegulaFaceVerificationScreen), findsOneWidget);
     expect(find.byType(FlutterFaceVerificationScreen), findsNothing);
   });
 }

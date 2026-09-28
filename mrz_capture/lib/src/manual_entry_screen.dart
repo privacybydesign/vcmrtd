@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:intl/intl.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import '../l10n/mrz_capture_localizations.dart';
 import 'scanned_mrz.dart';
 import 'step_badge.dart';
 
@@ -38,6 +39,13 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
   DateTime? _selectedDob;
   DateTime? _selectedExpiry;
   String _errorMessage = '';
+
+  /// The host app's language when it registers
+  /// [MrzCaptureLocalizations.delegate], English otherwise.
+  MrzCaptureLocalizations get _l10n =>
+      MrzCaptureLocalizations.of(context) ?? lookupMrzCaptureLocalizations(const Locale('en'));
+
+  String get _docType => widget.documentType.name;
 
   @override
   void dispose() {
@@ -91,11 +99,11 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                         ),
                       PlatformElevatedButton(
                         onPressed: _handleContinue,
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                           child: Text(
-                            'Continue to NFC Reading',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                            _l10n.mrzContinueToNfc,
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                           ),
                         ),
                       ),
@@ -118,7 +126,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
       onBack: widget.onBack,
       current: 1,
       total: 4,
-      label: 'Enter ${widget.documentType.displayName} details',
+      label: _l10n.mrzEnterDetailsLabel(_docType),
     );
   }
 
@@ -129,20 +137,15 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Where to find this information:',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
+          Text(
+            _l10n.mrzWhereToFind,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
           ),
           const SizedBox(height: 8),
           Text(
             widget.documentType == DocumentType.passport
-                ? '• Passport Number: Usually at the top right of the photo page\n'
-                      '• Date of Birth: Listed as "Date of birth" or "DOB"\n'
-                      '• Expiry Date: Listed as "Date of expiry" or "Valid until"'
-                : '• The MRZ is at the bottom of the front side of your driver\'s licence\n'
-                      '• You can also get this by scanning the QR Code on the back of your driver\'s licence\n'
-                      '• It\'s a single line of exactly 30 characters\n'
-                      '• Starts with "D1", "D2", or "D3"',
+                ? _l10n.mrzHelpPassport
+                : _l10n.mrzHelpDrivingLicence,
             style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280), height: 1.4),
           ),
         ],
@@ -153,8 +156,8 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
   List<Widget> _buildPassportFields() {
     return [
       _buildInputCard(
-        title: '${widget.documentType.displayName} Number',
-        hint: 'Enter your ${widget.documentType.displayName.toLowerCase()} number',
+        title: _l10n.mrzDocNumberTitle(_docType),
+        hint: _l10n.mrzDocNumberHint(_docType),
         icon: Icons.numbers,
         child: PlatformTextFormField(
           controller: _docNumberController,
@@ -164,13 +167,13 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
             FilteringTextInputFormatter.allow(RegExp(r'[A-Z0-9]')),
             LengthLimitingTextInputFormatter(15),
           ],
-          hintText: 'e.g., AB1234567',
+          hintText: _l10n.mrzDocNumberExample,
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
-              return '${widget.documentType.displayName} number is required';
+              return _l10n.mrzDocNumberRequired(_docType);
             }
             if (value.trim().length < 6) {
-              return '${widget.documentType.displayName} number must be at least 6 characters';
+              return _l10n.mrzDocNumberTooShort(_docType);
             }
             return null;
           },
@@ -178,20 +181,20 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
       ),
       const SizedBox(height: 16),
       _buildInputCard(
-        title: 'Date of Birth',
-        hint: 'Select your date of birth',
+        title: _l10n.mrzDobTitle,
+        hint: _l10n.mrzDobHint,
         icon: Icons.cake,
         child: PlatformTextFormField(
           controller: _dobController,
           readOnly: true,
-          hintText: 'Tap to select date',
+          hintText: _l10n.mrzTapToSelectDate,
           onTap: () => _selectDate(context, isDateOfBirth: true),
           validator: (value) {
             if (_selectedDob == null) {
-              return 'Date of birth is required';
+              return _l10n.mrzDobRequired;
             }
             if (_selectedDob!.isAfter(DateTime.now())) {
-              return 'Date of birth cannot be in the future';
+              return _l10n.mrzDobInFuture;
             }
             return null;
           },
@@ -199,23 +202,23 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
       ),
       const SizedBox(height: 16),
       _buildInputCard(
-        title: 'Expiry Date',
-        hint: 'Select ${widget.documentType.displayName.toLowerCase()} expiry date',
+        title: _l10n.mrzExpiryTitle,
+        hint: _l10n.mrzExpiryHint(_docType),
         icon: Icons.event_busy,
         child: PlatformTextFormField(
           controller: _expiryController,
           readOnly: true,
-          hintText: 'Tap to select date',
+          hintText: _l10n.mrzTapToSelectDate,
           onTap: () => _selectDate(context, isDateOfBirth: false),
           validator: (value) {
             if (_selectedExpiry == null) {
-              return 'Expiry date is required';
+              return _l10n.mrzExpiryRequired;
             }
             if (_selectedExpiry!.isBefore(DateTime.now())) {
-              return '${widget.documentType.displayName} has expired';
+              return _l10n.mrzDocumentExpired(_docType);
             }
             if (_selectedDob != null && _selectedExpiry!.isBefore(_selectedDob!)) {
-              return 'Expiry date cannot be before date of birth';
+              return _l10n.mrzExpiryBeforeDob;
             }
             return null;
           },
@@ -227,8 +230,8 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
   List<Widget> _buildDriverLicenseFields() {
     return [
       _buildInputCard(
-        title: 'MRZ String',
-        hint: 'Enter the MRZ line from your driver\'s licence',
+        title: _l10n.mrzStringTitle,
+        hint: _l10n.mrzStringHint,
         icon: Icons.keyboard,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -246,13 +249,13 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
               style: const TextStyle(fontFamily: 'Courier', fontSize: 14),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'MRZ string is required';
+                  return _l10n.mrzStringRequired;
                 }
                 if (value.trim().length != 30) {
-                  return 'MRZ must be exactly 30 characters';
+                  return _l10n.mrzStringLength;
                 }
                 if (!value.startsWith('D1') && !value.startsWith('D2') && !value.startsWith('DL')) {
-                  return 'MRZ must start with D1, D2, or DL';
+                  return _l10n.mrzStringPrefix;
                 }
                 return null;
               },
@@ -264,7 +267,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Character count:', style: TextStyle(fontSize: 12, color: Color(0xFF666666))),
+                Text(_l10n.mrzCharacterCount, style: const TextStyle(fontSize: 12, color: Color(0xFF666666))),
                 Text(
                   '${_mrzController.text.length} / 30',
                   style: TextStyle(
@@ -377,7 +380,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
   ScannedPassportMRZ? _createScannedPassport() {
     if (_selectedDob == null || _selectedExpiry == null) {
       setState(() {
-        _errorMessage = 'Please fill in all required fields';
+        _errorMessage = _l10n.mrzFillAllFields;
       });
       return null;
     }
@@ -395,7 +398,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
       return ScannedDriverLicenseMRZ.fromManualEntry(mrzString: _mrzController.text.trim().toUpperCase());
     } catch (e) {
       setState(() {
-        _errorMessage = 'Failed to parse MRZ: $e';
+        _errorMessage = _l10n.mrzParseFailed('$e');
       });
       return null;
     }
@@ -425,16 +428,16 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
             const SizedBox(height: 16),
             Text(
               widget.documentType == DocumentType.passport
-                  ? 'Enter Your ${widget.documentType.displayName} Information'
-                  : 'Enter MRZ String',
+                  ? _l10n.mrzHeaderTitle(_docType)
+                  : _l10n.mrzHeaderTitleMrz,
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF212121)),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               widget.documentType == DocumentType.passport
-                  ? 'Please enter the information exactly as it appears on your ${widget.documentType.displayName.toLowerCase()}'
-                  : 'Type the Machine Readable Zone text exactly as it appears',
+                  ? _l10n.mrzHeaderSubtitle(_docType)
+                  : _l10n.mrzHeaderSubtitleMrz,
               style: const TextStyle(fontSize: 14, color: Color(0xFF666666)),
               textAlign: TextAlign.center,
             ),

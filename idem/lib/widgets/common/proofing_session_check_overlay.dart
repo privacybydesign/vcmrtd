@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/services/proofing_session_coordinator.dart';
 
@@ -41,14 +42,12 @@ class ProofingSessionCheckOverlay extends ConsumerWidget {
                       const CircularProgressIndicator(),
                       const SizedBox(height: 16),
                       Text(
-                        unreachable
-                            ? 'Can\'t reach the verification service. Retrying...'
-                            : 'Checking your verification session...',
+                        unreachable ? context.l10n.faceSessionUnreachable : context.l10n.faceSessionChecking,
                         textAlign: TextAlign.center,
                       ),
                       if (unreachable) ...[
                         const SizedBox(height: 16),
-                        TextButton(onPressed: onAbandon, child: const Text('Stop verification')),
+                        TextButton(onPressed: onAbandon, child: Text(context.l10n.faceStopVerification)),
                       ],
                     ],
                   ),

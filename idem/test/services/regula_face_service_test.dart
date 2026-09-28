@@ -8,12 +8,18 @@ import 'package:idem/services/regula_face_service.dart';
 
 /// Builds a [LivenessResponse] via its `@visibleForTesting` JSON factory so the
 /// service can be exercised without the native SDK.
-LivenessResponse _liveness({required bool passed, String? transactionId, bool withImage = true, String? error}) {
+LivenessResponse _liveness({
+  required bool passed,
+  String? transactionId,
+  bool withImage = true,
+  String? error,
+  LivenessErrorCode errorCode = LivenessErrorCode.PROCESSING_FAILED,
+}) {
   return LivenessResponse.fromJson({
     if (withImage) 'image': base64Encode(const [1, 2, 3]),
     'liveness': passed ? LivenessStatus.PASSED.value : LivenessStatus.UNKNOWN.value,
     'transactionId': transactionId,
-    if (error != null) 'error': {'code': LivenessErrorCode.PROCESSING_FAILED.value, 'message': error},
+    if (error != null) 'error': {'code': errorCode.value, 'message': error},
   })!;
 }
 
@@ -30,6 +36,7 @@ class _FakeFaceSdk implements FaceSDK {
   int initializeCalls = 0;
   int startLivenessCalls = 0;
   String? assignedServiceUrl;
+  LivenessConfig? lastConfig;
 
   @override
   set serviceUrl(String? val) => assignedServiceUrl = val;
@@ -50,6 +57,7 @@ class _FakeFaceSdk implements FaceSDK {
     CameraSwitchCallback? cameraSwitchCallback,
   }) async {
     startLivenessCalls++;
+    lastConfig = config;
     return _liveness!;
   }
 
@@ -111,6 +119,25 @@ void main() {
       final result = await service.captureLiveness();
 
       expect(result.isLive, isFalse);
+    });
+
+    test('binds the session tag and runs against the announced Face API', () async {
+      final sdk = _FakeFaceSdk(liveness: _liveness(passed: true, transactionId: 'tx-1'));
+      final service = RegulaFaceServiceImpl(serviceUrl: 'https://default.test', sdk: sdk);
+
+      await service.captureLiveness(tag: 'ips:sess-1', serviceUrl: 'https://session.test');
+
+      expect(sdk.lastConfig?.tag, 'ips:sess-1');
+      expect(sdk.assignedServiceUrl, 'https://session.test');
+    });
+
+    test('throws RegulaLivenessCancelled when the user backs out', () async {
+      final sdk = _FakeFaceSdk(
+        liveness: _liveness(passed: false, error: 'cancelled', errorCode: LivenessErrorCode.CANCELLED),
+      );
+      final service = RegulaFaceServiceImpl(sdk: sdk);
+
+      expect(service.captureLiveness(), throwsA(isA<RegulaLivenessCancelled>()));
     });
 
     test('throws when the liveness session reports an error', () async {

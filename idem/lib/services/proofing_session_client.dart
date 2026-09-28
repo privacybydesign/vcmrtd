@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtd/extensions.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:idem/utils/document_dates.dart';
 
 /// Points at one identity-proofing session this device claimed. See
@@ -237,6 +238,17 @@ class ProofingSessionInfo {
   /// without reading the chip itself.
   final ProofingPhotoInfo? faceReference;
 
+  /// The language the user-facing flow is in ("en"/"nl"): the relying
+  /// party's choice, else this device's Accept-Language (sent with every
+  /// call, see [deviceAcceptLanguage]), resolved by the server. Drives the
+  /// app's own UI language while this session is pinned (lib/l10n/l10n.dart).
+  /// Null from a server that predates i18n.
+  final String? language;
+
+  /// The server-side face provider for this session's native face step; null
+  /// when the server matches a selfie with its own engine.
+  final ProofingFaceVerification? faceVerification;
+
   ProofingSessionInfo({
     required this.id,
     required this.relyingParty,
@@ -256,6 +268,8 @@ class ProofingSessionInfo {
     this.device,
     this.chipAccess,
     this.faceReference,
+    this.language,
+    this.faceVerification,
   });
 
   /// Why this device can no longer act on the session, judging by the view
@@ -298,8 +312,37 @@ class ProofingSessionInfo {
     faceReference: json['faceReference'] is Map<String, dynamic>
         ? ProofingPhotoInfo.fromJson(json['faceReference'] as Map<String, dynamic>)
         : null,
+    language: json['language'] as String?,
+    faceVerification: json['faceVerification'] is Map<String, dynamic>
+        ? ProofingFaceVerification.fromJson(json['faceVerification'] as Map<String, dynamic>)
+        : null,
   );
 }
+
+/// api.appSessionView.faceVerification: run liveness against [faceApiUrl]
+/// with [tag], and submit only the resulting transaction id. Also built from
+/// the passport issuer's announcement for a standalone scan, with no tag.
+class ProofingFaceVerification {
+  final String provider;
+  final String faceApiUrl;
+  final String tag;
+
+  const ProofingFaceVerification({required this.provider, required this.faceApiUrl, required this.tag});
+
+  bool get isRegula => provider == faceProviderRegula && faceApiUrl.isNotEmpty;
+
+  /// A proofing session's flow chose Regula (only sessions carry a tag), so
+  /// the server refuses anything else.
+  bool get requiredBySession => isRegula && tag.isNotEmpty;
+
+  factory ProofingFaceVerification.fromJson(Map<String, dynamic> json) => ProofingFaceVerification(
+    provider: json['provider'] as String? ?? '',
+    faceApiUrl: json['faceApiUrl'] as String? ?? '',
+    tag: json['tag'] as String? ?? '',
+  );
+}
+
+const faceProviderRegula = 'regula';
 
 /// What opens the chip (BAC/PACE, or BAP for a driving licence), derived
 /// from the MRZ. Sent with the document_capture step and handed back by the
@@ -535,27 +578,24 @@ enum ProofingAccessDenial {
     browserHandover => false,
   };
 
-  /// What to tell the user.
-  String get message => switch (this) {
-    handedOver => 'This verification session has been handed over to another device.',
-    expired => 'This verification session has expired. Please start a new verification.',
-    cancelled => 'This verification session was cancelled. Please start a new verification.',
-    unauthorized => 'This device is no longer allowed to continue this verification session.',
-    complete => 'This verification session is already complete.',
-    gone => 'This verification session no longer exists. Please start a new verification.',
-    alreadyClaimed =>
-      'This verification session is already open on another device. To continue here, scan the handover QR code '
-          'shown in the browser.',
-    handoverInvalid => 'This handover QR code is not valid. Ask for a new one in the browser.',
-    handoverExpired => 'This handover QR code has expired. Ask for a new one in the browser.',
-    handoverUsed => 'This handover QR code was already used. Ask for a new one in the browser.',
-    claimTokenRequired =>
-      'This QR code is from an older version of the verification service and can no longer be used. '
-          'Ask for a new one in the browser.',
-    browserHandover =>
-      'This QR code moves the browser part of the verification to another browser. Open it with your '
-          "phone's camera instead, or scan the QR code the browser shows for the IDEM app.",
-  };
+  /// What to tell the user, in the UI's current language.
+  String get message {
+    final l10n = currentL10n;
+    return switch (this) {
+      handedOver => l10n.accessHandedOver,
+      expired => l10n.accessExpired,
+      cancelled => l10n.accessCancelled,
+      unauthorized => l10n.accessUnauthorized,
+      complete => l10n.accessComplete,
+      gone => l10n.accessGone,
+      alreadyClaimed => l10n.accessAlreadyClaimed,
+      handoverInvalid => l10n.accessHandoverInvalid,
+      handoverExpired => l10n.accessHandoverExpired,
+      handoverUsed => l10n.accessHandoverUsed,
+      claimTokenRequired => l10n.accessClaimTokenRequired,
+      browserHandover => l10n.accessBrowserHandover,
+    };
+  }
 }
 
 /// Thrown by every [ProofingSessionClient] call when the server refuses this
@@ -1091,6 +1131,7 @@ class ProofingSessionClient {
   const ProofingSessionClient();
 
   static Map<String, String> _headers(ProofingSessionRef ref, {bool json = false}) => {
+    'Accept-Language': deviceAcceptLanguage(),
     if (json) 'Content-Type': 'application/json',
     if (ref.deviceToken != null) 'X-Device-Token': ref.deviceToken!,
   };
@@ -1100,13 +1141,12 @@ class ProofingSessionClient {
 
   /// Throws for anything but a 200: a [ProofingSessionAccessException] when
   /// the server refused this device access, a plain [Exception] otherwise.
-  static void _check(http.Response response, String what) {
+  static void _check(http.Response response, String Function(AppLocalizations l10n) what) {
     if (response.statusCode == 200) return;
     final denial = proofingAccessDenialFor(response);
     if (denial != null) throw denial;
-    if (response.statusCode == 429)
-      throw Exception('$what failed: too many attempts, please wait a moment and try again');
-    throw Exception('$what failed: ${response.statusCode} ${response.body}');
+    if (response.statusCode == 429) throw Exception(currentL10n.proofingRequestTooManyAttempts(what(currentL10n)));
+    throw Exception(currentL10n.proofingRequestFailed(what(currentL10n), '${response.statusCode} ${response.body}'));
   }
 
   /// Claims the native slot with a grant token (single-use, short-lived):
@@ -1116,8 +1156,9 @@ class ProofingSessionClient {
   Future<ProofingSessionClaim> claimHandover(ProofingHandoverLink link) async {
     final response = await http.post(
       Uri.parse('${link.apiBase}/api/v1/app/handover/${Uri.encodeComponent(link.handoverToken)}/claim'),
+      headers: {'Accept-Language': deviceAcceptLanguage()},
     );
-    _check(response, 'Taking over the session');
+    _check(response, (l) => l.proofingRequestClaim);
     return _claimFromJson(link.apiBase, json.decode(response.body) as Map<String, dynamic>);
   }
 
@@ -1133,7 +1174,7 @@ class ProofingSessionClient {
   /// The session's current state, as the server sees it.
   Future<ProofingSessionInfo> fetchSession(ProofingSessionRef ref) async {
     final response = await http.get(_appUri(ref), headers: _headers(ref));
-    _check(response, 'Fetching the session');
+    _check(response, (l) => l.proofingRequestFetch);
     return ProofingSessionInfo.fromJson(json.decode(response.body));
   }
 
@@ -1147,7 +1188,7 @@ class ProofingSessionClient {
   Future<ProofingSessionInfo> waitForChange(ProofingSessionRef ref, String since, {http.Client? httpClient}) async {
     final uri = _appUri(ref, '/events').replace(queryParameters: {'since': since});
     final response = await (httpClient?.get(uri, headers: _headers(ref)) ?? http.get(uri, headers: _headers(ref)));
-    _check(response, 'Watching the session');
+    _check(response, (l) => l.proofingRequestWatch);
     return ProofingSessionInfo.fromJson(json.decode(response.body));
   }
 
@@ -1163,7 +1204,7 @@ class ProofingSessionClient {
       headers: _headers(ref, json: true),
       body: json.encode({'state': active ? 'active' : 'inactive'}),
     );
-    _check(response, 'Reporting the device state');
+    _check(response, (l) => l.proofingRequestDeviceState);
     return ProofingSessionInfo.fromJson(json.decode(response.body));
   }
 
@@ -1210,7 +1251,7 @@ class ProofingSessionClient {
         ),
       ),
     );
-    _check(response, 'Submitting the result');
+    _check(response, (l) => l.proofingRequestSubmitResult);
   }
 
   /// Tells the server the user just began [step] (`POST .../steps/{step}/start`)
@@ -1221,7 +1262,7 @@ class ProofingSessionClient {
   /// failure here interrupt the user.
   Future<void> markStepStarted(ProofingSessionRef ref, String step) async {
     final response = await http.post(_appUri(ref, '/steps/$step/start'), headers: _headers(ref));
-    _check(response, 'Marking step $step started');
+    _check(response, (l) => l.proofingRequestStepStarted(step));
   }
 
   /// Submits the document_capture step - the identity read off the MRZ scan
@@ -1239,7 +1280,7 @@ class ProofingSessionClient {
       headers: _headers(ref, json: true),
       body: json.encode({'document': document.toJson(), 'chipAccess': ?chipAccess?.toJson()}),
     );
-    _check(response, 'Submitting the document step');
+    _check(response, (l) => l.proofingRequestDocumentStep);
     return ProofingStepResponse.fromJson(json.decode(response.body));
   }
 
@@ -1270,21 +1311,31 @@ class ProofingSessionClient {
         ),
       ),
     );
-    _check(response, 'Submitting the nfc step');
+    _check(response, (l) => l.proofingRequestNfcStep);
     return ProofingStepResponse.fromJson(json.decode(response.body));
   }
 
   /// Submits the face step this app performed itself (selfieLocation
-  /// "native") the moment it completes: the live selfie only - the server
-  /// computes liveness and the face match against the DG2 photo it already
-  /// holds from [submitNfcStep], never trusting an on-device score.
-  Future<ProofingStepResponse> submitSelfieStep(ProofingSessionRef ref, {required ProofingPhotoInfo selfie}) async {
+  /// "native") the moment it completes: the live selfie, or the Regula
+  /// liveness transaction id - the server confirms liveness and matches
+  /// against the DG2 photo it already holds from [submitNfcStep], never
+  /// trusting an on-device score.
+  Future<ProofingStepResponse> submitSelfieStep(
+    ProofingSessionRef ref, {
+    ProofingPhotoInfo? selfie,
+    String? livenessTransactionId,
+  }) async {
+    assert((selfie == null) != (livenessTransactionId == null), 'pass exactly one of selfie/livenessTransactionId');
     final response = await http.post(
       _appUri(ref, '/steps/selfie'),
       headers: _headers(ref, json: true),
-      body: json.encode({'image': selfie.imageBase64, 'mimeType': selfie.mimeType}),
+      body: json.encode(
+        livenessTransactionId != null
+            ? {'livenessTransactionId': livenessTransactionId}
+            : {'image': selfie!.imageBase64, 'mimeType': selfie.mimeType},
+      ),
     );
-    _check(response, 'Submitting the face verification step');
+    _check(response, (l) => l.proofingRequestFaceStep);
     return ProofingStepResponse.fromJson(json.decode(response.body));
   }
 
@@ -1304,7 +1355,7 @@ class ProofingSessionClient {
     if (response.statusCode == 409 && _errorCodeOf(response) == 'steps_incomplete') {
       throw const ProofingStepsIncompleteException();
     }
-    _check(response, 'Submitting the verification');
+    _check(response, (l) => l.proofingRequestSubmitVerification);
     return ProofingStepResponse.fromJson(json.decode(response.body));
   }
 }

@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 
 import '../../routing.dart';
@@ -119,7 +120,7 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
                 StepBadge(
                   current: widget.stepNumber,
                   total: widget.totalSteps,
-                  label: 'Scan ${_getDocumentTypeName()}',
+                  label: context.l10n.proofingScanDocument(widget.documentType.name),
                 ),
               ],
             ),
@@ -143,13 +144,10 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Position the ${widget.documentType.displayName}',
+              context.l10n.proofingPositionDocument(widget.documentType.name),
               style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
             ),
-            Text(
-              'Align the Machine Readable Zone (MRZ) with the frame at the bottom of the screen. Hold steady until scanning completes.',
-              style: TextStyle(color: Colors.white70, fontSize: 14),
-            ),
+            Text(context.l10n.proofingScanMrzInstructions, style: TextStyle(color: Colors.white70, fontSize: 14)),
           ],
         ),
       ),
@@ -167,14 +165,13 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
           onPressed: () {
             widget.onManualEntry();
           },
-          child: Text('Enter ${_getDocumentTypeName()} details manually', style: TextStyle(color: Colors.black)),
+          child: Text(
+            context.l10n.proofingEnterDetailsManually(widget.documentType.name),
+            style: TextStyle(color: Colors.black),
+          ),
         ),
       ),
     );
-  }
-
-  String _getDocumentTypeName() {
-    return widget.documentType.displayName;
   }
 }
 

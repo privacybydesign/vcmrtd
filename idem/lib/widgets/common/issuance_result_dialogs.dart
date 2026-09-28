@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:idem/l10n/l10n.dart';
 
 class DialogHelpers {
   static void showInfoDialog({required BuildContext context, required String title, required String message}) {
@@ -8,7 +9,7 @@ class DialogHelpers {
         icon: Icon(Icons.info_outline, color: Colors.blue[600], size: 48),
         title: Text(title),
         content: Text(message),
-        actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK'))],
+        actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.l10n.proofingDialogOk))],
       ),
     );
   }
@@ -26,7 +27,7 @@ class DialogHelpers {
         icon: Icon(Icons.check_circle, color: Colors.green[600], size: 48),
         title: Text(title),
         content: Text(message),
-        actions: [TextButton(onPressed: onContinue, child: const Text('Continue'))],
+        actions: [TextButton(onPressed: onContinue, child: Text(context.l10n.proofingContinue))],
       ),
     );
   }
@@ -56,22 +57,19 @@ class DialogHelpers {
             ),
             if (onRetry != null) ...[
               const SizedBox(height: 12),
-              const Text(
-                'Please try again or make an issue in GitHub of this project.',
-                style: TextStyle(fontSize: 14),
-              ),
+              Text(context.l10n.proofingDialogRetryHint, style: const TextStyle(fontSize: 14)),
             ],
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK')),
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.l10n.proofingDialogOk)),
           if (onRetry != null)
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
                 onRetry();
               },
-              child: const Text('Retry'),
+              child: Text(context.l10n.proofingRetry),
             ),
         ],
       ),

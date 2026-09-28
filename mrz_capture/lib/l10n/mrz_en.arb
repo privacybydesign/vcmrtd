@@ -1,0 +1,105 @@
+{
+  "@@locale": "en",
+  "mrzContinueToNfc": "Continue to NFC Reading",
+  "mrzEnterDetailsLabel": "Enter {docType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{document}} details",
+  "@mrzEnterDetailsLabel": {
+    "placeholders": {
+      "docType": {
+        "type": "String"
+      }
+    }
+  },
+  "mrzWhereToFind": "Where to find this information:",
+  "mrzHelpPassport": "• Passport Number: Usually at the top right of the photo page\n• Date of Birth: Listed as \"Date of birth\" or \"DOB\"\n• Expiry Date: Listed as \"Date of expiry\" or \"Valid until\"",
+  "mrzHelpDrivingLicence": "• The MRZ is at the bottom of the front side of your driver's licence\n• You can also get this by scanning the QR Code on the back of your driver's licence\n• It's a single line of exactly 30 characters\n• Starts with \"D1\", \"D2\", or \"D3\"",
+  "mrzDocNumberTitle": "{docType, select, passport{Passport Number} identityCard{Identity Card Number} drivingLicence{Driving Licence Number} other{Document Number}}",
+  "@mrzDocNumberTitle": {
+    "placeholders": {
+      "docType": {
+        "type": "String"
+      }
+    }
+  },
+  "mrzDocNumberHint": "Enter your {docType, select, passport{passport} identityCard{identity card} drivingLicence{driving licence} other{document}} number",
+  "@mrzDocNumberHint": {
+    "placeholders": {
+      "docType": {
+        "type": "String"
+      }
+    }
+  },
+  "mrzDocNumberExample": "e.g., AB1234567",
+  "mrzDocNumberRequired": "{docType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{Document}} number is required",
+  "@mrzDocNumberRequired": {
+    "placeholders": {
+      "docType": {
+        "type": "String"
+      }
+    }
+  },
+  "mrzDocNumberTooShort": "{docType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{Document}} number must be at least 6 characters",
+  "@mrzDocNumberTooShort": {
+    "placeholders": {
+      "docType": {
+        "type": "String"
+      }
+    }
+  },
+  "mrzDobTitle": "Date of Birth",
+  "mrzDobHint": "Select your date of birth",
+  "mrzTapToSelectDate": "Tap to select date",
+  "mrzDobRequired": "Date of birth is required",
+  "mrzDobInFuture": "Date of birth cannot be in the future",
+  "mrzExpiryTitle": "Expiry Date",
+  "mrzExpiryHint": "Select {docType, select, passport{passport} identityCard{identity card} drivingLicence{driving licence} other{document}} expiry date",
+  "@mrzExpiryHint": {
+    "placeholders": {
+      "docType": {
+        "type": "String"
+      }
+    }
+  },
+  "mrzExpiryRequired": "Expiry date is required",
+  "mrzDocumentExpired": "{docType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{Document}} has expired",
+  "@mrzDocumentExpired": {
+    "placeholders": {
+      "docType": {
+        "type": "String"
+      }
+    }
+  },
+  "mrzExpiryBeforeDob": "Expiry date cannot be before date of birth",
+  "mrzStringTitle": "MRZ String",
+  "mrzStringHint": "Enter the MRZ line from your driver's licence",
+  "mrzStringRequired": "MRZ string is required",
+  "mrzStringLength": "MRZ must be exactly 30 characters",
+  "mrzStringPrefix": "MRZ must start with D1, D2, or DL",
+  "mrzCharacterCount": "Character count:",
+  "mrzFillAllFields": "Please fill in all required fields",
+  "mrzParseFailed": "Failed to parse MRZ: {error}",
+  "@mrzParseFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "mrzHeaderTitle": "Enter Your {docType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{Document}} Information",
+  "@mrzHeaderTitle": {
+    "placeholders": {
+      "docType": {
+        "type": "String"
+      }
+    }
+  },
+  "mrzHeaderTitleMrz": "Enter MRZ String",
+  "mrzHeaderSubtitle": "Please enter the information exactly as it appears on your {docType, select, passport{passport} identityCard{identity card} drivingLicence{driving licence} other{document}}",
+  "@mrzHeaderSubtitle": {
+    "placeholders": {
+      "docType": {
+        "type": "String"
+      }
+    }
+  },
+  "mrzHeaderSubtitleMrz": "Type the Machine Readable Zone text exactly as it appears"
+}

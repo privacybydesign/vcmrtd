@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:mrz_capture/mrz_capture.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:idem/widgets/common/document_illustrations.dart';
 
 /// NFC guidance screen - helps users position phone correctly for NFC reading
@@ -100,13 +101,13 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
-                      'Read the chip',
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF212121)),
+                    Text(
+                      context.l10n.docNfcGuidanceTitle,
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF212121)),
                     ),
                     const SizedBox(height: 4.0),
                     Text(
-                      'Place your phone on the ${widget.documentType.displayName}',
+                      context.l10n.docNfcGuidancePlacePhone(widget.documentType.name),
                       style: const TextStyle(fontSize: 15, color: Color(0xFF6B7280)),
                     ),
                     const SizedBox(height: 24.0),
@@ -144,7 +145,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
       onBack: widget.onBack,
       current: widget.stepNumber,
       total: widget.totalSteps,
-      label: 'Read ${widget.documentType.displayName}',
+      label: context.l10n.docReadDocument(widget.documentType.name),
     );
   }
 
@@ -176,15 +177,13 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Tips for better results:',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
+              Text(
+                context.l10n.docNfcGuidanceTipsTitle,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
               ),
               const SizedBox(height: 8),
               Text(
-                '• Place the ${widget.documentType.displayName} behind your phone like in the example\n'
-                '• Remove phone case if reading fails\n'
-                '• The process may take 10–30 seconds',
+                context.l10n.docNfcGuidanceTips(widget.documentType.name),
                 style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280), height: 1.4),
               ),
             ],
@@ -204,27 +203,27 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: Text(
-                'Scan ${widget.documentType.displayName}',
+                context.l10n.docScanDocument(widget.documentType.name),
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
             ),
           )
         else
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
             child: Text(
-              'NFC is not available',
+              context.l10n.docNfcNotAvailable,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
           ),
         const SizedBox(height: 8),
         if (widget.onTroubleshooting != null)
           PlatformTextButton(
             onPressed: widget.onTroubleshooting,
-            child: const Text(
-              'Having trouble?',
-              style: TextStyle(color: Color(0xFF2196F3), fontWeight: FontWeight.w500),
+            child: Text(
+              context.l10n.docHavingTrouble,
+              style: const TextStyle(color: Color(0xFF2196F3), fontWeight: FontWeight.w500),
             ),
           ),
       ],

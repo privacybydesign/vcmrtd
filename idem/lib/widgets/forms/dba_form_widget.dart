@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:idem/l10n/l10n.dart';
 
 /// Widget for DBA (Document Basic Access) form
 class DbaFormWidget extends StatefulWidget {
@@ -76,9 +77,9 @@ class _DbaFormWidgetState extends State<DbaFormWidget> {
             TextFormField(
               enabled: !widget.inputDisabled,
               controller: widget.docNumberController,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'Passport number',
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                labelText: context.l10n.docPassportNumber,
                 fillColor: Colors.white,
               ),
               inputFormatters: <TextInputFormatter>[
@@ -90,7 +91,7 @@ class _DbaFormWidgetState extends State<DbaFormWidget> {
               autofocus: true,
               validator: (value) {
                 if (value?.isEmpty ?? false) {
-                  return 'Please enter passport number';
+                  return context.l10n.docPassportNumberRequired;
                 }
                 return null;
               },
@@ -99,15 +100,15 @@ class _DbaFormWidgetState extends State<DbaFormWidget> {
             TextFormField(
               enabled: !widget.inputDisabled,
               controller: widget.dobController,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'Date of Birth',
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                labelText: context.l10n.docDateOfBirth,
                 fillColor: Colors.white,
               ),
               autofocus: false,
               validator: (value) {
                 if (value?.isEmpty ?? false) {
-                  return 'Please select Date of Birth';
+                  return context.l10n.docDateOfBirthRequired;
                 }
                 return null;
               },
@@ -130,15 +131,15 @@ class _DbaFormWidgetState extends State<DbaFormWidget> {
             TextFormField(
               enabled: !widget.inputDisabled,
               controller: widget.doeController,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'Date of Expiry',
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                labelText: context.l10n.docDateOfExpiry,
                 fillColor: Colors.white,
               ),
               autofocus: false,
               validator: (value) {
                 if (value?.isEmpty ?? false) {
-                  return 'Please select Date of Expiry';
+                  return context.l10n.docDateOfExpiryRequired;
                 }
                 return null;
               },
@@ -159,7 +160,7 @@ class _DbaFormWidgetState extends State<DbaFormWidget> {
             ),
             const SizedBox(height: 12),
             CheckboxListTile(
-              title: const Text('DBA with PACE'),
+              title: Text(context.l10n.docDbaWithPace),
               value: widget.checkBoxPACE,
               onChanged: (newValue) {
                 widget.onPACEChanged(newValue ?? false);

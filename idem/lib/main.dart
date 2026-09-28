@@ -4,11 +4,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
+import 'package:mrz_capture/mrz_capture.dart' show MrzCaptureLocalizations;
 import 'package:vcmrtd/extensions.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/routing.dart';
 import 'package:idem/services/proofing_deeplink_channel.dart';
@@ -47,6 +48,8 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
     // Unpinning (null) doesn't stop listening - see ProofingSessionWatcher.
     ref.listenManual(activeProofingSessionProvider, (previous, next) {
       if (next != null) _sessions.track(next.ref, next.info);
+      // The session's language (see lib/l10n/l10n.dart) decides the UI's.
+      if (next != null) ref.read(appLocaleProvider.notifier).useSessionLanguage(next.info.language);
     });
     _sessionEvents = _sessions.events.listen(_onProofingSessionEvent);
     // Tell the server when this device stops/resumes working on the
@@ -69,7 +72,11 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
     final error = await openProofingSessionLink(_router, ProviderScope.containerOf(context), value);
     final navigatorContext = _navigatorContext;
     if (error == null || navigatorContext == null || !navigatorContext.mounted) return;
-    DialogHelpers.showInfoDialog(context: navigatorContext, title: 'Could not open verification', message: error);
+    DialogHelpers.showInfoDialog(
+      context: navigatorContext,
+      title: navigatorContext.l10n.sessionOpenFailedTitle,
+      message: error,
+    );
   }
 
   /// The listener (ProofingSessionWatcher, via the coordinator) or the
@@ -102,8 +109,8 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
       if (context == null) return;
       DialogHelpers.showInfoDialog(
         context: context,
-        title: 'Verification complete',
-        message: 'You\'re done. Your verification was sent to ${pinned.info.relyingParty}.',
+        title: context.l10n.sessionCompleteTitle,
+        message: context.l10n.sessionCompleteMessage(pinned.info.relyingParty),
       );
     });
   }
@@ -123,10 +130,8 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
       if (context == null) return;
       DialogHelpers.showInfoDialog(
         context: context,
-        title: 'Verification restarted',
-        message:
-            '${info.relyingParty} reset this verification, so everything you did so far was discarded. '
-            'Please start again from the beginning.',
+        title: context.l10n.sessionRestartedTitle,
+        message: context.l10n.sessionRestartedMessage(info.relyingParty),
       );
     });
   }
@@ -144,7 +149,7 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final context = _navigatorContext;
       if (context == null) return;
-      DialogHelpers.showInfoDialog(context: context, title: 'Verification stopped', message: reason.message);
+      DialogHelpers.showInfoDialog(context: context, title: context.l10n.sessionStoppedTitle, message: reason.message);
     });
   }
 
@@ -173,11 +178,9 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
           ProofingSessionCheckOverlay(check: _sessions.check, onAbandon: _abandonProofingSession),
         ],
       ),
-      localizationsDelegates: const [
-        DefaultMaterialLocalizations.delegate,
-        DefaultCupertinoLocalizations.delegate,
-        DefaultWidgetsLocalizations.delegate,
-      ],
+      localizationsDelegates: const [...AppLocalizations.localizationsDelegates, MrzCaptureLocalizations.delegate],
+      supportedLocales: AppLocalizations.supportedLocales,
+      locale: ref.watch(appLocaleProvider),
       theme: ThemeData(
         primarySwatch: Colors.indigo,
         brightness: Brightness.light,
