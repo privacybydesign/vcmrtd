@@ -1,4 +1,4 @@
-﻿// Created for UX improvement - NFC positioning guidance screen
+// Created for UX improvement - NFC positioning guidance screen
 // Implementation based on hive design specifications
 
 import 'dart:async';
@@ -9,6 +9,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:idem/widgets/common/document_illustrations.dart';
+import 'package:idem/theme/brand_theme.dart';
+import 'package:idem/widgets/guided/guided_widgets.dart';
 
 /// NFC guidance screen - helps users position phone correctly for NFC reading
 class NfcGuidanceScreen extends StatefulWidget {
@@ -82,6 +84,9 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
 
   @override
   Widget build(BuildContext context) {
+    final guided = context.guided;
+    if (guided != null) return _buildGuided(guided);
+
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -126,6 +131,118 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGuided(GuidedStyle g) {
+    final (name, isBooklet) = switch (widget.documentType) {
+      DocumentType.passport => ('passport', true),
+      DocumentType.identityCard => ('ID card', false),
+      DocumentType.drivingLicence => ('driving licence', false),
+    };
+    final steps = [
+      isBooklet
+          ? 'Close the passport and lay it on a flat, non-metal surface.'
+          : 'Lay the $name on a flat, non-metal surface.',
+      'Place the top half of your phone flat on the ${isBooklet ? 'cover' : 'card'}.',
+      'Keep still until the check turns green. Remove a thick phone case if reading fails.',
+    ];
+
+    return GuidedStatusBar(
+      onDark: false,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              GuidedTopBar(
+                leading: GuidedRoundButton(icon: Icons.chevron_left, tooltip: 'Back', onPressed: widget.onBack),
+                center: Image.asset(g.markAsset, width: 32, height: 32, semanticLabel: context.brand.appBarTitle),
+              ),
+              const GuidedStepBar(step: 2),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 32, 20, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      AspectRatio(
+                        aspectRatio: 350 / 260,
+                        child: AnimatedBuilder(
+                          animation: _animationController,
+                          builder: (context, _) => _GuidedNfcIllustration(style: g, pulse: _animationController.value),
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const GuidedStepLabel(step: 2),
+                            const SizedBox(height: 12),
+                            Text('Hold your phone on the $name', style: g.heading(26)),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Your $name has a chip that proves it is genuine. We read it with NFC.',
+                              style: TextStyle(fontSize: 16, height: 1.5, color: g.bodyText),
+                            ),
+                            const SizedBox(height: 20),
+                            for (final (i, step) in steps.indexed) ...[
+                              if (i > 0) const SizedBox(height: 14),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: 28,
+                                    height: 28,
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(color: g.ink, shape: BoxShape.circle),
+                                    child: Text('${i + 1}', style: g.heading(13, color: Colors.white)),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(top: 3),
+                                      child: Text(step, style: TextStyle(fontSize: 15, height: 1.45, color: g.ink)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (!_isNfcAvailable) ...[
+                      Text(
+                        "NFC is turned off. Turn it on in your phone's settings to continue.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 14, color: g.bodyText),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    GuidedButton(label: 'Start reading', onPressed: _isNfcAvailable ? widget.onStartReading : null),
+                    if (widget.onTroubleshooting != null) ...[
+                      const SizedBox(height: 4),
+                      TextButton(onPressed: widget.onTroubleshooting, child: const Text('Having trouble?')),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -215,12 +332,89 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
         if (widget.onTroubleshooting != null)
           PlatformTextButton(
             onPressed: widget.onTroubleshooting,
-            child: const Text(
+            child: Text(
               'Having trouble?',
-              style: TextStyle(color: Color(0xFF2196F3), fontWeight: FontWeight.w500),
+              style: TextStyle(color: context.brand.accent ?? const Color(0xFF2196F3), fontWeight: FontWeight.w500),
             ),
           ),
       ],
+    );
+  }
+}
+
+/// A phone lying on a document with NFC waves, drawn in a 350×260 box and
+/// scaled to fit. [pulse] (0–1) breathes the waves.
+class _GuidedNfcIllustration extends StatelessWidget {
+  const _GuidedNfcIllustration({required this.style, required this.pulse});
+
+  final GuidedStyle style;
+  final double pulse;
+
+  @override
+  Widget build(BuildContext context) {
+    final g = style;
+    Widget ring(double size, double width, double opacity) => Positioned(
+      left: 184 - size / 2,
+      top: 112 - size / 2,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: g.heroAccent.withValues(alpha: opacity),
+            width: width,
+          ),
+        ),
+      ),
+    );
+    final grow = 1 + 0.06 * pulse;
+    return DecoratedBox(
+      decoration: BoxDecoration(color: g.actionTint, borderRadius: BorderRadius.circular(24)),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: FittedBox(
+          child: SizedBox(
+            width: 350,
+            height: 260,
+            child: Stack(
+              children: [
+                Positioned(
+                  left: 70,
+                  top: 96,
+                  child: Transform.rotate(
+                    angle: -0.105,
+                    child: Container(
+                      width: 210,
+                      height: 140,
+                      decoration: BoxDecoration(color: g.illustrationDocument, borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 132,
+                  top: 24,
+                  child: Container(
+                    width: 104,
+                    height: 188,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: g.ink, width: 4),
+                      boxShadow: [
+                        BoxShadow(color: g.ink.withValues(alpha: 0.18), blurRadius: 32, offset: const Offset(0, 16)),
+                      ],
+                    ),
+                  ),
+                ),
+                ring(104 * grow, 2, 0.2 + 0.1 * pulse),
+                ring(76 * grow, 2, 0.45),
+                ring(48, 3, 0.9),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

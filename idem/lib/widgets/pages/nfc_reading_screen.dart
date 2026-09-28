@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -13,6 +15,8 @@ import 'package:idem/providers/reader_providers.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 
 import '../../routing.dart';
+import 'package:idem/theme/brand_theme.dart';
+import 'package:idem/widgets/guided/guided_widgets.dart';
 
 class NfcReadingRouteParams {
   final ScannedMRZ scannedMRZ;
@@ -161,6 +165,11 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
     final readingStep = _readingStepForState(state);
     final tip = _tipForState(state, readingStep);
 
+    final guided = context.guided;
+    if (guided != null) {
+      return _buildGuided(context, guided, state: state, nfcState: nfcState, readingStep: readingStep, tip: tip);
+    }
+
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -280,9 +289,10 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
     final isDone = index < currentStep;
     final isCurrent = index == currentStep;
 
+    final brand = context.brand;
     final titleColor = switch ((isDone, isCurrent)) {
-      (true, _) => const Color(0xFF212121),
-      (_, true) => nfcStateColor(nfcState),
+      (true, _) => brand.ink ?? const Color(0xFF212121),
+      (_, true) => nfcStateColor(nfcState, brand),
       _ => Colors.grey[500],
     };
 
@@ -298,7 +308,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
                   child: Container(
                     width: 2,
                     margin: const EdgeInsets.symmetric(vertical: 4),
-                    color: isDone ? const Color(0xFF4CAF50) : Colors.grey[300],
+                    color: isDone ? brand.success ?? const Color(0xFF4CAF50) : Colors.grey[300],
                   ),
                 ),
             ],
@@ -327,7 +337,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
 
   Widget _buildStepStatusIcon({required bool isDone, required bool isCurrent, required NFCReadingState nfcState}) {
     if (isDone) {
-      return const Icon(Icons.check_circle, color: Color(0xFF4CAF50), size: 22);
+      return Icon(Icons.check_circle, color: context.brand.success ?? const Color(0xFF4CAF50), size: 22);
     }
     if (isCurrent) {
       if (nfcState == NFCReadingState.error) {
@@ -336,10 +346,138 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
       return SizedBox(
         width: 20,
         height: 20,
-        child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(nfcStateColor(nfcState))),
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          valueColor: AlwaysStoppedAnimation(nfcStateColor(nfcState, context.brand)),
+        ),
       );
     }
     return Icon(Icons.circle_outlined, color: Colors.grey[400], size: 22);
+  }
+
+  /// Guided layout: a progress ring over a checklist of what's been read.
+  Widget _buildGuided(
+    BuildContext context,
+    GuidedStyle g, {
+    required DocumentReaderState state,
+    required NFCReadingState nfcState,
+    required int? readingStep,
+    required String? tip,
+  }) {
+    final docName = switch (widget.params.documentType) {
+      DocumentType.passport => 'passport',
+      DocumentType.identityCard => 'ID card',
+      DocumentType.drivingLicence => 'driving licence',
+    };
+    final failed = nfcState == NFCReadingState.error;
+    final done = nfcState == NFCReadingState.success;
+    final (title, subtitle) = switch (state) {
+      DocumentReaderConnecting() => ('Hold your phone on the $docName', tip ?? _firstTip),
+      DocumentReaderReconnecting() => ('Connection lost', _stuckTip),
+      DocumentReaderCancelled() || DocumentReaderCancelling() => ('Reading stopped', 'Start again when you are ready.'),
+      DocumentReaderFailed() => (
+        'Reading failed',
+        tip ?? 'Check that the $docName lies flat under your phone and try again.',
+      ),
+      DocumentReaderSuccess() => ('Chip read', 'Your $docName is genuine.'),
+      _ => ('Don’t move your phone', 'Keep it on the $docName until reading is complete.'),
+    };
+    final ringColor = failed
+        ? const Color(0xFFD1293D)
+        : done
+        ? g.success
+        : g.action;
+    final percent = (progressForState(state) * 100).round().clamp(0, 100);
+
+    return GuidedStatusBar(
+      onDark: false,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              GuidedTopBar(
+                leading: GuidedRoundButton(
+                  icon: Icons.close,
+                  tooltip: 'Cancel reading',
+                  onPressed: () => _handleBack(context),
+                ),
+                center: Image.asset(g.markAsset, width: 32, height: 32, semanticLabel: context.brand.appBarTitle),
+              ),
+              const GuidedStepBar(step: 2),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 56, 20, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Center(
+                        child: SizedBox(
+                          width: 200,
+                          height: 200,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              TweenAnimationBuilder<double>(
+                                tween: Tween(end: percent / 100),
+                                duration: const Duration(milliseconds: 400),
+                                builder: (context, value, _) => CustomPaint(
+                                  painter: _ProgressRingPainter(value: value, color: ringColor, track: g.actionTint),
+                                ),
+                              ),
+                              Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  if (failed)
+                                    Icon(Icons.error_outline, size: 56, color: ringColor)
+                                  else if (done)
+                                    Icon(Icons.check, size: 64, color: ringColor)
+                                  else
+                                    Text('$percent%', style: g.heading(44)),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    failed ? 'Not read' : (done ? 'Complete' : 'Reading chip'),
+                                    style: TextStyle(fontSize: 14, color: g.bodyText),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(title, textAlign: TextAlign.center, style: g.heading(24, height: 1.25)),
+                      const SizedBox(height: 8),
+                      Text(
+                        subtitle,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 16, height: 1.5, color: g.bodyText),
+                      ),
+                      if (readingStep != null) ...[
+                        const SizedBox(height: 32),
+                        _GuidedReadingChecklist(
+                          style: g,
+                          currentStep: readingStep,
+                          failed: failed,
+                          complete: done,
+                          documentName: docName,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              if (failed)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                  child: GuidedButton(label: 'Try again', icon: Icons.refresh, onPressed: retry),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildTopBar(BuildContext context) {
@@ -490,4 +628,141 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
       return '$progress\n$message';
     };
   }
+}
+
+/// The four reading steps as a bordered list: done rows get a green check,
+/// the current row is tinted with a spinner, later rows an empty ring.
+class _GuidedReadingChecklist extends StatelessWidget {
+  const _GuidedReadingChecklist({
+    required this.style,
+    required this.currentStep,
+    required this.failed,
+    required this.complete,
+    required this.documentName,
+  });
+
+  final GuidedStyle style;
+  final int currentStep;
+  final bool failed;
+  final bool complete;
+  final String documentName;
+
+  @override
+  Widget build(BuildContext context) {
+    final g = style;
+    final labels = [
+      ('Secure connection set up', 'Setting up a secure connection'),
+      ('Personal details read', 'Reading personal details'),
+      ('${_capitalize(documentName)} photo read', 'Reading $documentName photo'),
+      ('Chip is genuine', 'Checking the chip is genuine'),
+    ];
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: g.subtleBorder),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (final (i, (doneLabel, activeLabel)) in labels.indexed)
+            _row(
+              g,
+              label: i < currentStep || complete ? doneLabel : activeLabel,
+              state: i < currentStep || complete
+                  ? _RowState.done
+                  : i == currentStep
+                  ? (failed ? _RowState.failed : _RowState.current)
+                  : _RowState.pending,
+              divider: i < labels.length - 1,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _row(GuidedStyle g, {required String label, required _RowState state, required bool divider}) {
+    final Widget icon = switch (state) {
+      _RowState.done => Container(
+        width: 24,
+        height: 24,
+        decoration: BoxDecoration(color: g.success, shape: BoxShape.circle),
+        child: const Icon(Icons.check, size: 16, color: Colors.white),
+      ),
+      _RowState.current => SizedBox(
+        width: 24,
+        height: 24,
+        child: CircularProgressIndicator(strokeWidth: 3, color: g.action, backgroundColor: g.actionTintStrong),
+      ),
+      _RowState.failed => const Icon(Icons.error, size: 24, color: Color(0xFFD1293D)),
+      _RowState.pending => Container(
+        width: 24,
+        height: 24,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: g.placeholder, width: 2),
+        ),
+      ),
+    };
+    final current = state == _RowState.current;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: current ? g.actionTint.withValues(alpha: 0.5) : null,
+        border: divider ? Border(bottom: BorderSide(color: g.subtleBorder)) : null,
+      ),
+      child: Row(
+        children: [
+          icon,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: current ? FontWeight.w700 : FontWeight.w600,
+                color: current ? g.action : (state == _RowState.pending ? g.muted : g.ink),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _capitalize(String s) => s[0].toUpperCase() + s.substring(1);
+}
+
+enum _RowState { done, current, failed, pending }
+
+class _ProgressRingPainter extends CustomPainter {
+  _ProgressRingPainter({required this.value, required this.color, required this.track});
+
+  final double value;
+  final Color color;
+  final Color track;
+
+  static const _stroke = 14.0;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromCircle(center: size.center(Offset.zero), radius: size.shortestSide / 2 - 12);
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = _stroke;
+    canvas.drawArc(rect, 0, 2 * math.pi, false, paint..color = track);
+    if (value > 0) {
+      canvas.drawArc(
+        rect,
+        -math.pi / 2,
+        2 * math.pi * value,
+        false,
+        paint
+          ..color = color
+          ..strokeCap = StrokeCap.round,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ProgressRingPainter old) => old.value != value || old.color != color || old.track != track;
 }

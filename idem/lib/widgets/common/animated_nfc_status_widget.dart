@@ -2,23 +2,25 @@
 // Animated NFC status display widget with beautiful state-based animations
 
 import 'package:flutter/material.dart';
+import 'package:idem/theme/brand_theme.dart';
 
 /// Enumeration of NFC reading states for animation control
 enum NFCReadingState { waiting, connecting, reading, authenticating, success, error, idle, cancelling }
 
 /// The color associated with a given [NFCReadingState], shared with other
 /// widgets (e.g. a step progress indicator) that need to stay visually in
-/// sync with this widget's state color.
-Color nfcStateColor(NFCReadingState state) {
+/// sync with this widget's state color. [brand] may override the waiting and
+/// success colours.
+Color nfcStateColor(NFCReadingState state, [BrandTheme brand = BrandTheme.idem]) {
   switch (state) {
     case NFCReadingState.waiting:
-      return const Color(0xFF2196F3); // Blue
+      return brand.accent ?? const Color(0xFF2196F3); // Blue
     case NFCReadingState.connecting:
     case NFCReadingState.reading:
     case NFCReadingState.authenticating:
       return const Color(0xFFFF9800); // Orange
     case NFCReadingState.success:
-      return const Color(0xFF4CAF50); // Green
+      return brand.success ?? const Color(0xFF4CAF50); // Green
     case NFCReadingState.error:
       return const Color(0xFFF44336); // Red
     case NFCReadingState.cancelling:
@@ -65,6 +67,7 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget> with 
   late Animation<double> _pulseAnimation;
   late Animation<double> _shakeAnimation;
   late Animation<Color?> _colorAnimation;
+  BrandTheme _brand = BrandTheme.idem;
 
   @override
   void initState() {
@@ -116,6 +119,21 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget> with 
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // initState can't read the theme, so its colour tween targets the default
+    // brand's colour; retarget it once the actual brand is known.
+    final brand = context.brand;
+    if (brand != _brand) {
+      _brand = brand;
+      _colorAnimation = ColorTween(
+        begin: Colors.grey,
+        end: _getStateColor(),
+      ).animate(CurvedAnimation(parent: _primaryController, curve: Curves.easeInOut));
+    }
+  }
+
+  @override
   void didUpdateWidget(AnimatedNFCStatusWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.state != widget.state) {
@@ -160,7 +178,7 @@ class _AnimatedNFCStatusWidgetState extends State<AnimatedNFCStatusWidget> with 
     }
   }
 
-  Color _getStateColor() => nfcStateColor(widget.state);
+  Color _getStateColor() => nfcStateColor(widget.state, _brand);
 
   IconData _getStateIcon() {
     switch (widget.state) {

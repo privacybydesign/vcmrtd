@@ -9,6 +9,8 @@ import 'package:face_verification/face_verification.dart';
 import 'package:image/image.dart' as img;
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:idem/services/face_verification_outcome.dart';
+import 'package:idem/theme/brand_theme.dart';
+import 'package:idem/widgets/guided/guided_widgets.dart';
 
 // ── Enums & helpers ────────────────────────────────────────────────────────
 
@@ -772,6 +774,9 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
 
   @override
   Widget build(BuildContext context) {
+    final guided = context.guided;
+    if (guided != null) return _buildGuided(guided);
+
     return Scaffold(
       body: Stack(
         children: [
@@ -1024,12 +1029,14 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
       width: double.infinity,
       child: ElevatedButton.icon(
         onPressed: enabled ? onStart : null,
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          backgroundColor: Colors.green[600],
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
+        style:
+            context.brand.primaryButtonStyle ??
+            ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              backgroundColor: Colors.green[600],
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
         icon: busy
             ? const SizedBox(
                 width: 18,
@@ -1313,6 +1320,412 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
       ],
     ),
   );
+}
+
+// ── Guided layout ──────────────────────────────────────────────────────────
+
+extension on FlutterFaceVerificationScreenState {
+  /// Guided layout: the camera behind a dark scrim with an oval cut-out that
+  /// turns green once the face is in position, with the current instruction
+  /// in a pill underneath. Same states and engine events as the classic layout.
+  Widget _buildGuided(GuidedStyle g) {
+    // Everything people need to read comes before scanning starts; the camera
+    // view itself only shows the oval and a short cue.
+    if (_errorMessage == null && _state == VerificationState.idle) return _buildGuidedIntro(g);
+    final showCamera = _errorMessage == null && _state == VerificationState.activeLiveness;
+    return GuidedStatusBar(
+      onDark: true,
+      child: Scaffold(
+        backgroundColor: g.ink,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (showCamera) _buildCameraPreview(),
+            if (showCamera && _actionFlash) ColoredBox(color: g.successBright.withValues(alpha: 0.25)),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ColoredBox(
+                  color: showCamera ? _guidedScrim(g) : Colors.transparent,
+                  child: SafeArea(bottom: false, child: _buildGuidedHeader(g)),
+                ),
+                Expanded(child: showCamera ? _buildGuidedOval(g) : _buildGuidedStatus(g)),
+                if (showCamera)
+                  ColoredBox(
+                    color: _guidedScrim(g),
+                    child: GuidedBottomInset(child: _buildGuidedControls(g)),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _guidedScrim(GuidedStyle g) => g.ink.withValues(alpha: 0.78);
+
+  Widget _buildGuidedHeader(GuidedStyle g) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      GuidedTopBar(
+        leading: GuidedRoundButton(icon: Icons.chevron_left, tooltip: 'Back', onDark: true, onPressed: _handleBack),
+      ),
+      const GuidedStepBar(step: 3, onDark: true),
+      const SizedBox(height: 8),
+    ],
+  );
+
+  /// Before the camera view: what the check does and how to get a good
+  /// result, with the button that starts it. The camera and face models load
+  /// behind this screen.
+  Widget _buildGuidedIntro(GuidedStyle g) {
+    final ready = _debugReadyOverride || (_cameraController?.value.isInitialized == true && _engineReady);
+    Widget tip(IconData icon, String text) => Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(color: g.buttonGrey, borderRadius: BorderRadius.circular(12)),
+          child: Icon(icon, size: 18, color: g.slate),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(text, style: TextStyle(fontSize: 15, color: g.ink)),
+        ),
+      ],
+    );
+    return GuidedStatusBar(
+      onDark: false,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              GuidedTopBar(
+                leading: GuidedRoundButton(icon: Icons.chevron_left, tooltip: 'Back', onPressed: _handleBack),
+                center: Image.asset(g.markAsset, width: 32, height: 32, excludeFromSemantics: true),
+              ),
+              const GuidedStepBar(step: 3),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 36, 24, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 160,
+                          height: 160,
+                          decoration: BoxDecoration(color: g.actionTint, shape: BoxShape.circle),
+                          child: Center(
+                            child: SizedBox(
+                              width: 96,
+                              height: 120,
+                              child: CustomPaint(painter: _GuidedSelfieIllustrationPainter(color: g.action)),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      const GuidedStepLabel(step: 3),
+                      const SizedBox(height: 12),
+                      Text('Take a quick selfie', style: g.heading(26)),
+                      const SizedBox(height: 12),
+                      Text(
+                        'We compare your face with the photo on your document chip. It takes a few seconds.',
+                        style: TextStyle(fontSize: 16, height: 1.5, color: g.bodyText),
+                      ),
+                      const SizedBox(height: 22),
+                      tip(Icons.wb_sunny_outlined, 'Find a spot with even light'),
+                      const SizedBox(height: 14),
+                      tip(Icons.face_retouching_off_outlined, 'Take off sunglasses and hats'),
+                      const SizedBox(height: 14),
+                      tip(Icons.lock_outline, 'Processed on your phone. No video is stored.'),
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                child: GuidedButton(
+                  label: !ready
+                      ? 'Getting ready…'
+                      : _startingLiveness
+                      ? 'Starting…'
+                      : 'Start selfie check',
+                  onPressed: ready && !_startingLiveness ? () => _startLiveness(widget.mode) : null,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Green once the engine reports a face in position and nothing left to fix.
+  bool get _guidedFaceAligned =>
+      _state == VerificationState.activeLiveness && (_alignTip == null || _alignTip == 'holdStill');
+
+  Widget _buildGuidedOval(GuidedStyle g) => CustomPaint(
+    painter: _GuidedFaceOvalPainter(
+      scrim: _guidedScrim(g),
+      stroke: _guidedFaceAligned ? g.successBright : Colors.white.withValues(alpha: 0.5),
+    ),
+  );
+
+  Widget _buildGuidedControls(GuidedStyle g) {
+    final ready = _debugReadyOverride || (_cameraController?.value.isInitialized == true && _engineReady);
+    final (icon, message, iconColor) = _guidedHint(g, ready: ready);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(999)),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 18, color: iconColor),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      message,
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: g.ink),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_state == VerificationState.activeLiveness &&
+              _selectedMode == LivenessMode.active &&
+              _actions.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                for (final action in _actions)
+                  Container(
+                    width: 8,
+                    height: 8,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _completedActions.contains(action)
+                          ? g.successBright
+                          : action == _currentAction
+                          ? Colors.white
+                          : Colors.white.withValues(alpha: 0.3),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  (IconData, String, Color) _guidedHint(GuidedStyle g, {required bool ready}) {
+    if (!ready) return (Icons.hourglass_empty, 'Getting the camera ready…', g.action);
+    final action = _currentAction;
+    if (action != null && _selectedMode == LivenessMode.active && _guidedFaceAligned) {
+      return (faceActionIcon(action), faceActionLabel(action), g.action);
+    }
+    final tip = _alignTip;
+    final tipMessage = tip == null || tip == 'holdStill' ? null : _alignTipMessage(tip);
+    if (tipMessage != null) return (Icons.open_in_full, tipMessage, g.action);
+    final p = _passive;
+    if (_selectedMode == LivenessMode.passive && p != null && p.started) {
+      var elapsedMs = p.elapsedMs;
+      if (_passiveAt != null) elapsedMs += DateTime.now().difference(_passiveAt!).inMilliseconds;
+      final secondsLeft = ((p.targetMs - elapsedMs.clamp(0, p.targetMs)) / 1000).ceil();
+      if (secondsLeft > 0) return (Icons.check, 'Hold still · ${secondsLeft}s', g.success);
+    }
+    return (Icons.check, 'Hold still', g.success);
+  }
+
+  /// Everything that isn't the live camera: setting up, checking, the result
+  /// and errors, centred on the dark background.
+  Widget _buildGuidedStatus(GuidedStyle g) {
+    final error = _errorMessage;
+    if (error != null) {
+      return _guidedStatusPanel(
+        g,
+        icon: Icon(Icons.error_outline, size: 56, color: Colors.white.withValues(alpha: 0.9)),
+        title: 'Selfie check stopped',
+        message: error,
+        actions: [
+          GuidedButton(label: 'Try again', icon: Icons.refresh, onPressed: _retry),
+          const SizedBox(height: 12),
+          TextButton(
+            onPressed: _handleBack,
+            style: TextButton.styleFrom(foregroundColor: g.heroEyebrow),
+            child: const Text('Go back'),
+          ),
+        ],
+      );
+    }
+    if (_state == VerificationState.result && _result != null) {
+      final r = _result!;
+      final passed = r.matchScore > faceMatchThreshold(widget.photoIssueDate) && r.isLive;
+      return _guidedStatusPanel(
+        g,
+        icon: Container(
+          width: 88,
+          height: 88,
+          decoration: BoxDecoration(
+            color: passed ? g.success : const Color(0xFFD1293D),
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: (passed ? g.successBright : const Color(0xFFD1293D)).withValues(alpha: 0.25),
+                spreadRadius: 12,
+              ),
+            ],
+          ),
+          child: Icon(passed ? Icons.check : Icons.close, size: 48, color: Colors.white),
+        ),
+        title: passed ? 'Face matched' : 'We couldn’t match your face',
+        message: passed
+            ? 'Your face matches the photo on your document chip.'
+            : 'Make sure your face is well lit and fills the oval, then try again.',
+        actions: passed
+            ? [
+                Text(
+                  'Continuing…',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: g.heroMuted),
+                ),
+              ]
+            : [GuidedButton(label: 'Try again', icon: Icons.refresh, onPressed: _retry)],
+      );
+    }
+    final cameraReady = _cameraController?.value.isInitialized == true;
+    final checking = _state == VerificationState.processing;
+    return _guidedStatusPanel(
+      g,
+      icon: const SizedBox(
+        width: 56,
+        height: 56,
+        child: CircularProgressIndicator(strokeWidth: 5, color: Colors.white),
+      ),
+      title: checking ? 'Checking your selfie' : 'Setting up the selfie check',
+      message: checking
+          ? 'Comparing your face with the photo on your document chip.'
+          : cameraReady
+          ? 'Loading face models…'
+          : 'Opening camera…',
+    );
+  }
+
+  Widget _guidedStatusPanel(
+    GuidedStyle g, {
+    required Widget icon,
+    required String title,
+    required String message,
+    List<Widget> actions = const [],
+  }) => SafeArea(
+    top: false,
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 28),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Spacer(),
+          Center(child: icon),
+          const SizedBox(height: 28),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: g.heading(24, color: Colors.white, height: 1.25),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 15, height: 1.5, color: g.heroMuted),
+          ),
+          const Spacer(),
+          ...actions,
+        ],
+      ),
+    ),
+  );
+}
+
+/// A face in an oval, for the selfie intro: drawn in a 96×120 box.
+class _GuidedSelfieIllustrationPainter extends CustomPainter {
+  const _GuidedSelfieIllustrationPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.scale(size.width / 96, size.height / 120);
+    canvas.drawOval(
+      const Rect.fromLTWH(4, 4, 88, 112),
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4,
+    );
+    final fill = Paint()..color = color.withValues(alpha: 0.25);
+    canvas.drawCircle(const Offset(48, 50), 17, fill);
+    canvas.drawPath(
+      Path()
+        ..moveTo(20, 104)
+        ..cubicTo(26, 89, 36, 82, 48, 82)
+        ..cubicTo(60, 82, 70, 89, 76, 104)
+        ..close(),
+      fill,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_GuidedSelfieIllustrationPainter old) => old.color != color;
+}
+
+/// Scrim with a face-shaped cut-out filling the space it's given, outlined in [stroke].
+class _GuidedFaceOvalPainter extends CustomPainter {
+  const _GuidedFaceOvalPainter({required this.scrim, required this.stroke});
+
+  final Color scrim;
+  final Color stroke;
+
+  /// Height to width, as in the design (430 × 320).
+  static const _aspect = 1.34;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final width = math.min(size.width * 0.82, (size.height - 24) / _aspect);
+    final oval = Rect.fromCenter(center: size.center(Offset.zero), width: width, height: width * _aspect);
+    canvas.drawPath(
+      Path()
+        ..fillType = PathFillType.evenOdd
+        ..addRect(Offset.zero & size)
+        ..addOval(oval),
+      Paint()..color = scrim,
+    );
+    canvas.drawOval(
+      oval,
+      Paint()
+        ..color = stroke
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 6,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_GuidedFaceOvalPainter old) => old.scrim != scrim || old.stroke != stroke;
 }
 
 // ── Supporting widgets ─────────────────────────────────────────────────────

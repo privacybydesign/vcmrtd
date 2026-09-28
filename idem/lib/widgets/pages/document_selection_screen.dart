@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/providers/wallet_provider.dart';
+import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/theme/text_styles.dart';
+import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:idem/widgets/pages/wallet_widgets.dart';
 
 /// Home screen: shows the scanning options when the wallet is empty, or just
@@ -18,11 +20,16 @@ class DocumentTypeSelectionScreen extends ConsumerWidget {
   final VoidCallback onSettingsPressed;
   final VoidCallback onScanQrPressed;
 
+  /// Guided layout only: resumes a proofing session that was accepted but not
+  /// finished, in place of scanning a new QR code.
+  final VoidCallback? onContinueProofingSession;
+
   const DocumentTypeSelectionScreen({
     super.key,
     required this.onDocumentTypeSelected,
     required this.onSettingsPressed,
     required this.onScanQrPressed,
+    this.onContinueProofingSession,
   });
 
   @override
@@ -31,13 +38,25 @@ class DocumentTypeSelectionScreen extends ConsumerWidget {
     final hasCards = cards.isNotEmpty;
     final activeProofingSession = ref.watch(activeProofingSessionProvider);
     final showQrScanOption = activeProofingSession == null;
+    final brand = context.brand;
+
+    if (context.guided != null) {
+      return _GuidedHome(
+        onSettingsPressed: onSettingsPressed,
+        onScanQrPressed: onScanQrPressed,
+        onContinueProofingSession: onContinueProofingSession,
+        connectedRelyingParty: activeProofingSession?.info.relyingParty,
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'VCMRTD',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22),
-        ),
+        title: brand.appBarLogoAsset != null
+            ? Image.asset(brand.appBarLogoAsset!, height: 32, semanticLabel: brand.appBarTitle)
+            : Text(
+                brand.appBarTitle,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22),
+              ),
         actions: [
           if (hasCards)
             IconButton(
@@ -51,12 +70,12 @@ class DocumentTypeSelectionScreen extends ConsumerWidget {
             : _ProofingSessionBanner(relyingParty: activeProofingSession.info.relyingParty),
       ),
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF6b6868), Colors.white],
-            stops: [0.0, 0.3],
+            colors: brand.homeBackgroundGradient ?? const [Color(0xFF6b6868), Colors.white],
+            stops: const [0.0, 0.3],
           ),
         ),
         child: SafeArea(
@@ -121,6 +140,7 @@ class _ScanOptionsHome extends StatelessWidget {
             if (showQrScanOption) ...[const SizedBox(height: 16), _qrScanOption(context, onScanQrPressed)],
             const SizedBox(height: 16),
             _advancedSettingsOption(context, onSettingsPressed),
+            if (context.brand.showPoweredByIdem) const _PoweredByIdem(),
           ],
         ),
       ),
@@ -155,6 +175,7 @@ class _WalletHome extends StatelessWidget {
             children: [
               if (showQrScanOption) ...[_qrScanOption(context, onScanQrPressed), const SizedBox(height: 16)],
               _advancedSettingsOption(context, onSettingsPressed),
+              if (context.brand.showPoweredByIdem) const _PoweredByIdem(),
             ],
           ),
         ),
@@ -179,7 +200,7 @@ class _ProofingSessionBanner extends StatelessWidget implements PreferredSizeWid
     return Container(
       width: double.infinity,
       height: preferredSize.height,
-      color: Colors.indigo[900],
+      color: context.brand.proofingBannerColor ?? Colors.indigo[900],
       alignment: Alignment.center,
       child: Text(
         'Connected — will send results to $relyingParty',
@@ -222,7 +243,7 @@ List<Widget> _documentTypeOptions(BuildContext context, Function(DocumentType) o
       title: 'Passport',
       subtitle: 'Use a machine readable passport',
       icon: Icons.book,
-      accentColor: const Color(0xFF6b6868),
+      accentColor: context.brand.documentOptionAccent ?? const Color(0xFF6b6868),
       onTap: () => onDocumentTypeSelected(DocumentType.passport),
       showBadge: true,
       badgeText: 'Most common',
@@ -233,7 +254,7 @@ List<Widget> _documentTypeOptions(BuildContext context, Function(DocumentType) o
       title: 'Identity Card',
       subtitle: 'Use a machine readable identity card',
       icon: Icons.credit_card,
-      accentColor: const Color(0xFF4CAF50),
+      accentColor: context.brand.documentOptionAccent ?? const Color(0xFF4CAF50),
       onTap: () => onDocumentTypeSelected(DocumentType.identityCard),
     ),
     const SizedBox(height: 16),
@@ -242,7 +263,7 @@ List<Widget> _documentTypeOptions(BuildContext context, Function(DocumentType) o
       title: 'Driving Licence',
       subtitle: 'Use a machine readable driving licence. Currently works primarily with Dutch licences.',
       icon: Icons.directions_car,
-      accentColor: const Color(0xFF2196F3),
+      accentColor: context.brand.documentOptionAccent ?? const Color(0xFF2196F3),
       onTap: () => onDocumentTypeSelected(DocumentType.drivingLicence),
     ),
   ];
@@ -254,7 +275,7 @@ Widget _qrScanOption(BuildContext context, VoidCallback onScanQrPressed) {
     title: 'Scan QR code',
     subtitle: 'Scan any QR code with the camera',
     icon: Icons.qr_code_scanner,
-    accentColor: const Color(0xFF9C27B0),
+    accentColor: context.brand.documentOptionAccent ?? const Color(0xFF9C27B0),
     onTap: onScanQrPressed,
   );
 }
@@ -265,7 +286,7 @@ Widget _advancedSettingsOption(BuildContext context, VoidCallback onSettingsPres
     title: 'Advanced settings',
     subtitle: 'Ocr Engine, Face Verification and more',
     icon: Icons.settings,
-    accentColor: const Color(0xFF757575),
+    accentColor: context.brand.documentOptionAccent ?? const Color(0xFF757575),
     onTap: onSettingsPressed,
   );
 }
@@ -275,6 +296,8 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brand = context.brand;
+    final accent = brand.accent ?? const Color(0xFF6b6868);
     return Card(
       elevation: 8,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -286,11 +309,13 @@ class _Header extends StatelessWidget {
             Container(
               width: 80,
               height: 80,
-              decoration: BoxDecoration(
-                color: const Color(0xFF6b6868).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(40),
-              ),
-              child: const Icon(Icons.document_scanner, size: 40, color: Color(0xFF6b6868)),
+              decoration: BoxDecoration(color: accent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(40)),
+              child: brand.markAsset != null
+                  ? Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Image.asset(brand.markAsset!, excludeFromSemantics: true),
+                    )
+                  : Icon(Icons.document_scanner, size: 40, color: accent),
             ),
             const SizedBox(height: 24),
             Text(
@@ -334,6 +359,7 @@ class _OptionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brand = context.brand;
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -366,12 +392,16 @@ class _OptionCard extends StatelessWidget {
                         children: [
                           Text(
                             title,
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF212121)),
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: brand.ink ?? const Color(0xFF212121),
+                            ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             subtitle,
-                            style: const TextStyle(fontSize: 14, color: Color(0xFF666666)),
+                            style: TextStyle(fontSize: 14, color: brand.mutedText ?? const Color(0xFF666666)),
                             maxLines: 3,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -387,10 +417,17 @@ class _OptionCard extends StatelessWidget {
                   right: 8,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: accentColor, borderRadius: BorderRadius.circular(12)),
+                    decoration: BoxDecoration(
+                      color: brand.badgeBackground ?? accentColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     child: Text(
                       badgeText!,
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: brand.badgeForeground ?? Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -400,4 +437,246 @@ class _OptionCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Attribution line on white-label builds, under the settings entry.
+class _PoweredByIdem extends StatelessWidget {
+  const _PoweredByIdem();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Text(
+        'Powered by Idem',
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 12, color: context.brand.mutedText ?? Colors.grey[600]),
+      ),
+    );
+  }
+}
+
+/// Home in the guided layout, where every verification starts from a QR
+/// code: the hero leads with "Scan QR code", followed by how it works. Saved
+/// documents live under settings, not here.
+class _GuidedHome extends StatelessWidget {
+  const _GuidedHome({
+    required this.onSettingsPressed,
+    required this.onScanQrPressed,
+    required this.onContinueProofingSession,
+    required this.connectedRelyingParty,
+  });
+
+  final VoidCallback onSettingsPressed;
+  final VoidCallback onScanQrPressed;
+  final VoidCallback? onContinueProofingSession;
+
+  /// Set while an accepted proofing session is still open.
+  final String? connectedRelyingParty;
+
+  @override
+  Widget build(BuildContext context) {
+    final g = context.guided!;
+    final connected = connectedRelyingParty != null && onContinueProofingSession != null;
+    return GuidedStatusBar(
+      onDark: true,
+      bottomOnDark: false,
+      child: Scaffold(
+        backgroundColor: g.surface,
+        body: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: g.ink,
+                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
+                ),
+                padding: EdgeInsets.fromLTRB(20, MediaQuery.paddingOf(context).top + 20, 20, 28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Image.asset(g.logoOnDarkAsset, width: 40, height: 40, semanticLabel: context.brand.appBarTitle),
+                        const Spacer(),
+                        GuidedRoundButton(
+                          icon: Icons.settings_outlined,
+                          tooltip: 'Settings',
+                          onDark: true,
+                          outlined: true,
+                          onPressed: onSettingsPressed,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'IDENTITY VERIFICATION',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.04,
+                        color: g.heroEyebrow,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text('Verify your identity with a QR code', style: g.heading(30, color: Colors.white)),
+                    const SizedBox(height: 10),
+                    Text(
+                      connected
+                          ? 'You accepted a request from $connectedRelyingParty. Continue where you left off.'
+                          : 'When a ${context.brand.appBarTitle} service asks you to verify who you are, it shows a QR '
+                                'code. Scan it here to start.',
+                      style: TextStyle(fontSize: 16, height: 1.5, color: g.heroMuted),
+                    ),
+                    const SizedBox(height: 24),
+                    const Center(child: _GuidedQrBadge()),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: connected ? onContinueProofingSession : onScanQrPressed,
+                      style: g.primaryButtonStyle.copyWith(
+                        minimumSize: const WidgetStatePropertyAll(Size.fromHeight(56)),
+                        textStyle: WidgetStatePropertyAll(
+                          g.primaryButtonStyle.textStyle?.resolve({})?.copyWith(fontSize: 17),
+                        ),
+                      ),
+                      icon: Icon(connected ? Icons.arrow_forward : Icons.qr_code_scanner, size: 22),
+                      label: Text(connected ? 'Continue with $connectedRelyingParty' : 'Scan QR code'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'How it works',
+                        style: g.heading(16, weight: FontWeight.w600, color: g.slate),
+                      ),
+                      const SizedBox(height: 14),
+                      for (final (i, step) in const [
+                        'Scan the QR code shown by the website or app.',
+                        'Use a document saved on this phone, or scan your ID.',
+                        'Take a quick selfie, then share only what was asked for.',
+                      ].indexed) ...[
+                        if (i > 0) const SizedBox(height: 14),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 26,
+                              height: 26,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(color: g.actionTint, shape: BoxShape.circle),
+                              child: Text('${i + 1}', style: g.heading(13, color: g.action)),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(step, style: TextStyle(fontSize: 15, height: 1.45, color: g.ink)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      const Spacer(),
+                      const SizedBox(height: 24),
+                      Text(
+                        'Powered by Idem',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 12, color: g.muted),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The QR illustration in the home hero: a QR glyph with scan-frame corners.
+class _GuidedQrBadge extends StatelessWidget {
+  const _GuidedQrBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    final g = context.guided!;
+    return SizedBox(
+      width: 140,
+      height: 140,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: const Center(
+                  child: SizedBox(width: 76, height: 76, child: CustomPaint(painter: GuidedQrGlyphPainter())),
+                ),
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: CustomPaint(painter: _ScanCornersPainter(color: g.heroAccent)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ScanCornersPainter extends CustomPainter {
+  const _ScanCornersPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const len = 24.0, r = 14.0;
+    final w = size.width, h = size.height;
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+    const radius = Radius.circular(r);
+    canvas.drawPath(
+      Path()
+        ..moveTo(0, len)
+        ..lineTo(0, r)
+        ..arcToPoint(const Offset(r, 0), radius: radius)
+        ..lineTo(len, 0)
+        ..moveTo(w - len, 0)
+        ..lineTo(w - r, 0)
+        ..arcToPoint(Offset(w, r), radius: radius)
+        ..lineTo(w, len)
+        ..moveTo(w, h - len)
+        ..lineTo(w, h - r)
+        ..arcToPoint(Offset(w - r, h), radius: radius)
+        ..lineTo(w - len, h)
+        ..moveTo(len, h)
+        ..lineTo(r, h)
+        ..arcToPoint(Offset(0, h - r), radius: radius)
+        ..lineTo(0, h - len),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ScanCornersPainter old) => old.color != color;
 }

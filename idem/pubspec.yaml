@@ -83,6 +83,29 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  # White-label brand assets, selected at build time with --dart-define=BRAND=<name>
+  # (see lib/theme/app_brand.dart). Bundled in every build.
+  assets:
+    - assets/brands/cm/
+    - assets/brands/cm/fonts/OFL-Montserrat.txt
+    - assets/brands/cm/fonts/OFL-Nunito.txt
+
+  fonts:
+    - family: Montserrat
+      fonts:
+        - asset: assets/brands/cm/fonts/Montserrat-SemiBold.ttf
+          weight: 600
+        - asset: assets/brands/cm/fonts/Montserrat-Bold.ttf
+          weight: 700
+    - family: Nunito
+      fonts:
+        - asset: assets/brands/cm/fonts/Nunito-Regular.ttf
+          weight: 400
+        - asset: assets/brands/cm/fonts/Nunito-SemiBold.ttf
+          weight: 600
+        - asset: assets/brands/cm/fonts/Nunito-Bold.ttf
+          weight: 700
+
   # To add assets to your application, add an assets section, like this:
 
   # An image asset can refer to one or more resolution-specific "variants", see

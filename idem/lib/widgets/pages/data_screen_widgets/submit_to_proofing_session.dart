@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:idem/theme/brand_theme.dart';
 
 /// Shown on the document data screen when the current scan was handed off
 /// from a relying party's browser session (see routing.dart's QR handling
@@ -30,7 +31,7 @@ class SubmitToProofingSessionSection extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.verified_user, color: Colors.green, size: 28),
+                Icon(Icons.verified_user, color: context.brand.success ?? Colors.green, size: 28),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -55,12 +56,14 @@ class SubmitToProofingSessionSection extends StatelessWidget {
                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.send),
               label: Text(isSubmitting ? 'Submitting...' : 'Submit to $relyingParty'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
+              style:
+                  context.brand.primaryButtonStyle ??
+                  ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
             ),
           ],
         ),

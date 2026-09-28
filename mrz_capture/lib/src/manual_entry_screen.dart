@@ -2,10 +2,10 @@
 // Allows users to enter passport data manually: DOB, expiry date, document number
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:intl/intl.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'manual_entry_rules.dart';
 import 'scanned_mrz.dart';
 import 'step_badge.dart';
 
@@ -65,10 +65,10 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                     children: [
                       _buildHeaderCard(),
                       const SizedBox(height: 32),
-                      if (widget.documentType == DocumentType.passport)
-                        ..._buildPassportFields()
+                      if (ManualEntryRules.usesMrzLine(widget.documentType))
+                        ..._buildDriverLicenseFields()
                       else
-                        ..._buildDriverLicenseFields(),
+                        ..._buildPassportFields(),
                       const SizedBox(height: 24),
                       if (_errorMessage.isNotEmpty)
                         Container(
@@ -135,8 +135,8 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            widget.documentType == DocumentType.passport
-                ? '• Passport Number: Usually at the top right of the photo page\n'
+            !ManualEntryRules.usesMrzLine(widget.documentType)
+                ? '• ${widget.documentType.displayName} Number: Usually at the top right of the photo page\n'
                       '• Date of Birth: Listed as "Date of birth" or "DOB"\n'
                       '• Expiry Date: Listed as "Date of expiry" or "Valid until"'
                 : '• The MRZ is at the bottom of the front side of your driver\'s licence\n'
@@ -160,20 +160,9 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
           controller: _docNumberController,
           keyboardType: TextInputType.text,
           textCapitalization: TextCapitalization.characters,
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'[A-Z0-9]')),
-            LengthLimitingTextInputFormatter(15),
-          ],
+          inputFormatters: ManualEntryRules.documentNumberFormatters,
           hintText: 'e.g., AB1234567',
-          validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return '${widget.documentType.displayName} number is required';
-            }
-            if (value.trim().length < 6) {
-              return '${widget.documentType.displayName} number must be at least 6 characters';
-            }
-            return null;
-          },
+          validator: (value) => ManualEntryRules.documentNumber(value, documentName: widget.documentType.displayName),
         ),
       ),
       const SizedBox(height: 16),
@@ -186,15 +175,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
           readOnly: true,
           hintText: 'Tap to select date',
           onTap: () => _selectDate(context, isDateOfBirth: true),
-          validator: (value) {
-            if (_selectedDob == null) {
-              return 'Date of birth is required';
-            }
-            if (_selectedDob!.isAfter(DateTime.now())) {
-              return 'Date of birth cannot be in the future';
-            }
-            return null;
-          },
+          validator: (_) => ManualEntryRules.dateOfBirth(_selectedDob),
         ),
       ),
       const SizedBox(height: 16),
@@ -207,18 +188,11 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
           readOnly: true,
           hintText: 'Tap to select date',
           onTap: () => _selectDate(context, isDateOfBirth: false),
-          validator: (value) {
-            if (_selectedExpiry == null) {
-              return 'Expiry date is required';
-            }
-            if (_selectedExpiry!.isBefore(DateTime.now())) {
-              return '${widget.documentType.displayName} has expired';
-            }
-            if (_selectedDob != null && _selectedExpiry!.isBefore(_selectedDob!)) {
-              return 'Expiry date cannot be before date of birth';
-            }
-            return null;
-          },
+          validator: (_) => ManualEntryRules.dateOfExpiry(
+            _selectedExpiry,
+            documentName: widget.documentType.displayName,
+            dateOfBirth: _selectedDob,
+          ),
         ),
       ),
     ];
@@ -238,24 +212,10 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
               keyboardType: TextInputType.text,
               textCapitalization: TextCapitalization.characters,
               maxLines: 1,
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[A-Z0-9<]')),
-                LengthLimitingTextInputFormatter(30),
-              ],
+              inputFormatters: ManualEntryRules.mrzLineFormatters,
               hintText: 'D1NLD15094962111659VW87Z78NB84',
               style: const TextStyle(fontFamily: 'Courier', fontSize: 14),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'MRZ string is required';
-                }
-                if (value.trim().length != 30) {
-                  return 'MRZ must be exactly 30 characters';
-                }
-                if (!value.startsWith('D1') && !value.startsWith('D2') && !value.startsWith('DL')) {
-                  return 'MRZ must start with D1, D2, or DL';
-                }
-                return null;
-              },
+              validator: ManualEntryRules.mrzLine,
               onChanged: (value) {
                 setState(() {});
               },
@@ -417,24 +377,24 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                 borderRadius: BorderRadius.circular(30),
               ),
               child: Icon(
-                widget.documentType == DocumentType.passport ? Icons.edit_document : Icons.text_fields,
+                ManualEntryRules.usesMrzLine(widget.documentType) ? Icons.text_fields : Icons.edit_document,
                 size: 30,
                 color: const Color(0xFF6b6868),
               ),
             ),
             const SizedBox(height: 16),
             Text(
-              widget.documentType == DocumentType.passport
-                  ? 'Enter Your ${widget.documentType.displayName} Information'
-                  : 'Enter MRZ String',
+              ManualEntryRules.usesMrzLine(widget.documentType)
+                  ? 'Enter MRZ String'
+                  : 'Enter Your ${widget.documentType.displayName} Information',
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF212121)),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
-              widget.documentType == DocumentType.passport
-                  ? 'Please enter the information exactly as it appears on your ${widget.documentType.displayName.toLowerCase()}'
-                  : 'Type the Machine Readable Zone text exactly as it appears',
+              ManualEntryRules.usesMrzLine(widget.documentType)
+                  ? 'Type the Machine Readable Zone text exactly as it appears'
+                  : 'Please enter the information exactly as it appears on your ${widget.documentType.displayName.toLowerCase()}',
               style: const TextStyle(fontSize: 14, color: Color(0xFF666666)),
               textAlign: TextAlign.center,
             ),
