@@ -7,13 +7,18 @@ import 'package:image/image.dart' as img;
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtd/internal.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:idem/providers/active_authenticiation_provider.dart';
 import 'package:idem/providers/reader_providers.dart';
+import 'package:idem/providers/wallet_provider.dart';
 import 'package:idem/services/face_verification_outcome.dart';
 import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/theme/app_brand.dart';
 import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/theme/brands/cm_theme.dart';
 import 'package:idem/widgets/pages/document_selection_screen.dart';
+import 'package:idem/widgets/pages/driving_licence_data_screen.dart';
+import 'package:idem/widgets/pages/guided_manual_entry_screen.dart';
+import 'package:idem/widgets/pages/settings_screen.dart';
 import 'package:idem/widgets/pages/nfc_reading_screen.dart';
 import 'package:idem/widgets/pages/passport_data_screen.dart';
 import 'package:idem/widgets/pages/proofing_session_consent_screen.dart';
@@ -48,6 +53,23 @@ PassportData _passport() => PassportData(
   photoImageWidth: 2,
   photoImageHeight: 2,
   nameOfHolder: 'ANNA MARIA ERIKSSON',
+);
+
+class _SeededWallet extends WalletNotifier {
+  _SeededWallet(this.seed);
+  final List<WalletCard> seed;
+  @override
+  List<WalletCard> build() => seed;
+}
+
+WalletCard _walletCard(String id, DocumentType type) => WalletCard(
+  id: id,
+  documentType: type,
+  holderName: 'Anna Maria Eriksson',
+  documentNumber: 'SPECI2014',
+  photoImageData: Uint8List.fromList(img.encodeJpg(img.Image(width: 2, height: 2))),
+  photoImageType: ImageType.jpeg,
+  addedAt: DateTime(2026, 9, 12),
 );
 
 ProofingSessionInfo _session(String relyingParty) => ProofingSessionInfo(
@@ -205,5 +227,124 @@ void main() {
       );
       expect(find.text('Identity proofing request'), findsOneWidget);
     });
+  });
+
+  group('guided manual entry', () {
+    Future<void> pump(WidgetTester tester, DocumentType type, {ValueChanged<ScannedMRZ>? onComplete}) async {
+      _tallViewport(tester);
+      await tester.pumpWidget(
+        _cm(GuidedManualEntryScreen(documentType: type, onBack: () {}, onManualEntryComplete: onComplete ?? (_) {})),
+      );
+    }
+
+    testWidgets('an ID card asks for number and dates, not the licence code', (tester) async {
+      await pump(tester, DocumentType.identityCard);
+      expect(find.text('Identity card number'), findsOneWidget);
+      expect(find.text('Date of birth'), findsOneWidget);
+      expect(find.text('Licence code'), findsNothing);
+    });
+
+    testWidgets('an empty form shows the shared validation errors', (tester) async {
+      await pump(tester, DocumentType.passport);
+      await tester.tap(find.text('Continue'));
+      await tester.pump();
+      expect(find.text('Passport number is required'), findsOneWidget);
+      expect(find.text('Date of birth is required'), findsOneWidget);
+      expect(find.text('Expiry date is required'), findsOneWidget);
+    });
+
+    testWidgets('a valid licence code completes the entry', (tester) async {
+      ScannedMRZ? scanned;
+      await pump(tester, DocumentType.drivingLicence, onComplete: (m) => scanned = m);
+      await tester.enterText(find.byType(TextFormField), 'D1NLD15094962111659VW87Z78NB84');
+      await tester.pump();
+      expect(find.text('30 / 30'), findsOneWidget);
+      await tester.tap(find.text('Continue'));
+      await tester.pump();
+      expect(scanned, isA<ScannedDriverLicenseMRZ>());
+    });
+  });
+
+  testWidgets('guided settings switch turns the chip check on and off', (tester) async {
+    _tallViewport(tester);
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppBrand.cm.theme,
+          home: SettingsScreen(onBackPressed: () {}, showOcrEngineForTesting: false),
+        ),
+      ),
+    );
+    final before = container.read(activeAuthenticationProvider);
+    await tester.tap(find.byType(Switch));
+    await tester.pump();
+    expect(container.read(activeAuthenticationProvider), !before);
+    expect(find.text('Text recognition'), findsNothing);
+  });
+
+  testWidgets('guided home lists saved documents and offers a new scan', (tester) async {
+    _tallViewport(tester);
+    DocumentType? selected;
+    await tester.pumpWidget(
+      _cm(
+        DocumentTypeSelectionScreen(
+          onDocumentTypeSelected: (t) => selected = t,
+          onSettingsPressed: () {},
+          onScanQrPressed: () {},
+        ),
+        overrides: [
+          walletProvider.overrideWith(
+            () =>
+                _SeededWallet([_walletCard('1', DocumentType.passport), _walletCard('2', DocumentType.drivingLicence)]),
+          ),
+        ],
+      ),
+    );
+    await tester.pump();
+    expect(find.text('2 documents on this phone'), findsOneWidget);
+    expect(find.text('Driving licence · SPECI2014'), findsOneWidget);
+
+    await tester.tap(find.text('New scan'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Identity card'));
+    await tester.pumpAndSettle();
+    expect(selected, DocumentType.identityCard);
+  });
+
+  testWidgets('guided licence result shows the categories with readable dates', (tester) async {
+    _tallViewport(tester);
+    await tester.pumpWidget(
+      _cm(
+        DrivingLicenceDataScreen(
+          drivingLicence: DrivingLicenceData(
+            issuingMemberState: 'NLD',
+            holderSurname: 'Eriksson',
+            holderOtherName: 'Anna Maria',
+            dateOfBirth: '12081974',
+            placeOfBirth: 'Utopia',
+            dateOfIssue: '01022024',
+            dateOfExpiry: '01022034',
+            issuingAuthority: 'RDW',
+            documentNumber: '1234567890',
+            photoImageData: Uint8List.fromList(img.encodeJpg(img.Image(width: 2, height: 2))),
+            bapInputString: 'D1NLD11234567890ABCDEFGHIJKLM5',
+            saiType: 'sai',
+            aaPublicKey: null,
+            categories: [DrivingLicenceCategory(category: 'B', dateOfIssue: '01022024', dateOfExpiry: '01022034')],
+            photoImageType: ImageType.jpeg,
+          ),
+          drivingLicenceDataResult: RawDocumentData(dataGroups: const {}, efSod: '00'),
+          onBackPressed: () {},
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.text('Driving licence read'), findsOneWidget);
+    expect(find.text('Anna Maria Eriksson'), findsOneWidget);
+    expect(find.text('until 01/02/2034'), findsOneWidget);
+    expect(find.textContaining('genuine'), findsNothing);
   });
 }

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/providers/wallet_provider.dart';
+import 'package:intl/intl.dart';
 import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/theme/text_styles.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
@@ -36,7 +37,17 @@ class DocumentTypeSelectionScreen extends ConsumerWidget {
     final showQrScanOption = activeProofingSession == null;
     final brand = context.brand;
 
-    if (context.guided != null && !hasCards) {
+    if (context.guided != null && hasCards) {
+      return _GuidedWalletHome(
+        cards: cards,
+        onDocumentTypeSelected: onDocumentTypeSelected,
+        onSettingsPressed: onSettingsPressed,
+        onScanQrPressed: onScanQrPressed,
+        showQrScanOption: showQrScanOption,
+        connectedRelyingParty: activeProofingSession?.info.relyingParty,
+      );
+    }
+    if (context.guided != null) {
       return _GuidedHome(
         onDocumentTypeSelected: onDocumentTypeSelected,
         onSettingsPressed: onSettingsPressed,
@@ -725,4 +736,299 @@ class _GuidedDocumentOption extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Home in the guided layout once the wallet holds documents: a compact hero
+/// with "New scan", then the saved documents.
+class _GuidedWalletHome extends ConsumerWidget {
+  const _GuidedWalletHome({
+    required this.cards,
+    required this.onDocumentTypeSelected,
+    required this.onSettingsPressed,
+    required this.onScanQrPressed,
+    required this.showQrScanOption,
+    required this.connectedRelyingParty,
+  });
+
+  final List<WalletCard> cards;
+  final Function(DocumentType) onDocumentTypeSelected;
+  final VoidCallback onSettingsPressed;
+  final VoidCallback onScanQrPressed;
+  final bool showQrScanOption;
+  final String? connectedRelyingParty;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final g = context.guided!;
+    final newestFirst = cards.reversed.toList();
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent),
+      child: Scaffold(
+        backgroundColor: g.surface,
+        body: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: g.ink,
+                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
+                ),
+                padding: EdgeInsets.fromLTRB(20, MediaQuery.paddingOf(context).top + 20, 20, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Image.asset(g.logoOnDarkAsset, height: 30, semanticLabel: context.brand.appBarTitle),
+                        const Spacer(),
+                        GuidedRoundButton(
+                          icon: Icons.settings_outlined,
+                          tooltip: 'Settings',
+                          onDark: true,
+                          outlined: true,
+                          onPressed: onSettingsPressed,
+                        ),
+                      ],
+                    ),
+                    if (connectedRelyingParty != null) ...[
+                      const SizedBox(height: 16),
+                      _GuidedConnectedNote(relyingParty: connectedRelyingParty!),
+                    ],
+                    const SizedBox(height: 20),
+                    Text(
+                      'YOUR DOCUMENTS',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.04,
+                        color: g.heroEyebrow,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      cards.length == 1 ? '1 document on this phone' : '${cards.length} documents on this phone',
+                      style: g.heading(26, color: Colors.white),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'They stay here until you share or remove them.',
+                      style: TextStyle(fontSize: 15, height: 1.5, color: g.heroMuted),
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton.icon(
+                      onPressed: () => _showGuidedNewScanSheet(context, onDocumentTypeSelected),
+                      style: g.secondaryButtonStyle.copyWith(
+                        minimumSize: const WidgetStatePropertyAll(Size.fromHeight(48)),
+                        side: const WidgetStatePropertyAll(BorderSide.none),
+                        foregroundColor: WidgetStatePropertyAll(g.ink),
+                      ),
+                      icon: const Icon(Icons.add, size: 22),
+                      label: const Text('New scan'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+              sliver: SliverList.separated(
+                itemCount: newestFirst.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 12),
+                itemBuilder: (context, i) {
+                  final card = newestFirst[i];
+                  return _GuidedWalletCard(
+                    card: card,
+                    onTap: () => showWalletCardDetails(
+                      context,
+                      card,
+                      onRemove: () => ref.read(walletProvider.notifier).remove(card.id),
+                    ),
+                  );
+                },
+              ),
+            ),
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Spacer(),
+                      if (showQrScanOption) ...[
+                        GuidedButton(
+                          label: 'Scan a QR code',
+                          icon: Icons.qr_code_scanner,
+                          secondary: true,
+                          onPressed: onScanQrPressed,
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+                      Text(
+                        'Powered by Idem',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 12, color: g.muted),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GuidedConnectedNote extends StatelessWidget {
+  const _GuidedConnectedNote({required this.relyingParty});
+
+  final String relyingParty;
+
+  @override
+  Widget build(BuildContext context) {
+    final g = context.guided!;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
+      child: Text(
+        'Connected — will send results to $relyingParty',
+        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: g.heroEyebrow),
+      ),
+    );
+  }
+}
+
+class _GuidedWalletCard extends StatelessWidget {
+  const _GuidedWalletCard({required this.card, required this.onTap});
+
+  final WalletCard card;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final g = context.guided!;
+    final type = switch (card.documentType) {
+      DocumentType.passport => 'Passport',
+      DocumentType.identityCard => 'Identity card',
+      DocumentType.drivingLicence => 'Driving licence',
+    };
+    final now = DateTime.now();
+    final added = card.addedAt;
+    final addedLabel = added.year == now.year && added.month == now.month && added.day == now.day
+        ? 'Added today'
+        : 'Added ${DateFormat('d MMM').format(added)}';
+    return Material(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: g.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  width: 48,
+                  height: 60,
+                  child: FittedBox(
+                    fit: BoxFit.cover,
+                    clipBehavior: Clip.hardEdge,
+                    child: WalletPhoto(imageData: card.photoImageData, imageType: card.photoImageType, size: 60),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      card.holderName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: g.ink),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      card.documentNumber == null ? type : '$type · ${card.documentNumber}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 14, color: g.bodyText),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(addedLabel, style: TextStyle(fontSize: 13, color: g.muted)),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: g.muted),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+void _showGuidedNewScanSheet(BuildContext context, Function(DocumentType) onDocumentTypeSelected) {
+  final g = context.guided!;
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+    builder: (sheetContext) {
+      void pick(DocumentType type) {
+        Navigator.of(sheetContext).pop();
+        onDocumentTypeSelected(type);
+      }
+
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 28, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Which document do you have?',
+                style: g.heading(18, weight: FontWeight.w600, color: g.slate),
+              ),
+              const SizedBox(height: 16),
+              _GuidedDocumentOption(
+                title: 'Passport',
+                subtitle: 'Any machine-readable passport',
+                icon: Icons.portrait_outlined,
+                badge: 'Most common',
+                highlighted: true,
+                onTap: () => pick(DocumentType.passport),
+              ),
+              const SizedBox(height: 12),
+              _GuidedDocumentOption(
+                title: 'Identity card',
+                subtitle: 'Machine-readable ID card with chip',
+                icon: Icons.badge_outlined,
+                onTap: () => pick(DocumentType.identityCard),
+              ),
+              const SizedBox(height: 12),
+              _GuidedDocumentOption(
+                title: 'Driving licence',
+                subtitle: 'Dutch driving licences work best',
+                icon: Icons.directions_car_outlined,
+                onTap: () => pick(DocumentType.drivingLicence),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
 }

@@ -12,6 +12,7 @@ library;
 
 export 'src/camera_overlay.dart' show MRZCameraOverlay;
 export 'src/camera_viewfinder.dart' show MRZCameraView, MRZCameraViewState, OcrFrame;
+export 'src/manual_entry_rules.dart' show ManualEntryRules;
 export 'src/manual_entry_screen.dart' show ManualEntryScreen;
 export 'src/mrz_controller.dart' show MRZController;
 export 'src/mrz_helper.dart' show MRZHelper;

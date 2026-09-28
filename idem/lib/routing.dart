@@ -21,6 +21,8 @@ import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/widgets/pages/qr_scanner_screen.dart';
 import 'package:idem/widgets/pages/scanner_wrapper.dart';
 import 'package:idem/widgets/pages/settings_screen.dart';
+import 'package:idem/widgets/guided/guided_widgets.dart';
+import 'package:idem/widgets/pages/guided_manual_entry_screen.dart';
 
 /// The photo + issue date to seed face verification with, straight off the
 /// just-read [document] — used to jump into face verification immediately
@@ -197,14 +199,20 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
         path: '/manual_entry',
         builder: (context, state) {
           final params = ManualEntryRouteParams.fromQueryParams(state.uri.queryParameters);
+          void onComplete(ScannedMRZ scannedMrz) => context.pushNfcReadingScreen(
+            NfcReadingRouteParams(scannedMRZ: scannedMrz, documentType: params.documentType),
+          );
+          if (context.guided != null) {
+            return GuidedManualEntryScreen(
+              documentType: params.documentType,
+              onBack: context.pop,
+              onManualEntryComplete: onComplete,
+            );
+          }
           return ManualEntryScreen(
             documentType: params.documentType,
             onBack: context.pop,
-            onManualEntryComplete: (scannedMrz) {
-              context.pushNfcReadingScreen(
-                NfcReadingRouteParams(scannedMRZ: scannedMrz, documentType: params.documentType),
-              );
-            },
+            onManualEntryComplete: onComplete,
           );
         },
       ),
