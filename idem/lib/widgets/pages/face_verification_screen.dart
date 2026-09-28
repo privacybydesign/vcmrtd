@@ -245,6 +245,11 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
   static int debugBackCameraRotation(int sensorOrientation, int deviceOrientationDegrees) =>
       (sensorOrientation - deviceOrientationDegrees + 360) % 360;
 
+  bool get _autoStarts => context.guided == null;
+
+  @visibleForTesting
+  bool get debugAutoStarts => _autoStarts;
+
   @visibleForTesting
   void debugSetReadyForTesting() {
     setState(() {
@@ -309,9 +314,12 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
 
   // Starts liveness as soon as camera + engine are both ready, so the user
   // never has to tap Start — the engine itself waits for a face to be found
-  // (via the align/tip events) before anything actually happens.
+  // (via the align/tip events) before anything actually happens. The guided
+  // layout is the exception: its intro explains the check and its Start
+  // button begins it, so it must stay up until the user taps that.
   void _maybeAutoStart() {
     if (_isDisposed || !mounted) return;
+    if (!_autoStarts) return;
     if (_state != VerificationState.idle || _startingLiveness) return;
     if (!_isReady) return;
     final nfcImage = widget.nfcImageBytes;

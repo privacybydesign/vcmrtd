@@ -446,6 +446,33 @@ void main() {
     expect(find.textContaining('No video is stored'), findsNothing);
   });
 
+  testWidgets('guided selfie check waits for Start instead of starting once ready', (tester) async {
+    _tallViewport(tester);
+    Widget screen(GlobalKey<FlutterFaceVerificationScreenState> key) => FlutterFaceVerificationScreen.withEngine(
+      key: key,
+      engine: FaceVerificationEngine.withWorker(_IdleWorker()),
+      nfcImageBytes: Uint8List.fromList(img.encodePng(img.Image(width: 2, height: 2))),
+      onBackPressed: () {},
+      onVerified: (_) {},
+    );
+    final guided = GlobalKey<FlutterFaceVerificationScreenState>();
+    await tester.pumpWidget(_cm(screen(guided)));
+    await tester.pump();
+    expect(guided.currentState!.debugAutoStarts, isFalse);
+
+    // The classic layout has no intro, so it still starts by itself.
+    final classic = GlobalKey<FlutterFaceVerificationScreenState>();
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: screen(classic),
+      ),
+    );
+    await tester.pump();
+    expect(classic.currentState!.debugAutoStarts, isTrue);
+  });
+
   testWidgets('guided result offers to save the document when sharing', (tester) async {
     _tallViewport(tester);
     await tester.pumpWidget(
