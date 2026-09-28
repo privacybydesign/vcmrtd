@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:idem/widgets/common/document_illustrations.dart';
+import 'package:idem/theme/brand_theme.dart';
 
 /// NFC guidance screen - helps users position phone correctly for NFC reading
 class NfcGuidanceScreen extends StatefulWidget {
@@ -215,9 +216,9 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
         if (widget.onTroubleshooting != null)
           PlatformTextButton(
             onPressed: widget.onTroubleshooting,
-            child: const Text(
+            child: Text(
               'Having trouble?',
-              style: TextStyle(color: Color(0xFF2196F3), fontWeight: FontWeight.w500),
+              style: TextStyle(color: context.brand.accent ?? const Color(0xFF2196F3), fontWeight: FontWeight.w500),
             ),
           ),
       ],

@@ -3,6 +3,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
@@ -11,6 +13,7 @@ import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/routing.dart';
 import 'package:idem/services/proofing_deeplink_channel.dart';
 import 'package:idem/services/proofing_session_client.dart';
+import 'package:idem/theme/app_brand.dart';
 
 void main() async {
   Logger.root.level = Level.ALL;
@@ -20,7 +23,21 @@ void main() async {
   });
 
   WidgetsFlutterBinding.ensureInitialized();
+  _registerBrandFontLicenses();
   runApp(ProviderScope(child: VcMrtdApp()));
+}
+
+/// The white-label fonts are OFL-licensed, which asks for the licence to
+/// ship with them; this puts it on the platform licence page.
+void _registerBrandFontLicenses() {
+  LicenseRegistry.addLicense(() async* {
+    for (final (family, path) in const [
+      ('Montserrat', 'assets/brands/cm/fonts/OFL-Montserrat.txt'),
+      ('Nunito', 'assets/brands/cm/fonts/OFL-Nunito.txt'),
+    ]) {
+      yield LicenseEntryWithLineBreaks([family], await rootBundle.loadString(path));
+    }
+  });
 }
 
 class VcMrtdApp extends ConsumerStatefulWidget {
@@ -74,12 +91,7 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
         DefaultCupertinoLocalizations.delegate,
         DefaultWidgetsLocalizations.delegate,
       ],
-      theme: ThemeData(
-        primarySwatch: Colors.indigo,
-        brightness: Brightness.light,
-        textTheme: TextTheme(bodyLarge: TextStyle(fontSize: 16.0, color: Colors.black87)),
-        appBarTheme: AppBarTheme(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
-      ),
+      theme: AppBrand.current.theme,
     );
   }
 }

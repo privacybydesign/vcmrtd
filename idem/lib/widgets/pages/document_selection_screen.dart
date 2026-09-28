@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/providers/wallet_provider.dart';
+import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/theme/text_styles.dart';
 import 'package:idem/widgets/pages/wallet_widgets.dart';
 
@@ -31,13 +32,16 @@ class DocumentTypeSelectionScreen extends ConsumerWidget {
     final hasCards = cards.isNotEmpty;
     final activeProofingSession = ref.watch(activeProofingSessionProvider);
     final showQrScanOption = activeProofingSession == null;
+    final brand = context.brand;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'VCMRTD',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22),
-        ),
+        title: brand.appBarLogoAsset != null
+            ? Image.asset(brand.appBarLogoAsset!, height: 28, semanticLabel: brand.appBarTitle)
+            : Text(
+                brand.appBarTitle,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22),
+              ),
         actions: [
           if (hasCards)
             IconButton(
@@ -51,12 +55,12 @@ class DocumentTypeSelectionScreen extends ConsumerWidget {
             : _ProofingSessionBanner(relyingParty: activeProofingSession.info.relyingParty),
       ),
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF6b6868), Colors.white],
-            stops: [0.0, 0.3],
+            colors: brand.homeBackgroundGradient ?? const [Color(0xFF6b6868), Colors.white],
+            stops: const [0.0, 0.3],
           ),
         ),
         child: SafeArea(
@@ -121,6 +125,7 @@ class _ScanOptionsHome extends StatelessWidget {
             if (showQrScanOption) ...[const SizedBox(height: 16), _qrScanOption(context, onScanQrPressed)],
             const SizedBox(height: 16),
             _advancedSettingsOption(context, onSettingsPressed),
+            if (context.brand.showPoweredByIdem) const _PoweredByIdem(),
           ],
         ),
       ),
@@ -155,6 +160,7 @@ class _WalletHome extends StatelessWidget {
             children: [
               if (showQrScanOption) ...[_qrScanOption(context, onScanQrPressed), const SizedBox(height: 16)],
               _advancedSettingsOption(context, onSettingsPressed),
+              if (context.brand.showPoweredByIdem) const _PoweredByIdem(),
             ],
           ),
         ),
@@ -179,7 +185,7 @@ class _ProofingSessionBanner extends StatelessWidget implements PreferredSizeWid
     return Container(
       width: double.infinity,
       height: preferredSize.height,
-      color: Colors.indigo[900],
+      color: context.brand.proofingBannerColor ?? Colors.indigo[900],
       alignment: Alignment.center,
       child: Text(
         'Connected — will send results to $relyingParty',
@@ -222,7 +228,7 @@ List<Widget> _documentTypeOptions(BuildContext context, Function(DocumentType) o
       title: 'Passport',
       subtitle: 'Use a machine readable passport',
       icon: Icons.book,
-      accentColor: const Color(0xFF6b6868),
+      accentColor: context.brand.documentOptionAccent ?? const Color(0xFF6b6868),
       onTap: () => onDocumentTypeSelected(DocumentType.passport),
       showBadge: true,
       badgeText: 'Most common',
@@ -233,7 +239,7 @@ List<Widget> _documentTypeOptions(BuildContext context, Function(DocumentType) o
       title: 'Identity Card',
       subtitle: 'Use a machine readable identity card',
       icon: Icons.credit_card,
-      accentColor: const Color(0xFF4CAF50),
+      accentColor: context.brand.documentOptionAccent ?? const Color(0xFF4CAF50),
       onTap: () => onDocumentTypeSelected(DocumentType.identityCard),
     ),
     const SizedBox(height: 16),
@@ -242,7 +248,7 @@ List<Widget> _documentTypeOptions(BuildContext context, Function(DocumentType) o
       title: 'Driving Licence',
       subtitle: 'Use a machine readable driving licence. Currently works primarily with Dutch licences.',
       icon: Icons.directions_car,
-      accentColor: const Color(0xFF2196F3),
+      accentColor: context.brand.documentOptionAccent ?? const Color(0xFF2196F3),
       onTap: () => onDocumentTypeSelected(DocumentType.drivingLicence),
     ),
   ];
@@ -254,7 +260,7 @@ Widget _qrScanOption(BuildContext context, VoidCallback onScanQrPressed) {
     title: 'Scan QR code',
     subtitle: 'Scan any QR code with the camera',
     icon: Icons.qr_code_scanner,
-    accentColor: const Color(0xFF9C27B0),
+    accentColor: context.brand.documentOptionAccent ?? const Color(0xFF9C27B0),
     onTap: onScanQrPressed,
   );
 }
@@ -265,7 +271,7 @@ Widget _advancedSettingsOption(BuildContext context, VoidCallback onSettingsPres
     title: 'Advanced settings',
     subtitle: 'Ocr Engine, Face Verification and more',
     icon: Icons.settings,
-    accentColor: const Color(0xFF757575),
+    accentColor: context.brand.documentOptionAccent ?? const Color(0xFF757575),
     onTap: onSettingsPressed,
   );
 }
@@ -275,6 +281,8 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brand = context.brand;
+    final accent = brand.accent ?? const Color(0xFF6b6868);
     return Card(
       elevation: 8,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -286,11 +294,13 @@ class _Header extends StatelessWidget {
             Container(
               width: 80,
               height: 80,
-              decoration: BoxDecoration(
-                color: const Color(0xFF6b6868).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(40),
-              ),
-              child: const Icon(Icons.document_scanner, size: 40, color: Color(0xFF6b6868)),
+              decoration: BoxDecoration(color: accent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(40)),
+              child: brand.markAsset != null
+                  ? Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Image.asset(brand.markAsset!, excludeFromSemantics: true),
+                    )
+                  : Icon(Icons.document_scanner, size: 40, color: accent),
             ),
             const SizedBox(height: 24),
             Text(
@@ -334,6 +344,7 @@ class _OptionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brand = context.brand;
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -366,12 +377,16 @@ class _OptionCard extends StatelessWidget {
                         children: [
                           Text(
                             title,
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF212121)),
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: brand.ink ?? const Color(0xFF212121),
+                            ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             subtitle,
-                            style: const TextStyle(fontSize: 14, color: Color(0xFF666666)),
+                            style: TextStyle(fontSize: 14, color: brand.mutedText ?? const Color(0xFF666666)),
                             maxLines: 3,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -387,16 +402,40 @@ class _OptionCard extends StatelessWidget {
                   right: 8,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: accentColor, borderRadius: BorderRadius.circular(12)),
+                    decoration: BoxDecoration(
+                      color: brand.badgeBackground ?? accentColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     child: Text(
                       badgeText!,
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: brand.badgeForeground ?? Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Attribution line on white-label builds, under the settings entry.
+class _PoweredByIdem extends StatelessWidget {
+  const _PoweredByIdem();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Text(
+        'Powered by Idem',
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 12, color: context.brand.mutedText ?? Colors.grey[600]),
       ),
     );
   }

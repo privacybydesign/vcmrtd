@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:idem/services/proofing_session_client.dart';
+import 'package:idem/theme/brand_theme.dart';
 
 /// Shown right after the app fetches a scanned/deep-linked proofing session,
 /// before anything else happens: who's asking, what they want, and an
@@ -36,7 +37,7 @@ class ProofingSessionConsentScreen extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.verified_user, color: Colors.green, size: 28),
+                          Icon(Icons.verified_user, color: context.brand.success ?? Colors.green, size: 28),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -64,7 +65,7 @@ class ProofingSessionConsentScreen extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 4.0),
                   child: Row(
                     children: [
-                      const Icon(Icons.check_circle_outline, size: 20, color: Colors.green),
+                      Icon(Icons.check_circle_outline, size: 20, color: context.brand.success ?? Colors.green),
                       const SizedBox(width: 8),
                       Expanded(child: Text(label)),
                     ],
@@ -80,24 +81,28 @@ class ProofingSessionConsentScreen extends StatelessWidget {
                 onPressed: expired ? null : onConsent,
                 icon: const Icon(Icons.check),
                 label: const Text('Continue'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
+                style:
+                    context.brand.primaryButtonStyle ??
+                    ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
               ),
               const SizedBox(height: 12),
               ElevatedButton.icon(
                 onPressed: onDecline,
                 icon: const Icon(Icons.close),
                 label: const Text('Decline'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
+                style:
+                    context.brand.secondaryButtonStyle ??
+                    ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
               ),
             ],
           ),

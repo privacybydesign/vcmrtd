@@ -13,6 +13,7 @@ import 'package:idem/providers/reader_providers.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 
 import '../../routing.dart';
+import 'package:idem/theme/brand_theme.dart';
 
 class NfcReadingRouteParams {
   final ScannedMRZ scannedMRZ;
@@ -280,9 +281,10 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
     final isDone = index < currentStep;
     final isCurrent = index == currentStep;
 
+    final brand = context.brand;
     final titleColor = switch ((isDone, isCurrent)) {
-      (true, _) => const Color(0xFF212121),
-      (_, true) => nfcStateColor(nfcState),
+      (true, _) => brand.ink ?? const Color(0xFF212121),
+      (_, true) => nfcStateColor(nfcState, brand),
       _ => Colors.grey[500],
     };
 
@@ -298,7 +300,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
                   child: Container(
                     width: 2,
                     margin: const EdgeInsets.symmetric(vertical: 4),
-                    color: isDone ? const Color(0xFF4CAF50) : Colors.grey[300],
+                    color: isDone ? brand.success ?? const Color(0xFF4CAF50) : Colors.grey[300],
                   ),
                 ),
             ],
@@ -327,7 +329,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
 
   Widget _buildStepStatusIcon({required bool isDone, required bool isCurrent, required NFCReadingState nfcState}) {
     if (isDone) {
-      return const Icon(Icons.check_circle, color: Color(0xFF4CAF50), size: 22);
+      return Icon(Icons.check_circle, color: context.brand.success ?? const Color(0xFF4CAF50), size: 22);
     }
     if (isCurrent) {
       if (nfcState == NFCReadingState.error) {
@@ -336,7 +338,10 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
       return SizedBox(
         width: 20,
         height: 20,
-        child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(nfcStateColor(nfcState))),
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          valueColor: AlwaysStoppedAnimation(nfcStateColor(nfcState, context.brand)),
+        ),
       );
     }
     return Icon(Icons.circle_outlined, color: Colors.grey[400], size: 22);

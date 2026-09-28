@@ -9,6 +9,7 @@ import 'package:idem/services/proofing_session_client.dart';
 
 import '../../common/issuance_result_dialogs.dart';
 import 'submit_to_proofing_session.dart';
+import 'package:idem/theme/brand_theme.dart';
 
 /// Shared by [PassportDataScreen]/[DrivingLicenceDataScreen]'s states: both
 /// report a scanned document back to a pinned identity-proofing session the
@@ -108,12 +109,14 @@ class DocumentWalletOrSubmitSection extends StatelessWidget {
       child: session == null
           ? ElevatedButton.icon(
               onPressed: onAddToWallet,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
+              style:
+                  context.brand.primaryButtonStyle ??
+                  ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
               icon: const Icon(Icons.account_balance_wallet),
               label: const Text('Add to Wallet'),
             )

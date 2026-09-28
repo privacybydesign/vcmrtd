@@ -9,6 +9,7 @@ import 'package:face_verification/face_verification.dart';
 import 'package:image/image.dart' as img;
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:idem/services/face_verification_outcome.dart';
+import 'package:idem/theme/brand_theme.dart';
 
 // ── Enums & helpers ────────────────────────────────────────────────────────
 
@@ -1024,12 +1025,14 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
       width: double.infinity,
       child: ElevatedButton.icon(
         onPressed: enabled ? onStart : null,
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          backgroundColor: Colors.green[600],
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
+        style:
+            context.brand.primaryButtonStyle ??
+            ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              backgroundColor: Colors.green[600],
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
         icon: busy
             ? const SizedBox(
                 width: 18,
