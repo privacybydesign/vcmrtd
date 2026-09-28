@@ -25,7 +25,11 @@ import Foundation
         let instance = DeepLinkPlugin()
         instance.channel = channel
         registrar.addMethodCallDelegate(instance, channel: channel)
+        // Both are registered because which one Flutter forwards depends on the life
+        // cycle: with a UIApplicationSceneManifest in Info.plist (required since iOS 27)
+        // only the UIScene callbacks fire, otherwise only the UIApplication ones.
         registrar.addApplicationDelegate(instance)
+        registrar.addSceneDelegate(instance)
     }
     
     func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -62,13 +66,43 @@ extension DeepLinkPlugin {
         return handleURL(url)
     }
     
-    // iOS 13+ Scene Delegate support (Universal Links)
+    // Universal Links
     func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
         if userActivity.activityType == NSUserActivityTypeBrowsingWeb,
            let url = userActivity.webpageURL {
             return handleURL(url)
         }
         return false
+    }
+}
+
+/// UIScene life cycle equivalents of the UIApplication callbacks above. Flutter hands
+/// these to plugins in registration order until one returns true, so only URLs this
+/// plugin accepts are claimed.
+extension DeepLinkPlugin: FlutterSceneLifeCycleDelegate {
+
+    /// Cold start: the launch URL rides in on the scene connection.
+    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions?) -> Bool {
+        guard let connectionOptions = connectionOptions else { return false }
+        if let url = connectionOptions.urlContexts.first?.url, handleURL(url) {
+            return true
+        }
+        if let activity = connectionOptions.userActivities.first(where: { $0.activityType == NSUserActivityTypeBrowsingWeb }),
+           let url = activity.webpageURL {
+            return handleURL(url)
+        }
+        return false
+    }
+
+    func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) -> Bool {
+        guard let url = URLContexts.first?.url else { return false }
+        return handleURL(url)
+    }
+
+    func scene(_ scene: UIScene, continue userActivity: NSUserActivity) -> Bool {
+        guard userActivity.activityType == NSUserActivityTypeBrowsingWeb,
+              let url = userActivity.webpageURL else { return false }
+        return handleURL(url)
     }
 }
 

@@ -10,6 +10,11 @@ end
 lane :lint do
   ["vcmrtd", "idem"].each do |package|
     Dir.chdir("../../#{package}") do
+      # dart format resolves the package's language version from
+      # .dart_tool/package_config.json. Without it, it falls back to the SDK's
+      # newest language version, which can reject syntax that the package's
+      # own pubspec-declared version still allows.
+      sh("flutter", "pub", "get")
       sh("dart", "format", "--line-length", "120", "--set-exit-if-changed", ".")
       sh("flutter", "analyze", "--no-fatal-infos")
     end

@@ -54,7 +54,7 @@ dev_dependencies:
     git:
       url: https://github.com/privacybydesign/mrz_parser.git
       ref: v3.0.0
-  google_mlkit_text_recognition: ^0.15.0
+  google_mlkit_text_recognition: ^0.17.1
   flutter_platform_widgets: ^9.0.0
   url_launcher: ^6.2.4
 
