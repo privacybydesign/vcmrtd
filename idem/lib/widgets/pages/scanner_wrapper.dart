@@ -2,7 +2,6 @@
 // Provides callbacks for the scanner page to integrate with navigation
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:idem/theme/brand_theme.dart';
@@ -182,8 +181,9 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
   /// [guidedScanFrame] draws one in the same place as the area it reads.
   Widget _buildGuided(BuildContext context, GuidedStyle g) {
     final scannerBuilder = widget.scannerBuilder ?? _guidedScannerBuilder;
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent),
+    return GuidedStatusBar(
+      onDark: true,
+      bottomOnDark: false,
       child: Scaffold(
         backgroundColor: g.ink,
         body: Stack(

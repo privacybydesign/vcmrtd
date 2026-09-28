@@ -14,6 +14,8 @@ import 'package:idem/routing.dart';
 import 'package:idem/services/proofing_deeplink_channel.dart';
 import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/theme/app_brand.dart';
+import 'package:idem/theme/brand_theme.dart';
+import 'package:idem/widgets/guided/guided_widgets.dart';
 
 void main() async {
   Logger.root.level = Level.ALL;
@@ -23,6 +25,7 @@ void main() async {
   });
 
   WidgetsFlutterBinding.ensureInitialized();
+  if (AppBrand.current.theme.extension<BrandTheme>()?.guided != null) await enableGuidedEdgeToEdge();
   _registerBrandFontLicenses();
   runApp(ProviderScope(child: VcMrtdApp()));
 }
