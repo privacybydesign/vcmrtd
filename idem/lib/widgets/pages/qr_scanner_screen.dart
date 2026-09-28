@@ -84,6 +84,10 @@ extension on _QrScannerScreenState {
   /// above it and a reassurance below. Codes are found anywhere in the frame,
   /// so the cut-out is only a guide.
   Widget _buildGuided(GuidedStyle g) {
+    final scrim = g.ink.withValues(alpha: 0.8);
+    // The instructions and the reassurance get their own scrim-coloured
+    // bands; the frame is centred in the space left between them, so text
+    // can never cover it, whatever the screen height or font size.
     return GuidedStatusBar(
       onDark: true,
       child: Scaffold(
@@ -93,68 +97,89 @@ extension on _QrScannerScreenState {
             Positioned.fill(
               child: MRZCameraView(showOverlay: false, routeObserver: widget.routeObserver, onImage: _processFrame),
             ),
-            Positioned.fill(
-              child: IgnorePointer(
-                child: LayoutBuilder(
-                  builder: (context, box) => CustomPaint(
-                    painter: _GuidedQrFramePainter(
-                      frame: guidedQrFrame(box.biggest, minTop: MediaQuery.paddingOf(context).top + 244),
-                      scrim: g.ink.withValues(alpha: 0.8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // With very large text the instructions scroll rather than
+                // squeezing the frame: they take at most 2/5 of the height.
+                Flexible(
+                  flex: 2,
+                  child: ColoredBox(
+                    key: guidedQrInstructionsKey,
+                    color: scrim,
+                    child: SafeArea(
+                      bottom: false,
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            GuidedTopBar(
+                              leading: GuidedRoundButton(
+                                icon: Icons.close,
+                                tooltip: 'Close',
+                                onDark: true,
+                                onPressed: widget.onBack,
+                              ),
+                              center: const GuidedTopBarTitle('Scan QR code', onDark: true),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(32, 40, 32, 16),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    'Point your camera at the QR code',
+                                    textAlign: TextAlign.center,
+                                    style: g.heading(22, color: Colors.white, height: 1.25),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'You’ll find it on the ${context.brand.appBarTitle} website or app that asked you to verify.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(fontSize: 15, height: 1.5, color: g.heroMuted),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
-            SafeArea(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  GuidedTopBar(
-                    leading: GuidedRoundButton(
-                      icon: Icons.close,
-                      tooltip: 'Close',
-                      onDark: true,
-                      onPressed: widget.onBack,
-                    ),
-                    center: const GuidedTopBarTitle('Scan QR code', onDark: true),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(32, 40, 32, 0),
-                    child: Column(
-                      children: [
-                        Text(
-                          'Point your camera at the QR code',
-                          textAlign: TextAlign.center,
-                          style: g.heading(22, color: Colors.white, height: 1.25),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'You’ll find it on the ${context.brand.appBarTitle} website or app that asked you to verify.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 15, height: 1.5, color: g.heroMuted),
-                        ),
-                      ],
+                Expanded(
+                  flex: 3,
+                  child: IgnorePointer(
+                    child: LayoutBuilder(
+                      builder: (context, box) => CustomPaint(
+                        size: box.biggest,
+                        painter: _GuidedQrFramePainter(frame: guidedQrFrame(box.biggest), scrim: scrim),
+                      ),
                     ),
                   ),
-                  const Spacer(),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.lock_outline, size: 14, color: g.heroMuted),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            'Nothing is shared until you agree on the next screen.',
-                            style: TextStyle(fontSize: 13, color: g.heroMuted),
+                ),
+                ColoredBox(
+                  color: scrim,
+                  child: SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.lock_outline, size: 14, color: g.heroMuted),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              'Nothing is shared until you agree on the next screen.',
+                              style: TextStyle(fontSize: 13, color: g.heroMuted),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ],
         ),
@@ -163,14 +188,17 @@ extension on _QrScannerScreenState {
   }
 }
 
-/// The square the guided QR scanner asks the code to be held in, for a view of
-/// [size]: a little above the middle, but never higher than [minTop], where
-/// the instruction text ends.
 @visibleForTesting
-Rect guidedQrFrame(Size size, {double minTop = 0}) {
-  final side = size.shortestSide * 0.69;
-  final top = (size.height * 0.41 - side / 2).clamp(minTop, double.infinity);
-  return Rect.fromLTWH((size.width - side) / 2, top, side, side);
+const guidedQrInstructionsKey = ValueKey('guided-qr-instructions');
+
+/// The square the guided QR scanner asks the code to be held in, inside the
+/// free area of [size] between the instructions and the bottom line: as wide
+/// as the design asks, but always fitting, with a margin, in that area.
+@visibleForTesting
+Rect guidedQrFrame(Size size) {
+  const margin = 24.0;
+  final side = (size.width * 0.69).clamp(0.0, (size.height - 2 * margin).clamp(0.0, double.infinity));
+  return Rect.fromCenter(center: size.center(Offset.zero), width: side, height: side);
 }
 
 class _GuidedQrFramePainter extends CustomPainter {

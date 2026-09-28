@@ -472,9 +472,31 @@ void main() {
     expect(WalletCard.fromDocument(_passport(), DocumentType.passport).canBeReused, isFalse);
   });
 
-  test('the QR frame stays below the instructions on short screens', () {
-    expect(guidedQrFrame(const Size(360, 640), minTop: 244).top, 244);
-    expect(guidedQrFrame(const Size(390, 1200), minTop: 244).top, greaterThan(244));
+  test('the QR frame always fits in the area left between the instructions and the bottom line', () {
+    for (final area in const [Size(360, 420), Size(390, 500), Size(360, 200)]) {
+      final frame = guidedQrFrame(area);
+      expect(frame.top, greaterThanOrEqualTo(24), reason: '$area');
+      expect(frame.bottom, lessThanOrEqualTo(area.height - 24), reason: '$area');
+      expect(frame.width, frame.height);
+    }
+  });
+
+  testWidgets('the QR instructions never overlap the frame, even when the text runs long', (tester) async {
+    // The test font is far wider than Nunito, so the instructions wrap onto
+    // many lines here: the same squeeze as a large system font size.
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(_cm(QrScannerScreen(onScanned: (_) {}, onBack: () {})));
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    final instructions = tester.getRect(find.byKey(guidedQrInstructionsKey));
+    final frameArea = tester.getRect(
+      find.byWidgetPredicate((w) => w is CustomPaint && w.painter.runtimeType.toString() == '_GuidedQrFramePainter'),
+    );
+    expect(frameArea.top, greaterThanOrEqualTo(instructions.bottom));
+    expect(frameArea.height, greaterThan(200));
   });
 
   testWidgets('accepting a request in the guided flow goes on to choosing a document', (tester) async {
