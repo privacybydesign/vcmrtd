@@ -65,9 +65,13 @@ dev_dependencies:
 
 flutter_launcher_icons:
   android: true
-  ios: true
-  image_path: "assets/icon/app_icon.png"
-  min_sdk_android: 21 # optional
+  ios: false # iOS uses the checked-in Icon Composer package at ios/Runner/Idem.icon.
+  image_path_android: "design/app-icons/android/rendered/play-store-512.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "design/app-icons/android/rendered/adaptive-foreground-1080.png"
+  adaptive_icon_foreground_inset: 0
+  adaptive_icon_monochrome: "design/app-icons/android/rendered/monochrome-1080.png"
+  min_sdk_android: 26
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
