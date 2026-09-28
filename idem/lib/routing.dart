@@ -23,6 +23,10 @@ import 'package:idem/widgets/pages/scanner_wrapper.dart';
 import 'package:idem/widgets/pages/settings_screen.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:idem/widgets/pages/guided_manual_entry_screen.dart';
+import 'package:idem/providers/wallet_provider.dart';
+import 'package:idem/theme/brand_theme.dart';
+import 'package:idem/widgets/pages/choose_document_screen.dart';
+import 'package:idem/widgets/pages/saved_documents_screen.dart';
 
 /// The photo + issue date to seed face verification with, straight off the
 /// just-read [document] — used to jump into face verification immediately
@@ -42,6 +46,8 @@ const _faceVerificationPath = '/face_verification';
 const _settingsPath = '/settings';
 const _qrScannerPath = '/qr_scanner';
 const _proofingConsentPath = '/proofing_consent';
+const _chooseDocumentPath = '/choose_document';
+const _savedDocumentsPath = '/saved_documents';
 
 /// Exposes [_proofingConsentPath] so a tapped vcmrtd:// deep link
 /// (VcMrtdApp._openProofingLink in main.dart) can push the consent screen
@@ -142,12 +148,20 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
             },
             onSettingsPressed: context.pushSettingsScreen,
             onScanQrPressed: context.pushQrScannerScreen,
+            onContinueProofingSession: () => context.push(_chooseDocumentPath),
           );
         },
       ),
       GoRoute(
         path: _settingsPath,
-        builder: (context, state) => SettingsScreen(onBackPressed: context.pop),
+        builder: (context, state) => SettingsScreen(
+          onBackPressed: context.pop,
+          onSavedDocumentsPressed: context.guided != null ? () => context.push(_savedDocumentsPath) : null,
+        ),
+      ),
+      GoRoute(
+        path: _savedDocumentsPath,
+        builder: (context, state) => SavedDocumentsScreen(onBack: context.pop, onScanQr: context.pushQrScannerScreen),
       ),
       GoRoute(
         path: _qrScannerPath,
@@ -170,11 +184,37 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
               ProviderScope.containerOf(context)
                   .read(activeProofingSessionProvider.notifier)
                   .set(ActiveProofingSession(ref: sessionRef, info: info, openedAt: DateTime.now()));
-              context.go('/select_doc_type');
+              // The guided flow is QR-first: pick which document to use next.
+              context.go(context.guided != null ? _chooseDocumentPath : '/select_doc_type');
             },
             onDecline: () => context.go('/select_doc_type'),
           );
         },
+      ),
+      GoRoute(
+        path: _chooseDocumentPath,
+        builder: (context, state) => Consumer(
+          builder: (context, ref, _) {
+            final session = ref.watch(activeProofingSessionProvider);
+            final saved = ref.watch(walletProvider).where((c) => c.canBeReused).toList().reversed.toList();
+            return ChooseDocumentScreen(
+              relyingParty: session?.info.relyingParty ?? context.brand.appBarTitle,
+              savedDocuments: saved,
+              onBack: () => context.go('/select_doc_type'),
+              onAddNew: (type) => context.pushMrzReaderScreen(MrzReaderRouteParams(documentType: type)),
+              onUseSaved: (card) {
+                final (nfcImageBytes, issueDate) = _faceVerificationInputFor(card.document!, card.documentType);
+                context.pushFaceVerificationScreen(
+                  nfcImageBytes,
+                  issueDate: issueDate,
+                  document: card.document!,
+                  result: card.rawData!,
+                  documentType: card.documentType,
+                );
+              },
+            );
+          },
+        ),
       ),
       GoRoute(
         path: '/mrz_reader',

@@ -15,7 +15,16 @@ import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/theme/app_brand.dart';
 import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/theme/brands/cm_theme.dart';
+import 'package:idem/providers/proofing_session_provider.dart';
+import 'package:idem/routing.dart';
+import 'package:idem/widgets/pages/choose_document_screen.dart';
 import 'package:idem/widgets/pages/document_selection_screen.dart';
+import 'package:idem/widgets/pages/face_verification_screen.dart';
+import 'package:idem/widgets/pages/qr_scanner_screen.dart';
+import 'package:idem/widgets/pages/saved_documents_screen.dart';
+import 'package:face_verification/face_verification.dart';
+import 'dart:async';
+import 'package:camera/camera.dart';
 import 'package:idem/widgets/pages/driving_licence_data_screen.dart';
 import 'package:idem/widgets/pages/guided_manual_entry_screen.dart';
 import 'package:idem/widgets/pages/settings_screen.dart';
@@ -95,32 +104,6 @@ void main() {
   test('only brands that opt in get the guided layout', () {
     expect(cmBrandTheme.guided, isNotNull);
     expect(BrandTheme.idem.guided, isNull);
-  });
-
-  group('guided home', () {
-    testWidgets('shows the three-step hero and routes taps to the callbacks', (tester) async {
-      _tallViewport(tester);
-      DocumentType? selected;
-      var settings = 0;
-      await tester.pumpWidget(
-        _cm(
-          DocumentTypeSelectionScreen(
-            onDocumentTypeSelected: (t) => selected = t,
-            onSettingsPressed: () => settings++,
-            onScanQrPressed: () {},
-          ),
-        ),
-      );
-      await tester.pump();
-
-      expect(find.text('Verify your identity in three steps'), findsOneWidget);
-      expect(find.text('Advanced settings'), findsNothing);
-
-      await tester.tap(find.text('Identity card'));
-      expect(selected, DocumentType.identityCard);
-      await tester.tap(find.byTooltip('Settings'));
-      expect(settings, 1);
-    });
   });
 
   testWidgets('guided scan frame sits where the MRZ scanner reads', (tester) async {
@@ -285,35 +268,6 @@ void main() {
     expect(find.text('Text recognition'), findsNothing);
   });
 
-  testWidgets('guided home lists saved documents and offers a new scan', (tester) async {
-    _tallViewport(tester);
-    DocumentType? selected;
-    await tester.pumpWidget(
-      _cm(
-        DocumentTypeSelectionScreen(
-          onDocumentTypeSelected: (t) => selected = t,
-          onSettingsPressed: () {},
-          onScanQrPressed: () {},
-        ),
-        overrides: [
-          walletProvider.overrideWith(
-            () =>
-                _SeededWallet([_walletCard('1', DocumentType.passport), _walletCard('2', DocumentType.drivingLicence)]),
-          ),
-        ],
-      ),
-    );
-    await tester.pump();
-    expect(find.text('2 documents on this phone'), findsOneWidget);
-    expect(find.text('Driving licence · SPECI2014'), findsOneWidget);
-
-    await tester.tap(find.text('New scan'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Identity card'));
-    await tester.pumpAndSettle();
-    expect(selected, DocumentType.identityCard);
-  });
-
   testWidgets('guided licence result shows the categories with readable dates', (tester) async {
     _tallViewport(tester);
     await tester.pumpWidget(
@@ -347,4 +301,256 @@ void main() {
     expect(find.text('until 01/02/2034'), findsOneWidget);
     expect(find.textContaining('genuine'), findsNothing);
   });
+
+  group('guided home', () {
+    testWidgets('leads with scanning a QR code, not a document choice', (tester) async {
+      _tallViewport(tester);
+      var scans = 0;
+      await tester.pumpWidget(
+        _cm(
+          DocumentTypeSelectionScreen(
+            onDocumentTypeSelected: (_) {},
+            onSettingsPressed: () {},
+            onScanQrPressed: () => scans++,
+          ),
+          overrides: [
+            walletProvider.overrideWith(() => _SeededWallet([_walletCard('1', DocumentType.passport)])),
+          ],
+        ),
+      );
+      expect(find.text('Verify your identity with a QR code'), findsOneWidget);
+      expect(find.text('Passport'), findsNothing);
+      await tester.tap(find.text('Scan QR code'));
+      expect(scans, 1);
+    });
+
+    testWidgets('offers to continue an accepted request instead of a new scan', (tester) async {
+      _tallViewport(tester);
+      var continued = 0;
+      await tester.pumpWidget(
+        _cm(
+          DocumentTypeSelectionScreen(
+            onDocumentTypeSelected: (_) {},
+            onSettingsPressed: () {},
+            onScanQrPressed: () {},
+            onContinueProofingSession: () => continued++,
+          ),
+          overrides: [activeProofingSessionProvider.overrideWith(_PinnedSession.new)],
+        ),
+      );
+      expect(find.text('Scan QR code'), findsNothing);
+      await tester.tap(find.text('Continue with CM.com'));
+      expect(continued, 1);
+    });
+  });
+
+  group('choose document', () {
+    Future<void> pump(
+      WidgetTester tester,
+      List<WalletCard> saved, {
+      ValueChanged<WalletCard>? onUseSaved,
+      ValueChanged<DocumentType>? onAddNew,
+    }) async {
+      _tallViewport(tester);
+      await tester.pumpWidget(
+        _cm(
+          ChooseDocumentScreen(
+            relyingParty: 'CM.com',
+            savedDocuments: saved,
+            onUseSaved: onUseSaved ?? (_) {},
+            onAddNew: onAddNew ?? (_) {},
+            onBack: () {},
+          ),
+        ),
+      );
+    }
+
+    testWidgets('continues with the picked saved document', (tester) async {
+      WalletCard? used;
+      await pump(tester, [
+        _walletCard('1', DocumentType.identityCard),
+        _walletCard('2', DocumentType.drivingLicence),
+      ], onUseSaved: (c) => used = c);
+      expect(find.text('Continue with identity card'), findsOneWidget);
+      await tester.tap(find.text('Driving licence').first);
+      await tester.pump();
+      await tester.tap(find.text('Continue with driving licence'));
+      expect(used?.id, '2');
+    });
+
+    testWidgets('without saved documents only offers adding one', (tester) async {
+      DocumentType? added;
+      await pump(tester, const [], onAddNew: (t) => added = t);
+      expect(find.text('SAVED ON THIS PHONE'), findsNothing);
+      expect(find.textContaining('Continue with'), findsNothing);
+      await tester.tap(find.text('Passport'));
+      expect(added, DocumentType.passport);
+    });
+  });
+
+  testWidgets('saved documents can be removed', (tester) async {
+    _tallViewport(tester);
+    final container = ProviderContainer(
+      overrides: [
+        walletProvider.overrideWith(() => _SeededWallet([_walletCard('1', DocumentType.passport)])),
+      ],
+    );
+    addTearDown(container.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppBrand.cm.theme,
+          home: SavedDocumentsScreen(onBack: () {}, onScanQr: () {}),
+        ),
+      ),
+    );
+    expect(find.text('1 document on this phone'), findsOneWidget);
+    await tester.tap(find.text('Remove from this phone'));
+    await tester.pump();
+    expect(container.read(walletProvider), isEmpty);
+    expect(find.text('No documents on this phone'), findsOneWidget);
+  });
+
+  testWidgets('guided selfie check explains itself before the camera opens', (tester) async {
+    _tallViewport(tester);
+    final key = GlobalKey<FlutterFaceVerificationScreenState>();
+    await tester.pumpWidget(
+      _cm(
+        FlutterFaceVerificationScreen.withEngine(
+          key: key,
+          engine: FaceVerificationEngine.withWorker(_IdleWorker()),
+          nfcImageBytes: Uint8List.fromList(img.encodePng(img.Image(width: 2, height: 2))),
+          onBackPressed: () {},
+          onVerified: (_) {},
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.text('Take a quick selfie'), findsOneWidget);
+    key.currentState!.debugSetActiveLiveness();
+    await tester.pump();
+    expect(find.text('Take a quick selfie'), findsNothing);
+    expect(find.textContaining('No video is stored'), findsNothing);
+  });
+
+  testWidgets('guided result offers to save the document when sharing', (tester) async {
+    _tallViewport(tester);
+    await tester.pumpWidget(
+      _cm(
+        PassportDataScreen(
+          document: _passport(),
+          passportDataResult: RawDocumentData(dataGroups: const {}, efSod: '00'),
+          onBackPressed: () {},
+        ),
+        overrides: [activeProofingSessionProvider.overrideWith(_PinnedSession.new)],
+      ),
+    );
+    await tester.pump();
+    expect(find.text('Share with CM.com'), findsOneWidget);
+    expect(find.text('Save for next time'), findsOneWidget);
+    expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
+  });
+
+  test('wallet cards made from a read document can be shared again', () {
+    final raw = RawDocumentData(dataGroups: const {}, efSod: '00');
+    final card = WalletCard.fromDocument(_passport(), DocumentType.passport, rawData: raw);
+    expect(card.canBeReused, isTrue);
+    expect(card.validUntil, _passport().mrz.dateOfExpiry);
+    expect(WalletCard.fromDocument(_passport(), DocumentType.passport).canBeReused, isFalse);
+  });
+
+  test('the QR frame stays below the instructions on short screens', () {
+    expect(guidedQrFrame(const Size(360, 640), minTop: 244).top, 244);
+    expect(guidedQrFrame(const Size(390, 1200), minTop: 244).top, greaterThan(244));
+  });
+
+  testWidgets('accepting a request in the guided flow goes on to choosing a document', (tester) async {
+    final router = createRouter();
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp.router(theme: AppBrand.cm.theme, routerConfig: router),
+      ),
+    );
+    router.push(
+      proofingConsentPath,
+      extra: {
+        'ref': const ProofingSessionRef(apiBase: 'https://proof.example.com', token: 'tok'),
+        'info': _session('CM.com'),
+      },
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    expect(router.routeInformationProvider.value.uri.path, '/choose_document');
+    expect(find.byType(ChooseDocumentScreen), findsOneWidget);
+  });
+}
+
+class _PinnedSession extends ActiveProofingSessionNotifier {
+  @override
+  ActiveProofingSession? build() => ActiveProofingSession(
+    ref: const ProofingSessionRef(apiBase: 'https://proof.example.com', token: 'tok'),
+    info: _session('CM.com'),
+    openedAt: DateTime.now(),
+  );
+}
+
+/// A face engine worker that never reports anything.
+class _IdleWorker implements FaceVerificationWorker {
+  final StreamController<WorkerFrameResult> _frames = StreamController<WorkerFrameResult>.broadcast(sync: true);
+  int stopCalls = 0;
+  int disposeCalls = 0;
+
+  @override
+  Stream<WorkerFrameResult> get frames => _frames.stream;
+  @override
+  Future<void> initialize() async {}
+  @override
+  Future<void> dispose() async {
+    disposeCalls++;
+    await _frames.close();
+  }
+
+  @override
+  Future<void> startSession() async {}
+  @override
+  Future<void> stop() async {
+    stopCalls++;
+  }
+
+  @override
+  Future<void> processCameraFrame(CameraImage c, int r) async {}
+  @override
+  Future<img.Image?> detectAndCropEncoded(Uint8List e) async => null;
+  @override
+  Future<void> prepareNfcFace(img.Image f) async {}
+  @override
+  Future<void> storeConsistencySelfie(img.Image s) async {}
+  @override
+  Future<double> checkConsistencySelfie(img.Image s) async => 1.0;
+  @override
+  Future<WorkerMatchResult> matchSelfie(img.Image s) async => const WorkerMatchResult(score: 0.9);
+  @override
+  Future<WorkerPassiveResult> getPassiveResult() async => const WorkerPassiveResult(
+    antiSpoofScore: 0.9,
+    antiSpoofPassed: true,
+    rppgHr: 70.0,
+    rppgPassed: true,
+    rppgSampleCount: 30,
+    rppgDurationMs: 3000,
+  );
+  @override
+  Stream<WorkerFrameResult> get debugFrames => _frames.stream;
+  @override
+  int get debugSessionId => 0;
+  @override
+  Future<void> debugWaitPipelineIdle() async {}
+  @override
+  Future<void> debugWaitPassiveIdle() async {}
+  @override
+  void debugEmitFrameResult(WorkerFrameResult r) {}
+  @override
+  void debugEmitFrameError(Object e) {}
 }

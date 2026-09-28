@@ -38,6 +38,9 @@ class PassportDataScreen extends ConsumerStatefulWidget {
 
 class _PassportDataScreenState extends ConsumerState<PassportDataScreen>
     with ProofingResultSubmission<PassportDataScreen> {
+  /// Guided layout: keep the document after sharing it (see [GuidedSaveForNextTime]).
+  bool _saveForNextTime = false;
+
   @override
   Widget build(BuildContext context) {
     final activeProofingSession = ref.watch(activeProofingSessionProvider);
@@ -241,6 +244,13 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen>
                       ),
                       const Spacer(),
                       const SizedBox(height: 24),
+                      if (session != null) ...[
+                        GuidedSaveForNextTime(
+                          value: _saveForNextTime,
+                          onChanged: (value) => setState(() => _saveForNextTime = value),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                       if (session != null)
                         GuidedButton(
                           label: submittingToProofingSession ? 'Sharing…' : 'Share with ${session.info.relyingParty}',
@@ -270,7 +280,9 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen>
   );
 
   void _addToWallet() {
-    ref.read(walletProvider.notifier).add(WalletCard.fromDocument(widget.document, widget.documentType));
+    ref
+        .read(walletProvider.notifier)
+        .add(WalletCard.fromDocument(widget.document, widget.documentType, rawData: widget.passportDataResult));
     widget.onBackPressed();
   }
 
@@ -286,7 +298,14 @@ class _PassportDataScreenState extends ConsumerState<PassportDataScreen>
         documentType: 'icao',
       ),
       faceVerification: widget.faceVerification,
-      onBackPressed: widget.onBackPressed,
+      onBackPressed: () {
+        if (_saveForNextTime) {
+          ref
+              .read(walletProvider.notifier)
+              .add(WalletCard.fromDocument(widget.document, widget.documentType, rawData: widget.passportDataResult));
+        }
+        widget.onBackPressed();
+      },
     );
   }
 }

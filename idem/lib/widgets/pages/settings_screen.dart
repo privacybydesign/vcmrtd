@@ -8,6 +8,7 @@ import 'package:idem/providers/active_authenticiation_provider.dart';
 import 'package:idem/providers/face_engine_provider.dart';
 import 'package:idem/providers/liveness_mode_provider.dart';
 import 'package:idem/providers/ocr_engine_provider.dart';
+import 'package:idem/providers/wallet_provider.dart';
 import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -30,7 +31,15 @@ String _ocrEngineLabel(OcrEngine engine) => switch (engine) {
 class SettingsScreen extends ConsumerWidget {
   final VoidCallback onBackPressed;
 
-  const SettingsScreen({super.key, required this.onBackPressed, @visibleForTesting this.showOcrEngineForTesting});
+  const SettingsScreen({
+    super.key,
+    required this.onBackPressed,
+    this.onSavedDocumentsPressed,
+    @visibleForTesting this.showOcrEngineForTesting,
+  });
+
+  /// Guided layout: opens the saved documents, listed under "Your documents".
+  final VoidCallback? onSavedDocumentsPressed;
 
   @visibleForTesting
   final bool? showOcrEngineForTesting;
@@ -176,6 +185,17 @@ class SettingsScreen extends ConsumerWidget {
               Expanded(
                 child: ListView(
                   children: [
+                    if (onSavedDocumentsPressed != null)
+                      section('Your documents', [
+                        row(
+                          title: 'Saved documents',
+                          subtitle: switch (ref.watch(walletProvider).length) {
+                            0 => 'None on this phone',
+                            final n => '$n on this phone',
+                          },
+                          onTap: onSavedDocumentsPressed,
+                        ),
+                      ]),
                     section('Chip reading', [
                       MergeSemantics(
                         child: row(

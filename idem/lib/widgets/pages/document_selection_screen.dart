@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/providers/wallet_provider.dart';
-import 'package:intl/intl.dart';
 import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/theme/text_styles.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
@@ -22,11 +21,16 @@ class DocumentTypeSelectionScreen extends ConsumerWidget {
   final VoidCallback onSettingsPressed;
   final VoidCallback onScanQrPressed;
 
+  /// Guided layout only: resumes a proofing session that was accepted but not
+  /// finished, in place of scanning a new QR code.
+  final VoidCallback? onContinueProofingSession;
+
   const DocumentTypeSelectionScreen({
     super.key,
     required this.onDocumentTypeSelected,
     required this.onSettingsPressed,
     required this.onScanQrPressed,
+    this.onContinueProofingSession,
   });
 
   @override
@@ -37,22 +41,11 @@ class DocumentTypeSelectionScreen extends ConsumerWidget {
     final showQrScanOption = activeProofingSession == null;
     final brand = context.brand;
 
-    if (context.guided != null && hasCards) {
-      return _GuidedWalletHome(
-        cards: cards,
-        onDocumentTypeSelected: onDocumentTypeSelected,
-        onSettingsPressed: onSettingsPressed,
-        onScanQrPressed: onScanQrPressed,
-        showQrScanOption: showQrScanOption,
-        connectedRelyingParty: activeProofingSession?.info.relyingParty,
-      );
-    }
     if (context.guided != null) {
       return _GuidedHome(
-        onDocumentTypeSelected: onDocumentTypeSelected,
         onSettingsPressed: onSettingsPressed,
         onScanQrPressed: onScanQrPressed,
-        showQrScanOption: showQrScanOption,
+        onContinueProofingSession: onContinueProofingSession,
         connectedRelyingParty: activeProofingSession?.info.relyingParty,
       );
     }
@@ -464,303 +457,28 @@ class _PoweredByIdem extends StatelessWidget {
   }
 }
 
-/// Home in the guided layout: a dark hero explaining the three steps, then
-/// the document choice. Settings sits in the hero instead of a card.
+/// Home in the guided layout, where every verification starts from a QR
+/// code: the hero leads with "Scan QR code", followed by how it works. Saved
+/// documents live under settings, not here.
 class _GuidedHome extends StatelessWidget {
   const _GuidedHome({
-    required this.onDocumentTypeSelected,
     required this.onSettingsPressed,
     required this.onScanQrPressed,
-    required this.showQrScanOption,
+    required this.onContinueProofingSession,
     required this.connectedRelyingParty,
   });
 
-  final Function(DocumentType) onDocumentTypeSelected;
   final VoidCallback onSettingsPressed;
   final VoidCallback onScanQrPressed;
-  final bool showQrScanOption;
+  final VoidCallback? onContinueProofingSession;
+
+  /// Set while an accepted proofing session is still open.
   final String? connectedRelyingParty;
 
   @override
   Widget build(BuildContext context) {
     final g = context.guided!;
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent),
-      child: Scaffold(
-        backgroundColor: g.surface,
-        body: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: _GuidedHero(onSettingsPressed: onSettingsPressed, connectedRelyingParty: connectedRelyingParty),
-            ),
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        'Which document do you have?',
-                        style: g.heading(18, weight: FontWeight.w600, color: g.slate),
-                      ),
-                      const SizedBox(height: 16),
-                      _GuidedDocumentOption(
-                        title: 'Passport',
-                        subtitle: 'Any machine-readable passport',
-                        icon: Icons.portrait_outlined,
-                        badge: 'Most common',
-                        highlighted: true,
-                        onTap: () => onDocumentTypeSelected(DocumentType.passport),
-                      ),
-                      const SizedBox(height: 12),
-                      _GuidedDocumentOption(
-                        title: 'Identity card',
-                        subtitle: 'Machine-readable ID card with chip',
-                        icon: Icons.badge_outlined,
-                        onTap: () => onDocumentTypeSelected(DocumentType.identityCard),
-                      ),
-                      const SizedBox(height: 12),
-                      _GuidedDocumentOption(
-                        title: 'Driving licence',
-                        subtitle: 'Dutch driving licences work best',
-                        icon: Icons.directions_car_outlined,
-                        onTap: () => onDocumentTypeSelected(DocumentType.drivingLicence),
-                      ),
-                      const Spacer(),
-                      const SizedBox(height: 24),
-                      if (showQrScanOption) ...[
-                        GuidedButton(
-                          label: 'Scan a QR code',
-                          icon: Icons.qr_code_scanner,
-                          secondary: true,
-                          onPressed: onScanQrPressed,
-                        ),
-                        const SizedBox(height: 14),
-                      ],
-                      Text(
-                        'Powered by Idem',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 12, color: g.muted),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _GuidedHero extends StatelessWidget {
-  const _GuidedHero({required this.onSettingsPressed, required this.connectedRelyingParty});
-
-  final VoidCallback onSettingsPressed;
-  final String? connectedRelyingParty;
-
-  @override
-  Widget build(BuildContext context) {
-    final g = context.guided!;
-    final brand = context.brand;
-    return Container(
-      decoration: BoxDecoration(
-        color: g.ink,
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
-      ),
-      padding: EdgeInsets.fromLTRB(20, MediaQuery.paddingOf(context).top + 20, 20, 32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Image.asset(g.logoOnDarkAsset, width: 40, height: 40, semanticLabel: brand.appBarTitle),
-              const Spacer(),
-              GuidedRoundButton(
-                icon: Icons.settings_outlined,
-                tooltip: 'Settings',
-                onDark: true,
-                outlined: true,
-                onPressed: onSettingsPressed,
-              ),
-            ],
-          ),
-          if (connectedRelyingParty != null) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                'Connected — will send results to $connectedRelyingParty',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: g.heroEyebrow),
-              ),
-            ),
-          ],
-          const SizedBox(height: 28),
-          Text(
-            'IDENTITY VERIFICATION',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 1.04, color: g.heroEyebrow),
-          ),
-          const SizedBox(height: 10),
-          Text('Verify your identity in three steps', style: g.heading(30, color: Colors.white)),
-          const SizedBox(height: 10),
-          Text(
-            'Scan your ID, read its chip with NFC and take a short selfie. Your data stays on this phone until '
-            'you choose to share it.',
-            style: TextStyle(fontSize: 16, height: 1.5, color: g.heroMuted),
-          ),
-          const SizedBox(height: 28),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (final (i, label) in const ['Scan document', 'Read chip', 'Selfie check'].indexed) ...[
-                if (i > 0) const SizedBox(width: 8),
-                Expanded(
-                  child: Container(
-                    constraints: const BoxConstraints(minHeight: 82),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('${i + 1}', style: g.heading(14, color: g.heroAccent)),
-                        const SizedBox(height: 6),
-                        Text(
-                          label,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GuidedDocumentOption extends StatelessWidget {
-  const _GuidedDocumentOption({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.onTap,
-    this.badge,
-    this.highlighted = false,
-  });
-
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final VoidCallback onTap;
-  final String? badge;
-
-  /// The suggested choice: blue border, tile and chevron.
-  final bool highlighted;
-
-  @override
-  Widget build(BuildContext context) {
-    final g = context.guided!;
-    return Material(
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: highlighted ? BorderSide(color: g.action, width: 2) : BorderSide(color: g.border),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: EdgeInsets.all(highlighted ? 15 : 16),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: highlighted ? g.actionTint : g.neutralTile,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, size: 24, color: highlighted ? g.action : g.slate),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 4,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Text(
-                          title,
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: g.ink),
-                        ),
-                        if (badge != null)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: g.badgeBackground,
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              badge!,
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: g.stepLabel),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(subtitle, style: TextStyle(fontSize: 14, color: g.bodyText)),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right, size: 22, color: highlighted ? g.action : g.muted),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Home in the guided layout once the wallet holds documents: a compact hero
-/// with "New scan", then the saved documents.
-class _GuidedWalletHome extends ConsumerWidget {
-  const _GuidedWalletHome({
-    required this.cards,
-    required this.onDocumentTypeSelected,
-    required this.onSettingsPressed,
-    required this.onScanQrPressed,
-    required this.showQrScanOption,
-    required this.connectedRelyingParty,
-  });
-
-  final List<WalletCard> cards;
-  final Function(DocumentType) onDocumentTypeSelected;
-  final VoidCallback onSettingsPressed;
-  final VoidCallback onScanQrPressed;
-  final bool showQrScanOption;
-  final String? connectedRelyingParty;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final g = context.guided!;
-    final newestFirst = cards.reversed.toList();
+    final connected = connectedRelyingParty != null && onContinueProofingSession != null;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent),
       child: Scaffold(
@@ -773,7 +491,7 @@ class _GuidedWalletHome extends ConsumerWidget {
                   color: g.ink,
                   borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
                 ),
-                padding: EdgeInsets.fromLTRB(20, MediaQuery.paddingOf(context).top + 20, 20, 24),
+                padding: EdgeInsets.fromLTRB(20, MediaQuery.paddingOf(context).top + 20, 20, 28),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -790,13 +508,9 @@ class _GuidedWalletHome extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    if (connectedRelyingParty != null) ...[
-                      const SizedBox(height: 16),
-                      _GuidedConnectedNote(relyingParty: connectedRelyingParty!),
-                    ],
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
                     Text(
-                      'YOUR DOCUMENTS',
+                      'IDENTITY VERIFICATION',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -804,47 +518,32 @@ class _GuidedWalletHome extends ConsumerWidget {
                         color: g.heroEyebrow,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
+                    Text('Verify your identity with a QR code', style: g.heading(30, color: Colors.white)),
+                    const SizedBox(height: 10),
                     Text(
-                      cards.length == 1 ? '1 document on this phone' : '${cards.length} documents on this phone',
-                      style: g.heading(26, color: Colors.white),
+                      connected
+                          ? 'You accepted a request from $connectedRelyingParty. Continue where you left off.'
+                          : 'When a ${context.brand.appBarTitle} service asks you to verify who you are, it shows a QR '
+                                'code. Scan it here to start.',
+                      style: TextStyle(fontSize: 16, height: 1.5, color: g.heroMuted),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'They stay here until you share or remove them.',
-                      style: TextStyle(fontSize: 15, height: 1.5, color: g.heroMuted),
-                    ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
+                    const Center(child: _GuidedQrBadge()),
+                    const SizedBox(height: 24),
                     ElevatedButton.icon(
-                      onPressed: () => _showGuidedNewScanSheet(context, onDocumentTypeSelected),
-                      style: g.secondaryButtonStyle.copyWith(
-                        minimumSize: const WidgetStatePropertyAll(Size.fromHeight(48)),
-                        side: const WidgetStatePropertyAll(BorderSide.none),
-                        foregroundColor: WidgetStatePropertyAll(g.ink),
+                      onPressed: connected ? onContinueProofingSession : onScanQrPressed,
+                      style: g.primaryButtonStyle.copyWith(
+                        minimumSize: const WidgetStatePropertyAll(Size.fromHeight(56)),
+                        textStyle: WidgetStatePropertyAll(
+                          g.primaryButtonStyle.textStyle?.resolve({})?.copyWith(fontSize: 17),
+                        ),
                       ),
-                      icon: const Icon(Icons.add, size: 22),
-                      label: const Text('New scan'),
+                      icon: Icon(connected ? Icons.arrow_forward : Icons.qr_code_scanner, size: 22),
+                      label: Text(connected ? 'Continue with $connectedRelyingParty' : 'Scan QR code'),
                     ),
                   ],
                 ),
-              ),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-              sliver: SliverList.separated(
-                itemCount: newestFirst.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 12),
-                itemBuilder: (context, i) {
-                  final card = newestFirst[i];
-                  return _GuidedWalletCard(
-                    card: card,
-                    onTap: () => showWalletCardDetails(
-                      context,
-                      card,
-                      onRemove: () => ref.read(walletProvider.notifier).remove(card.id),
-                    ),
-                  );
-                },
               ),
             ),
             SliverFillRemaining(
@@ -852,20 +551,43 @@ class _GuidedWalletHome extends ConsumerWidget {
               child: SafeArea(
                 top: false,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Spacer(),
-                      if (showQrScanOption) ...[
-                        GuidedButton(
-                          label: 'Scan a QR code',
-                          icon: Icons.qr_code_scanner,
-                          secondary: true,
-                          onPressed: onScanQrPressed,
+                      Text(
+                        'How it works',
+                        style: g.heading(16, weight: FontWeight.w600, color: g.slate),
+                      ),
+                      const SizedBox(height: 14),
+                      for (final (i, step) in const [
+                        'Scan the QR code shown by the website or app.',
+                        'Use a document saved on this phone, or scan your ID.',
+                        'Take a quick selfie, then share only what was asked for.',
+                      ].indexed) ...[
+                        if (i > 0) const SizedBox(height: 14),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 26,
+                              height: 26,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(color: g.actionTint, shape: BoxShape.circle),
+                              child: Text('${i + 1}', style: g.heading(13, color: g.action)),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(step, style: TextStyle(fontSize: 15, height: 1.45, color: g.ink)),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 14),
                       ],
+                      const Spacer(),
+                      const SizedBox(height: 24),
                       Text(
                         'Powered by Idem',
                         textAlign: TextAlign.center,
@@ -883,152 +605,78 @@ class _GuidedWalletHome extends ConsumerWidget {
   }
 }
 
-class _GuidedConnectedNote extends StatelessWidget {
-  const _GuidedConnectedNote({required this.relyingParty});
-
-  final String relyingParty;
+/// The QR illustration in the home hero: a QR glyph with scan-frame corners.
+class _GuidedQrBadge extends StatelessWidget {
+  const _GuidedQrBadge();
 
   @override
   Widget build(BuildContext context) {
     final g = context.guided!;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
-      child: Text(
-        'Connected — will send results to $relyingParty',
-        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: g.heroEyebrow),
+    return SizedBox(
+      width: 140,
+      height: 140,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: const Center(
+                  child: SizedBox(width: 76, height: 76, child: CustomPaint(painter: GuidedQrGlyphPainter())),
+                ),
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: CustomPaint(painter: _ScanCornersPainter(color: g.heroAccent)),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _GuidedWalletCard extends StatelessWidget {
-  const _GuidedWalletCard({required this.card, required this.onTap});
+class _ScanCornersPainter extends CustomPainter {
+  const _ScanCornersPainter({required this.color});
 
-  final WalletCard card;
-  final VoidCallback onTap;
+  final Color color;
 
   @override
-  Widget build(BuildContext context) {
-    final g = context.guided!;
-    final type = switch (card.documentType) {
-      DocumentType.passport => 'Passport',
-      DocumentType.identityCard => 'Identity card',
-      DocumentType.drivingLicence => 'Driving licence',
-    };
-    final now = DateTime.now();
-    final added = card.addedAt;
-    final addedLabel = added.year == now.year && added.month == now.month && added.day == now.day
-        ? 'Added today'
-        : 'Added ${DateFormat('d MMM').format(added)}';
-    return Material(
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: g.border),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: SizedBox(
-                  width: 48,
-                  height: 60,
-                  child: FittedBox(
-                    fit: BoxFit.cover,
-                    clipBehavior: Clip.hardEdge,
-                    child: WalletPhoto(imageData: card.photoImageData, imageType: card.photoImageType, size: 60),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      card.holderName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: g.ink),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      card.documentNumber == null ? type : '$type · ${card.documentNumber}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 14, color: g.bodyText),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(addedLabel, style: TextStyle(fontSize: 13, color: g.muted)),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right, color: g.muted),
-            ],
-          ),
-        ),
-      ),
+  void paint(Canvas canvas, Size size) {
+    const len = 24.0, r = 14.0;
+    final w = size.width, h = size.height;
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+    const radius = Radius.circular(r);
+    canvas.drawPath(
+      Path()
+        ..moveTo(0, len)
+        ..lineTo(0, r)
+        ..arcToPoint(const Offset(r, 0), radius: radius)
+        ..lineTo(len, 0)
+        ..moveTo(w - len, 0)
+        ..lineTo(w - r, 0)
+        ..arcToPoint(Offset(w, r), radius: radius)
+        ..lineTo(w, len)
+        ..moveTo(w, h - len)
+        ..lineTo(w, h - r)
+        ..arcToPoint(Offset(w - r, h), radius: radius)
+        ..lineTo(w - len, h)
+        ..moveTo(len, h)
+        ..lineTo(r, h)
+        ..arcToPoint(Offset(0, h - r), radius: radius)
+        ..lineTo(0, h - len),
+      paint,
     );
   }
-}
 
-void _showGuidedNewScanSheet(BuildContext context, Function(DocumentType) onDocumentTypeSelected) {
-  final g = context.guided!;
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.white,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-    builder: (sheetContext) {
-      void pick(DocumentType type) {
-        Navigator.of(sheetContext).pop();
-        onDocumentTypeSelected(type);
-      }
-
-      return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 28, 20, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Which document do you have?',
-                style: g.heading(18, weight: FontWeight.w600, color: g.slate),
-              ),
-              const SizedBox(height: 16),
-              _GuidedDocumentOption(
-                title: 'Passport',
-                subtitle: 'Any machine-readable passport',
-                icon: Icons.portrait_outlined,
-                badge: 'Most common',
-                highlighted: true,
-                onTap: () => pick(DocumentType.passport),
-              ),
-              const SizedBox(height: 12),
-              _GuidedDocumentOption(
-                title: 'Identity card',
-                subtitle: 'Machine-readable ID card with chip',
-                icon: Icons.badge_outlined,
-                onTap: () => pick(DocumentType.identityCard),
-              ),
-              const SizedBox(height: 12),
-              _GuidedDocumentOption(
-                title: 'Driving licence',
-                subtitle: 'Dutch driving licences work best',
-                icon: Icons.directions_car_outlined,
-                onTap: () => pick(DocumentType.drivingLicence),
-              ),
-            ],
-          ),
-        ),
-      );
-    },
-  );
+  @override
+  bool shouldRepaint(_ScanCornersPainter old) => old.color != color;
 }

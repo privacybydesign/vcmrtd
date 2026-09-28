@@ -36,6 +36,9 @@ class DrivingLicenceDataScreen extends ConsumerStatefulWidget {
 
 class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScreen>
     with ProofingResultSubmission<DrivingLicenceDataScreen> {
+  /// Guided layout: keep the document after sharing it (see [GuidedSaveForNextTime]).
+  bool _saveForNextTime = false;
+
   @override
   Widget build(BuildContext context) {
     final imageData = widget.drivingLicence.photoImageData;
@@ -290,6 +293,13 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
                       ),
                       const Spacer(),
                       const SizedBox(height: 20),
+                      if (session != null) ...[
+                        GuidedSaveForNextTime(
+                          value: _saveForNextTime,
+                          onChanged: (value) => setState(() => _saveForNextTime = value),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                       if (session != null)
                         GuidedButton(
                           label: submittingToProofingSession ? 'Sharing…' : 'Share with ${session.info.relyingParty}',
@@ -319,7 +329,15 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
   );
 
   void _addToWallet() {
-    ref.read(walletProvider.notifier).add(WalletCard.fromDocument(widget.drivingLicence, DocumentType.drivingLicence));
+    ref
+        .read(walletProvider.notifier)
+        .add(
+          WalletCard.fromDocument(
+            widget.drivingLicence,
+            DocumentType.drivingLicence,
+            rawData: widget.drivingLicenceDataResult,
+          ),
+        );
     widget.onBackPressed();
   }
 
@@ -334,7 +352,20 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
         documentType: 'eu_driving_licence',
       ),
       faceVerification: widget.faceVerification,
-      onBackPressed: widget.onBackPressed,
+      onBackPressed: () {
+        if (_saveForNextTime) {
+          ref
+              .read(walletProvider.notifier)
+              .add(
+                WalletCard.fromDocument(
+                  widget.drivingLicence,
+                  DocumentType.drivingLicence,
+                  rawData: widget.drivingLicenceDataResult,
+                ),
+              );
+        }
+        widget.onBackPressed();
+      },
     );
   }
 

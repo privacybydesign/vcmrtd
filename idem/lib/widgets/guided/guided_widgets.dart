@@ -187,3 +187,88 @@ class GuidedStatusBar extends StatelessWidget {
     );
   }
 }
+
+/// An outline QR glyph (three finder squares and a corner), drawn on a 24-unit grid.
+class GuidedQrGlyphPainter extends CustomPainter {
+  const GuidedQrGlyphPainter({this.color = Colors.white, this.strokeWidth = 1.6});
+
+  final Color color;
+  final double strokeWidth;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.scale(size.width / 24, size.height / 24);
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    for (final origin in const [Offset(3, 3), Offset(14, 3), Offset(3, 14)]) {
+      canvas.drawRRect(RRect.fromRectAndRadius(origin & const Size(7, 7), const Radius.circular(1)), paint);
+    }
+    canvas.drawRect(const Rect.fromLTWH(14, 14, 3, 3), paint);
+    canvas.drawPath(
+      Path()
+        ..moveTo(21, 14)
+        ..lineTo(21, 21)
+        ..lineTo(14, 21),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(GuidedQrGlyphPainter old) => old.color != color || old.strokeWidth != strokeWidth;
+}
+
+/// "Save for next time" switch on the guided result screens: keeps the
+/// document on this phone after sharing, so a later request can reuse it.
+class GuidedSaveForNextTime extends StatelessWidget {
+  const GuidedSaveForNextTime({super.key, required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final g = context.guided!;
+    return MergeSemantics(
+      child: Material(
+        color: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: g.subtleBorder),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => onChanged(!value),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Save for next time',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: g.ink),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Keep this document on this phone so you don’t have to scan it again.',
+                        style: TextStyle(fontSize: 13, height: 1.4, color: g.bodyText),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Switch(value: value, activeTrackColor: g.action, onChanged: onChanged),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
