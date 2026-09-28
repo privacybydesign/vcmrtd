@@ -97,47 +97,80 @@ extension on _QrScannerScreenState {
             Positioned.fill(
               child: MRZCameraView(showOverlay: false, routeObserver: widget.routeObserver, onImage: _processFrame),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // With very large text the instructions scroll rather than
-                // squeezing the frame: they take at most 2/5 of the height.
-                Flexible(
-                  flex: 2,
-                  child: ColoredBox(
-                    key: guidedQrInstructionsKey,
-                    color: scrim,
-                    child: SafeArea(
-                      bottom: false,
-                      child: SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            GuidedTopBar(
-                              leading: GuidedRoundButton(
-                                icon: Icons.close,
-                                tooltip: 'Close',
-                                onDark: true,
-                                onPressed: widget.onBack,
+            LayoutBuilder(
+              builder: (context, screen) => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // With very large text the instructions scroll rather than
+                  // squeezing the frame: they take at most 2/5 of the height.
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: screen.maxHeight * 0.4),
+                    child: ColoredBox(
+                      key: guidedQrInstructionsKey,
+                      color: scrim,
+                      child: SafeArea(
+                        bottom: false,
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              GuidedTopBar(
+                                leading: GuidedRoundButton(
+                                  icon: Icons.close,
+                                  tooltip: 'Close',
+                                  onDark: true,
+                                  onPressed: widget.onBack,
+                                ),
+                                center: const GuidedTopBarTitle('Scan QR code', onDark: true),
                               ),
-                              center: const GuidedTopBarTitle('Scan QR code', onDark: true),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(32, 40, 32, 16),
-                              child: Column(
-                                children: [
-                                  Text(
-                                    'Point your camera at the QR code',
-                                    textAlign: TextAlign.center,
-                                    style: g.heading(22, color: Colors.white, height: 1.25),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'You’ll find it on the ${context.brand.appBarTitle} website or app that asked you to verify.',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(fontSize: 15, height: 1.5, color: g.heroMuted),
-                                  ),
-                                ],
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(32, 40, 32, 16),
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      'Point your camera at the QR code',
+                                      textAlign: TextAlign.center,
+                                      style: g.heading(22, color: Colors.white, height: 1.25),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'You’ll find it on the ${context.brand.appBarTitle} website or app that asked you to verify.',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(fontSize: 15, height: 1.5, color: g.heroMuted),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: IgnorePointer(
+                      child: LayoutBuilder(
+                        builder: (context, box) => CustomPaint(
+                          size: box.biggest,
+                          painter: _GuidedQrFramePainter(frame: guidedQrFrame(box.biggest), scrim: scrim),
+                        ),
+                      ),
+                    ),
+                  ),
+                  ColoredBox(
+                    color: scrim,
+                    child: GuidedBottomInset(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.lock_outline, size: 14, color: g.heroMuted),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                'Nothing is shared until you agree on the next screen.',
+                                style: TextStyle(fontSize: 13, color: g.heroMuted),
                               ),
                             ),
                           ],
@@ -145,41 +178,8 @@ extension on _QrScannerScreenState {
                       ),
                     ),
                   ),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: IgnorePointer(
-                    child: LayoutBuilder(
-                      builder: (context, box) => CustomPaint(
-                        size: box.biggest,
-                        painter: _GuidedQrFramePainter(frame: guidedQrFrame(box.biggest), scrim: scrim),
-                      ),
-                    ),
-                  ),
-                ),
-                ColoredBox(
-                  color: scrim,
-                  child: SafeArea(
-                    top: false,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.lock_outline, size: 14, color: g.heroMuted),
-                          const SizedBox(width: 6),
-                          Flexible(
-                            child: Text(
-                              'Nothing is shared until you agree on the next screen.',
-                              style: TextStyle(fontSize: 13, color: g.heroMuted),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),

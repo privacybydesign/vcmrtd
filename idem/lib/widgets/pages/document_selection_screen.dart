@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/l10n/l10n.dart';
@@ -484,8 +483,9 @@ class _GuidedHome extends StatelessWidget {
   Widget build(BuildContext context) {
     final g = context.guided!;
     final connected = connectedRelyingParty != null && onContinueProofingSession != null;
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent),
+    return GuidedStatusBar(
+      onDark: true,
+      bottomOnDark: false,
       child: Scaffold(
         backgroundColor: g.surface,
         body: CustomScrollView(

@@ -21,6 +21,8 @@ import 'package:idem/services/proofing_session_coordinator.dart';
 import 'package:idem/services/proofing_session_watcher.dart';
 import 'package:idem/widgets/common/issuance_result_dialogs.dart';
 import 'package:idem/widgets/common/proofing_session_check_overlay.dart';
+import 'package:idem/theme/brand_theme.dart';
+import 'package:idem/widgets/guided/guided_widgets.dart';
 
 void main() async {
   Logger.root.level = Level.ALL;
@@ -30,6 +32,7 @@ void main() async {
   });
 
   WidgetsFlutterBinding.ensureInitialized();
+  if (AppBrand.current.theme.extension<BrandTheme>()?.guided != null) await enableGuidedEdgeToEdge();
   _registerBrandFontLicenses();
   runApp(ProviderScope(child: VcMrtdApp()));
 }

@@ -1353,8 +1353,8 @@ extension on FlutterFaceVerificationScreenState {
     // view itself only shows the oval and a short cue.
     if (_errorMessage == null && _state == VerificationState.idle) return _buildGuidedIntro(g);
     final showCamera = _errorMessage == null && _state == VerificationState.activeLiveness;
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent),
+    return GuidedStatusBar(
+      onDark: true,
       child: Scaffold(
         backgroundColor: g.ink,
         body: Stack(
@@ -1373,7 +1373,7 @@ extension on FlutterFaceVerificationScreenState {
                 if (showCamera)
                   ColoredBox(
                     color: _guidedScrim(g),
-                    child: SafeArea(top: false, child: _buildGuidedControls(g)),
+                    child: GuidedBottomInset(child: _buildGuidedControls(g)),
                   ),
               ],
             ),

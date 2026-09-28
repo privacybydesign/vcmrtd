@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:idem/theme/brand_theme.dart';
@@ -170,23 +172,40 @@ class GuidedButton extends StatelessWidget {
   }
 }
 
-/// Status bar icons for a guided screen: light on the dark screens, dark on
-/// the white ones. The bar itself is transparent so the screen shows through.
+/// System bar styling for a guided screen. Guided brands run edge-to-edge
+/// (see [enableGuidedEdgeToEdge]), so both bars are transparent and the
+/// screen draws behind them; this only picks light or dark icons to suit
+/// what is underneath: [onDark] for the status bar at the top, [bottomOnDark]
+/// (defaults to [onDark]) for the navigation bar at the bottom.
 class GuidedStatusBar extends StatelessWidget {
-  const GuidedStatusBar({super.key, required this.onDark, required this.child});
+  const GuidedStatusBar({super.key, required this.onDark, this.bottomOnDark, required this.child});
 
   final bool onDark;
+  final bool? bottomOnDark;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    final style = onDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark;
+    final bottomDark = bottomOnDark ?? onDark;
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: style.copyWith(statusBarColor: Colors.transparent),
+      value: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: onDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: onDark ? Brightness.dark : Brightness.light,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarDividerColor: Colors.transparent,
+        systemNavigationBarContrastEnforced: false,
+        systemNavigationBarIconBrightness: bottomDark ? Brightness.light : Brightness.dark,
+      ),
       child: child,
     );
   }
 }
+
+/// Lets guided screens draw behind the status and navigation bars, so dark
+/// scrims and backgrounds reach the edges of the screen. Call once at start-up
+/// for brands with a [GuidedStyle].
+Future<void> enableGuidedEdgeToEdge() => SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
 /// An outline QR glyph (three finder squares and a corner), drawn on a 24-unit grid.
 class GuidedQrGlyphPainter extends CustomPainter {
@@ -269,6 +288,26 @@ class GuidedSaveForNextTime extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Pads [child] up from the bottom edge by the navigation bar's height, so a
+/// band behind it (a scrim, a sheet) reaches the very bottom of the screen
+/// while its content stays clear of the bar. Uses the view padding, which
+/// still reports the navigation bar where [SafeArea]'s padding may already
+/// have been consumed higher up.
+class GuidedBottomInset extends StatelessWidget {
+  const GuidedBottomInset({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = math.max(MediaQuery.viewPaddingOf(context).bottom, MediaQuery.paddingOf(context).bottom);
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottom),
+      child: child,
     );
   }
 }

@@ -481,23 +481,36 @@ void main() {
     }
   });
 
-  testWidgets('the QR instructions never overlap the frame, even when the text runs long', (tester) async {
-    // The test font is far wider than Nunito, so the instructions wrap onto
-    // many lines here: the same squeeze as a large system font size.
-    tester.view.physicalSize = const Size(360, 640);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(_cm(QrScannerScreen(onScanned: (_) {}, onBack: () {})));
-    await tester.pump();
-    expect(tester.takeException(), isNull);
-    final instructions = tester.getRect(find.byKey(guidedQrInstructionsKey));
-    final frameArea = tester.getRect(
-      find.byWidgetPredicate((w) => w is CustomPaint && w.painter.runtimeType.toString() == '_GuidedQrFramePainter'),
+  for (final screen in const [Size(360, 640), Size(390, 1600)]) {
+    testWidgets(
+      'the QR scrim covers the whole ${screen.width.toInt()}×${screen.height.toInt()} screen without the text touching the frame',
+      (tester) async {
+        // The test font is far wider than Nunito, so on the short screen the
+        // instructions wrap onto many lines: the same squeeze as a large system
+        // font size. On the tall one they need less than their share of the height.
+        tester.view.physicalSize = screen;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        await tester.pumpWidget(_cm(QrScannerScreen(onScanned: (_) {}, onBack: () {})));
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+        final instructions = tester.getRect(find.byKey(guidedQrInstructionsKey));
+        final frameArea = tester.getRect(
+          find.byWidgetPredicate(
+            (w) => w is CustomPaint && w.painter.runtimeType.toString() == '_GuidedQrFramePainter',
+          ),
+        );
+        final bottomBand = tester.getRect(
+          find.ancestor(of: find.textContaining('Nothing is shared'), matching: find.byType(ColoredBox)).first,
+        );
+        expect(frameArea.top, instructions.bottom);
+        expect(frameArea.bottom, bottomBand.top);
+        expect(bottomBand.bottom, screen.height, reason: 'the scrim must reach the bottom edge');
+        expect(frameArea.height, greaterThan(200));
+      },
     );
-    expect(frameArea.top, greaterThanOrEqualTo(instructions.bottom));
-    expect(frameArea.height, greaterThan(200));
-  });
+  }
 
   testWidgets('accepting a request in the guided flow goes on to choosing a document', (tester) async {
     final router = createRouter();
