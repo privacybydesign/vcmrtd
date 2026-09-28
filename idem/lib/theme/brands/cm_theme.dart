@@ -67,7 +67,7 @@ final _secondaryButtonStyle = ElevatedButton.styleFrom(
 
 final cmBrandTheme = BrandTheme(
   appBarTitle: 'CM.com',
-  appBarLogoAsset: 'assets/brands/cm/logo_horizontal_white.png',
+  appBarLogoAsset: 'assets/brands/cm/mark_white.png',
   markAsset: 'assets/brands/cm/mark.png',
   showPoweredByIdem: true,
   accent: CmColors.action,
@@ -83,7 +83,7 @@ final cmBrandTheme = BrandTheme(
   primaryButtonStyle: _primaryButtonStyle,
   secondaryButtonStyle: _secondaryButtonStyle,
   guided: GuidedStyle(
-    logoOnDarkAsset: 'assets/brands/cm/logo_horizontal_white.png',
+    logoOnDarkAsset: 'assets/brands/cm/mark_white.png',
     markAsset: 'assets/brands/cm/mark.png',
     headingFontFamily: CmFonts.heading,
     ink: CmColors.ink,

@@ -60,7 +60,7 @@ class DocumentTypeSelectionScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: brand.appBarLogoAsset != null
-            ? Image.asset(brand.appBarLogoAsset!, height: 28, semanticLabel: brand.appBarTitle)
+            ? Image.asset(brand.appBarLogoAsset!, height: 32, semanticLabel: brand.appBarTitle)
             : Text(
                 brand.appBarTitle,
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22),
@@ -578,7 +578,7 @@ class _GuidedHero extends StatelessWidget {
         children: [
           Row(
             children: [
-              Image.asset(g.logoOnDarkAsset, height: 30, semanticLabel: brand.appBarTitle),
+              Image.asset(g.logoOnDarkAsset, width: 40, height: 40, semanticLabel: brand.appBarTitle),
               const Spacer(),
               GuidedRoundButton(
                 icon: Icons.settings_outlined,
@@ -779,7 +779,7 @@ class _GuidedWalletHome extends ConsumerWidget {
                   children: [
                     Row(
                       children: [
-                        Image.asset(g.logoOnDarkAsset, height: 30, semanticLabel: context.brand.appBarTitle),
+                        Image.asset(g.logoOnDarkAsset, width: 40, height: 40, semanticLabel: context.brand.appBarTitle),
                         const Spacer(),
                         GuidedRoundButton(
                           icon: Icons.settings_outlined,
