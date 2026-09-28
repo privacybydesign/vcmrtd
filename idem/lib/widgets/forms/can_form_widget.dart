@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:idem/l10n/l10n.dart';
 
 /// Widget for CAN (Card Access Number) form
 class CanFormWidget extends StatelessWidget {
@@ -27,9 +28,9 @@ class CanFormWidget extends StatelessWidget {
             TextFormField(
               enabled: !inputDisabled,
               controller: canController,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'CAN number',
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                labelText: context.l10n.docCanNumber,
                 fillColor: Colors.white,
               ),
               inputFormatters: <TextInputFormatter>[
@@ -41,7 +42,7 @@ class CanFormWidget extends StatelessWidget {
               autofocus: true,
               validator: (value) {
                 if (value?.isEmpty ?? false) {
-                  return 'Please enter CAN number';
+                  return context.l10n.docCanNumberRequired;
                 }
                 return null;
               },

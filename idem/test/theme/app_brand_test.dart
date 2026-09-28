@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:idem/theme/app_brand.dart';
 import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/theme/brands/cm_theme.dart';
@@ -19,6 +20,7 @@ double _contrast(Color a, Color b) {
 Widget _home(ThemeData theme) {
   return ProviderScope(
     child: MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
       theme: theme,
       home: DocumentTypeSelectionScreen(
         onDocumentTypeSelected: (_) {},

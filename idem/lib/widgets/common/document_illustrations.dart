@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:idem/l10n/l10n.dart';
 
 /// A simple phone outline, used to illustrate where to place the document.
 Widget buildPhoneIllustration() {
@@ -38,7 +39,8 @@ Widget buildDocumentIllustration(DocumentType documentType) {
 }
 
 Widget buildPassportIllustration() {
-  return const RotatedBox(
+  final l10n = currentL10n;
+  return RotatedBox(
     quarterTurns: 3,
     child: SizedBox(
       width: 160,
@@ -62,10 +64,10 @@ Widget buildPassportIllustration() {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'PASSPORT',
+                        l10n.docIllustrationPassport,
                         style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
                       ),
-                      Text('Kingdom of Example', style: TextStyle(fontSize: 10, color: Colors.white70)),
+                      Text(l10n.docIllustrationIssuer, style: TextStyle(fontSize: 10, color: Colors.white70)),
                     ],
                   ),
                 ),
@@ -102,9 +104,9 @@ Widget buildPassportIllustration() {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Name: John Doe', style: TextStyle(fontSize: 10, color: Color(0xFF333333))),
-                        Text('Nationality: NL', style: TextStyle(fontSize: 10, color: Color(0xFF333333))),
-                        Text('DOB: 01-01-1990', style: TextStyle(fontSize: 10, color: Color(0xFF333333))),
+                        Text(l10n.docIllustrationName, style: TextStyle(fontSize: 10, color: Color(0xFF333333))),
+                        Text(l10n.docIllustrationNationality, style: TextStyle(fontSize: 10, color: Color(0xFF333333))),
+                        Text(l10n.docIllustrationDob, style: TextStyle(fontSize: 10, color: Color(0xFF333333))),
                       ],
                     ),
                   ),
@@ -142,10 +144,10 @@ Widget buildDrivingLicenceIllustration() {
           Row(
             children: [
               const SizedBox(width: 5),
-              const Flexible(
+              Flexible(
                 child: Text(
-                  'DRIVING LICENCE',
-                  style: TextStyle(
+                  currentL10n.docIllustrationDrivingLicence,
+                  style: const TextStyle(
                     color: Color(0xFF0046AD),
                     fontWeight: FontWeight.bold,
                     fontSize: 9,

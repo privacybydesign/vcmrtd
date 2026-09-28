@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:intl/intl.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/widgets/pages/data_screen_widgets/profile_picture.dart';
@@ -25,7 +26,7 @@ class PersonalDataSection extends StatelessWidget {
                 Icon(Icons.person, color: Theme.of(context).primaryColor, size: 28),
                 const SizedBox(width: 8),
                 Text(
-                  'Personal Information',
+                  context.l10n.docPersonalInformation,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: Theme.of(context).primaryColor,
@@ -34,14 +35,14 @@ class PersonalDataSection extends StatelessWidget {
               ],
             ),
             const Divider(height: 30),
-            _buildPersonalContent(),
+            _buildPersonalContent(context),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildPersonalContent() {
+  Widget _buildPersonalContent(BuildContext context) {
     return Column(
       children: [
         Row(
@@ -49,35 +50,35 @@ class PersonalDataSection extends StatelessWidget {
           children: [
             ProfilePictureWidget(imageData: passport.photoImageData, imageType: passport.photoImageType),
             const SizedBox(width: 20),
-            Expanded(child: _buildBasicInfo()),
+            Expanded(child: _buildBasicInfo(context)),
           ],
         ),
         const SizedBox(height: 20),
-        _buildDetailedInfo(),
+        _buildDetailedInfo(context),
       ],
     );
   }
 
-  Widget _buildBasicInfo() {
+  Widget _buildBasicInfo(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        InfoRow(label: 'Full Name', value: passport.displayName, iconData: Icons.person_outline),
+        InfoRow(label: context.l10n.docFullName, value: passport.displayName, iconData: Icons.person_outline),
         const SizedBox(height: 12),
-        InfoRow(label: 'Nationality', value: passport.mrz.nationality, iconData: Icons.flag_outlined),
+        InfoRow(label: context.l10n.docNationality, value: passport.mrz.nationality, iconData: Icons.flag_outlined),
         const SizedBox(height: 12),
         InfoRow(
-          label: 'Document',
+          label: context.l10n.docDocument,
           value: '${passport.mrz.documentCode} ${passport.mrz.documentNumber}',
           iconData: Icons.document_scanner_outlined,
         ),
         const SizedBox(height: 12),
-        InfoRow(label: 'Gender', value: passport.mrz.gender, iconData: Icons.person_pin_outlined),
+        InfoRow(label: context.l10n.docGender, value: passport.mrz.gender, iconData: Icons.person_pin_outlined),
       ],
     );
   }
 
-  Widget _buildDetailedInfo() {
+  Widget _buildDetailedInfo(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -91,7 +92,7 @@ class PersonalDataSection extends StatelessWidget {
             children: [
               Expanded(
                 child: InfoRow(
-                  label: 'Date of Birth',
+                  label: context.l10n.docDateOfBirth,
                   value: DateFormat.yMMMd().format(passport.mrz.dateOfBirth),
                   iconData: Icons.cake_outlined,
                 ),
@@ -99,7 +100,7 @@ class PersonalDataSection extends StatelessWidget {
               const SizedBox(width: 16),
               Expanded(
                 child: InfoRow(
-                  label: 'Expiry Date',
+                  label: context.l10n.docExpiryDate,
                   value: DateFormat.yMMMd().format(passport.mrz.dateOfExpiry),
                   iconData: Icons.event_outlined,
                 ),
@@ -110,17 +111,29 @@ class PersonalDataSection extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: InfoRow(label: 'Country', value: passport.mrz.country, iconData: Icons.public_outlined),
+                child: InfoRow(
+                  label: context.l10n.docCountry,
+                  value: passport.mrz.country,
+                  iconData: Icons.public_outlined,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: InfoRow(label: 'Version', value: passport.mrz.version.name, iconData: Icons.info_outline),
+                child: InfoRow(
+                  label: context.l10n.docVersion,
+                  value: passport.mrz.version.name,
+                  iconData: Icons.info_outline,
+                ),
               ),
             ],
           ),
           if (passport.mrz.optionalData.isNotEmpty) ...[
             const SizedBox(height: 12),
-            InfoRow(label: 'Optional Data', value: passport.mrz.optionalData, iconData: Icons.data_object_outlined),
+            InfoRow(
+              label: context.l10n.docOptionalData,
+              value: passport.mrz.optionalData,
+              iconData: Icons.data_object_outlined,
+            ),
           ],
         ],
       ),

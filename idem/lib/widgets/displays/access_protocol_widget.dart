@@ -3,6 +3,7 @@
 
 import 'package:expandable/expandable.dart';
 import 'package:flutter/material.dart';
+import 'package:idem/l10n/l10n.dart';
 
 /// Widget to display MRTD access protocol information
 class AccessProtocolWidget extends StatelessWidget {
@@ -36,9 +37,9 @@ class AccessProtocolWidget extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Access protocol: ${isPACE ? "PACE" : "BAC"}'),
+            Text(context.l10n.docAccessProtocol(isPACE ? 'PACE' : 'BAC')),
             const SizedBox(height: 8.0),
-            Text('Access key type: ${isDBA ? "DBA" : "CAN"}'),
+            Text(context.l10n.docAccessKeyType(isDBA ? 'DBA' : 'CAN')),
           ],
         ),
       ),

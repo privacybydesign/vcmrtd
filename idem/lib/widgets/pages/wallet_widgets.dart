@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:idem/providers/wallet_provider.dart';
 import 'package:idem/services/jpeg2000_converter.dart';
 
@@ -25,10 +26,10 @@ class WalletEmptyState extends StatelessWidget {
           children: [
             Icon(Icons.account_balance_wallet_outlined, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
-            const Text('Your wallet is empty', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+            Text(context.l10n.docWalletEmpty, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             Text(
-              'Scan a document and tap "Add to Wallet" to see it here.',
+              context.l10n.docWalletEmptyHint(context.l10n.proofingAddToWallet),
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey[600]),
             ),
@@ -98,8 +99,8 @@ class WalletCardTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       card.documentNumber != null
-                          ? '${card.documentType.displayName} · ${card.documentNumber}'
-                          : card.documentType.displayName,
+                          ? '${card.documentType.localizedName(context.l10n)} · ${card.documentNumber}'
+                          : card.documentType.localizedName(context.l10n),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(fontSize: 13, color: Colors.grey[600]),
@@ -164,13 +165,14 @@ class _WalletCardDetailsSheet extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              card.documentType.displayName,
+              card.documentType.localizedName(context.l10n),
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 15, color: Colors.grey[600]),
             ),
             const SizedBox(height: 20),
-            if (card.documentNumber != null) _DetailRow(label: 'Document number', value: card.documentNumber!),
-            _DetailRow(label: 'Added', value: _formatAddedAt(card.addedAt)),
+            if (card.documentNumber != null)
+              _DetailRow(label: context.l10n.docWalletDocumentNumber, value: card.documentNumber!),
+            _DetailRow(label: context.l10n.docWalletAdded, value: _formatAddedAt(card.addedAt)),
             const SizedBox(height: 24),
             OutlinedButton.icon(
               onPressed: onRemove,
@@ -179,7 +181,7 @@ class _WalletCardDetailsSheet extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
               icon: const Icon(Icons.delete_outline),
-              label: const Text('Remove from wallet'),
+              label: Text(context.l10n.docRemoveFromWallet),
             ),
           ],
         ),

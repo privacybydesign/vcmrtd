@@ -3,10 +3,12 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:image/image.dart' as img;
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtd/internal.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:idem/providers/active_authenticiation_provider.dart';
 import 'package:idem/providers/reader_providers.dart';
 import 'package:idem/providers/wallet_provider.dart';
@@ -90,7 +92,11 @@ ProofingSessionInfo _session(String relyingParty) => ProofingSessionInfo(
 
 Widget _cm(Widget home, {List overrides = const []}) => ProviderScope(
   overrides: [...overrides],
-  child: MaterialApp(theme: AppBrand.cm.theme, home: home),
+  child: MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    theme: AppBrand.cm.theme,
+    home: home,
+  ),
 );
 
 void _tallViewport(WidgetTester tester) {
@@ -108,7 +114,10 @@ void main() {
 
   testWidgets('guided scan frame sits where the MRZ scanner reads', (tester) async {
     await tester.pumpWidget(
-      MaterialApp(home: MRZCameraView(showOverlay: false, initializeCamera: false, onImage: (_) {})),
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        home: MRZCameraView(showOverlay: false, initializeCamera: false, onImage: (_) {}),
+      ),
     );
     final state = tester.state<MRZCameraViewState>(find.byType(MRZCameraView));
     for (final size in const [Size(360, 740), Size(390, 844), Size(844, 390)]) {
@@ -204,6 +213,7 @@ void main() {
     testWidgets('the idem brand keeps the classic consent screen', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
           theme: AppBrand.idem.theme,
           home: ProofingSessionConsentScreen(info: _session('CM.com'), onConsent: () {}, onDecline: () {}),
         ),
@@ -256,6 +266,7 @@ void main() {
       UncontrolledProviderScope(
         container: container,
         child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
           theme: AppBrand.cm.theme,
           home: SettingsScreen(onBackPressed: () {}, showOcrEngineForTesting: false),
         ),
@@ -400,6 +411,7 @@ void main() {
       UncontrolledProviderScope(
         container: container,
         child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
           theme: AppBrand.cm.theme,
           home: SavedDocumentsScreen(onBack: () {}, onScanQr: () {}),
         ),
@@ -470,7 +482,11 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(
       ProviderScope(
-        child: MaterialApp.router(theme: AppBrand.cm.theme, routerConfig: router),
+        child: MaterialApp.router(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          theme: AppBrand.cm.theme,
+          routerConfig: router,
+        ),
       ),
     );
     router.push(
@@ -486,6 +502,80 @@ void main() {
     expect(router.routeInformationProvider.value.uri.path, '/choose_document');
     expect(find.byType(ChooseDocumentScreen), findsOneWidget);
   });
+  testWidgets('a saved document in a flow session is sent as the chip-read step', (tester) async {
+    _tallViewport(tester);
+    PackageInfo.setMockInitialValues(
+      appName: 'idem',
+      packageName: 'nl.idem',
+      version: '1.0.0',
+      buildNumber: '1',
+      buildSignature: '',
+    );
+    final client = _RecordingProofingClient();
+    final card = WalletCard.fromDocument(
+      _passport(),
+      DocumentType.passport,
+      rawData: RawDocumentData(dataGroups: const {}, efSod: '00'),
+    );
+    final router = createRouter();
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          walletProvider.overrideWith(() => _SeededWallet([card])),
+          activeProofingSessionProvider.overrideWith(_PinnedFlowSession.new),
+          proofingSessionClientProvider.overrideWithValue(client),
+        ],
+        child: MaterialApp.router(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          theme: AppBrand.cm.theme,
+          routerConfig: router,
+        ),
+      ),
+    );
+    router.go('/choose_document');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Continue with passport'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(client.nfcSteps, hasLength(1));
+    expect(client.nfcSteps.single.token, 'tok');
+  });
+}
+
+/// Records chip-read step submissions and answers that the session is done.
+class _RecordingProofingClient extends ProofingSessionClient {
+  final nfcSteps = <ProofingSessionRef>[];
+
+  @override
+  Future<ProofingStepResponse> submitNfcStep(
+    ProofingSessionRef ref, {
+    required List<String> requestedAttributes,
+    ProofingDocumentInfo? document,
+    ProofingPhotoInfo? photo,
+    required ProofingMrtdEvidence mrtdEvidence,
+    ProofingDeviceInfo? device,
+    bool faceStepFollows = false,
+  }) async {
+    nfcSteps.add(ref);
+    return const ProofingStepResponse(status: 'ok', lifecycle: proofingLifecycleComplete);
+  }
+}
+
+class _PinnedFlowSession extends ActiveProofingSessionNotifier {
+  @override
+  ActiveProofingSession? build() => ActiveProofingSession(
+    ref: const ProofingSessionRef(apiBase: 'https://proof.example.com', token: 'tok', deviceToken: 'dev'),
+    info: ProofingSessionInfo(
+      id: 'session-1',
+      relyingParty: 'CM.com',
+      requestedAttributes: const ['dg1', 'dg2'],
+      expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+      steps: const [stepDocumentCapture, stepNfcRead],
+    ),
+    openedAt: DateTime.now(),
+  );
 }
 
 class _PinnedSession extends ActiveProofingSessionNotifier {

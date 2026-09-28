@@ -13,6 +13,11 @@ class RegulaLivenessResult {
   const RegulaLivenessResult({required this.isLive, required this.transactionId});
 }
 
+/// The user closed Regula's liveness UI before it finished.
+class RegulaLivenessCancelled implements Exception {
+  const RegulaLivenessCancelled();
+}
+
 /// Runs Regula liveness sessions against the Face API backend.
 ///
 /// The session is processed by the Face API (configured via [serviceUrl]) which
@@ -27,7 +32,10 @@ abstract class RegulaFaceService {
   Future<void> initialize();
 
   /// Presents Regula's liveness UI and returns the resulting transaction id.
-  Future<RegulaLivenessResult> captureLiveness();
+  /// [tag] binds the transaction to a proofing session; [serviceUrl]
+  /// overrides the Face API for this run (the one the session announced).
+  /// Throws [RegulaLivenessCancelled] when the user backs out.
+  Future<RegulaLivenessResult> captureLiveness({String? tag, String? serviceUrl});
 }
 
 class RegulaFaceServiceImpl implements RegulaFaceService {
@@ -65,17 +73,21 @@ class RegulaFaceServiceImpl implements RegulaFaceService {
   }
 
   @override
-  Future<RegulaLivenessResult> captureLiveness() async {
-    final liveness = await _runLiveness();
+  Future<RegulaLivenessResult> captureLiveness({String? tag, String? serviceUrl}) async {
+    final liveness = await _runLiveness(tag: tag, serviceUrl: serviceUrl);
     return RegulaLivenessResult(
       isLive: liveness.liveness == LivenessStatus.PASSED,
       transactionId: liveness.transactionId,
     );
   }
 
-  Future<LivenessResponse> _runLiveness() async {
+  Future<LivenessResponse> _runLiveness({String? tag, String? serviceUrl}) async {
     await initialize();
-    final liveness = await _sdk.startLiveness(config: LivenessConfig(livenessType: livenessType));
+    _sdk.serviceUrl = serviceUrl ?? this.serviceUrl;
+    final liveness = await _sdk.startLiveness(
+      config: LivenessConfig(livenessType: livenessType, tag: tag),
+    );
+    if (liveness.error?.code == LivenessErrorCode.CANCELLED) throw const RegulaLivenessCancelled();
     if (liveness.error != null) {
       throw StateError('Regula liveness failed: ${liveness.error!.message}');
     }

@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
@@ -37,6 +38,13 @@ class ScannerWrapper extends StatefulWidget {
   final DocumentType documentType;
   final ScannerWidgetBuilder? scannerBuilder;
 
+  /// Step badge numbers — default to vcmrtd's fixed 4-step sequence (this
+  /// screen is always step 1) so any caller not passing these explicitly
+  /// keeps today's behaviour; routing.dart passes a session's actual
+  /// [FlowStepPlan] values when a QR/deep-link flow governs the numbering.
+  final int stepNumber;
+  final int totalSteps;
+
   const ScannerWrapper({
     super.key,
     required this.onMrzScanned,
@@ -44,6 +52,8 @@ class ScannerWrapper extends StatefulWidget {
     required this.onBack,
     this.documentType = DocumentType.passport,
     this.scannerBuilder,
+    this.stepNumber = 1,
+    this.totalSteps = 4,
   });
 
   @override
@@ -120,7 +130,11 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
                     onPressed: widget.onBack,
                   ),
                 ),
-                StepBadge(current: 1, total: 4, label: 'Scan ${_getDocumentTypeName()}'),
+                StepBadge(
+                  current: widget.stepNumber,
+                  total: widget.totalSteps,
+                  label: context.l10n.proofingScanDocument(widget.documentType.name),
+                ),
               ],
             ),
           ),
@@ -143,13 +157,10 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Position the ${widget.documentType.displayName}',
+              context.l10n.proofingPositionDocument(widget.documentType.name),
               style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
             ),
-            Text(
-              'Align the Machine Readable Zone (MRZ) with the frame at the bottom of the screen. Hold steady until scanning completes.',
-              style: TextStyle(color: Colors.white70, fontSize: 14),
-            ),
+            Text(context.l10n.proofingScanMrzInstructions, style: TextStyle(color: Colors.white70, fontSize: 14)),
           ],
         ),
       ),
@@ -167,14 +178,13 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
           onPressed: () {
             widget.onManualEntry();
           },
-          child: Text('Enter ${_getDocumentTypeName()} details manually', style: TextStyle(color: Colors.black)),
+          child: Text(
+            context.l10n.proofingEnterDetailsManually(widget.documentType.name),
+            style: TextStyle(color: Colors.black),
+          ),
         ),
       ),
     );
-  }
-
-  String _getDocumentTypeName() {
-    return widget.documentType.displayName;
   }
 
   /// Guided layout: a dark scrim with a card-shaped cut-out and the

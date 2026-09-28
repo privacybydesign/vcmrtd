@@ -1,6 +1,7 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:idem/routing.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:idem/widgets/pages/scanner_wrapper.dart';
@@ -39,6 +40,8 @@ Widget _buildWrapper({
   VoidCallback? onBack,
 }) {
   return MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
     home: ScannerWrapper(
       documentType: documentType,
       onMrzScanned: onMrzScanned ?? (_) {},
@@ -84,9 +87,9 @@ void main() {
     testWidgets('renders the step badge and document-specific manual entry copy', (tester) async {
       await tester.pumpWidget(_buildWrapper(documentType: DocumentType.drivingLicence));
 
-      expect(find.text('1 of 4 · Scan ${DocumentType.drivingLicence.displayName}'), findsOneWidget);
-      expect(find.text('Position the ${DocumentType.drivingLicence.displayName}'), findsOneWidget);
-      expect(find.text('Enter ${DocumentType.drivingLicence.displayName} details manually'), findsOneWidget);
+      expect(find.text('1 of 4 · Scan driving licence'), findsOneWidget);
+      expect(find.text('Position the driving licence'), findsOneWidget);
+      expect(find.text('Enter driving licence details manually'), findsOneWidget);
       expect(find.text('fake scanner ${DocumentType.drivingLicence.name}'), findsOneWidget);
     });
 
@@ -97,7 +100,7 @@ void main() {
 
       await tester.tap(find.byType(IconButton));
       await tester.pump();
-      await tester.tap(find.text('Enter ${DocumentType.passport.displayName} details manually'));
+      await tester.tap(find.text('Enter passport details manually'));
       await tester.pump();
 
       expect(backCount, 1);
@@ -122,6 +125,8 @@ void main() {
       final scanned = <ScannedMRZ>[];
       await tester.pumpWidget(
         MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           navigatorObservers: [routeObserver],
           home: ScannerWrapper(
             documentType: DocumentType.passport,

@@ -1,0 +1,669 @@
+{
+  "@@locale": "en",
+  "accessHandedOver": "This verification session has been handed over to another device.",
+  "accessExpired": "This verification session has expired. Please start a new verification.",
+  "accessCancelled": "This verification session was cancelled. Please start a new verification.",
+  "accessUnauthorized": "This device is no longer allowed to continue this verification session.",
+  "accessComplete": "This verification session is already complete.",
+  "accessGone": "This verification session no longer exists. Please start a new verification.",
+  "accessAlreadyClaimed": "This verification session is already open on another device. To continue here, scan the handover QR code shown in the browser.",
+  "accessHandoverInvalid": "This handover QR code is not valid. Ask for a new one in the browser.",
+  "accessHandoverExpired": "This handover QR code has expired. Ask for a new one in the browser.",
+  "accessHandoverUsed": "This handover QR code was already used. Ask for a new one in the browser.",
+  "accessClaimTokenRequired": "This QR code is from an older version of the verification service and can no longer be used. Ask for a new one in the browser.",
+  "accessBrowserHandover": "This QR code moves the browser part of the verification to another browser. Open it with your phone's camera instead, or scan the QR code the browser shows for the IDEM app.",
+  "sessionOpenFailedTitle": "Could not open verification",
+  "sessionCompleteTitle": "Verification complete",
+  "sessionCompleteMessage": "You're done. Your verification was sent to {relyingParty}.",
+  "@sessionCompleteMessage": {
+    "placeholders": {
+      "relyingParty": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionRestartedTitle": "Verification restarted",
+  "sessionRestartedMessage": "{relyingParty} reset this verification, so everything you did so far was discarded. Please start again from the beginning.",
+  "@sessionRestartedMessage": {
+    "placeholders": {
+      "relyingParty": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionStoppedTitle": "Verification stopped",
+  "idDocumentPassport": "Passport",
+  "idDocumentIdentityCard": "Identity card",
+  "idDocumentDrivingLicence": "Driving licence",
+  "commonTryAgain": "Try Again",
+  "commonCancel": "Cancel",
+  "commonYes": "Yes",
+  "commonNo": "No",
+  "nfcAvailableLabel": "NFC available:",
+  "docNewScan": "New scan",
+  "docConnectedBanner": "Connected — will send results to {relyingParty}",
+  "@docConnectedBanner": {
+    "placeholders": {
+      "relyingParty": {
+        "type": "String"
+      }
+    }
+  },
+  "docPassport": "Passport",
+  "docPassportSubtitle": "Use a machine readable passport",
+  "docMostCommon": "Most common",
+  "docIdentityCard": "Identity Card",
+  "docIdentityCardSubtitle": "Use a machine readable identity card",
+  "docDrivingLicence": "Driving Licence",
+  "docDrivingLicenceSubtitle": "Use a machine readable driving licence. Currently works primarily with Dutch licences.",
+  "docScanQrTitle": "Scan QR code",
+  "docScanQrSubtitle": "Scan any QR code with the camera",
+  "docAdvancedSettings": "Advanced settings",
+  "docAdvancedSettingsSubtitle": "Ocr Engine, Face Verification and more",
+  "docVerifyIdentityTitle": "Verify your Identity",
+  "docSelectDocumentTypePrompt": "Select the type of document you want to use for verification.",
+  "docSettingsTitle": "Settings",
+  "docBack": "Back",
+  "docActiveAuthentication": "Active authentication",
+  "docActiveAuthenticationSubtitle": "Perform active authentication when reading the document",
+  "docFaceEngine": "Face verification engine",
+  "docFaceEngineOpenSource": "Open source",
+  "docLivenessDetection": "Liveness detection",
+  "docLivenessPassive": "Passive",
+  "docLivenessActive": "Active",
+  "docOcrEngine": "OCR engine",
+  "docNfcStepStart": "Start reading",
+  "docNfcStepDetails": "Reading details",
+  "docNfcStepPhoto": "Getting photo",
+  "docNfcStepAlmostDone": "Almost done",
+  "docNfcStepStartSubtitle": "Connecting to the chip",
+  "docNfcStepDetailsSubtitle": "Getting personal data",
+  "docNfcStepPhotoSubtitle": "Getting the document photo",
+  "docNfcStepAlmostDoneSubtitle": "Verifying document security",
+  "docNfcTipFirst": "Place your document behind your phone and move it around until it buzzes or beeps.",
+  "docNfcTipHoldSteady": "Keep your phone and the document still - this can take a moment.",
+  "docNfcTipStuck": "Reading was interrupted. Slowly lift your phone off the document and place it back down until it buzzes or beeps again.",
+  "docReadDocument": "Read {documentType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{document}}",
+  "@docReadDocument": {
+    "placeholders": {
+      "documentType": {
+        "type": "String"
+      }
+    }
+  },
+  "docIosNfcHoldClose": "Hold your phone close to {documentType, select, passport{passport} identityCard{identity card} drivingLicence{driving license} other{document}}",
+  "@docIosNfcHoldClose": {
+    "placeholders": {
+      "documentType": {
+        "type": "String"
+      }
+    }
+  },
+  "docIosNfcCancelled": "Session cancelled by user",
+  "docIosNfcCancelling": "Cancelling...",
+  "docIosNfcFailed": "Tag lost, try again.",
+  "docIosNfcConnecting": "Connecting...",
+  "docIosNfcReadingFile": "Reading {file}",
+  "@docIosNfcReadingFile": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "docIosNfcAuthenticating": "Authenticating",
+  "docIosNfcReadingData": "Reading {documentType, select, passport{passport} identityCard{identity card} drivingLicence{driving license} other{document}} data",
+  "@docIosNfcReadingData": {
+    "placeholders": {
+      "documentType": {
+        "type": "String"
+      }
+    }
+  },
+  "docIosNfcSecurityCheck": "Performing security verification...",
+  "docIosNfcSuccess": "Success!",
+  "docIosNfcReconnecting": "Connection lost. Slowly lift your phone and place it back down.",
+  "docNfcGuidanceTitle": "Read the chip",
+  "docNfcGuidancePlacePhone": "Place your phone on the {documentType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{document}}",
+  "@docNfcGuidancePlacePhone": {
+    "placeholders": {
+      "documentType": {
+        "type": "String"
+      }
+    }
+  },
+  "docNfcGuidanceTipsTitle": "Tips for better results:",
+  "docNfcGuidanceTips": "• Place the {documentType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{document}} behind your phone like in the example\n• Remove phone case if reading fails\n• The process may take 10–30 seconds",
+  "@docNfcGuidanceTips": {
+    "placeholders": {
+      "documentType": {
+        "type": "String"
+      }
+    }
+  },
+  "docScanDocument": "Scan {documentType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{document}}",
+  "@docScanDocument": {
+    "placeholders": {
+      "documentType": {
+        "type": "String"
+      }
+    }
+  },
+  "docNfcNotAvailable": "NFC is not available",
+  "docHavingTrouble": "Having trouble?",
+  "docPersonalInformation": "Personal Information",
+  "docSurname": "Surname",
+  "docOtherNames": "Other Names",
+  "docDateOfBirth": "Date of Birth",
+  "docPlaceOfBirth": "Place of Birth",
+  "docDocumentInformation": "Document Information",
+  "docDocumentNumber": "Document Number",
+  "docIssuingMemberState": "Issuing Member State",
+  "docIssuingAuthority": "Issuing Authority",
+  "docDateOfIssue": "Date of Issue",
+  "docDateOfExpiry": "Date of Expiry",
+  "docDrivingLicenceDataTitle": "Driving Licence Data",
+  "docUnableToLoadPhoto": "Unable to load photo",
+  "docCategories": "Categories",
+  "docCategory": "Category",
+  "docCategoryDateOfIssue": "Date of issue",
+  "docCategoryDateOfExpiry": "Date of expiry",
+  "docNotAvailable": "N/A",
+  "docWalletEmpty": "Your wallet is empty",
+  "docWalletEmptyHint": "Scan a document and tap \"{addToWallet}\" to see it here.",
+  "@docWalletEmptyHint": {
+    "placeholders": {
+      "addToWallet": {
+        "type": "String"
+      }
+    }
+  },
+  "docWalletDocumentNumber": "Document number",
+  "docWalletAdded": "Added",
+  "docRemoveFromWallet": "Remove from wallet",
+  "docFullName": "Full Name",
+  "docNationality": "Nationality",
+  "docDocument": "Document",
+  "docGender": "Gender",
+  "docExpiryDate": "Expiry Date",
+  "docCountry": "Country",
+  "docVersion": "Version",
+  "docOptionalData": "Optional Data",
+  "docNoPhoto": "No Photo",
+  "docAvailableDataGroups": "Available Data Groups",
+  "docDataGroupsRead": "Data Groups Read: {count}/{total}",
+  "@docDataGroupsRead": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "docActiveAuthenticationAvailable": "Active Authentication Available",
+  "docWebAuthSession": "Web Authentication Session",
+  "docWebAuthSessionId": "Session IID: {sessionId}",
+  "@docWebAuthSessionId": {
+    "placeholders": {
+      "sessionId": {
+        "type": "String"
+      }
+    }
+  },
+  "docDocumentDataTitle": "{documentType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{Document}} Data",
+  "@docDocumentDataTitle": {
+    "placeholders": {
+      "documentType": {
+        "type": "String"
+      }
+    }
+  },
+  "docCanNumber": "CAN number",
+  "docCanNumberRequired": "Please enter CAN number",
+  "docPassportNumber": "Passport number",
+  "docPassportNumberRequired": "Please enter passport number",
+  "docDateOfBirthRequired": "Please select Date of Birth",
+  "docDateOfExpiryRequired": "Please select Date of Expiry",
+  "docDbaWithPace": "DBA with PACE",
+  "docAccessProtocol": "Access protocol: {protocol}",
+  "@docAccessProtocol": {
+    "placeholders": {
+      "protocol": {
+        "type": "String"
+      }
+    }
+  },
+  "docAccessKeyType": "Access key type: {keyType}",
+  "@docAccessKeyType": {
+    "placeholders": {
+      "keyType": {
+        "type": "String"
+      }
+    }
+  },
+  "docCopy": "Copy",
+  "docImageNoData": "No image data available.",
+  "docImageJpegError": "Error displaying JPEG image.",
+  "docImageConvertingJpeg2000": "Converting JPEG2000 image...",
+  "docImageJpeg2000DisplayError": "Error displaying converted JPEG2000 image.",
+  "docImageJpeg2000ConvertFailed": "Failed to convert JPEG2000 image.",
+  "docImageUnsupportedType": "Unknown or unsupported image type.",
+  "docIllustrationPassport": "PASSPORT",
+  "docIllustrationIssuer": "Kingdom of Example",
+  "docIllustrationName": "Name: John Doe",
+  "docIllustrationNationality": "Nationality: NL",
+  "docIllustrationDob": "DOB: 01-01-1990",
+  "docIllustrationDrivingLicence": "DRIVING LICENCE",
+  "faceActionBlink": "Blink your eyes",
+  "faceActionTurnLeft": "Turn your head left",
+  "faceActionTurnRight": "Turn your head right",
+  "faceActionMouthOpen": "Open your mouth and hold",
+  "faceActionSmile": "Smile and hold",
+  "faceErrorEngineInit": "Could not initialize Flutter face engine: {error}",
+  "@faceErrorEngineInit": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "faceErrorNoCamera": "No camera available",
+  "faceErrorOpenCamera": "Could not open camera: {error}",
+  "@faceErrorOpenCamera": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "faceErrorFrameProcessing": "Frame processing error: {error}",
+  "@faceErrorFrameProcessing": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "faceErrorMissingNfcImage": "Missing NFC image",
+  "faceErrorStartLiveness": "Could not start liveness: {error}",
+  "@faceErrorStartLiveness": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "faceErrorUnknown": "Unknown error",
+  "faceTimeoutTakeYourTime": "Take your time - {action}",
+  "@faceTimeoutTakeYourTime": {
+    "placeholders": {
+      "action": {
+        "type": "String"
+      }
+    }
+  },
+  "faceTimeoutPerformAction": "perform the action",
+  "faceStepLabel": "Face Verification",
+  "faceBack": "Back",
+  "faceSettingUp": "Setting up face verification",
+  "faceTakesAMoment": "This only takes a moment",
+  "faceLoadingOpeningCamera": "Opening camera",
+  "faceLoadingModels": "Loading face models",
+  "faceAlmostDone": "Almost done…",
+  "faceHoldStill": "Hold still",
+  "faceOpeningCamera": "Opening camera...",
+  "faceHowItWorks": "How it works",
+  "faceStepCenterFace": "Center your face inside the oval",
+  "faceStepFollowPrompts": "Follow the on-screen prompts",
+  "faceStart": "Start",
+  "facePreparing": "Preparing…",
+  "faceTipNoFace": "Position your face in the oval",
+  "faceTipCenterFace": "Move your face into the oval",
+  "faceTipTooFar": "Move a bit closer to the camera",
+  "faceTipTooClose": "Move a bit further from the camera",
+  "faceTipLookStraight": "Look straight at the camera",
+  "faceTipOpenEyes": "Keep your eyes open",
+  "faceTipCloseMouth": "Close your mouth",
+  "faceTipRelaxFace": "Relax your expression",
+  "faceTipHoldStill": "Hold still…",
+  "faceTipGetReady": "Get ready…",
+  "faceExtraBadge": "extra",
+  "faceVerifyingIdentity": "Verifying identity...",
+  "faceGoBack": "Go Back",
+  "faceTryAgain": "Try Again",
+  "faceIdentityVerified": "Identity Verified",
+  "faceVerificationFailed": "Verification Failed",
+  "faceScoreMatch": "Match (≥{threshold}%)",
+  "@faceScoreMatch": {
+    "placeholders": {
+      "threshold": {
+        "type": "String"
+      }
+    }
+  },
+  "faceScoreAntiSpoof": "Anti-spoof",
+  "faceNotAvailable": "n/a",
+  "faceScoreRppg": "rPPG ({count} samples)",
+  "@faceScoreRppg": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "faceBpm": "{bpm} bpm",
+  "@faceBpm": {
+    "placeholders": {
+      "bpm": {
+        "type": "String"
+      }
+    }
+  },
+  "faceScoreLivenessActions": "Liveness actions",
+  "facePassed": "passed",
+  "faceFailed": "failed",
+  "faceScoreIdentityConsistent": "Identity consistent",
+  "faceChangedMidSession": "face changed mid-session",
+  "faceDocumentPhoto": "Document photo",
+  "faceLiveCapture": "Live capture",
+  "faceContinuing": "Continuing…",
+  "facePreparingDocumentPhoto": "Preparing your document photo…",
+  "faceIrisReadPortraitError": "Could not read the reference portrait for the Iris SDK.",
+  "faceOpeningIrisCamera": "Opening the Iris camera…",
+  "faceIrisUnavailable": "The Iris SDK is not available on this device.",
+  "faceIrisNoActivity": "Could not open the camera. Please try again.",
+  "faceIrisAlreadyRunning": "A verification is already in progress.",
+  "faceIrisFailedCode": "Verification failed ({code}).",
+  "@faceIrisFailedCode": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "faceIrisFailedError": "Verification failed: {error}",
+  "@faceIrisFailedError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "faceIrisIntroTitle": "Verify with the Iris SDK",
+  "faceIrisIntroBody": "The Iris SDK opens its own full-screen camera to check that a live person is present, then compares that face against the portrait stored on your document.",
+  "faceIrisWhatToExpect": "What to expect",
+  "faceIrisStep1": "A camera screen from the Iris SDK will open",
+  "faceIrisStep2": "Look directly at the camera and follow any prompts",
+  "faceIrisStep3": "Hold still until it finishes — this only takes a moment",
+  "faceStartVerification": "Start Verification",
+  "faceSomethingWentWrong": "Something Went Wrong",
+  "faceIrisMatchedSubtitle": "The live face matched the document photo.",
+  "faceIrisFailedSubtitle": "The live face did not match the document photo. Make sure you're well lit and looking at the camera, then try again.",
+  "faceCancelled": "Cancelled",
+  "faceIrisCancelledSubtitle": "You cancelled the verification. Tap below to try again.",
+  "faceRegulaIntroTitle": "Check that it's really you",
+  "faceRegulaIntroBody": "A camera screen opens to check that a live person is present. The verification service then compares your face with the photo on your document's chip.",
+  "faceRegulaStep1": "A camera screen will open",
+  "faceRegulaStep2": "Look straight at the camera and follow the prompts",
+  "faceRegulaStep3": "Hold still until it finishes — this only takes a moment",
+  "faceRegulaOpeningCamera": "Opening the camera…",
+  "faceRegulaLiveTitle": "Liveness Confirmed",
+  "faceRegulaLiveSubtitle": "Your face is now compared with the photo on your document.",
+  "faceRegulaNotLiveSubtitle": "We couldn't confirm that a live person is present. Make sure you're well lit and looking at the camera, then try again.",
+  "faceRegulaCancelledSubtitle": "You cancelled the verification. Tap below to try again.",
+  "faceRegulaMatching": "Comparing your face with your document photo…",
+  "faceRegulaMatchedSubtitle": "Your face matches the photo on your document ({similarity}% similarity).",
+  "@faceRegulaMatchedSubtitle": {
+    "placeholders": {
+      "similarity": {
+        "type": "String"
+      }
+    }
+  },
+  "faceRegulaNoMatchSubtitle": "Your face didn't match the photo on your document. Scan your document again to retry.",
+  "faceRegulaMatchUnavailable": "Your face could not be compared with your document photo right now.",
+  "faceRegulaScanAgain": "Scan document again",
+  "faceRegulaFailedError": "Verification failed: {error}",
+  "@faceRegulaFailedError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "faceSessionUnreachable": "Can't reach the verification service. Retrying...",
+  "faceSessionChecking": "Checking your verification session...",
+  "faceStopVerification": "Stop verification",
+  "faceSubmitSending": "Sending {what} to {relyingParty}...",
+  "@faceSubmitSending": {
+    "placeholders": {
+      "what": {
+        "type": "String"
+      },
+      "relyingParty": {
+        "type": "String"
+      }
+    }
+  },
+  "faceSubmitCouldNotSend": "Could not send",
+  "faceSubmitFailed": "Sending {what} to {relyingParty} failed:\n\n{error}",
+  "@faceSubmitFailed": {
+    "placeholders": {
+      "what": {
+        "type": "String"
+      },
+      "relyingParty": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "faceCancel": "Cancel",
+  "faceRetry": "Retry",
+  "proofingConsentTitle": "Identity proofing request",
+  "proofingConsentIntro": "is requesting to verify your identity from a document. Scanning your document and completing face verification will send the result below back to them.",
+  "proofingConsentRequesting": "They are requesting:",
+  "proofingConsentExpired": "This request has expired.",
+  "proofingConsentExpiresIn": "This request expires in {duration}.",
+  "@proofingConsentExpiresIn": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "proofingDurationLessThanMinute": "less than a minute",
+  "proofingDurationMinutes": "{count, plural, =1{1 minute} other{{count} minutes}}",
+  "@proofingDurationMinutes": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "proofingDurationHours": "{count, plural, =1{1 hour} other{{count} hours}}",
+  "@proofingDurationHours": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "proofingContinue": "Continue",
+  "proofingDecline": "Decline",
+  "proofingAttributeDocumentIdentity": "Document identity (name, date of birth, document number, expiry)",
+  "proofingAttributeAdditionalDetails": "Additional personal details (personal number, place of birth)",
+  "proofingAttributeFacePhoto": "Your face photo from the document chip",
+  "proofingAttributeChipChecks": "Document authenticity checks",
+  "proofingAttributeBiometrics": "Face verification result",
+  "proofingAttributeEverything": "Everything the app reads from your document",
+  "proofingSessionSectionTitle": "Identity proofing session",
+  "proofingSubmitSectionBody": "This scan is for a session opened by {relyingParty}. Send the document identity and face verification result back to them.",
+  "@proofingSubmitSectionBody": {
+    "placeholders": {
+      "relyingParty": {
+        "type": "String"
+      }
+    }
+  },
+  "proofingSubmitting": "Submitting...",
+  "proofingSubmitTo": "Submit to {relyingParty}",
+  "@proofingSubmitTo": {
+    "placeholders": {
+      "relyingParty": {
+        "type": "String"
+      }
+    }
+  },
+  "proofingSentTo": "Sent to {relyingParty}",
+  "@proofingSentTo": {
+    "placeholders": {
+      "relyingParty": {
+        "type": "String"
+      }
+    }
+  },
+  "proofingSentBrowserFace": "Your document identity was sent to {relyingParty}. Finish face verification in the browser tab where you started this session.",
+  "@proofingSentBrowserFace": {
+    "placeholders": {
+      "relyingParty": {
+        "type": "String"
+      }
+    }
+  },
+  "proofingSentEverything": "Everything this verification needed from this device was sent to {relyingParty}.",
+  "@proofingSentEverything": {
+    "placeholders": {
+      "relyingParty": {
+        "type": "String"
+      }
+    }
+  },
+  "proofingDone": "Done",
+  "proofingAddToWallet": "Add to Wallet",
+  "proofingSubmittedTitle": "Submitted",
+  "proofingSubmittedDocument": "Your document identity was sent to {relyingParty}.",
+  "@proofingSubmittedDocument": {
+    "placeholders": {
+      "relyingParty": {
+        "type": "String"
+      }
+    }
+  },
+  "proofingSubmittedDocumentAndFace": "Your document identity and face verification result were sent to {relyingParty}.",
+  "@proofingSubmittedDocumentAndFace": {
+    "placeholders": {
+      "relyingParty": {
+        "type": "String"
+      }
+    }
+  },
+  "proofingSubmitFailedTitle": "Submit Failed",
+  "proofingSubmitFailedMessage": "Failed to submit the result to the relying party:",
+  "proofingDialogOk": "OK",
+  "proofingDialogRetryHint": "Please try again or make an issue in GitHub of this project.",
+  "proofingRetry": "Retry",
+  "proofingScanDocument": "Scan {docType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}}",
+  "@proofingScanDocument": {
+    "placeholders": {
+      "docType": {
+        "type": "String"
+      }
+    }
+  },
+  "proofingPositionDocument": "Position the {docType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}}",
+  "@proofingPositionDocument": {
+    "placeholders": {
+      "docType": {
+        "type": "String"
+      }
+    }
+  },
+  "proofingScanMrzInstructions": "Align the Machine Readable Zone (MRZ) with the frame at the bottom of the screen. Hold steady until scanning completes.",
+  "proofingEnterDetailsManually": "Enter {docType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} details manually",
+  "@proofingEnterDetailsManually": {
+    "placeholders": {
+      "docType": {
+        "type": "String"
+      }
+    }
+  },
+  "proofingContinueInBrowserTitle": "Continue in the browser",
+  "proofingContinueInBrowserFace": "Finish face verification in the browser where you started this session.",
+  "proofingContinueInBrowserNextStep": "The next step of this verification continues in the browser where you started it.",
+  "proofingNothingLeftTitle": "Nothing left to do",
+  "proofingSessionAlreadyComplete": "This verification session is already complete.",
+  "proofingNotFinishedTitle": "Not finished yet",
+  "proofingNotFinishedMessage": "{relyingParty} still needs another step before this verification can be submitted.",
+  "@proofingNotFinishedMessage": {
+    "placeholders": {
+      "relyingParty": {
+        "type": "String"
+      }
+    }
+  },
+  "proofingFaceIncompleteTitle": "Face verification incomplete",
+  "proofingFaceIncompleteMessage": "No selfie was captured, so there is nothing to send. Please try again.",
+  "proofingWhatVerification": "your verification",
+  "proofingWhatDocumentDetails": "your document details",
+  "proofingWhatDocumentIdentity": "your document identity",
+  "proofingWhatFaceVerification": "your face verification",
+  "proofingNotAVerificationLink": "This is not a verification link.",
+  "proofingSessionNoAttributes": "This session does not specify what to collect",
+  "proofingConnectFailed": "Could not connect to the relying party: {error}",
+  "@proofingConnectFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "proofingQrScanned": "QR code scanned: {value}",
+  "@proofingQrScanned": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "proofingRequestTooManyAttempts": "{what} failed: too many attempts, please wait a moment and try again",
+  "@proofingRequestTooManyAttempts": {
+    "placeholders": {
+      "what": {
+        "type": "String"
+      }
+    }
+  },
+  "proofingRequestFailed": "{what} failed: {details}",
+  "@proofingRequestFailed": {
+    "placeholders": {
+      "what": {
+        "type": "String"
+      },
+      "details": {
+        "type": "String"
+      }
+    }
+  },
+  "proofingRequestClaim": "Taking over the session",
+  "proofingRequestFetch": "Fetching the session",
+  "proofingRequestWatch": "Watching the session",
+  "proofingRequestDeviceState": "Reporting the device state",
+  "proofingRequestSubmitResult": "Submitting the result",
+  "proofingRequestStepStarted": "Marking step {step} started",
+  "@proofingRequestStepStarted": {
+    "placeholders": {
+      "step": {
+        "type": "String"
+      }
+    }
+  },
+  "proofingRequestDocumentStep": "Submitting the document step",
+  "proofingRequestNfcStep": "Submitting the nfc step",
+  "proofingRequestFaceStep": "Submitting the face verification step",
+  "proofingRequestSubmitVerification": "Submitting the verification"
+}

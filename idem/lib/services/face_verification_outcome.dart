@@ -8,7 +8,7 @@ import 'dart:typed_data';
 /// proofing_session_client.dart). Reaching the data screen already means this
 /// outcome passed; there's no failed variant to represent.
 class FaceVerificationOutcome {
-  final String engine; // "on_device" | "iris"
+  final String engine; // "regula" | "on_device" | "iris"
   final String? livenessMode; // "passive" | "active"; null for the Iris SDK, which has no in-app mode choice
   final double? matchScore; // DG2 vs. live face, 0..1; null for the Iris SDK, which doesn't expose one
   final bool
@@ -20,11 +20,16 @@ class FaceVerificationOutcome {
   // the engine didn't capture one.
   final Uint8List? selfieImageBytes;
 
+  /// Regula only: the liveness transaction the server confirms and matches
+  /// against DG2, submitted instead of [selfieImageBytes].
+  final String? livenessTransactionId;
+
   const FaceVerificationOutcome({
     required this.engine,
     required this.livenessPassed,
     this.livenessMode,
     this.matchScore,
     this.selfieImageBytes,
+    this.livenessTransactionId,
   });
 }

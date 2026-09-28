@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:idem/widgets/pages/data_screen_widgets/read_only_textbox.dart';
 
 void main() {
@@ -7,6 +8,8 @@ void main() {
     testWidgets('renders label, value and info icon when not an error', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: ReadOnlyTextBox(label: 'Status', value: 'Yes', isError: false),
           ),
@@ -26,6 +29,8 @@ void main() {
     testWidgets('renders error icon when isError is true', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
             body: ReadOnlyTextBox(label: 'Problem', value: 'No', isError: true),
           ),

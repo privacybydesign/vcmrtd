@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
@@ -21,9 +22,10 @@ class ProofingSessionConsentScreen extends StatelessWidget {
     final expired = expiresIn.isNegative;
     final guided = context.guided;
     if (guided != null) return _buildGuided(context, guided, expiresIn: expiresIn, expired: expired);
+    final l10n = context.l10n;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Identity proofing request')),
+      appBar: AppBar(title: Text(l10n.proofingConsentTitle)),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20.0),
@@ -52,8 +54,7 @@ class ProofingSessionConsentScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'is requesting to verify your identity from a document. Scanning your document and '
-                        'completing face verification will send the result below back to them.',
+                        l10n.proofingConsentIntro,
                         style: TextStyle(fontSize: 15, color: Colors.grey[700], height: 1.4),
                       ),
                     ],
@@ -61,9 +62,9 @@ class ProofingSessionConsentScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              Text('They are requesting:', style: Theme.of(context).textTheme.titleMedium),
+              Text(l10n.proofingConsentRequesting, style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
-              for (final label in _requestedAttributeLabels(info.requestedAttributes))
+              for (final label in _requestedAttributeLabels(l10n, info.requestedAttributes))
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4.0),
                   child: Row(
@@ -76,14 +77,14 @@ class ProofingSessionConsentScreen extends StatelessWidget {
                 ),
               const SizedBox(height: 20),
               Text(
-                expired ? 'This request has expired.' : 'This request expires in ${_formatDuration(expiresIn)}.',
+                expired ? l10n.proofingConsentExpired : l10n.proofingConsentExpiresIn(_formatDuration(l10n, expiresIn)),
                 style: TextStyle(fontSize: 13, color: expired ? Colors.red[700] : Colors.grey[600]),
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 onPressed: expired ? null : onConsent,
                 icon: const Icon(Icons.check),
-                label: const Text('Continue'),
+                label: Text(l10n.proofingContinue),
                 style:
                     context.brand.primaryButtonStyle ??
                     ElevatedButton.styleFrom(
@@ -97,7 +98,7 @@ class ProofingSessionConsentScreen extends StatelessWidget {
               ElevatedButton.icon(
                 onPressed: onDecline,
                 icon: const Icon(Icons.close),
-                label: const Text('Decline'),
+                label: Text(l10n.proofingDecline),
                 style:
                     context.brand.secondaryButtonStyle ??
                     ElevatedButton.styleFrom(
@@ -120,6 +121,7 @@ extension on ProofingSessionConsentScreen {
   /// two choices. Shows the brand mark only when the brand itself is asking.
   Widget _buildGuided(BuildContext context, GuidedStyle g, {required Duration expiresIn, required bool expired}) {
     final brand = context.brand;
+    final l10n = context.l10n;
     final party = info.relyingParty;
     final isBrand = party.toLowerCase().contains(brand.appBarTitle.toLowerCase());
     return GuidedStatusBar(
@@ -131,7 +133,7 @@ extension on ProofingSessionConsentScreen {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               GuidedTopBar(
-                leading: GuidedRoundButton(icon: Icons.close, tooltip: 'Decline', onPressed: onDecline),
+                leading: GuidedRoundButton(icon: Icons.close, tooltip: l10n.proofingDecline, onPressed: onDecline),
                 center: const GuidedTopBarTitle('Request'),
               ),
               Expanded(
@@ -167,8 +169,8 @@ extension on ProofingSessionConsentScreen {
                       const SizedBox(height: 14),
                       Text(
                         expired
-                            ? 'This request has expired.'
-                            : 'This request expires in ${_formatDuration(expiresIn)}.',
+                            ? l10n.proofingConsentExpired
+                            : l10n.proofingConsentExpiresIn(_formatDuration(l10n, expiresIn)),
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 14,
@@ -189,7 +191,10 @@ extension on ProofingSessionConsentScreen {
                         ),
                         child: Column(
                           children: [
-                            for (final (i, (icon, label)) in _requestedAttributes(info.requestedAttributes).indexed)
+                            for (final (i, (icon, label)) in _requestedAttributes(
+                              l10n,
+                              info.requestedAttributes,
+                            ).indexed)
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                                 decoration: BoxDecoration(
@@ -220,9 +225,9 @@ extension on ProofingSessionConsentScreen {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    GuidedButton(label: 'Continue', onPressed: expired ? null : onConsent),
+                    GuidedButton(label: l10n.proofingContinue, onPressed: expired ? null : onConsent),
                     const SizedBox(height: 12),
-                    GuidedButton(label: 'Decline', secondary: true, onPressed: onDecline),
+                    GuidedButton(label: l10n.proofingDecline, secondary: true, onPressed: onDecline),
                   ],
                 ),
               ),
@@ -244,23 +249,24 @@ const _attributeIcons = {
 };
 
 /// [_requestedAttributeLabels] with an icon per entry, for the guided list.
-List<(IconData, String)> _requestedAttributes(List<String> requested) {
-  if (requested.isEmpty) return [(Icons.list_alt, _requestedAttributeLabels(requested).single)];
+List<(IconData, String)> _requestedAttributes(AppLocalizations l10n, List<String> requested) {
+  if (requested.isEmpty) return [(Icons.list_alt, _requestedAttributeLabels(l10n, requested).single)];
+  final attributeLabels = _attributeLabels(l10n);
   final seen = <String>{};
   return [
     for (final key in requested)
-      if (seen.add(_attributeLabels[key] ?? key))
-        (_attributeIcons[key] ?? Icons.check_circle_outline, _attributeLabels[key] ?? key),
+      if (seen.add(attributeLabels[key] ?? key))
+        (_attributeIcons[key] ?? Icons.check_circle_outline, attributeLabels[key] ?? key),
   ];
 }
 
-const _attributeLabels = {
-  'dg1': 'Document identity (name, date of birth, document number, expiry)',
-  'dg11': 'Additional personal details (personal number, place of birth)',
-  'dg2': 'Your face photo from the document chip',
-  'face_image': 'Your face photo from the document chip',
-  'chip_checks': 'Document authenticity checks',
-  'biometrics': 'Face verification result',
+Map<String, String> _attributeLabels(AppLocalizations l10n) => {
+  'dg1': l10n.proofingAttributeDocumentIdentity,
+  'dg11': l10n.proofingAttributeAdditionalDetails,
+  'dg2': l10n.proofingAttributeFacePhoto,
+  'face_image': l10n.proofingAttributeFacePhoto,
+  'chip_checks': l10n.proofingAttributeChipChecks,
+  'biometrics': l10n.proofingAttributeBiometrics,
 };
 
 /// Deduplicates aliases (dg2/face_image mean the same thing server-side) and
@@ -268,17 +274,18 @@ const _attributeLabels = {
 /// unrecognised future attribute is still shown rather than silently
 /// dropped. An empty list means the relying party didn't restrict anything —
 /// see identity-proofing-service's attrRequested.
-List<String> _requestedAttributeLabels(List<String> requested) {
-  if (requested.isEmpty) return const ['Everything the app reads from your document'];
+List<String> _requestedAttributeLabels(AppLocalizations l10n, List<String> requested) {
+  if (requested.isEmpty) return [l10n.proofingAttributeEverything];
+  final attributeLabels = _attributeLabels(l10n);
   final labels = <String>{};
   for (final key in requested) {
-    labels.add(_attributeLabels[key] ?? key);
+    labels.add(attributeLabels[key] ?? key);
   }
   return labels.toList();
 }
 
-String _formatDuration(Duration d) {
-  if (d.inMinutes < 1) return 'less than a minute';
-  if (d.inMinutes < 60) return '${d.inMinutes} minute${d.inMinutes == 1 ? '' : 's'}';
-  return '${d.inHours} hour${d.inHours == 1 ? '' : 's'}';
+String _formatDuration(AppLocalizations l10n, Duration d) {
+  if (d.inMinutes < 1) return l10n.proofingDurationLessThanMinute;
+  if (d.inMinutes < 60) return l10n.proofingDurationMinutes(d.inMinutes);
+  return l10n.proofingDurationHours(d.inHours);
 }

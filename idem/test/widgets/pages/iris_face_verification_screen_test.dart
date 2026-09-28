@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:idem/l10n/l10n.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -29,6 +30,8 @@ void main() {
   testWidgets('shows an intro screen before the native flow starts', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: IrisFaceVerificationScreen(nfcImageBytes: _fakePortraitPng(), onBackPressed: () {}, onVerified: (_) {}),
       ),
     );
@@ -47,6 +50,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: IrisFaceVerificationScreen(nfcImageBytes: _fakePortraitPng(), onBackPressed: () {}, onVerified: (_) {}),
       ),
     );
@@ -66,6 +71,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: IrisFaceVerificationScreen(nfcImageBytes: _fakePortraitPng(), onBackPressed: () {}, onVerified: (_) {}),
       ),
     );
@@ -91,6 +98,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: IrisFaceVerificationScreen(
           nfcImageBytes: _fakePortraitPng(),
           onBackPressed: () => backCount++,
@@ -115,6 +124,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: IrisFaceVerificationScreen(nfcImageBytes: _fakePortraitPng(), onBackPressed: () {}, onVerified: (_) {}),
       ),
     );
@@ -134,6 +145,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: IrisFaceVerificationScreen(nfcImageBytes: _fakePortraitPng(), onBackPressed: () {}, onVerified: (_) {}),
       ),
     );
@@ -151,6 +164,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: IrisFaceVerificationScreen(nfcImageBytes: _fakePortraitPng(), onBackPressed: () {}, onVerified: (_) {}),
       ),
     );
@@ -170,6 +185,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: IrisFaceVerificationScreen(
           nfcImageBytes: Uint8List.fromList([1, 2, 3]),
           onBackPressed: () {},
@@ -203,6 +220,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: IrisFaceVerificationScreen(
           nfcImageBytes: Uint8List.fromList([1, 2, 3]),
           onBackPressed: () {},
@@ -227,6 +246,8 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: IrisFaceVerificationScreen(nfcImageBytes: _fakePortraitPng(), onBackPressed: () {}, onVerified: (_) {}),
       ),
     );

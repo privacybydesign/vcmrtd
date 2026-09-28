@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:image/image.dart' as img;
@@ -100,6 +101,8 @@ void main() {
       UncontrolledProviderScope(
         container: container,
         child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: PassportDataScreen(
             document: passport,
             passportDataResult: _rawDocument(sessionId: 'session-1'),
@@ -135,6 +138,8 @@ void main() {
       UncontrolledProviderScope(
         container: container,
         child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: DrivingLicenceDataScreen(
             drivingLicence: licence,
             drivingLicenceDataResult: _rawDocument(sessionId: 'session-2'),
@@ -173,6 +178,8 @@ void main() {
       UncontrolledProviderScope(
         container: container,
         child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: PassportDataScreen(
             document: _passportData(),
             passportDataResult: _rawDocument(sessionId: 'session-1'),
@@ -199,6 +206,8 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             home: DrivingLicenceDataScreen(
               drivingLicence: _drivingLicenceData(),
               drivingLicenceDataResult: _rawDocument(sessionId: 'session-2'),
@@ -226,6 +235,8 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             home: PassportDataScreen(
               document: _passportData(),
               passportDataResult: _rawDocument(sessionId: 'session-1'),
@@ -262,6 +273,8 @@ void main() {
           UncontrolledProviderScope(
             container: container,
             child: MaterialApp(
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
               home: PassportDataScreen(
                 document: _passportData(),
                 passportDataResult: _rawDocument(sessionId: 'session-1'),
@@ -304,6 +317,8 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             home: DrivingLicenceDataScreen(
               drivingLicence: _drivingLicenceData(),
               drivingLicenceDataResult: _rawDocument(sessionId: 'session-2'),
@@ -340,6 +355,8 @@ void main() {
           UncontrolledProviderScope(
             container: container,
             child: MaterialApp(
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
               home: DrivingLicenceDataScreen(
                 drivingLicence: _drivingLicenceData(),
                 drivingLicenceDataResult: _rawDocument(sessionId: 'session-2'),

@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:idem/l10n/l10n.dart';
 
 class WebBanner extends StatelessWidget {
   final String sessionId;
@@ -28,12 +29,12 @@ class WebBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Web Authentication Session',
+                  context.l10n.docWebAuthSession,
                   style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue[800], fontSize: 16),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Session IID: $sessionId',
+                  context.l10n.docWebAuthSessionId(sessionId),
                   style: TextStyle(color: Colors.blue[600], fontSize: 12, fontFamily: 'monospace'),
                 ),
               ],

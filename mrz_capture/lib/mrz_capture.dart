@@ -10,6 +10,7 @@
 /// while another route is on top, and callbacks for the results.
 library;
 
+export 'l10n/mrz_capture_localizations.dart' show MrzCaptureLocalizations;
 export 'src/camera_overlay.dart' show MRZCameraOverlay;
 export 'src/camera_viewfinder.dart' show MRZCameraView, MRZCameraViewState, OcrFrame;
 export 'src/manual_entry_rules.dart' show ManualEntryRules;

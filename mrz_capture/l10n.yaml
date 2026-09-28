@@ -1,0 +1,5 @@
+arb-dir: lib/l10n
+template-arb-file: mrz_en.arb
+output-dir: lib/l10n
+output-localization-file: mrz_capture_localizations.dart
+output-class: MrzCaptureLocalizations
