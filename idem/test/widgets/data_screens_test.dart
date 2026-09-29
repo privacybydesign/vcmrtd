@@ -76,7 +76,6 @@ ActiveProofingSession _fakeProofingSession() => ActiveProofingSession(
     requestedAttributes: const ['dg1'],
     expiresAt: DateTime.now().add(const Duration(minutes: 5)),
   ),
-  openedAt: DateTime.now(),
 );
 
 void main() {

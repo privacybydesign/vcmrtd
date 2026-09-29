@@ -1,19 +1,15 @@
 import 'dart:typed_data';
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/l10n/l10n.dart';
-import 'package:idem/providers/proofing_session_provider.dart';
-import 'package:idem/providers/wallet_provider.dart';
 import 'package:idem/services/face_verification_outcome.dart';
-import 'package:idem/services/proofing_chip_evidence.dart';
-import '../../widgets/pages/data_screen_widgets/proofing_result_submission.dart';
-import '../../widgets/pages/data_screen_widgets/web_banner.dart';
+import 'package:idem/services/flow_step_plan.dart';
+import 'package:idem/widgets/displays/passport_image_widget.dart';
 
-class DrivingLicenceDataScreen extends ConsumerStatefulWidget {
+import '../../widgets/pages/data_screen_widgets/document_data_view.dart';
+
+class DrivingLicenceDataScreen extends StatelessWidget {
   final DrivingLicenceData drivingLicence;
   final RawDocumentData drivingLicenceDataResult;
   final VoidCallback onBackPressed;
@@ -41,103 +37,55 @@ class DrivingLicenceDataScreen extends ConsumerStatefulWidget {
     this.faceVerification,
     this.submittedTo,
     this.browserFaceStep = false,
-    this.stepNumber = 4,
-    this.totalSteps = 4,
+    this.stepNumber = FlowStepPlan.defaultResultStep,
+    this.totalSteps = FlowStepPlan.defaultTotalSteps,
   });
 
   @override
-  ConsumerState<DrivingLicenceDataScreen> createState() => _DrivingLicenceDataScreenState();
-}
-
-class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScreen>
-    with ProofingResultSubmission<DrivingLicenceDataScreen> {
-  @override
   Widget build(BuildContext context) {
-    final imageData = widget.drivingLicence.photoImageData;
-    final activeProofingSession = ref.watch(activeProofingSessionProvider);
-
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildTopBar(context),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (widget.drivingLicenceDataResult.sessionId != null)
-                      WebBanner(sessionId: widget.drivingLicenceDataResult.sessionId!),
-                    _buildPhotoSection(imageData),
-                    const SizedBox(height: 24),
-                    _buildSection(context.l10n.docPersonalInformation, [
-                      _buildDataRow(context.l10n.docSurname, widget.drivingLicence.holderSurname),
-                      _buildDataRow(context.l10n.docOtherNames, widget.drivingLicence.holderOtherName),
-                      _buildDataRow(context.l10n.docDateOfBirth, _formatDate(widget.drivingLicence.dateOfBirth)),
-                      _buildDataRow(context.l10n.docPlaceOfBirth, widget.drivingLicence.placeOfBirth),
-                    ]),
-                    const SizedBox(height: 24),
-                    _buildSection(context.l10n.docDocumentInformation, [
-                      _buildDataRow(context.l10n.docDocumentNumber, widget.drivingLicence.documentNumber),
-                      _buildDataRow(context.l10n.docIssuingMemberState, widget.drivingLicence.issuingMemberState),
-                      _buildDataRow(context.l10n.docIssuingAuthority, widget.drivingLicence.issuingAuthority),
-                      _buildDataRow(context.l10n.docDateOfIssue, _formatDate(widget.drivingLicence.dateOfIssue)),
-                      _buildDataRow(context.l10n.docDateOfExpiry, _formatDate(widget.drivingLicence.dateOfExpiry)),
-                    ]),
-                    if (widget.drivingLicence.categories.isNotEmpty) ...[
-                      const SizedBox(height: 24),
-                      _buildCategoriesSection(widget.drivingLicence.categories),
-                    ],
-                    DocumentWalletOrSubmitSection(
-                      activeProofingSession: activeProofingSession,
-                      isSubmitting: submittingToProofingSession,
-                      onAddToWallet: _addToWallet,
-                      onSubmit: () => _submitToProofingSession(activeProofingSession!),
-                      submittedTo: widget.submittedTo,
-                      browserFaceStep: widget.browserFaceStep,
-                      onDone: widget.onBackPressed,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+    final l10n = context.l10n;
+    final licence = drivingLicence;
+    return DocumentDataView(
+      title: l10n.docDrivingLicenceDataTitle,
+      document: licence,
+      rawDocument: drivingLicenceDataResult,
+      documentType: DocumentType.drivingLicence,
+      faceVerification: faceVerification,
+      submittedTo: submittedTo,
+      browserFaceStep: browserFaceStep,
+      onBackPressed: onBackPressed,
+      stepNumber: stepNumber,
+      totalSteps: totalSteps,
+      children: [
+        _buildPhotoSection(context, licence.photoImageData, licence.photoImageType),
+        const SizedBox(height: 24),
+        _buildSection(l10n.docPersonalInformation, [
+          _buildDataRow(l10n.docSurname, licence.holderSurname),
+          _buildDataRow(l10n.docOtherNames, licence.holderOtherName),
+          _buildDataRow(l10n.docDateOfBirth, _formatDate(licence.dateOfBirth)),
+          _buildDataRow(l10n.docPlaceOfBirth, licence.placeOfBirth),
+        ]),
+        const SizedBox(height: 24),
+        _buildSection(l10n.docDocumentInformation, [
+          _buildDataRow(l10n.docDocumentNumber, licence.documentNumber),
+          _buildDataRow(l10n.docIssuingMemberState, licence.issuingMemberState),
+          _buildDataRow(l10n.docIssuingAuthority, licence.issuingAuthority),
+          _buildDataRow(l10n.docDateOfIssue, _formatDate(licence.dateOfIssue)),
+          _buildDataRow(l10n.docDateOfExpiry, _formatDate(licence.dateOfExpiry)),
+        ]),
+        if (licence.categories.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          _buildSection(l10n.docCategories, [
+            for (final category in licence.categories) _buildCategoryCard(context, category),
+          ]),
+        ],
+      ],
     );
   }
 
-  Widget _buildTopBar(BuildContext context) => StepBadgeTopBar(
-    icon: Icons.arrow_back,
-    onBack: widget.onBackPressed,
-    current: widget.stepNumber,
-    total: widget.totalSteps,
-    label: context.l10n.docDrivingLicenceDataTitle,
-  );
-
-  void _addToWallet() {
-    ref.read(walletProvider.notifier).add(WalletCard.fromDocument(widget.drivingLicence, DocumentType.drivingLicence));
-    widget.onBackPressed();
-  }
-
-  Future<void> _submitToProofingSession(ActiveProofingSession session) {
-    final evidence = ProofingChipEvidence.from(
-      widget.drivingLicence,
-      widget.drivingLicenceDataResult,
-      DocumentType.drivingLicence,
-    );
-    return submitProofingResult(
-      session: session,
-      document: evidence.document,
-      photo: evidence.photo,
-      mrtdEvidence: evidence.mrtdEvidence,
-      faceVerification: widget.faceVerification,
-      onBackPressed: widget.onBackPressed,
-    );
-  }
-
-  Widget _buildPhotoSection(Uint8List imageData) {
+  /// The licence photo; a JPEG2000 one (which Image.memory can't decode)
+  /// is converted first.
+  Widget _buildPhotoSection(BuildContext context, Uint8List imageData, ImageType? imageType) {
     return Center(
       child: Container(
         decoration: BoxDecoration(
@@ -146,32 +94,38 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(10),
-          child: Image.memory(
-            imageData,
-            width: 200,
-            height: 250,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                width: 200,
-                height: 250,
-                color: CupertinoColors.systemGrey6,
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(CupertinoIcons.photo, size: 48, color: CupertinoColors.systemGrey),
-                      const SizedBox(height: 8),
-                      Text(
-                        context.l10n.docUnableToLoadPhoto,
-                        style: const TextStyle(color: CupertinoColors.systemGrey),
+          child: imageType == ImageType.jpeg2000
+              ? SizedBox(
+                  width: 200,
+                  height: 250,
+                  child: PassportImageWidget(imageData: imageData, imageType: imageType),
+                )
+              : Image.memory(
+                  imageData,
+                  width: 200,
+                  height: 250,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      width: 200,
+                      height: 250,
+                      color: CupertinoColors.systemGrey6,
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(CupertinoIcons.photo, size: 48, color: CupertinoColors.systemGrey),
+                            const SizedBox(height: 8),
+                            Text(
+                              context.l10n.docUnableToLoadPhoto,
+                              style: const TextStyle(color: CupertinoColors.systemGrey),
+                            ),
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
         ),
       ),
     );
@@ -188,18 +142,7 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
     );
   }
 
-  Widget _buildCategoriesSection(List<DrivingLicenceCategory> categories) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(context.l10n.docCategories, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 12),
-        ...categories.map((cat) => _buildCategoryCard(cat)),
-      ],
-    );
-  }
-
-  Widget _buildCategoryCard(DrivingLicenceCategory category) {
+  Widget _buildCategoryCard(BuildContext context, DrivingLicenceCategory category) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -232,7 +175,7 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
     );
   }
 
-  Widget _buildDataRow(String label, String? value) {
+  Widget _buildDataRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: Row(
@@ -245,14 +188,15 @@ class _DrivingLicenceDataScreenState extends ConsumerState<DrivingLicenceDataScr
               style: const TextStyle(fontWeight: FontWeight.w600, color: CupertinoColors.systemGrey),
             ),
           ),
-          Expanded(child: Text(value ?? context.l10n.docNotAvailable, style: const TextStyle(fontSize: 16))),
+          Expanded(child: Text(value, style: const TextStyle(fontSize: 16))),
         ],
       ),
     );
   }
 
-  String? _formatDate(String? date) {
-    if (date == null || date.length != 8) return date;
+  /// DDMMYYYY as DD/MM/YYYY; anything else as it is.
+  String _formatDate(String date) {
+    if (date.length != 8) return date;
     final day = date.substring(0, 2);
     final month = date.substring(2, 4);
     final year = date.substring(4, 8);

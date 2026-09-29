@@ -85,15 +85,6 @@ class AppLocalizationsNl extends AppLocalizations {
   String get commonCancel => 'Annuleren';
 
   @override
-  String get commonYes => 'Ja';
-
-  @override
-  String get commonNo => 'Nee';
-
-  @override
-  String get nfcAvailableLabel => 'NFC beschikbaar:';
-
-  @override
   String get docNewScan => 'Nieuwe scan';
 
   @override
@@ -310,9 +301,6 @@ class AppLocalizationsNl extends AppLocalizations {
   String get docNfcNotAvailable => 'NFC is niet beschikbaar';
 
   @override
-  String get docHavingTrouble => 'Lukt het niet?';
-
-  @override
   String get docPersonalInformation => 'Persoonsgegevens';
 
   @override
@@ -364,17 +352,6 @@ class AppLocalizationsNl extends AppLocalizations {
   String get docCategoryDateOfExpiry => 'Vervaldatum';
 
   @override
-  String get docNotAvailable => 'n.v.t.';
-
-  @override
-  String get docWalletEmpty => 'Je wallet is leeg';
-
-  @override
-  String docWalletEmptyHint(String addToWallet) {
-    return 'Scan een document en tik op \"$addToWallet\" om het hier te zien.';
-  }
-
-  @override
   String get docWalletDocumentNumber => 'Documentnummer';
 
   @override
@@ -408,9 +385,6 @@ class AppLocalizationsNl extends AppLocalizations {
   String get docOptionalData => 'Optionele gegevens';
 
   @override
-  String get docNoPhoto => 'Geen foto';
-
-  @override
   String get docAvailableDataGroups => 'Beschikbare datagroepen';
 
   @override
@@ -439,40 +413,6 @@ class AppLocalizationsNl extends AppLocalizations {
     });
     return '$_temp0';
   }
-
-  @override
-  String get docCanNumber => 'CAN-nummer';
-
-  @override
-  String get docCanNumberRequired => 'Vul het CAN-nummer in';
-
-  @override
-  String get docPassportNumber => 'Paspoortnummer';
-
-  @override
-  String get docPassportNumberRequired => 'Vul het paspoortnummer in';
-
-  @override
-  String get docDateOfBirthRequired => 'Kies je geboortedatum';
-
-  @override
-  String get docDateOfExpiryRequired => 'Kies de vervaldatum';
-
-  @override
-  String get docDbaWithPace => 'DBA met PACE';
-
-  @override
-  String docAccessProtocol(String protocol) {
-    return 'Toegangsprotocol: $protocol';
-  }
-
-  @override
-  String docAccessKeyType(String keyType) {
-    return 'Type toegangssleutel: $keyType';
-  }
-
-  @override
-  String get docCopy => 'Kopiëren';
 
   @override
   String get docImageNoData => 'Geen afbeeldingsgegevens beschikbaar.';

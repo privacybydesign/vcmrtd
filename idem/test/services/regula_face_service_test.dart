@@ -125,9 +125,9 @@ void main() {
       final sdk = _FakeFaceSdk(liveness: _liveness(passed: true, transactionId: 'tx-1'));
       final service = RegulaFaceServiceImpl(serviceUrl: 'https://default.test', sdk: sdk);
 
-      await service.captureLiveness(tag: 'ips:sess-1', serviceUrl: 'https://session.test');
+      await service.captureLiveness(tag: 'ips-tref_sess1', serviceUrl: 'https://session.test');
 
-      expect(sdk.lastConfig?.tag, 'ips:sess-1');
+      expect(sdk.lastConfig?.tag, 'ips-tref_sess1');
       expect(sdk.assignedServiceUrl, 'https://session.test');
     });
 

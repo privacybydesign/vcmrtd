@@ -51,50 +51,9 @@ void main() {
       await tester.tap(find.byType(IconButton).first);
       expect(called, isTrue);
     });
-
-    testWidgets('onTroubleshooting button not shown when null', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: NfcGuidanceScreen(onStartReading: () {}, onBack: () {}, documentType: DocumentType.passport),
-        ),
-      );
-      await tester.pump();
-      expect(find.text('Having trouble?'), findsNothing);
-    });
-
-    testWidgets('onTroubleshooting button shown when provided', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: NfcGuidanceScreen(
-            onStartReading: () {},
-            onBack: () {},
-            onTroubleshooting: () {},
-            documentType: DocumentType.passport,
-          ),
-        ),
-      );
-      await tester.pump();
-      expect(find.text('Having trouble?'), findsOneWidget);
-    });
   });
 
   group('ProfilePictureWidget', () {
-    testWidgets('shows placeholder icon when imageData is null', (tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(body: ProfilePictureWidget(imageData: null, imageType: null)),
-        ),
-      );
-      expect(find.byIcon(Icons.person), findsOneWidget);
-      expect(find.text('No Photo'), findsOneWidget);
-    });
-
     testWidgets('renders JPEG photo data with Image.memory', (tester) async {
       final image = img.Image(width: 2, height: 2);
       final jpeg = Uint8List.fromList(img.encodeJpg(image));

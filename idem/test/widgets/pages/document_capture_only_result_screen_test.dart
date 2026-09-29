@@ -21,7 +21,6 @@ ActiveProofingSession _fakeProofingSession() => ActiveProofingSession(
     expiresAt: DateTime.now().add(const Duration(minutes: 5)),
     steps: const ['document_capture'],
   ),
-  openedAt: DateTime.now(),
 );
 
 ScannedPassportMRZ _scannedPassport() => ScannedPassportMRZ(

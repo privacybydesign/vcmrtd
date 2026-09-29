@@ -145,9 +145,6 @@ class MrzCaptureLocalizationsNl extends MrzCaptureLocalizations {
   String get mrzCharacterCount => 'Aantal tekens:';
 
   @override
-  String get mrzFillAllFields => 'Vul alle verplichte velden in';
-
-  @override
   String mrzParseFailed(String error) {
     return 'De MRZ kon niet worden gelezen: $error';
   }

@@ -1,13 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/services/proofing_session_client.dart';
+import 'package:idem/widgets/common/button_styles.dart';
 
 /// Shown right after the app fetches a scanned/deep-linked proofing session,
 /// before anything else happens: who's asking, what they want, and an
 /// explicit accept/decline. Connecting to a relying party (routing.dart's
 /// _handleScannedQr) no longer pins the session by itself — only [onConsent]
 /// does that; declining leaves nothing pinned and nothing is ever sent.
-class ProofingSessionConsentScreen extends StatelessWidget {
+class ProofingSessionConsentScreen extends StatefulWidget {
   final ProofingSessionInfo info;
   final VoidCallback onConsent;
   final VoidCallback onDecline;
@@ -15,7 +18,31 @@ class ProofingSessionConsentScreen extends StatelessWidget {
   const ProofingSessionConsentScreen({super.key, required this.info, required this.onConsent, required this.onDecline});
 
   @override
+  State<ProofingSessionConsentScreen> createState() => _ProofingSessionConsentScreenState();
+}
+
+class _ProofingSessionConsentScreenState extends State<ProofingSessionConsentScreen> {
+  /// Keeps the countdown current, and disables Continue once it runs out.
+  Timer? _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!widget.info.expiresAt.isAfter(DateTime.now())) timer.cancel();
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final info = widget.info;
     final expiresIn = info.expiresAt.difference(DateTime.now());
     final expired = expiresIn.isNegative;
     final l10n = context.l10n;
@@ -78,27 +105,17 @@ class ProofingSessionConsentScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
-                onPressed: expired ? null : onConsent,
+                onPressed: expired ? null : widget.onConsent,
                 icon: const Icon(Icons.check),
                 label: Text(l10n.proofingContinue),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
+                style: actionButtonStyle,
               ),
               const SizedBox(height: 12),
               ElevatedButton.icon(
-                onPressed: onDecline,
+                onPressed: widget.onDecline,
                 icon: const Icon(Icons.close),
                 label: Text(l10n.proofingDecline),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
+                style: actionButtonStyle,
               ),
             ],
           ),

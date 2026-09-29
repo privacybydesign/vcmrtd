@@ -26,7 +26,6 @@
   "mrzStringLength": "De MRZ moet precies 30 tekens lang zijn",
   "mrzStringPrefix": "De MRZ moet beginnen met D1, D2 of DL",
   "mrzCharacterCount": "Aantal tekens:",
-  "mrzFillAllFields": "Vul alle verplichte velden in",
   "mrzParseFailed": "De MRZ kon niet worden gelezen: {error}",
   "mrzHeaderTitle": "{docType, select, passport{Vul je paspoortgegevens in} identityCard{Vul de gegevens van je identiteitskaart in} drivingLicence{Vul je rijbewijsgegevens in} other{Vul je documentgegevens in}}",
   "mrzHeaderTitleMrz": "Vul de MRZ-regel in",

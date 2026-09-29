@@ -118,6 +118,7 @@ class ProofingSessionWatcher {
         if (!_stopped && e.reason.endsSession) onEvent(ProofingSessionAccessLost(ref, e.reason));
         return;
       } catch (_) {
+        if (_stopped) return; // stop() aborted the wait
         if (_paused) continue; // pause() aborted the wait on purpose
         await Future.delayed(retryDelay);
       } finally {
@@ -144,8 +145,11 @@ class ProofingSessionWatcher {
     _resumed = null;
   }
 
+  /// Stops watching, hanging up the open long-poll rather than leaving it
+  /// open until the server's wait window ends.
   void stop() {
     _stopped = true;
+    _inflight?.close();
     resume();
   }
 }

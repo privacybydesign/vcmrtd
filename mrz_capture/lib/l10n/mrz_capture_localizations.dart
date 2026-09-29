@@ -248,12 +248,6 @@ abstract class MrzCaptureLocalizations {
   /// **'Character count:'**
   String get mrzCharacterCount;
 
-  /// No description provided for @mrzFillAllFields.
-  ///
-  /// In en, this message translates to:
-  /// **'Please fill in all required fields'**
-  String get mrzFillAllFields;
-
   /// No description provided for @mrzParseFailed.
   ///
   /// In en, this message translates to:

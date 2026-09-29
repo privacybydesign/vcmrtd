@@ -115,7 +115,6 @@ void main() {
             ref,
             selfie: const ProofingPhotoInfo(imageBase64: 'AAAA', mimeType: 'image/jpeg'),
           );
-          expect(response.completedSteps, ['document_capture', 'nfc_read', 'face_verification']);
           expect(response.currentStep, '');
           // The last step doesn't finish the session: it waits for a submit.
           expect(response.readyToSubmit, isTrue);
@@ -155,7 +154,6 @@ void main() {
           final response = await const ProofingSessionClient().submitSession(ref);
           expect(response.complete, isTrue);
           expect(response.status, 'approved');
-          expect(response.alreadyRecorded, isTrue);
         },
         () => MockClient((request) async {
           expect(request.method, 'POST');

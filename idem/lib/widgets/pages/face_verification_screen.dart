@@ -10,6 +10,7 @@ import 'package:image/image.dart' as img;
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/services/face_verification_outcome.dart';
+import 'package:idem/services/flow_step_plan.dart';
 
 // ── Enums & helpers ────────────────────────────────────────────────────────
 
@@ -111,21 +112,10 @@ class FlutterFaceVerificationScreen extends StatefulWidget {
     required this.onVerified,
     this.photoIssueDate,
     this.mode = LivenessMode.passive,
-    this.stepNumber = 3,
-    this.totalSteps = 4,
-  }) : testEngine = null;
-
-  const FlutterFaceVerificationScreen.withEngine({
-    super.key,
-    required FaceVerificationEngine engine,
-    required this.nfcImageBytes,
-    required this.onBackPressed,
-    required this.onVerified,
-    this.photoIssueDate,
-    this.mode = LivenessMode.passive,
-    this.stepNumber = 3,
-    this.totalSteps = 4,
-  }) : testEngine = engine;
+    this.stepNumber = FlowStepPlan.defaultFaceVerificationStep,
+    this.totalSteps = FlowStepPlan.defaultTotalSteps,
+    this.testEngine,
+  });
 
   @override
   State<FlutterFaceVerificationScreen> createState() => FlutterFaceVerificationScreenState();

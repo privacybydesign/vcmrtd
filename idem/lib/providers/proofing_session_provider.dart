@@ -11,11 +11,7 @@ class ActiveProofingSession {
   final ProofingSessionRef ref;
   final ProofingSessionInfo info;
 
-  /// When the app connected to this session (QR scanned, session fetched) —
-  /// reported back as part of the submission's session metadata.
-  final DateTime openedAt;
-
-  const ActiveProofingSession({required this.ref, required this.info, required this.openedAt});
+  const ActiveProofingSession({required this.ref, required this.info});
 }
 
 final proofingSessionClientProvider = Provider((ref) => const ProofingSessionClient());
@@ -49,8 +45,8 @@ class ActiveProofingSessionNotifier extends Notifier<ActiveProofingSession?> {
   /// knows the current step.
   void updateInfo(ProofingSessionRef ref, ProofingSessionInfo info) {
     final current = state;
-    if (current == null || current.ref.token != ref.token || current.ref.deviceToken != ref.deviceToken) return;
-    state = ActiveProofingSession(ref: current.ref, info: info, openedAt: current.openedAt);
+    if (current == null || !current.ref.sameAccess(ref)) return;
+    state = ActiveProofingSession(ref: current.ref, info: info);
   }
 }
 
@@ -73,7 +69,7 @@ void markActiveProofingStepStarted(ProviderContainer container, String step) {
   final session = container.read(activeProofingSessionProvider);
   if (session == null) return;
   final wanted = step == stepFaceVerification
-      ? stepsRequestAny(session.info.steps, [stepFaceVerification, stepSelfie, stepLiveness, stepFaceMatch])
+      ? stepsRequestFace(session.info.steps)
       : stepsRequestAny(session.info.steps, [step]);
   if (!wanted) return;
   final key = '${session.ref.token}|${session.info.resetCount}|$step';

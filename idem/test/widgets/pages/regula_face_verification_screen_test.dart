@@ -30,8 +30,13 @@ class _FakeRegula implements RegulaFaceService {
   }
 }
 
-const _announcement = ProofingFaceVerification(provider: 'regula', faceApiUrl: 'https://faceapi.test', tag: 'ips:s1');
-const _issuerAnnouncement = ProofingFaceVerification(provider: 'regula', faceApiUrl: 'https://faceapi.test', tag: '');
+const _announcement = ProofingFaceVerification(
+  provider: 'regula',
+  faceApiUrl: 'https://faceapi.test',
+  tag: 'ips-tref_s1',
+  fromSession: true,
+);
+const _issuerAnnouncement = ProofingFaceVerification(provider: 'regula', faceApiUrl: 'https://faceapi.test');
 
 Future<List<FaceVerificationOutcome>> _pump(
   WidgetTester tester,
@@ -68,7 +73,7 @@ void main() {
     expect(find.text('Liveness Confirmed'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 2));
-    expect(regula.lastTag, 'ips:s1');
+    expect(regula.lastTag, 'ips-tref_s1');
     expect(regula.lastServiceUrl, 'https://faceapi.test');
     expect(verified.single.engine, 'regula');
     expect(verified.single.livenessTransactionId, 'tx-1');

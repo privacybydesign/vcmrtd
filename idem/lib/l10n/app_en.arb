@@ -37,9 +37,6 @@
   "idDocumentDrivingLicence": "Driving licence",
   "commonTryAgain": "Try Again",
   "commonCancel": "Cancel",
-  "commonYes": "Yes",
-  "commonNo": "No",
-  "nfcAvailableLabel": "NFC available:",
   "docNewScan": "New scan",
   "docConnectedBanner": "Connected — will send results to {relyingParty}",
   "@docConnectedBanner": {
@@ -150,7 +147,6 @@
     }
   },
   "docNfcNotAvailable": "NFC is not available",
-  "docHavingTrouble": "Having trouble?",
   "docPersonalInformation": "Personal Information",
   "docSurname": "Surname",
   "docOtherNames": "Other Names",
@@ -168,16 +164,6 @@
   "docCategory": "Category",
   "docCategoryDateOfIssue": "Date of issue",
   "docCategoryDateOfExpiry": "Date of expiry",
-  "docNotAvailable": "N/A",
-  "docWalletEmpty": "Your wallet is empty",
-  "docWalletEmptyHint": "Scan a document and tap \"{addToWallet}\" to see it here.",
-  "@docWalletEmptyHint": {
-    "placeholders": {
-      "addToWallet": {
-        "type": "String"
-      }
-    }
-  },
   "docWalletDocumentNumber": "Document number",
   "docWalletAdded": "Added",
   "docRemoveFromWallet": "Remove from wallet",
@@ -189,7 +175,6 @@
   "docCountry": "Country",
   "docVersion": "Version",
   "docOptionalData": "Optional Data",
-  "docNoPhoto": "No Photo",
   "docAvailableDataGroups": "Available Data Groups",
   "docDataGroupsRead": "Data Groups Read: {count}/{total}",
   "@docDataGroupsRead": {
@@ -220,30 +205,6 @@
       }
     }
   },
-  "docCanNumber": "CAN number",
-  "docCanNumberRequired": "Please enter CAN number",
-  "docPassportNumber": "Passport number",
-  "docPassportNumberRequired": "Please enter passport number",
-  "docDateOfBirthRequired": "Please select Date of Birth",
-  "docDateOfExpiryRequired": "Please select Date of Expiry",
-  "docDbaWithPace": "DBA with PACE",
-  "docAccessProtocol": "Access protocol: {protocol}",
-  "@docAccessProtocol": {
-    "placeholders": {
-      "protocol": {
-        "type": "String"
-      }
-    }
-  },
-  "docAccessKeyType": "Access key type: {keyType}",
-  "@docAccessKeyType": {
-    "placeholders": {
-      "keyType": {
-        "type": "String"
-      }
-    }
-  },
-  "docCopy": "Copy",
   "docImageNoData": "No image data available.",
   "docImageJpegError": "Error displaying JPEG image.",
   "docImageConvertingJpeg2000": "Converting JPEG2000 image...",

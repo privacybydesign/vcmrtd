@@ -145,9 +145,6 @@ class MrzCaptureLocalizationsEn extends MrzCaptureLocalizations {
   String get mrzCharacterCount => 'Character count:';
 
   @override
-  String get mrzFillAllFields => 'Please fill in all required fields';
-
-  @override
   String mrzParseFailed(String error) {
     return 'Failed to parse MRZ: $error';
   }

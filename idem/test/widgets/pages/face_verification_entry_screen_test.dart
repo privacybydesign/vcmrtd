@@ -70,8 +70,8 @@ void main() {
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: FaceVerificationEntryScreen.withEngine(
-          engine: engine,
+        home: FaceVerificationEntryScreen(
+          testEngine: engine,
           nfcImageBytes: Uint8List.fromList([1]),
           onBackPressed: () {},
           onVerified: (_) {},
@@ -97,8 +97,8 @@ void main() {
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: FaceVerificationEntryScreen.withEngine(
-          engine: engine,
+        home: FaceVerificationEntryScreen(
+          testEngine: engine,
           nfcImageBytes: Uint8List(1),
           onBackPressed: () {},
           onVerified: (_) {},
@@ -120,8 +120,8 @@ void main() {
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: FaceVerificationEntryScreen.withEngine(
-          engine: engine,
+        home: FaceVerificationEntryScreen(
+          testEngine: engine,
           nfcImageBytes: Uint8List(1),
           onBackPressed: () {},
           onVerified: (_) {},
@@ -137,7 +137,7 @@ void main() {
     expect(find.byType(FlutterFaceVerificationScreen), findsNothing);
   });
 
-  const regula = ProofingFaceVerification(provider: 'regula', faceApiUrl: 'https://faceapi.test', tag: 'ips:s1');
+  const regula = ProofingFaceVerification(provider: 'regula', faceApiUrl: 'https://faceapi.test', fromSession: true);
 
   test('Regula follows the session\'s flow, else the setting when a server offers it', () {
     expect(FaceVerificationEntryScreen.effectiveEngine(FaceEngineChoice.regula, regula), FaceEngineChoice.regula);
@@ -145,8 +145,8 @@ void main() {
     // A session's flow chose Regula: the setting can't override it.
     expect(FaceVerificationEntryScreen.effectiveEngine(FaceEngineChoice.iris, regula), FaceEngineChoice.regula);
     expect(FaceVerificationEntryScreen.effectiveEngine(FaceEngineChoice.onDevice, regula), FaceEngineChoice.regula);
-    // The passport issuer's offer (no tag) leaves the choice to the user.
-    const issuer = ProofingFaceVerification(provider: 'regula', faceApiUrl: 'https://faceapi.test', tag: '');
+    // The passport issuer's offer leaves the choice to the user.
+    const issuer = ProofingFaceVerification(provider: 'regula', faceApiUrl: 'https://faceapi.test');
     expect(FaceVerificationEntryScreen.effectiveEngine(FaceEngineChoice.iris, issuer), FaceEngineChoice.iris);
     expect(FaceVerificationEntryScreen.effectiveEngine(FaceEngineChoice.regula, issuer), FaceEngineChoice.regula);
   });
@@ -158,8 +158,8 @@ void main() {
         child: MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: FaceVerificationEntryScreen.withEngine(
-            engine: engine,
+          home: FaceVerificationEntryScreen(
+            testEngine: engine,
             nfcImageBytes: Uint8List(1),
             onBackPressed: () {},
             onVerified: (_) {},

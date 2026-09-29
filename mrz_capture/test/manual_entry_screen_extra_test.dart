@@ -41,41 +41,46 @@ void main() {
       expect(dobField.controller!.text, contains('/'));
     });
 
-    testWidgets('valid passport entry calls onManualEntryComplete with a ScannedPassportMRZ', (tester) async {
-      _setLargeViewport(tester);
-      ScannedMRZ? completed;
-      await tester.pumpWidget(_screen(documentType: DocumentType.passport, onComplete: (mrz) => completed = mrz));
-      await tester.pump();
+    // An identity card is entered like a passport: number and dates.
+    for (final documentType in [DocumentType.passport, DocumentType.identityCard]) {
+      testWidgets('valid ${documentType.name} entry calls onManualEntryComplete with a ScannedPassportMRZ', (
+        tester,
+      ) async {
+        _setLargeViewport(tester);
+        ScannedMRZ? completed;
+        await tester.pumpWidget(_screen(documentType: documentType, onComplete: (mrz) => completed = mrz));
+        await tester.pump();
 
-      // Document number (field 0).
-      await tester.enterText(find.byType(TextField).at(0), 'AB123456');
+        // Document number (field 0).
+        await tester.enterText(find.byType(TextField).at(0), 'AB123456');
 
-      // Pick a date of birth (field 1; default initial date is ~30 years ago).
-      await tester.tap(find.byType(TextField).at(1));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('OK'));
-      await tester.pumpAndSettle();
+        // Pick a date of birth (field 1; default initial date is ~30 years ago).
+        await tester.tap(find.byType(TextField).at(1));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('OK'));
+        await tester.pumpAndSettle();
 
-      // Pick an expiry date (field 2; default initial date is ~10 years out).
-      await tester.tap(find.byType(TextField).at(2));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('OK'));
-      await tester.pumpAndSettle();
+        // Pick an expiry date (field 2; default initial date is ~10 years out).
+        await tester.tap(find.byType(TextField).at(2));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('OK'));
+        await tester.pumpAndSettle();
 
-      // Verify both date fields were populated before submitting.
-      final dobField = tester.widget<TextField>(find.byType(TextField).at(1));
-      final expiryField = tester.widget<TextField>(find.byType(TextField).at(2));
-      expect(dobField.controller!.text, contains('/'));
-      expect(expiryField.controller!.text, contains('/'));
+        // Verify both date fields were populated before submitting.
+        final dobField = tester.widget<TextField>(find.byType(TextField).at(1));
+        final expiryField = tester.widget<TextField>(find.byType(TextField).at(2));
+        expect(dobField.controller!.text, contains('/'));
+        expect(expiryField.controller!.text, contains('/'));
 
-      await tester.tap(find.text('Continue to NFC Reading'));
-      await tester.pump();
+        await tester.tap(find.text('Continue to NFC Reading'));
+        await tester.pump();
 
-      expect(completed, isA<ScannedPassportMRZ>());
-      final passport = completed as ScannedPassportMRZ;
-      expect(passport.documentNumber, 'AB123456');
-      expect(passport.documentType, DocumentType.passport);
-    });
+        expect(completed, isA<ScannedPassportMRZ>());
+        final passport = completed as ScannedPassportMRZ;
+        expect(passport.documentNumber, 'AB123456');
+        expect(passport.documentType, documentType);
+      });
+    }
   });
 
   group('ManualEntryScreen — driving licence submit', () {

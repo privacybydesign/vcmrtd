@@ -100,19 +100,19 @@ Widget _app(DocumentType documentType) {
     routes: [
       GoRoute(
         path: '/start',
-        builder: (_, __) => const Scaffold(body: Text('start page')),
+        builder: (_, _) => const Scaffold(body: Text('start page')),
       ),
       GoRoute(
         path: '/',
-        builder: (_, __) => NfcReadingScreen(params: params, onSuccess: (_, __) {}),
+        builder: (_, _) => NfcReadingScreen(params: params, onSuccess: (_, _) {}),
       ),
     ],
   );
   addTearDown(router.dispose);
   return ProviderScope(
     overrides: [
-      passportReaderProvider.overrideWith(_FakeReader.new),
-      identityCardReaderProvider.overrideWith(_FakeReader.new),
+      passportReaderProvider.overrideWith2((_) => _FakeReader()),
+      identityCardReaderProvider.overrideWith2((_) => _FakeReader()),
     ],
     child: MaterialApp.router(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -323,11 +323,11 @@ void main() {
         routes: [
           GoRoute(
             path: '/',
-            builder: (_, __) => NfcReadingScreen(params: params, onSuccess: (_, __) {}),
+            builder: (_, _) => NfcReadingScreen(params: params, onSuccess: (_, _) {}),
           ),
           GoRoute(
             path: '/next',
-            builder: (_, __) => const Scaffold(body: Text('face verification')),
+            builder: (_, _) => const Scaffold(body: Text('face verification')),
           ),
         ],
       );
@@ -336,8 +336,8 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            passportReaderProvider.overrideWith(_FakeReader.new),
-            identityCardReaderProvider.overrideWith(_FakeReader.new),
+            passportReaderProvider.overrideWith2((_) => _FakeReader()),
+            identityCardReaderProvider.overrideWith2((_) => _FakeReader()),
           ],
           child: MaterialApp.router(
             localizationsDelegates: AppLocalizations.localizationsDelegates,

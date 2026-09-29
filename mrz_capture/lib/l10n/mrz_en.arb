@@ -75,7 +75,6 @@
   "mrzStringLength": "MRZ must be exactly 30 characters",
   "mrzStringPrefix": "MRZ must start with D1, D2, or DL",
   "mrzCharacterCount": "Character count:",
-  "mrzFillAllFields": "Please fill in all required fields",
   "mrzParseFailed": "Failed to parse MRZ: {error}",
   "@mrzParseFailed": {
     "placeholders": {

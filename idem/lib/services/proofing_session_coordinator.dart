@@ -121,7 +121,7 @@ class ProofingSessionCoordinator {
   /// credential); stops listening to any previous one. A no-op for the
   /// session already being listened to.
   void track(ProofingSessionRef ref, ProofingSessionInfo info) {
-    if (_held != null && _held!.token == ref.token && _held!.deviceToken == ref.deviceToken) return;
+    if (_held?.sameAccess(ref) ?? false) return;
     _watcher?.stop();
     _held = ref;
     final watcher = ProofingSessionWatcher(
@@ -163,7 +163,7 @@ class ProofingSessionCoordinator {
       event = ProofingSessionCompleted(event.ref);
     }
     final held = _held;
-    final isHeld = held != null && held.token == event.ref.token && held.deviceToken == event.ref.deviceToken;
+    final isHeld = held?.sameAccess(event.ref) ?? false;
     if (event is ProofingSessionAccessLost || event is ProofingSessionCompleted) {
       // A second loss/completion for the same credential (the watcher and a
       // submission noticing the same thing), or one for a credential this
@@ -181,11 +181,10 @@ class ProofingSessionCoordinator {
   /// Drops [ref]'s credential - only that one: a newer credential this app
   /// holds for the same session stays.
   void _forget(ProofingSessionRef ref) {
-    bool same(ProofingSessionRef known) => known.token == ref.token && known.deviceToken == ref.deviceToken;
     final key = _key(ref.apiBase, ref.token);
-    if (_claimed[key] case final known? when same(known)) _claimed.remove(key);
-    _claimedByGrant.removeWhere((_, known) => same(known));
-    if (_held case final held? when same(held)) {
+    if (_claimed[key] case final known? when known.sameAccess(ref)) _claimed.remove(key);
+    _claimedByGrant.removeWhere((_, known) => known.sameAccess(ref));
+    if (_held case final held? when held.sameAccess(ref)) {
       _watcher?.stop();
       _watcher = null;
       _held = null;

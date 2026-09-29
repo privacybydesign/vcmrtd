@@ -223,18 +223,15 @@ class _NewScanSheet extends StatelessWidget {
 List<Widget> _documentTypeOptions(BuildContext context, Function(DocumentType) onDocumentTypeSelected) {
   return [
     _OptionCard(
-      context: context,
       title: context.l10n.docPassport,
       subtitle: context.l10n.docPassportSubtitle,
       icon: Icons.book,
       accentColor: const Color(0xFF6b6868),
       onTap: () => onDocumentTypeSelected(DocumentType.passport),
-      showBadge: true,
       badgeText: context.l10n.docMostCommon,
     ),
     const SizedBox(height: 16),
     _OptionCard(
-      context: context,
       title: context.l10n.docIdentityCard,
       subtitle: context.l10n.docIdentityCardSubtitle,
       icon: Icons.credit_card,
@@ -243,7 +240,6 @@ List<Widget> _documentTypeOptions(BuildContext context, Function(DocumentType) o
     ),
     const SizedBox(height: 16),
     _OptionCard(
-      context: context,
       title: context.l10n.docDrivingLicence,
       subtitle: context.l10n.docDrivingLicenceSubtitle,
       icon: Icons.directions_car,
@@ -255,7 +251,6 @@ List<Widget> _documentTypeOptions(BuildContext context, Function(DocumentType) o
 
 Widget _qrScanOption(BuildContext context, VoidCallback onScanQrPressed) {
   return _OptionCard(
-    context: context,
     title: context.l10n.docScanQrTitle,
     subtitle: context.l10n.docScanQrSubtitle,
     icon: Icons.qr_code_scanner,
@@ -266,7 +261,6 @@ Widget _qrScanOption(BuildContext context, VoidCallback onScanQrPressed) {
 
 Widget _advancedSettingsOption(BuildContext context, VoidCallback onSettingsPressed) {
   return _OptionCard(
-    context: context,
     title: context.l10n.docAdvancedSettings,
     subtitle: context.l10n.docAdvancedSettingsSubtitle,
     icon: Icons.settings,
@@ -318,23 +312,19 @@ class _Header extends StatelessWidget {
 
 class _OptionCard extends StatelessWidget {
   const _OptionCard({
-    required this.context,
     required this.title,
     required this.subtitle,
     required this.icon,
     required this.accentColor,
     required this.onTap,
-    this.showBadge = false,
     this.badgeText,
   });
 
-  final BuildContext context;
   final String title;
   final String subtitle;
   final IconData icon;
   final Color accentColor;
   final VoidCallback onTap;
-  final bool showBadge;
   final String? badgeText;
 
   @override
@@ -386,7 +376,7 @@ class _OptionCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (showBadge && badgeText != null)
+              if (badgeText != null)
                 Positioned(
                   top: 8,
                   right: 8,

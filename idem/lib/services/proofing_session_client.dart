@@ -25,8 +25,8 @@ class ProofingSessionRef {
 
   const ProofingSessionRef({required this.apiBase, required this.token, this.deviceToken});
 
-  ProofingSessionRef withDeviceToken(String deviceToken) =>
-      ProofingSessionRef(apiBase: apiBase, token: token, deviceToken: deviceToken);
+  /// The same session through the same device credential as [other].
+  bool sameAccess(ProofingSessionRef other) => token == other.token && deviceToken == other.deviceToken;
 
   static ProofingSessionRef? parse(String raw) {
     final uri = Uri.tryParse(raw);
@@ -115,16 +115,11 @@ class ProofingDeviceAccess {
   /// False once another device took over this device's slot - see
   /// [ProofingSessionInfo.accessLost].
   final bool authorized;
-  final String? role; // "native" | "web"
-  final String? state; // "active" | "inactive"
 
-  const ProofingDeviceAccess({required this.authorized, this.role, this.state});
+  const ProofingDeviceAccess({required this.authorized});
 
-  factory ProofingDeviceAccess.fromJson(Map<String, dynamic> json) => ProofingDeviceAccess(
-    authorized: json['authorized'] as bool? ?? false,
-    role: json['role'] as String?,
-    state: json['state'] as String?,
-  );
+  factory ProofingDeviceAccess.fromJson(Map<String, dynamic> json) =>
+      ProofingDeviceAccess(authorized: json['authorized'] as bool? ?? false);
 }
 
 /// [ProofingSessionInfo.lifecycle] values.
@@ -217,11 +212,10 @@ class ProofingSessionInfo {
   /// the other one holding a slot.
   final bool readyToSubmit;
 
-  /// The step the server expects next ("" once every step is done), and the
-  /// steps it already holds a result for. The server decides these - the app
-  /// never derives them from its own local progress.
+  /// The step the server expects next ("" once every step is done). The
+  /// server decides this - the app never derives it from its own local
+  /// progress.
   final String? currentStep;
-  final List<String> completedSteps;
 
   /// This device's access to the session; null before claiming, or from a
   /// server that predates device handover.
@@ -264,7 +258,6 @@ class ProofingSessionInfo {
     this.lifecycle,
     this.readyToSubmit = false,
     this.currentStep,
-    this.completedSteps = const [],
     this.device,
     this.chipAccess,
     this.faceReference,
@@ -302,7 +295,6 @@ class ProofingSessionInfo {
     lifecycle: json['lifecycle'] as String?,
     readyToSubmit: json['readyToSubmit'] as bool? ?? false,
     currentStep: json['currentStep'] as String?,
-    completedSteps: (json['completedSteps'] as List<dynamic>? ?? const []).cast<String>(),
     device: json['device'] is Map<String, dynamic>
         ? ProofingDeviceAccess.fromJson(json['device'] as Map<String, dynamic>)
         : null,
@@ -325,20 +317,31 @@ class ProofingSessionInfo {
 class ProofingFaceVerification {
   final String provider;
   final String faceApiUrl;
+
+  /// Binds the Regula transaction to the proofing session; the server refuses
+  /// a transaction without it. Empty for a standalone scan.
   final String tag;
 
-  const ProofingFaceVerification({required this.provider, required this.faceApiUrl, required this.tag});
+  /// Announced by a proofing session rather than the passport issuer.
+  final bool fromSession;
+
+  const ProofingFaceVerification({
+    required this.provider,
+    required this.faceApiUrl,
+    this.tag = '',
+    this.fromSession = false,
+  });
 
   bool get isRegula => provider == faceProviderRegula && faceApiUrl.isNotEmpty;
 
-  /// A proofing session's flow chose Regula (only sessions carry a tag), so
-  /// the server refuses anything else.
-  bool get requiredBySession => isRegula && tag.isNotEmpty;
+  /// A proofing session's flow chose Regula, so the server refuses anything else.
+  bool get requiredBySession => isRegula && fromSession;
 
   factory ProofingFaceVerification.fromJson(Map<String, dynamic> json) => ProofingFaceVerification(
     provider: json['provider'] as String? ?? '',
     faceApiUrl: json['faceApiUrl'] as String? ?? '',
     tag: json['tag'] as String? ?? '',
+    fromSession: true,
   );
 }
 
@@ -462,44 +465,26 @@ class ProofingSessionClaim {
 /// decides what comes next.
 class ProofingStepResponse {
   final String status;
-  final List<String> completedSteps;
   final String? currentStep;
   final String? lifecycle;
-  final String? errorCode;
 
   /// Every step has a result: the session waits for a submit - see
   /// [ProofingSessionInfo.readyToSubmit].
   final bool readyToSubmit;
 
-  /// The server already had this step: nothing was stored, this is just
-  /// the current state (a retry, or the other device got there first).
-  final bool alreadyRecorded;
-
-  const ProofingStepResponse({
-    required this.status,
-    this.completedSteps = const [],
-    this.currentStep,
-    this.lifecycle,
-    this.errorCode,
-    this.readyToSubmit = false,
-    this.alreadyRecorded = false,
-  });
+  const ProofingStepResponse({required this.status, this.currentStep, this.lifecycle, this.readyToSubmit = false});
 
   factory ProofingStepResponse.fromJson(Map<String, dynamic> json) => ProofingStepResponse(
     status: json['status'] as String? ?? '',
-    completedSteps: (json['completedSteps'] as List<dynamic>? ?? const []).cast<String>(),
     currentStep: json['currentStep'] as String?,
     lifecycle: json['lifecycle'] as String?,
-    errorCode: json['errorCode'] as String?,
     readyToSubmit: json['readyToSubmit'] as bool? ?? false,
-    alreadyRecorded: json['alreadyRecorded'] as bool? ?? false,
   );
 
   /// The same shape from a session view, for a caller that had to fetch the
   /// session instead (see [ProofingStepsIncompleteException]).
   factory ProofingStepResponse.fromSessionInfo(ProofingSessionInfo info) => ProofingStepResponse(
     status: info.status,
-    completedSteps: info.completedSteps,
     currentStep: info.currentStep,
     lifecycle: info.lifecycle,
     readyToSubmit: info.readyToSubmit,
@@ -656,7 +641,7 @@ String? _errorCodeOf(http.Response response) {
 /// [ProofingSessionInfo.selfieLocation]'s doc comment.
 bool nativeFaceVerificationRequested(List<String>? steps, String selfieLocation) {
   if (steps == null) return true;
-  if (!stepsRequestAny(steps, [stepFaceVerification, stepSelfie, stepLiveness, stepFaceMatch])) return false;
+  if (!stepsRequestFace(steps)) return false;
   return selfieLocation != 'browser';
 }
 
@@ -668,16 +653,19 @@ const stepNfcRead = 'nfc_read';
 // stepFaceVerification is the aggregate "the complete live face-verification
 // stage" step (flow.StepFaceVerification server-side) — distinct from the
 // three granular sub-steps below, which a flow can also list individually.
-// Every stepsRequestAny([stepSelfie, stepLiveness, stepFaceMatch]) call site
-// must also include this one, or a flow that lists "face_verification"
-// (rather than spelling out selfie/liveness/face_match) is silently treated
-// as not needing any face step at all: vcmrtd skips its own
+// It is part of [faceSteps]: a face check that leaves it out treats a flow
+// listing "face_verification" (rather than spelling out
+// selfie/liveness/face_match) as not needing any face step at all: vcmrtd skips its own
 // face-verification screen and submits the result straight after NFC,
 // before the browser hosted flow ever gets a chance to run it either.
 const stepFaceVerification = 'face_verification';
 const stepSelfie = 'selfie';
 const stepLiveness = 'liveness';
 const stepFaceMatch = 'face_match';
+
+/// Every step that asks for the face-verification stage, aggregate and
+/// granular alike; test for it with [stepsRequestFace].
+const faceSteps = [stepFaceVerification, stepSelfie, stepLiveness, stepFaceMatch];
 
 /// Whether [steps] calls for any of [anyOf]. A null [steps] means the
 /// session wasn't created against a flow definition, so every step is
@@ -687,6 +675,9 @@ bool stepsRequestAny(List<String>? steps, List<String> anyOf) {
   if (steps == null) return true;
   return anyOf.any(steps.contains);
 }
+
+/// Whether [steps] asks for any face-verification step (see [faceSteps]).
+bool stepsRequestFace(List<String>? steps) => stepsRequestAny(steps, faceSteps);
 
 /// The identity read off the document's DG1/MRZ, plus DG11 extras when the
 /// document carries them. Mirrors api.documentInfo on the server —
@@ -1066,7 +1057,7 @@ Map<String, dynamic> buildProofingResultBody({
 
   return {
     'status': status,
-    if (errorCode != null) 'errorCode': errorCode,
+    'errorCode': ?errorCode,
     if (includeDocument) 'document': document.toJson(includeDG11Extras: includeDG11),
     if (includePhoto) 'photo': photo.toJson(),
     if (includeSelfie) 'selfie': selfie.toJson(),
@@ -1344,7 +1335,7 @@ class ProofingSessionClient {
   /// it its outcome (lifecycle COMPLETE, status approved/rejected/...).
   /// Either device holding a slot may submit, and submitting again (a
   /// double tap, a retry after a network error, the other device having
-  /// submitted first) just returns the finished state with alreadyRecorded,
+  /// submitted first) just returns the finished state,
   /// so this is safe to retry. Throws [ProofingStepsIncompleteException]
   /// when a step still lacks a result.
   ///

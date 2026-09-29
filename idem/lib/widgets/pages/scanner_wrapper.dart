@@ -9,6 +9,7 @@ import 'package:mrz_capture/mrz_capture.dart';
 import '../../routing.dart';
 import 'scan_screen.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:idem/services/flow_step_plan.dart';
 
 typedef ScannerWidgetBuilder =
     Widget Function({required DocumentType documentType, required ValueChanged<ScannedMRZ> onSuccess});
@@ -49,8 +50,8 @@ class ScannerWrapper extends StatefulWidget {
     required this.onBack,
     this.documentType = DocumentType.passport,
     this.scannerBuilder,
-    this.stepNumber = 1,
-    this.totalSteps = 4,
+    this.stepNumber = FlowStepPlan.defaultDocumentCaptureStep,
+    this.totalSteps = FlowStepPlan.defaultTotalSteps,
   });
 
   @override
@@ -133,38 +134,31 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
   }
 
   Widget _buildOverlayCard(BuildContext context) {
-    return Card(
-      color: Colors.transparent,
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(0.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              context.l10n.proofingPositionDocument(widget.documentType.name),
-              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            Text(context.l10n.proofingScanMrzInstructions, style: TextStyle(color: Colors.white70, fontSize: 14)),
-          ],
-        ),
+    // The inset a Card's default margin used to give it.
+    return Padding(
+      padding: const EdgeInsets.all(4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.l10n.proofingPositionDocument(widget.documentType.name),
+            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          Text(context.l10n.proofingScanMrzInstructions, style: TextStyle(color: Colors.white70, fontSize: 14)),
+        ],
       ),
     );
   }
 
   Widget _buildBottomControls(BuildContext context) {
-    return Container(
+    return Padding(
       padding: const EdgeInsets.fromLTRB(30, 24, 24, 32),
-      decoration: BoxDecoration(color: Colors.transparent),
       child: SafeArea(
         top: false,
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black),
-          onPressed: () {
-            widget.onManualEntry();
-          },
+          onPressed: widget.onManualEntry,
           child: Text(
             context.l10n.proofingEnterDetailsManually(widget.documentType.name),
             style: TextStyle(color: Colors.black),

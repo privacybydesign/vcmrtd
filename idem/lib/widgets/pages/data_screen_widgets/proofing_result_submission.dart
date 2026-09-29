@@ -8,6 +8,7 @@ import 'package:idem/services/proofing_session_client.dart';
 
 import '../../common/issuance_result_dialogs.dart';
 import 'submit_to_proofing_session.dart';
+import 'package:idem/widgets/common/button_styles.dart';
 
 /// Shared by [PassportDataScreen]/[DrivingLicenceDataScreen]'s states: both
 /// report a scanned document back to a pinned identity-proofing session the
@@ -39,7 +40,6 @@ mixin ProofingResultSubmission<T extends ConsumerStatefulWidget> on ConsumerStat
     setState(() => submittingToProofingSession = true);
     try {
       final device = await currentProofingDeviceInfo();
-      final outcome = faceVerification;
       await ref
           .read(proofingSessionClientProvider)
           .submitResult(
@@ -48,13 +48,17 @@ mixin ProofingResultSubmission<T extends ConsumerStatefulWidget> on ConsumerStat
             requestedAttributes: session.info.requestedAttributes,
             document: document,
             photo: photo,
-            selfie: outcome?.selfieImageBytes != null ? ProofingPhotoInfo.fromSelfie(outcome!.selfieImageBytes!) : null,
+            selfie: faceVerification?.selfieImageBytes != null
+                ? ProofingPhotoInfo.fromSelfie(faceVerification!.selfieImageBytes!)
+                : null,
             mrtdEvidence: mrtdEvidence,
             biometrics: ProofingBiometricsInfo(
-              faceMatchScore: outcome?.matchScore,
-              faceVerified: outcome != null ? true : null,
-              livenessResult: outcome == null ? 'not_performed' : (outcome.livenessPassed ? 'passed' : 'failed'),
-              engine: outcome?.engine,
+              faceMatchScore: faceVerification?.matchScore,
+              faceVerified: faceVerification != null ? true : null,
+              livenessResult: faceVerification == null
+                  ? 'not_performed'
+                  : (faceVerification.livenessPassed ? 'passed' : 'failed'),
+              engine: faceVerification?.engine,
             ),
             device: device,
           );
@@ -112,7 +116,7 @@ class DocumentWalletOrSubmitSection extends StatelessWidget {
 
   /// Whether the browser still does the face step after that.
   final bool browserFaceStep;
-  final VoidCallback? onDone;
+  final VoidCallback onDone;
 
   const DocumentWalletOrSubmitSection({
     super.key,
@@ -120,9 +124,9 @@ class DocumentWalletOrSubmitSection extends StatelessWidget {
     required this.isSubmitting,
     required this.onAddToWallet,
     required this.onSubmit,
-    this.submittedTo,
-    this.browserFaceStep = false,
-    this.onDone,
+    required this.submittedTo,
+    required this.browserFaceStep,
+    required this.onDone,
   });
 
   @override
@@ -144,12 +148,7 @@ class DocumentWalletOrSubmitSection extends StatelessWidget {
       child: session == null
           ? ElevatedButton.icon(
               onPressed: onAddToWallet,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
+              style: actionButtonStyle,
               icon: const Icon(Icons.account_balance_wallet),
               label: Text(context.l10n.proofingAddToWallet),
             )

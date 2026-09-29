@@ -480,7 +480,6 @@ void main() {
                     expiresAt: DateTime.now().add(const Duration(minutes: 10)),
                     steps: const [stepDocumentCapture, stepNfcRead],
                   ),
-                  openedAt: DateTime.now(),
                 ),
               );
 
@@ -547,7 +546,6 @@ void main() {
                   steps: const [stepDocumentCapture, stepNfcRead, stepLiveness],
                   selfieLocation: 'native',
                 ),
-                openedAt: DateTime.now(),
               ),
             );
 
@@ -600,7 +598,6 @@ void main() {
                   steps: const [stepDocumentCapture, stepNfcRead, stepFaceVerification],
                   selfieLocation: 'native',
                 ),
-                openedAt: DateTime.now(),
               ),
             );
 
@@ -652,7 +649,6 @@ void main() {
                   steps: const [stepDocumentCapture, stepNfcRead, stepFaceVerification],
                   selfieLocation: 'browser',
                 ),
-                openedAt: DateTime.now(),
               ),
             );
 
@@ -717,7 +713,6 @@ void main() {
                     expiresAt: DateTime.now().add(const Duration(minutes: 10)),
                     steps: const [stepDocumentCapture],
                   ),
-                  openedAt: DateTime.now(),
                 ),
               );
 
@@ -790,7 +785,6 @@ void main() {
                     mimeType: 'image/jpeg',
                   ),
                 ),
-                openedAt: DateTime.now(),
               ),
             );
 
@@ -828,7 +822,11 @@ void main() {
       await tester.pumpWidget(_routerApp(router));
       router.go(
         '/result',
-        extra: {'document': _passportData(), 'result': _rawDocument(), 'document_type': DocumentType.passport},
+        extra: ResultRouteArgs(
+          document: _passportData(),
+          rawDocument: _rawDocument(),
+          documentType: DocumentType.passport,
+        ),
       );
       await tester.pump();
       await tester.pump();
@@ -836,11 +834,11 @@ void main() {
 
       router.go(
         '/result',
-        extra: {
-          'document': _drivingLicenceData(),
-          'result': _rawDocument(),
-          'document_type': DocumentType.drivingLicence,
-        },
+        extra: ResultRouteArgs(
+          document: _drivingLicenceData(),
+          rawDocument: _rawDocument(),
+          documentType: DocumentType.drivingLicence,
+        ),
       );
       await tester.pump();
       await tester.pump();
@@ -857,7 +855,11 @@ void main() {
       await tester.pumpWidget(_routerApp(router));
       router.go(
         '/result',
-        extra: {'document': _passportData(), 'result': _rawDocument(), 'document_type': DocumentType.passport},
+        extra: ResultRouteArgs(
+          document: _passportData(),
+          rawDocument: _rawDocument(),
+          documentType: DocumentType.passport,
+        ),
       );
       await tester.pump();
       await tester.pump();
@@ -869,11 +871,11 @@ void main() {
 
       router.go(
         '/result',
-        extra: {
-          'document': _drivingLicenceData(),
-          'result': _rawDocument(),
-          'document_type': DocumentType.drivingLicence,
-        },
+        extra: ResultRouteArgs(
+          document: _drivingLicenceData(),
+          rawDocument: _rawDocument(),
+          documentType: DocumentType.drivingLicence,
+        ),
       );
       await tester.pump();
       await tester.pump();
@@ -1102,7 +1104,6 @@ void main() {
         steps: const [stepDocumentCapture, stepNfcRead, stepFaceVerification],
         lifecycle: proofingLifecycleActive,
         currentStep: stepNfcRead,
-        completedSteps: const [stepDocumentCapture],
         chipAccess: ProofingChipAccess(
           documentType: DocumentType.identityCard,
           documentNumber: 'SPECI2014',
@@ -1150,7 +1151,6 @@ void main() {
         selfieLocation: 'native',
         lifecycle: proofingLifecycleActive,
         currentStep: stepFaceVerification,
-        completedSteps: const [stepDocumentCapture, stepNfcRead],
         faceReference: ProofingPhotoInfo(imageBase64: base64Encode(chipPhoto), mimeType: 'image/jp2'),
       );
 
@@ -1194,7 +1194,7 @@ void main() {
           );
           container
               .read(activeProofingSessionProvider.notifier)
-              .set(ActiveProofingSession(ref: sessionRef, info: info, openedAt: DateTime.now()));
+              .set(ActiveProofingSession(ref: sessionRef, info: info));
           final coordinator = container.read(proofingSessionCoordinatorProvider);
           coordinator.track(sessionRef, info);
           final events = <ProofingSessionEvent>[];
@@ -1253,7 +1253,7 @@ void main() {
           );
           container
               .read(activeProofingSessionProvider.notifier)
-              .set(ActiveProofingSession(ref: sessionRef, info: info, openedAt: DateTime.now()));
+              .set(ActiveProofingSession(ref: sessionRef, info: info));
           // main.dart tracks every pinned session.
           final coordinator = container.read(proofingSessionCoordinatorProvider);
           coordinator.track(sessionRef, info);
@@ -1508,7 +1508,11 @@ void main() {
 
       router.go(
         '/result',
-        extra: {'document': _passportData(), 'result': _rawDocument(), 'document_type': DocumentType.identityCard},
+        extra: ResultRouteArgs(
+          document: _passportData(),
+          rawDocument: _rawDocument(),
+          documentType: DocumentType.identityCard,
+        ),
       );
 
       await tester.pump();

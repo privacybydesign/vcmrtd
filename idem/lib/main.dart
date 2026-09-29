@@ -47,9 +47,10 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
     // Listen to every newly accepted session through the backend.
     // Unpinning (null) doesn't stop listening - see ProofingSessionWatcher.
     ref.listenManual(activeProofingSessionProvider, (previous, next) {
-      if (next != null) _sessions.track(next.ref, next.info);
+      if (next == null) return;
+      _sessions.track(next.ref, next.info);
       // The session's language (see lib/l10n/l10n.dart) decides the UI's.
-      if (next != null) ref.read(appLocaleProvider.notifier).useSessionLanguage(next.info.language);
+      ref.read(appLocaleProvider.notifier).useSessionLanguage(next.info.language);
     });
     _sessionEvents = _sessions.events.listen(_onProofingSessionEvent);
     // Tell the server when this device stops/resumes working on the
@@ -94,25 +95,39 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
     }
   }
 
+  /// Shows an info dialog, in the UI's current language, on top of whatever
+  /// screen the router goes to next.
+  void _showInfoAfterNavigation((String, String) Function(AppLocalizations l10n) content) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final context = _navigatorContext;
+      if (context == null) return;
+      final (title, message) = content(context.l10n);
+      DialogHelpers.showInfoDialog(context: context, title: title, message: message);
+    });
+  }
+
+  /// Unpins [sessionRef] and returns to document selection when it is the
+  /// pinned session; returns what was pinned, or null when it is not.
+  ActiveProofingSession? _endPinnedSession(ProofingSessionRef sessionRef) {
+    final pinned = ref.read(activeProofingSessionProvider);
+    if (pinned == null || !pinned.ref.sameAccess(sessionRef)) {
+      return null;
+    }
+    ref.read(activeProofingSessionProvider.notifier).set(null);
+    _router.go(selectDocTypePath);
+    return pinned;
+  }
+
   /// The session was submitted and has its outcome - from this app's Submit
   /// button or on the other device, whichever came first: nothing is left
   /// to do here. A session the app already finished its part of (unpinned,
   /// e.g. face verification handed off to the browser) ends quietly.
   void _onProofingSessionCompleted(ProofingSessionRef sessionRef) {
-    final pinned = ref.read(activeProofingSessionProvider);
-    if (pinned == null || pinned.ref.token != sessionRef.token || pinned.ref.deviceToken != sessionRef.deviceToken)
-      return;
-    ref.read(activeProofingSessionProvider.notifier).set(null);
-    _router.go('/select_doc_type');
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final context = _navigatorContext;
-      if (context == null) return;
-      DialogHelpers.showInfoDialog(
-        context: context,
-        title: context.l10n.sessionCompleteTitle,
-        message: context.l10n.sessionCompleteMessage(pinned.info.relyingParty),
-      );
-    });
+    final pinned = _endPinnedSession(sessionRef);
+    if (pinned == null) return;
+    _showInfoAfterNavigation(
+      (l10n) => (l10n.sessionCompleteTitle, l10n.sessionCompleteMessage(pinned.info.relyingParty)),
+    );
   }
 
   /// The relying party reset the session: the server already dropped every
@@ -120,20 +135,12 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
   /// accepting the request leads (document selection for a document flow),
   /// and tell them why their progress just disappeared.
   void _onProofingSessionReset(ProofingSessionRef sessionRef, ProofingSessionInfo info) {
-    final session = ActiveProofingSession(ref: sessionRef, info: info, openedAt: DateTime.now());
+    final session = ActiveProofingSession(ref: sessionRef, info: info);
     ref.read(activeProofingSessionProvider.notifier).set(session);
     final context = _navigatorContext;
     if (context == null) return;
     restartProofingSessionFlow(context, session);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final context = _navigatorContext;
-      if (context == null) return;
-      DialogHelpers.showInfoDialog(
-        context: context,
-        title: context.l10n.sessionRestartedTitle,
-        message: context.l10n.sessionRestartedMessage(info.relyingParty),
-      );
-    });
+    _showInfoAfterNavigation((l10n) => (l10n.sessionRestartedTitle, l10n.sessionRestartedMessage(info.relyingParty)));
   }
 
   /// This device may no longer act on the session (handed over to another
@@ -141,23 +148,16 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
   /// say why. A session the app already finished its part of (unpinned,
   /// e.g. face verification handed off to the browser) just ends quietly.
   void _onProofingSessionAccessLost(ProofingSessionRef sessionRef, ProofingAccessDenial reason) {
-    final pinned = ref.read(activeProofingSessionProvider);
-    if (pinned == null || pinned.ref.token != sessionRef.token || pinned.ref.deviceToken != sessionRef.deviceToken)
-      return;
-    ref.read(activeProofingSessionProvider.notifier).set(null);
-    _router.go('/select_doc_type');
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final context = _navigatorContext;
-      if (context == null) return;
-      DialogHelpers.showInfoDialog(context: context, title: context.l10n.sessionStoppedTitle, message: reason.message);
-    });
+    final pinned = _endPinnedSession(sessionRef);
+    if (pinned == null) return;
+    _showInfoAfterNavigation((l10n) => (l10n.sessionStoppedTitle, reason.message));
   }
 
   /// The user gave up waiting for the resume check (server unreachable).
   void _abandonProofingSession() {
     _sessions.release();
     ref.read(activeProofingSessionProvider.notifier).set(null);
-    _router.go('/select_doc_type');
+    _router.go(selectDocTypePath);
   }
 
   @override

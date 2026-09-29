@@ -9,6 +9,7 @@ import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/widgets/pages/face_verification_screen.dart';
 import 'package:idem/widgets/pages/iris_face_verification_screen.dart';
 import 'package:idem/widgets/pages/regula_face_verification_screen.dart';
+import 'package:idem/services/flow_step_plan.dart';
 
 /// Orchestrates the face verification flow for the engine chosen up front
 /// (Regula, on-device or Iris SDK, picked in the advanced settings).
@@ -41,6 +42,7 @@ class FaceVerificationEntryScreen extends StatelessWidget {
   final Future<FaceMatch?> Function(String livenessTransactionId)? matchFace;
 
   // Test-only: injects a pre-built on-device engine.
+  @visibleForTesting
   final FaceVerificationEngine? testEngine;
 
   /// Step badge numbers — default to vcmrtd's fixed 4-step sequence (this
@@ -61,24 +63,10 @@ class FaceVerificationEntryScreen extends StatelessWidget {
     this.faceVerification,
     this.matchFace,
     this.photoIssueDate,
-    this.stepNumber = 3,
-    this.totalSteps = 4,
-  }) : testEngine = null;
-
-  const FaceVerificationEntryScreen.withEngine({
-    super.key,
-    required FaceVerificationEngine engine,
-    required this.nfcImageBytes,
-    required this.onBackPressed,
-    required this.onVerified,
-    required this.engineChoice,
-    required this.livenessMode,
-    this.faceVerification,
-    this.matchFace,
-    this.photoIssueDate,
-    this.stepNumber = 3,
-    this.totalSteps = 4,
-  }) : testEngine = engine;
+    this.stepNumber = FlowStepPlan.defaultFaceVerificationStep,
+    this.totalSteps = FlowStepPlan.defaultTotalSteps,
+    this.testEngine,
+  });
 
   /// The engine that actually runs: a session whose flow chose Regula gets
   /// Regula whatever the setting; otherwise Regula only when a server offers it.
@@ -110,19 +98,6 @@ class FaceVerificationEntryScreen extends StatelessWidget {
           totalSteps: totalSteps,
         );
       case FaceEngineChoice.onDevice:
-        final engine = testEngine;
-        if (engine != null) {
-          return FlutterFaceVerificationScreen.withEngine(
-            engine: engine,
-            mode: livenessMode,
-            nfcImageBytes: nfcImageBytes,
-            onBackPressed: onBackPressed,
-            onVerified: onVerified,
-            photoIssueDate: photoIssueDate,
-            stepNumber: stepNumber,
-            totalSteps: totalSteps,
-          );
-        }
         return FlutterFaceVerificationScreen(
           mode: livenessMode,
           nfcImageBytes: nfcImageBytes,
@@ -131,6 +106,7 @@ class FaceVerificationEntryScreen extends StatelessWidget {
           photoIssueDate: photoIssueDate,
           stepNumber: stepNumber,
           totalSteps: totalSteps,
+          testEngine: testEngine,
         );
     }
   }

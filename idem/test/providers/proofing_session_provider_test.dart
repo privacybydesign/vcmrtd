@@ -30,7 +30,6 @@ void main() {
           requestedAttributes: const [],
           expiresAt: DateTime.now().add(const Duration(minutes: 5)),
         ),
-        openedAt: DateTime.now(),
       );
 
       container.read(activeProofingSessionProvider.notifier).set(session);

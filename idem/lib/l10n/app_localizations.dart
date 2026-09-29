@@ -230,24 +230,6 @@ abstract class AppLocalizations {
   /// **'Cancel'**
   String get commonCancel;
 
-  /// No description provided for @commonYes.
-  ///
-  /// In en, this message translates to:
-  /// **'Yes'**
-  String get commonYes;
-
-  /// No description provided for @commonNo.
-  ///
-  /// In en, this message translates to:
-  /// **'No'**
-  String get commonNo;
-
-  /// No description provided for @nfcAvailableLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'NFC available:'**
-  String get nfcAvailableLabel;
-
   /// No description provided for @docNewScan.
   ///
   /// In en, this message translates to:
@@ -572,12 +554,6 @@ abstract class AppLocalizations {
   /// **'NFC is not available'**
   String get docNfcNotAvailable;
 
-  /// No description provided for @docHavingTrouble.
-  ///
-  /// In en, this message translates to:
-  /// **'Having trouble?'**
-  String get docHavingTrouble;
-
   /// No description provided for @docPersonalInformation.
   ///
   /// In en, this message translates to:
@@ -680,24 +656,6 @@ abstract class AppLocalizations {
   /// **'Date of expiry'**
   String get docCategoryDateOfExpiry;
 
-  /// No description provided for @docNotAvailable.
-  ///
-  /// In en, this message translates to:
-  /// **'N/A'**
-  String get docNotAvailable;
-
-  /// No description provided for @docWalletEmpty.
-  ///
-  /// In en, this message translates to:
-  /// **'Your wallet is empty'**
-  String get docWalletEmpty;
-
-  /// No description provided for @docWalletEmptyHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Scan a document and tap \"{addToWallet}\" to see it here.'**
-  String docWalletEmptyHint(String addToWallet);
-
   /// No description provided for @docWalletDocumentNumber.
   ///
   /// In en, this message translates to:
@@ -764,12 +722,6 @@ abstract class AppLocalizations {
   /// **'Optional Data'**
   String get docOptionalData;
 
-  /// No description provided for @docNoPhoto.
-  ///
-  /// In en, this message translates to:
-  /// **'No Photo'**
-  String get docNoPhoto;
-
   /// No description provided for @docAvailableDataGroups.
   ///
   /// In en, this message translates to:
@@ -805,66 +757,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{documentType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{Document}} Data'**
   String docDocumentDataTitle(String documentType);
-
-  /// No description provided for @docCanNumber.
-  ///
-  /// In en, this message translates to:
-  /// **'CAN number'**
-  String get docCanNumber;
-
-  /// No description provided for @docCanNumberRequired.
-  ///
-  /// In en, this message translates to:
-  /// **'Please enter CAN number'**
-  String get docCanNumberRequired;
-
-  /// No description provided for @docPassportNumber.
-  ///
-  /// In en, this message translates to:
-  /// **'Passport number'**
-  String get docPassportNumber;
-
-  /// No description provided for @docPassportNumberRequired.
-  ///
-  /// In en, this message translates to:
-  /// **'Please enter passport number'**
-  String get docPassportNumberRequired;
-
-  /// No description provided for @docDateOfBirthRequired.
-  ///
-  /// In en, this message translates to:
-  /// **'Please select Date of Birth'**
-  String get docDateOfBirthRequired;
-
-  /// No description provided for @docDateOfExpiryRequired.
-  ///
-  /// In en, this message translates to:
-  /// **'Please select Date of Expiry'**
-  String get docDateOfExpiryRequired;
-
-  /// No description provided for @docDbaWithPace.
-  ///
-  /// In en, this message translates to:
-  /// **'DBA with PACE'**
-  String get docDbaWithPace;
-
-  /// No description provided for @docAccessProtocol.
-  ///
-  /// In en, this message translates to:
-  /// **'Access protocol: {protocol}'**
-  String docAccessProtocol(String protocol);
-
-  /// No description provided for @docAccessKeyType.
-  ///
-  /// In en, this message translates to:
-  /// **'Access key type: {keyType}'**
-  String docAccessKeyType(String keyType);
-
-  /// No description provided for @docCopy.
-  ///
-  /// In en, this message translates to:
-  /// **'Copy'**
-  String get docCopy;
 
   /// No description provided for @docImageNoData.
   ///

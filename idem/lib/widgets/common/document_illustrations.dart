@@ -120,7 +120,7 @@ Widget buildPassportIllustration() {
   );
 }
 
-const BorderColor = Color(0xFFB48DA3);
+const _borderColor = Color(0xFFB48DA3);
 
 Widget buildDrivingLicenceIllustration() {
   return Container(
@@ -132,7 +132,7 @@ Widget buildDrivingLicenceIllustration() {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ),
-      border: Border.all(color: BorderColor, width: 1.2),
+      border: Border.all(color: _borderColor, width: 1.2),
       borderRadius: BorderRadius.circular(8),
       boxShadow: [BoxShadow(color: Colors.grey.withValues(alpha: 0.15), blurRadius: 3, offset: const Offset(2, 2))],
     ),

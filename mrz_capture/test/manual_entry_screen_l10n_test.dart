@@ -17,7 +17,6 @@ Widget _screen(DocumentType documentType, Locale locale) => MaterialApp(
 );
 
 void main() {
-
   testWidgets('renders in Dutch when the host app is in Dutch', (tester) async {
     tester.view.physicalSize = const Size(1200, 2200);
     tester.view.devicePixelRatio = 1.0;

@@ -46,12 +46,20 @@ class FlowStepPlan {
     required this.resultStepNumber,
   });
 
+  /// vcmrtd's own fixed sequence ([defaultPlan]), also each screen's
+  /// step-badge default.
+  static const defaultTotalSteps = 4;
+  static const defaultDocumentCaptureStep = 1;
+  static const defaultNfcReadStep = 2;
+  static const defaultFaceVerificationStep = 3;
+  static const defaultResultStep = 4;
+
   static const FlowStepPlan defaultPlan = FlowStepPlan._(
-    totalSteps: 4,
-    documentCaptureStepNumber: 1,
-    nfcReadStepNumber: 2,
-    faceVerificationStepNumber: 3,
-    resultStepNumber: 4,
+    totalSteps: defaultTotalSteps,
+    documentCaptureStepNumber: defaultDocumentCaptureStep,
+    nfcReadStepNumber: defaultNfcReadStep,
+    faceVerificationStepNumber: defaultFaceVerificationStep,
+    resultStepNumber: defaultResultStep,
   );
 
   /// [selfieLocation] mirrors [ProofingSessionInfo.selfieLocation] — when

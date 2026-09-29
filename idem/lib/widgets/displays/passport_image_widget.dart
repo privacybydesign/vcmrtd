@@ -5,11 +5,10 @@ import 'package:flutter/foundation.dart';
 import 'package:idem/services/jpeg2000_converter.dart';
 
 class PassportImageWidget extends StatefulWidget {
-  final String header;
   final Uint8List? imageData;
   final ImageType? imageType;
 
-  const PassportImageWidget({super.key, required this.header, required this.imageData, required this.imageType});
+  const PassportImageWidget({super.key, required this.imageData, required this.imageType});
 
   @override
   State<PassportImageWidget> createState() => _PassportImageWidgetState();

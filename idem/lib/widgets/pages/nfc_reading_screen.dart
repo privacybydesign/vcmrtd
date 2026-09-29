@@ -17,6 +17,7 @@ import 'package:idem/providers/reader_providers.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 
 import '../../routing.dart';
+import 'package:idem/services/flow_step_plan.dart';
 
 class NfcReadingRouteParams {
   final ScannedMRZ scannedMRZ;
@@ -83,8 +84,8 @@ class NfcReadingScreen extends ConsumerStatefulWidget {
   const NfcReadingScreen({
     required this.params,
     required this.onSuccess,
-    this.stepNumber = 2,
-    this.totalSteps = 4,
+    this.stepNumber = FlowStepPlan.defaultNfcReadStep,
+    this.totalSteps = FlowStepPlan.defaultTotalSteps,
     super.key,
   });
 
@@ -105,18 +106,14 @@ class NfcReadingScreen extends ConsumerStatefulWidget {
 }
 
 class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteAware {
-  List<String> get _readingStepTitles {
-    final l10n = context.l10n;
-    return [l10n.docNfcStepStart, l10n.docNfcStepDetails, l10n.docNfcStepPhoto, l10n.docNfcStepAlmostDone];
-  }
-
-  List<String> get _readingStepSubtitles {
+  /// The checklist's reading steps as (title, subtitle).
+  List<(String, String)> _readingSteps() {
     final l10n = context.l10n;
     return [
-      l10n.docNfcStepStartSubtitle,
-      l10n.docNfcStepDetailsSubtitle,
-      l10n.docNfcStepPhotoSubtitle,
-      l10n.docNfcStepAlmostDoneSubtitle,
+      (l10n.docNfcStepStart, l10n.docNfcStepStartSubtitle),
+      (l10n.docNfcStepDetails, l10n.docNfcStepDetailsSubtitle),
+      (l10n.docNfcStepPhoto, l10n.docNfcStepPhotoSubtitle),
+      (l10n.docNfcStepAlmostDone, l10n.docNfcStepAlmostDoneSubtitle),
     ];
   }
 
@@ -220,7 +217,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
     );
   }
 
-  /// Maps the reader state to an index into [_readingStepTitles]. Regresses
+  /// Maps the reader state to an index into [_readingSteps]. Regresses
   /// to step 0 on failure/cancellation, since the user needs to reposition
   /// the document and start the reading flow again.
   int? _readingStepForState(DocumentReaderState state) {
@@ -269,18 +266,21 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
   /// small spinner for the current one, and an outlined circle for steps
   /// still ahead.
   Widget _buildStepChecklist({required int currentStep, required NFCReadingState nfcState}) {
+    final steps = _readingSteps();
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(12)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (var index = 0; index < _readingStepTitles.length; index++)
+          for (var index = 0; index < steps.length; index++)
             _buildStepRow(
               index: index,
+              title: steps[index].$1,
+              subtitle: steps[index].$2,
               currentStep: currentStep,
               nfcState: nfcState,
-              isLast: index == _readingStepTitles.length - 1,
+              isLast: index == steps.length - 1,
             ),
         ],
       ),
@@ -291,6 +291,8 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
   /// vertical line, filled in green once this step is done.
   Widget _buildStepRow({
     required int index,
+    required String title,
+    required String subtitle,
     required int currentStep,
     required NFCReadingState nfcState,
     required bool isLast,
@@ -329,11 +331,11 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _readingStepTitles[index],
+                    title,
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: titleColor),
                   ),
                   const SizedBox(height: 2),
-                  Text(_readingStepSubtitles[index], style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                  Text(subtitle, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
                 ],
               ),
             ),

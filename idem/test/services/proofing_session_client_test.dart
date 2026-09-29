@@ -38,21 +38,22 @@ void main() {
       'id': 's1',
       'relyingParty': 'RP',
       'expiresAt': '2030-01-01T00:00:00Z',
-      if (faceVerification != null) 'faceVerification': faceVerification,
+      'faceVerification': ?faceVerification,
     };
 
     test('parses the Regula announcement from the session view', () {
       final info = ProofingSessionInfo.fromJson(
-        view({'provider': 'regula', 'faceApiUrl': 'https://faceapi.test', 'tag': 'ips:s1'}),
+        view({'provider': 'regula', 'faceApiUrl': 'https://faceapi.test', 'tag': 'ips-tref_s1'}),
       );
       expect(info.faceVerification?.isRegula, isTrue);
       expect(info.faceVerification?.faceApiUrl, 'https://faceapi.test');
-      expect(info.faceVerification?.tag, 'ips:s1');
+      expect(info.faceVerification?.tag, 'ips-tref_s1');
+      expect(info.faceVerification?.requiredBySession, isTrue);
     });
 
     test('is absent without an announcement, and not Regula without a Face API url', () {
       expect(ProofingSessionInfo.fromJson(view()).faceVerification, isNull);
-      final partial = ProofingSessionInfo.fromJson(view({'provider': 'regula', 'tag': 'ips:s1'}));
+      final partial = ProofingSessionInfo.fromJson(view({'provider': 'regula'}));
       expect(partial.faceVerification?.isRegula, isFalse);
     });
   });
