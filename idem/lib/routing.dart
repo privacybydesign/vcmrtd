@@ -163,6 +163,7 @@ Future<void> _afterDocumentCaptured(BuildContext context, ScannedMRZ scannedMrz,
 
   if (activeSession != null && steps != null && steps.contains(stepDocumentCapture)) {
     final response = await _submitDocumentCaptureStep(context, activeSession, scannedMrz, documentType);
+    if (!context.mounted) return;
     _continueAfterStep(
       context,
       activeSession,
@@ -802,6 +803,7 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
                 return;
               }
               final response = await _submitNfcStep(context, session, document, result, params.documentType);
+              if (!context.mounted) return;
               _continueAfterStep(
                 context,
                 session,
@@ -907,6 +909,7 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
             final session = providers.read(activeProofingSessionProvider);
             if (session != null && session.info.steps != null) {
               final response = await _submitFaceStep(context, session, outcome);
+              if (!context.mounted) return;
               _continueAfterStep(
                 context,
                 session,
