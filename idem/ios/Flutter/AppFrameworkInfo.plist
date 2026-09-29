@@ -20,5 +20,10 @@
   <string>????</string>
   <key>CFBundleVersion</key>
   <string>1.0</string>
+  <!-- altool rejects an upload when App.framework has no MinimumOSVersion:
+       "Missing Info.plist value ... in bundle Runner.app/Frameworks/App.framework".
+       Keep this in step with IPHONEOS_DEPLOYMENT_TARGET and the Podfile. -->
+  <key>MinimumOSVersion</key>
+  <string>16.0</string>
 </dict>
 </plist>
