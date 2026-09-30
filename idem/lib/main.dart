@@ -11,6 +11,7 @@ import 'package:mrz_capture/mrz_capture.dart' show MrzCaptureLocalizations;
 import 'package:vcmrtd/extensions.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
+import 'package:idem/providers/session_settings.dart';
 import 'package:idem/routing.dart';
 import 'package:idem/services/proofing_deeplink_channel.dart';
 import 'package:idem/services/proofing_session_client.dart';
@@ -51,6 +52,8 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
       _sessions.track(next.ref, next.info);
       // The session's language (see lib/l10n/l10n.dart) decides the UI's.
       ref.read(appLocaleProvider.notifier).useSessionLanguage(next.info.language);
+      // The session's flow decides the checks, and Settings shows them.
+      applyProofingSessionSettings(ProviderScope.containerOf(context), next.info);
     });
     _sessionEvents = _sessions.events.listen(_onProofingSessionEvent);
     // Tell the server when this device stops/resumes working on the

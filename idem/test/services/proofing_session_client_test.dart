@@ -58,6 +58,25 @@ void main() {
     });
   });
 
+  group('ProofingSessionInfo.requiresActiveAuthentication', () {
+    Map<String, dynamic> view([List<String>? requiredChecks]) => {
+      'id': 's1',
+      'relyingParty': 'RP',
+      'expiresAt': '2030-01-01T00:00:00Z',
+      'requiredChecks': ?requiredChecks,
+    };
+
+    test('follows the flow: on with nfc.chip_auth, off without it', () {
+      final withChipAuth = ProofingSessionInfo.fromJson(view(['nfc.passive_auth', checkNfcChipAuth]));
+      expect(withChipAuth.requiresActiveAuthentication, isTrue);
+      expect(ProofingSessionInfo.fromJson(view(['nfc.passive_auth'])).requiresActiveAuthentication, isFalse);
+    });
+
+    test('is on for a server that does not list its checks', () {
+      expect(ProofingSessionInfo.fromJson(view()).requiresActiveAuthentication, isTrue);
+    });
+  });
+
   group('ProofingSessionRef.parse', () {
     test('parses the https qr payload (https://{host}/s/{token})', () {
       final ref = ProofingSessionRef.parse('https://proof.example.com/s/abc123');

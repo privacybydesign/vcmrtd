@@ -41,7 +41,7 @@
   "docSettingsTitle": "Instellingen",
   "docBack": "Terug",
   "docActiveAuthentication": "Actieve authenticatie",
-  "docActiveAuthenticationSubtitle": "Voer actieve authenticatie uit bij het lezen van het document",
+  "docActiveAuthenticationSubtitle": "Voer actieve authenticatie uit bij het lezen van het document. Een verificatiesessie volgt haar eigen flow.",
   "docFaceEngine": "Engine voor gezichtsverificatie",
   "docFaceEngineOpenSource": "Open source",
   "docLivenessDetection": "Liveness-detectie",

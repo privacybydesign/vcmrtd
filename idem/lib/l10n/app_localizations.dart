@@ -341,7 +341,7 @@ abstract class AppLocalizations {
   /// No description provided for @docActiveAuthenticationSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Perform active authentication when reading the document'**
+  /// **'Perform active authentication when reading the document. A verification session follows its own flow.'**
   String get docActiveAuthenticationSubtitle;
 
   /// No description provided for @docFaceEngine.

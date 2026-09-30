@@ -77,6 +77,26 @@ class FaceVerificationEntryScreen extends StatelessWidget {
         : choice;
   }
 
+  /// The engine a proofing session's flow runs on, whatever the setting:
+  /// Regula for a Regula flow, the on-device engine for one the server
+  /// scores with its own. Without a session (or a server that doesn't say)
+  /// the setting applies.
+  static FaceEngineChoice sessionEngine(FaceEngineChoice setting, ProofingSessionInfo? session) =>
+      switch (session?.faceProvider) {
+        faceProviderRegula => FaceEngineChoice.regula,
+        faceProviderEngine => FaceEngineChoice.onDevice,
+        _ => setting,
+      };
+
+  /// The on-device liveness mode a proofing session's flow asks for: active
+  /// when it requires face.liveness, passive otherwise. Without a session (or
+  /// a server that doesn't list its checks) the setting applies.
+  static LivenessMode sessionLivenessMode(LivenessMode setting, ProofingSessionInfo? session) {
+    final checks = session?.requiredChecks;
+    if (checks == null) return setting;
+    return checks.contains(checkFaceLiveness) ? LivenessMode.active : LivenessMode.passive;
+  }
+
   @override
   Widget build(BuildContext context) {
     switch (effectiveEngine(engineChoice, faceVerification)) {

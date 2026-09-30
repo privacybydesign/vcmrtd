@@ -151,6 +151,35 @@ void main() {
     expect(FaceVerificationEntryScreen.effectiveEngine(FaceEngineChoice.regula, issuer), FaceEngineChoice.regula);
   });
 
+  ProofingSessionInfo session({String? faceProvider, List<String>? requiredChecks}) => ProofingSessionInfo(
+    id: 's1',
+    relyingParty: 'RP',
+    requestedAttributes: const [],
+    expiresAt: DateTime(2030),
+    faceProvider: faceProvider,
+    requiredChecks: requiredChecks,
+  );
+
+  test('a session\'s flow picks the engine, whatever the setting', () {
+    final engineFlow = session(faceProvider: faceProviderEngine);
+    expect(FaceVerificationEntryScreen.sessionEngine(FaceEngineChoice.iris, engineFlow), FaceEngineChoice.onDevice);
+    expect(FaceVerificationEntryScreen.sessionEngine(FaceEngineChoice.regula, engineFlow), FaceEngineChoice.onDevice);
+    final regulaFlow = session(faceProvider: faceProviderRegula);
+    expect(FaceVerificationEntryScreen.sessionEngine(FaceEngineChoice.iris, regulaFlow), FaceEngineChoice.regula);
+    // No session, or a server that doesn't say: the setting.
+    expect(FaceVerificationEntryScreen.sessionEngine(FaceEngineChoice.iris, null), FaceEngineChoice.iris);
+    expect(FaceVerificationEntryScreen.sessionEngine(FaceEngineChoice.iris, session()), FaceEngineChoice.iris);
+  });
+
+  test('a session\'s flow picks the liveness mode, whatever the setting', () {
+    final withLiveness = session(requiredChecks: ['face.match', checkFaceLiveness]);
+    expect(FaceVerificationEntryScreen.sessionLivenessMode(LivenessMode.passive, withLiveness), LivenessMode.active);
+    final withoutLiveness = session(requiredChecks: ['face.match']);
+    expect(FaceVerificationEntryScreen.sessionLivenessMode(LivenessMode.active, withoutLiveness), LivenessMode.passive);
+    expect(FaceVerificationEntryScreen.sessionLivenessMode(LivenessMode.active, null), LivenessMode.active);
+    expect(FaceVerificationEntryScreen.sessionLivenessMode(LivenessMode.active, session()), LivenessMode.active);
+  });
+
   testWidgets('regula choice with an announcing session opens the Regula screen', (tester) async {
     final engine = FaceVerificationEngine.withWorker(_FakeWorker());
     await tester.pumpWidget(

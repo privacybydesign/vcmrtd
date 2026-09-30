@@ -62,7 +62,7 @@
   "docSettingsTitle": "Settings",
   "docBack": "Back",
   "docActiveAuthentication": "Active authentication",
-  "docActiveAuthenticationSubtitle": "Perform active authentication when reading the document",
+  "docActiveAuthenticationSubtitle": "Perform active authentication when reading the document. A verification session follows its own flow.",
   "docFaceEngine": "Face verification engine",
   "docFaceEngineOpenSource": "Open source",
   "docLivenessDetection": "Liveness detection",

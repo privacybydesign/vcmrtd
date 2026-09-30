@@ -142,7 +142,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get docActiveAuthentication => 'Active authentication';
 
   @override
-  String get docActiveAuthenticationSubtitle => 'Perform active authentication when reading the document';
+  String get docActiveAuthenticationSubtitle =>
+      'Perform active authentication when reading the document. A verification session follows its own flow.';
 
   @override
   String get docFaceEngine => 'Face verification engine';

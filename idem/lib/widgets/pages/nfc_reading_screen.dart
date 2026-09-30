@@ -450,19 +450,21 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
           debugPrint('passport issuer unavailable for face verification: $e');
         }
       }
-      if (nonceAndSessionId == null && ref.read(activeAuthenticationProvider)) {
+      if (nonceAndSessionId == null) {
         if (activeSession != null) {
-          // Pinned to an identity-proofing-service session: the chip must
-          // sign that session's own aaChallenge, since the server verifies
-          // the AA response against it byte-for-byte and otherwise reports a
-          // genuine chip as CHIP_CLONE_DETECTED. A missing aaChallenge (older
-          // or mismatched server responses) just skips Active Authentication,
-          // the same as an unsupported chip does.
+          // Pinned to an identity-proofing-service session: the flow, not
+          // the setting, decides Active Authentication. When it asks for
+          // nfc.chip_auth the chip signs the session's own aaChallenge, since
+          // a skipped check scores as failed and caps the eIDAS level. The
+          // server verifies the AA response against it byte-for-byte and
+          // otherwise reports a genuine chip as CHIP_CLONE_DETECTED. A
+          // missing aaChallenge (older or mismatched server responses) just
+          // skips Active Authentication, the same as an unsupported chip does.
           final aaChallenge = activeSession.info.aaChallenge;
-          if (aaChallenge != null && aaChallenge.isNotEmpty) {
+          if (activeSession.info.requiresActiveAuthentication && aaChallenge != null && aaChallenge.isNotEmpty) {
             nonceAndSessionId = NonceAndSessionId(nonce: aaChallenge, sessionId: activeSession.info.id);
           }
-        } else {
+        } else if (ref.read(activeAuthenticationProvider)) {
           // No pinned proofing session (standalone scan straight into the
           // local wallet) — fall back to the legacy passport-issuer flow.
           final startValidation = await ref.read(passportIssuerProvider).startSessionAtPassportIssuer();

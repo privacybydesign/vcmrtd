@@ -873,9 +873,16 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
           final scannedMrz = extra['scannedMrz'] as ScannedMRZ?;
           final documentType = extra['documentType'] as DocumentType?;
           final providers = ProviderScope.containerOf(context);
-          final engineChoice = providers.read(faceEngineProvider);
-          final livenessMode = providers.read(livenessModeProvider);
           final proofingSession = providers.read(activeProofingSessionProvider);
+          // A session's flow picks the engine and liveness mode, not the settings.
+          final engineChoice = FaceVerificationEntryScreen.sessionEngine(
+            providers.read(faceEngineProvider),
+            proofingSession?.info,
+          );
+          final livenessMode = FaceVerificationEntryScreen.sessionLivenessMode(
+            providers.read(livenessModeProvider),
+            proofingSession?.info,
+          );
           // Without a QR session, Regula runs against the passport issuer, which matches too.
           final issuerFace = proofingSession == null && result != null
               ? providers.read(issuerFaceVerificationProvider)

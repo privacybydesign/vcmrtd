@@ -142,7 +142,8 @@ class AppLocalizationsNl extends AppLocalizations {
   String get docActiveAuthentication => 'Actieve authenticatie';
 
   @override
-  String get docActiveAuthenticationSubtitle => 'Voer actieve authenticatie uit bij het lezen van het document';
+  String get docActiveAuthenticationSubtitle =>
+      'Voer actieve authenticatie uit bij het lezen van het document. Een verificatiesessie volgt haar eigen flow.';
 
   @override
   String get docFaceEngine => 'Engine voor gezichtsverificatie';

@@ -122,6 +122,14 @@ class ProofingDeviceAccess {
       ProofingDeviceAccess(authorized: json['authorized'] as bool? ?? false);
 }
 
+/// The [ProofingSessionInfo.requiredChecks] value for Active/Chip
+/// Authentication (flow.CheckNFCChipAuth on the server).
+const checkNfcChipAuth = 'nfc.chip_auth';
+
+/// The [ProofingSessionInfo.requiredChecks] value for liveness
+/// (flow.CheckFaceLiveness on the server).
+const checkFaceLiveness = 'face.liveness';
+
 /// [ProofingSessionInfo.lifecycle] values.
 const proofingLifecycleActive = 'ACTIVE';
 const proofingLifecycleComplete = 'COMPLETE';
@@ -144,6 +152,19 @@ class ProofingSessionInfo {
   /// Null when the server response doesn't carry one, in which case Active
   /// Authentication should be skipped for this session.
   final String? aaChallenge;
+
+  /// Every check the server scores this session on (api.appSessionView.
+  /// requiredChecks), e.g. "nfc.passive_auth", "nfc.chip_auth",
+  /// "face.match", "face.liveness". The flow decides these, not this app's
+  /// settings: a check the app skips scores as failed and caps the eIDAS
+  /// level the session can reach. Null from a server that predates it.
+  final List<String>? requiredChecks;
+
+  /// The verifier that scores this session's face step (api.appSessionView.
+  /// faceProvider): [faceProviderRegula] or [faceProviderEngine]. Present
+  /// only when this app runs that step; null otherwise, or from a server that
+  /// predates it.
+  final String? faceProvider;
 
   /// The ordered capture steps a tenant-defined "flow" wants for this
   /// session, drawn from "document_capture"/"nfc_read"/"selfie"/"liveness"/
@@ -249,6 +270,8 @@ class ProofingSessionInfo {
     required this.requestedAttributes,
     required this.expiresAt,
     this.aaChallenge,
+    this.requiredChecks,
+    this.faceProvider,
     this.steps,
     this.referencePhoto,
     this.selfieLocation = 'browser',
@@ -264,6 +287,11 @@ class ProofingSessionInfo {
     this.language,
     this.faceVerification,
   });
+
+  /// Whether the chip read must run Active Authentication: exactly when the
+  /// flow asks for nfc.chip_auth. A server that doesn't say which checks it
+  /// wants gets it always, since the default checks include it.
+  bool get requiresActiveAuthentication => requiredChecks?.contains(checkNfcChipAuth) ?? true;
 
   /// Why this device can no longer act on the session, judging by the view
   /// alone, or null while it still may. An error response (see
@@ -284,6 +312,8 @@ class ProofingSessionInfo {
     requestedAttributes: (json['requestedAttributes'] as List<dynamic>? ?? const []).cast<String>(),
     expiresAt: DateTime.parse(json['expiresAt'] as String),
     aaChallenge: json['aaChallenge'] as String?,
+    requiredChecks: (json['requiredChecks'] as List<dynamic>?)?.cast<String>(),
+    faceProvider: json['faceProvider'] as String?,
     steps: (json['steps'] as List<dynamic>?)?.cast<String>(),
     referencePhoto: json['referencePhoto'] != null
         ? ProofingPhotoInfo.fromJson(json['referencePhoto'] as Map<String, dynamic>)
@@ -346,6 +376,10 @@ class ProofingFaceVerification {
 }
 
 const faceProviderRegula = 'regula';
+
+/// The server's own face engine: it scores the selfie this app's on-device
+/// engine captures.
+const faceProviderEngine = 'engine';
 
 /// What opens the chip (BAC/PACE, or BAP for a driving licence), derived
 /// from the MRZ. Sent with the document_capture step and handed back by the
