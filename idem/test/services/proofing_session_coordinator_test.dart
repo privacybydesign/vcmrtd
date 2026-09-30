@@ -379,6 +379,42 @@ void main() {
         expect(states, ['inactive', 'active']);
       });
 
+      test('reports a claimed session still on the consent screen, and its decline', () async {
+        final requests = <String>[];
+        await http.runWithClient(
+          () async {
+            final coordinator = ProofingSessionCoordinator(client: const ProofingSessionClient());
+            final claim = await coordinator.connect(
+              ProofingSessionLink.parse('vcmrtd://verify?handover=c-1&api=$_api')!,
+            );
+            expect(coordinator.held, isNull);
+
+            coordinator.appLifecycleChanged(AppLifecycleState.paused);
+            await _settle();
+            coordinator.appLifecycleChanged(AppLifecycleState.resumed);
+            await _settle();
+            // Nothing to confirm before consent: no resume check blocks the screen.
+            expect(coordinator.check.value, ProofingSessionCheck.idle);
+
+            coordinator.decline(claim.ref);
+            await _settle();
+            coordinator.appLifecycleChanged(AppLifecycleState.paused);
+            await _settle();
+          },
+          () => MockClient((request) async {
+            if (request.url.path.endsWith('/claim')) return _json(_claimBody());
+            requests.add('${request.url.path} ${(json.decode(request.body) as Map)['state']}');
+            return _json(_view());
+          }),
+        );
+        // Declined, it is no longer reported.
+        expect(requests, [
+          '/api/v1/app/tok-1/device/state inactive',
+          '/api/v1/app/tok-1/device/state active',
+          '/api/v1/app/tok-1/device/state inactive',
+        ]);
+      });
+
       test('ends the session when the server says it was handed over while backgrounded', () async {
         var calls = 0; // http.runWithClient builds a new client per request
         await http.runWithClient(() async {

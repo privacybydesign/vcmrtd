@@ -60,6 +60,11 @@ class ProofingSessionCoordinator {
 
   ProofingSessionWatcher? _watcher;
   ProofingSessionRef? _held;
+
+  /// Claimed by [connect] but not yet [track]ed (the consent screen shows):
+  /// its background/foreground is still reported, so the relying party can
+  /// offer a handover when the app is closed there.
+  ProofingSessionRef? _pending;
   bool _backgrounded = false;
   int _resumeCheck = 0;
 
@@ -103,7 +108,16 @@ class ProofingSessionCoordinator {
       _forget(claim.ref);
       throw ProofingSessionAccessException(lost, 200);
     }
+    if (!(_held?.sameAccess(claim.ref) ?? false)) _pending = claim.ref;
     return claim;
+  }
+
+  /// The user declined the session [connect] claimed: tell the server this
+  /// device is not working on it, so the relying party can hand it over.
+  void decline(ProofingSessionRef ref) {
+    if (!(_pending?.sameAccess(ref) ?? false)) return;
+    _pending = null;
+    _reportState(ref, active: false);
   }
 
   Future<ProofingSessionClaim> _claimOrReuse(ProofingHandoverLink link) async {
@@ -124,6 +138,7 @@ class ProofingSessionCoordinator {
     if (_held?.sameAccess(ref) ?? false) return;
     _watcher?.stop();
     _held = ref;
+    if (_pending?.sameAccess(ref) ?? false) _pending = null;
     final watcher = ProofingSessionWatcher(
       client: client,
       ref: ref,
@@ -184,6 +199,7 @@ class ProofingSessionCoordinator {
     final key = _key(ref.apiBase, ref.token);
     if (_claimed[key] case final known? when known.sameAccess(ref)) _claimed.remove(key);
     _claimedByGrant.removeWhere((_, known) => known.sameAccess(ref));
+    if (_pending?.sameAccess(ref) ?? false) _pending = null;
     if (_held case final held? when held.sameAccess(ref)) {
       _watcher?.stop();
       _watcher = null;
@@ -207,7 +223,12 @@ class ProofingSessionCoordinator {
         if (!_backgrounded) return;
         _backgrounded = false;
         _watcher?.resume();
-        _confirmOnResume();
+        // Nothing runs on the consent screen, so back is reported, not confirmed.
+        if (_held == null && _pending != null) {
+          _reportState(_pending!, active: true);
+        } else {
+          _confirmOnResume();
+        }
       case AppLifecycleState.inactive:
         break;
     }
@@ -216,10 +237,13 @@ class ProofingSessionCoordinator {
   /// Best effort: the app may be suspended before this lands, which is why
   /// the server also falls back on the device's last activity.
   void _reportBackgrounded() {
-    final ref = _held;
-    if (ref == null) return;
+    final ref = _held ?? _pending;
+    if (ref != null) _reportState(ref, active: false);
+  }
+
+  void _reportState(ProofingSessionRef ref, {required bool active}) {
     client
-        .reportDeviceState(ref, active: false)
+        .reportDeviceState(ref, active: active)
         .then<void>(
           (info) {
             final lost = info.accessLost;

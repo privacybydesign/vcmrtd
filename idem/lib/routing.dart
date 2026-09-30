@@ -743,7 +743,10 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
               ProviderScope.containerOf(context).read(activeProofingSessionProvider.notifier).set(session);
               _afterConsent(context, session);
             },
-            onDecline: () => context.go(selectDocTypePath),
+            onDecline: () {
+              ProviderScope.containerOf(context).read(proofingSessionCoordinatorProvider).decline(sessionRef);
+              context.go(selectDocTypePath);
+            },
           );
         },
       ),
