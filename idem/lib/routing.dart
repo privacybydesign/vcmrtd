@@ -893,27 +893,29 @@ GoRouter createRouter({
         builder: (context, state) {
           final params = MrzReaderRouteParams.fromQueryParams(state.uri.queryParameters);
           final providers = ProviderScope.containerOf(context);
-          // Document reading starts as soon as the MRZ camera opens.
-          markActiveProofingStepStarted(providers, stepDocumentCapture);
           final plan = _activePlan(context);
           final takesPicture = _scannerTakesPicture(providers.read(activeProofingSessionProvider));
-          return ScannerWrapper(
-            documentType: params.documentType,
-            capturePicture: takesPicture,
-            onMrzScanned: (result, [picture]) => _afterDocumentCaptured(
-              context,
-              result,
-              params.documentType,
-              picture: picture,
-              preparePicture: documentPhotoCamera?.prepare ?? prepareDocumentPhotoInBackground,
+          // Document reading starts as soon as the MRZ camera opens.
+          return _ReportsStepStarted(
+            step: stepDocumentCapture,
+            child: ScannerWrapper(
+              documentType: params.documentType,
+              capturePicture: takesPicture,
+              onMrzScanned: (result, [picture]) => _afterDocumentCaptured(
+                context,
+                result,
+                params.documentType,
+                picture: picture,
+                preparePicture: documentPhotoCamera?.prepare ?? prepareDocumentPhotoInBackground,
+              ),
+              onManualEntry: () {
+                context.pushManualEntryScreen(ManualEntryRouteParams(documentType: params.documentType));
+              },
+              onBack: context.pop,
+              scannerBuilder: scannerBuilder,
+              stepNumber: plan.documentCaptureStepNumber ?? FlowStepPlan.defaultDocumentCaptureStep,
+              totalSteps: plan.totalSteps,
             ),
-            onManualEntry: () {
-              context.pushManualEntryScreen(ManualEntryRouteParams(documentType: params.documentType));
-            },
-            onBack: context.pop,
-            scannerBuilder: scannerBuilder,
-            stepNumber: plan.documentCaptureStepNumber ?? FlowStepPlan.defaultDocumentCaptureStep,
-            totalSteps: plan.totalSteps,
           );
         },
       ),
@@ -921,14 +923,16 @@ GoRouter createRouter({
         path: _manualEntryPath,
         builder: (context, state) {
           final params = ManualEntryRouteParams.fromQueryParams(state.uri.queryParameters);
-          markActiveProofingStepStarted(ProviderScope.containerOf(context), stepDocumentCapture);
           final plan = _activePlan(context);
-          return ManualEntryScreen(
-            documentType: params.documentType,
-            onBack: context.pop,
-            onManualEntryComplete: (scannedMrz) => _afterDocumentCaptured(context, scannedMrz, params.documentType),
-            stepNumber: plan.documentCaptureStepNumber ?? FlowStepPlan.defaultDocumentCaptureStep,
-            totalSteps: plan.totalSteps,
+          return _ReportsStepStarted(
+            step: stepDocumentCapture,
+            child: ManualEntryScreen(
+              documentType: params.documentType,
+              onBack: context.pop,
+              onManualEntryComplete: (scannedMrz) => _afterDocumentCaptured(context, scannedMrz, params.documentType),
+              stepNumber: plan.documentCaptureStepNumber ?? FlowStepPlan.defaultDocumentCaptureStep,
+              totalSteps: plan.totalSteps,
+            ),
           );
         },
       ),
@@ -1017,42 +1021,44 @@ GoRouter createRouter({
         builder: (context, state) {
           final args = state.extra as DocumentPhotoRouteArgs? ?? const DocumentPhotoRouteArgs();
           final providers = ProviderScope.containerOf(context);
-          // The camera opens with this screen.
-          markActiveProofingStepStarted(providers, stepDocumentPhoto);
           final plan = args.plan ?? _activePlan(context);
-          return DocumentPhotoScreen(
-            // Reached with go on a resume, when there's nothing to pop.
-            onBack: () => context.canPop() ? context.pop() : context.go(selectDocTypePath),
-            stepNumber: plan.documentPhotoStepNumber ?? plan.totalSteps,
-            totalSteps: plan.totalSteps,
-            camera: documentPhotoCamera,
-            // What decides whether a back is asked for: the document type the
-            // MRZ scan / chip read on this device found, or the chip access
-            // key the server kept; unknown otherwise.
-            documentType:
-                args.documentType ?? providers.read(activeProofingSessionProvider)?.info.chipAccess?.documentType,
-            scanned: args.scanned,
-            onPhotosTaken: (front, back) async {
-              final session = providers.read(activeProofingSessionProvider);
-              if (session == null) {
-                context.go(selectDocTypePath);
-                return;
-              }
-              final response = await _submitDocumentPhotoStep(context, session, front, back);
-              if (!context.mounted) return;
-              _continueAfterStep(
-                context,
-                session,
-                response,
-                completedStep: stepDocumentPhoto,
-                scannedMrz: args.scannedMrz,
-                documentType: args.documentType,
-                document: args.document,
-                rawDocument: args.rawDocument,
-                faceOutcome: args.faceOutcome,
-                plan: args.plan,
-              );
-            },
+          // The camera opens with this screen.
+          return _ReportsStepStarted(
+            step: stepDocumentPhoto,
+            child: DocumentPhotoScreen(
+              // Reached with go on a resume, when there's nothing to pop.
+              onBack: () => context.canPop() ? context.pop() : context.go(selectDocTypePath),
+              stepNumber: plan.documentPhotoStepNumber ?? plan.totalSteps,
+              totalSteps: plan.totalSteps,
+              camera: documentPhotoCamera,
+              // What decides whether a back is asked for: the document type the
+              // MRZ scan / chip read on this device found, or the chip access
+              // key the server kept; unknown otherwise.
+              documentType:
+                  args.documentType ?? providers.read(activeProofingSessionProvider)?.info.chipAccess?.documentType,
+              scanned: args.scanned,
+              onPhotosTaken: (front, back) async {
+                final session = providers.read(activeProofingSessionProvider);
+                if (session == null) {
+                  context.go(selectDocTypePath);
+                  return;
+                }
+                final response = await _submitDocumentPhotoStep(context, session, front, back);
+                if (!context.mounted) return;
+                _continueAfterStep(
+                  context,
+                  session,
+                  response,
+                  completedStep: stepDocumentPhoto,
+                  scannedMrz: args.scannedMrz,
+                  documentType: args.documentType,
+                  document: args.document,
+                  rawDocument: args.rawDocument,
+                  faceOutcome: args.faceOutcome,
+                  plan: args.plan,
+                );
+              },
+            ),
           );
         },
       ),
@@ -1145,24 +1151,50 @@ GoRouter createRouter({
           }
 
           final stepNumber = plan.faceVerificationStepNumber ?? FlowStepPlan.defaultFaceVerificationStep;
-          // Native face verification: the camera opens with this screen.
-          markActiveProofingStepStarted(providers, stepFaceVerification);
 
-          return FaceVerificationEntryScreen(
-            nfcImageBytes: nfcImageBytes,
-            onBackPressed: context.pop,
-            onVerified: goToResult,
-            engineChoice: engineChoice,
-            livenessMode: livenessMode,
-            faceVerification: faceVerification,
-            matchFace: matchFace,
-            photoIssueDate: issueDate,
-            stepNumber: stepNumber,
-            totalSteps: plan.totalSteps,
-            testEngine: faceVerificationEngine,
+          // Native face verification: the camera opens with this screen.
+          return _ReportsStepStarted(
+            step: stepFaceVerification,
+            child: FaceVerificationEntryScreen(
+              nfcImageBytes: nfcImageBytes,
+              onBackPressed: context.pop,
+              onVerified: goToResult,
+              engineChoice: engineChoice,
+              livenessMode: livenessMode,
+              faceVerification: faceVerification,
+              matchFace: matchFace,
+              photoIssueDate: issueDate,
+              stepNumber: stepNumber,
+              totalSteps: plan.totalSteps,
+              testEngine: faceVerificationEngine,
+            ),
           );
         },
       ),
     ],
   );
+}
+
+/// Reports [step] of the pinned session started ([markActiveProofingStepStarted])
+/// once, when its route's screen is first shown - not from the route
+/// builder, which runs again on every rebuild.
+class _ReportsStepStarted extends StatefulWidget {
+  final String step;
+  final Widget child;
+
+  const _ReportsStepStarted({required this.step, required this.child});
+
+  @override
+  State<_ReportsStepStarted> createState() => _ReportsStepStartedState();
+}
+
+class _ReportsStepStartedState extends State<_ReportsStepStarted> {
+  @override
+  void initState() {
+    super.initState();
+    markActiveProofingStepStarted(ProviderScope.containerOf(context, listen: false), widget.step);
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

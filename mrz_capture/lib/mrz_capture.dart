@@ -19,5 +19,6 @@ export 'src/mrz_controller.dart' show MRZController;
 export 'src/mrz_helper.dart' show MRZHelper;
 export 'src/mrz_scanner.dart' show MRZScanner, MRZScannerState, MrzScannedCallback;
 export 'src/ocr_engine.dart' show OcrEngine;
+export 'src/picture_file.dart' show readAndDeletePicture;
 export 'src/scanned_mrz.dart' show ScannedMRZ, ScannedPassportMRZ, ScannedDriverLicenseMRZ;
 export 'src/step_badge.dart' show StepBadge, StepBadgeTopBar;

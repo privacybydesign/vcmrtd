@@ -129,7 +129,7 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
     if (controller == null || viewSize == null) throw StateError('camera not open');
     final file = await controller.takePicture();
     final picture = DocumentPicture(
-      jpeg: await file.readAsBytes(),
+      jpeg: await readAndDeletePicture(file),
       frame: DocumentPicture.frameInPreview(
         MRZCameraOverlay.frameRect(viewSize, frameRatio),
         _previewRect(viewSize, controller.value.aspectRatio),

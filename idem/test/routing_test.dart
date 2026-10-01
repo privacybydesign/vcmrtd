@@ -930,10 +930,9 @@ void main() {
               });
             }
             await _pumpStepSubmission(tester);
-            expect(requests.where((path) => path.contains('/steps/')).map((path) => path.split('/').last).toList(), [
-              'document_capture',
-              'document_photo',
-            ]);
+            // The steps sent, in order (their start reports aside).
+            final steps = requests.where((path) => path.contains('/steps/') && !path.endsWith('/start'));
+            expect(steps.map((path) => path.split('/').last).toList(), ['document_capture', 'document_photo']);
             // The chip read comes next, with the scan's access key.
             expect(find.byType(NfcReadingScreen), findsOneWidget);
           },
