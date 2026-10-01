@@ -13,6 +13,7 @@ library;
 export 'l10n/mrz_capture_localizations.dart' show MrzCaptureLocalizations;
 export 'src/camera_overlay.dart' show MRZCameraOverlay;
 export 'src/camera_viewfinder.dart' show MRZCameraView, MRZCameraViewState, OcrFrame;
+export 'src/document_picture.dart' show DocumentPicture;
 export 'src/manual_entry_screen.dart' show ManualEntryScreen;
 export 'src/mrz_controller.dart' show MRZController;
 export 'src/mrz_helper.dart' show MRZHelper;

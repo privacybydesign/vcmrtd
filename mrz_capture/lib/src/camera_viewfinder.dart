@@ -1,9 +1,11 @@
-﻿import 'dart:io';
+import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:logging/logging.dart';
 import 'camera_overlay.dart';
+import 'document_picture.dart';
 
 class OcrFrame {
   OcrFrame({
@@ -138,10 +140,15 @@ class MRZCameraView extends StatefulWidget {
     this.initialDirection = CameraLensDirection.back,
     required this.showOverlay,
     this.routeObserver,
+    this.frameRatio = MRZCameraOverlay.passportFrameRatio,
     this.initializeCamera = true,
   });
 
   final Function(OcrFrame frame) onImage;
+
+  /// The document frame's width / height ([MRZCameraOverlay.frameRatio]):
+  /// what is drawn, where text is read and what a picture is cut to.
+  final double frameRatio;
   final CameraLensDirection initialDirection;
   final bool showOverlay;
 
@@ -161,6 +168,8 @@ class MRZCameraView extends StatefulWidget {
 }
 
 class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
+  static final Logger _log = Logger('MRZCameraView');
+
   CameraController? _controller;
   int _cameraIndex = 0;
   List<CameraDescription> _cameras = [];
@@ -264,6 +273,27 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
     setState(() {});
   }
 
+  /// Takes a picture with the running camera, with where the document frame
+  /// lay in the preview; null when there's no camera or it failed. The frame
+  /// stream pauses for it (not every platform takes a picture while
+  /// streaming) and resumes after.
+  Future<DocumentPicture?> takePicture() async {
+    final controller = _controller;
+    final viewSize = _viewSize;
+    if (controller == null || !controller.value.isInitialized || viewSize == null) return null;
+    final frame = DocumentPicture.frameInPreview(_overlayRect(viewSize), _previewRect(viewSize));
+    try {
+      if (controller.value.isStreamingImages) await controller.stopImageStream();
+      final file = await controller.takePicture();
+      final bytes = await file.readAsBytes();
+      if (identical(controller, _controller)) await controller.startImageStream(_processCameraImage);
+      return DocumentPicture(jpeg: bytes, frame: frame, previewAspectRatio: _previewAspect);
+    } on CameraException catch (e) {
+      _log.warning('taking a picture failed: ${e.code}');
+      return null;
+    }
+  }
+
   Future<void> _stopLiveFeed() async {
     final controller = _controller;
     _controller = null;
@@ -275,7 +305,9 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
   @override
   Widget build(BuildContext context) {
     final body = _liveFeedBody();
-    return Scaffold(body: widget.showOverlay ? MRZCameraOverlay(child: body) : body);
+    return Scaffold(
+      body: widget.showOverlay ? MRZCameraOverlay(frameRatio: widget.frameRatio, child: body) : body,
+    );
   }
 
   Widget _liveFeedBody() {
@@ -296,7 +328,7 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
           Transform.scale(
             scale: scale,
             child: Center(
-              child: AspectRatio(aspectRatio: 9 / 16, child: CameraPreview(_controller!)),
+              child: AspectRatio(aspectRatio: _previewAspect, child: CameraPreview(_controller!)),
             ),
           ),
         ],
@@ -500,23 +532,13 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
     );
   }
 
-  Rect _overlayRect(Size size) {
-    const documentFrameRatio = 1.42;
+  Rect _overlayRect(Size size) => MRZCameraOverlay.frameRect(size, widget.frameRatio);
 
-    double width, height;
-    if (size.height > size.width) {
-      width = size.width * 0.9;
-      height = width / documentFrameRatio;
-    } else {
-      height = size.height * 0.75;
-      width = height * documentFrameRatio;
-    }
-
-    return Rect.fromLTWH((size.width - width) / 2, (size.height - height) / 2 - 60.0, width, height);
-  }
+  /// The preview's upright width / height, as it is drawn.
+  static const _previewAspect = 9 / 16;
 
   Rect _previewRect(Size size) {
-    const previewAspect = 9 / 16;
+    const previewAspect = _previewAspect;
 
     double baseW, baseH;
     if (size.width / size.height > previewAspect) {

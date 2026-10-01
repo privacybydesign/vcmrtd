@@ -30,7 +30,7 @@ Widget _scaffold({
         showOverlay: showOverlay,
         initializeCamera: false,
         googleMlKitOcrForTesting: googleMlKitOcrForTesting,
-        onSuccess: onSuccess ?? (result, lines) {},
+        onSuccess: onSuccess ?? (result, lines, _) {},
       ),
     ),
   );
@@ -76,7 +76,7 @@ void main() {
             initialDirection: CameraLensDirection.front,
             showOverlay: false,
             initializeCamera: false,
-            onSuccess: (result, lines) {},
+            onSuccess: (result, lines, _) {},
           ),
         ),
       );
@@ -100,6 +100,58 @@ void main() {
 
       expect(state.debugCanProcess, isTrue);
       expect(state.debugIsBusy, isFalse);
+    });
+
+    testWidgets('reads a passport inside a passport-page frame, reporting no picture by '
+        'default', (tester) async {
+      var reads = 0;
+      DocumentPicture? picture;
+      await tester.pumpWidget(
+        _scaffold(
+          documentType: DocumentType.passport,
+          onSuccess: (_, _, p) {
+            reads++;
+            picture = p;
+          },
+        ),
+      );
+      await tester.pump();
+
+      final view = tester.widget<MRZCameraView>(find.byType(MRZCameraView));
+      expect(view.frameRatio, MRZCameraOverlay.passportFrameRatio);
+      expect(_buildState(tester).debugTryParseAndNotify([_passportLine1, _passportLine2]), isTrue);
+      expect(reads, 1);
+      expect(picture, isNull);
+    });
+
+    testWidgets('reads a card inside a card frame', (tester) async {
+      await tester.pumpWidget(_scaffold(documentType: DocumentType.identityCard));
+      await tester.pump();
+
+      expect(tester.widget<MRZCameraView>(find.byType(MRZCameraView)).frameRatio, MRZCameraOverlay.cardFrameRatio);
+    });
+
+    testWidgets('capturePicture reports the read once the picture was attempted; no '
+        'camera means no picture', (tester) async {
+      final reads = <(ScannedMRZ, DocumentPicture?)>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MRZScanner(
+            documentType: DocumentType.passport,
+            engine: OcrEngine.googleMlKit,
+            capturePicture: true,
+            initializeCamera: false,
+            onSuccess: (mrz, _, picture) => reads.add((mrz, picture)),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(_buildState(tester).debugTryParseAndNotify([_passportLine1, _passportLine2]), isTrue);
+      await tester.pump();
+
+      expect(reads.single.$1.documentNumber, 'L898902C3');
+      expect(reads.single.$2, isNull);
     });
   });
 
@@ -170,7 +222,7 @@ void main() {
       await tester.pumpWidget(
         _scaffold(
           documentType: DocumentType.passport,
-          onSuccess: (result, lines) {
+          onSuccess: (result, lines, _) {
             captured = result;
             capturedLines = lines;
           },
@@ -188,7 +240,7 @@ void main() {
     testWidgets('uses strict correction fallback before notifying success', (tester) async {
       List<String>? capturedLines;
       await tester.pumpWidget(
-        _scaffold(documentType: DocumentType.passport, onSuccess: (_, lines) => capturedLines = lines),
+        _scaffold(documentType: DocumentType.passport, onSuccess: (_, lines, _) => capturedLines = lines),
       );
       await tester.pump();
       final state = _buildState(tester);
@@ -204,7 +256,7 @@ void main() {
 
     testWidgets('does not notify twice after a successful parse disables processing', (tester) async {
       var count = 0;
-      await tester.pumpWidget(_scaffold(documentType: DocumentType.passport, onSuccess: (result, lines) => count++));
+      await tester.pumpWidget(_scaffold(documentType: DocumentType.passport, onSuccess: (result, lines, _) => count++));
       await tester.pump();
       final state = _buildState(tester);
 
@@ -227,7 +279,7 @@ void main() {
         return '$_passportLine1\n$_passportLine2';
       });
 
-      await tester.pumpWidget(_scaffold(documentType: DocumentType.passport, onSuccess: (unused1, unused2) {}));
+      await tester.pumpWidget(_scaffold(documentType: DocumentType.passport, onSuccess: (unused1, unused2, _) {}));
       await tester.pump();
 
       final state = _buildState(tester);
@@ -247,7 +299,7 @@ void main() {
       await tester.pumpWidget(
         _scaffold(
           documentType: DocumentType.passport,
-          onSuccess: (_, lines) => capturedLines = lines,
+          onSuccess: (_, lines, _) => capturedLines = lines,
           googleMlKitOcrForTesting: (_) async => <String>[_passportLine1, _passportLine2],
         ),
       );
@@ -268,7 +320,7 @@ void main() {
       await tester.pumpWidget(
         _scaffold(
           documentType: DocumentType.passport,
-          onSuccess: (_, unused) => hits++,
+          onSuccess: (_, unused, _) => hits++,
           googleMlKitOcrForTesting: (_) async => <String>[_passportLine1, _passportLine2],
         ),
       );
@@ -303,7 +355,7 @@ void main() {
       await tester.pumpWidget(
         _scaffold(
           documentType: DocumentType.passport,
-          onSuccess: (_, unused) => hits++,
+          onSuccess: (_, unused, _) => hits++,
           googleMlKitOcrForTesting: (_) {
             ocrCalls++;
             if (ocrCalls == 1) return firstRead.future;
@@ -349,7 +401,7 @@ void main() {
       await tester.pumpWidget(
         _scaffold(
           documentType: DocumentType.passport,
-          onSuccess: (result, lines) {
+          onSuccess: (result, lines, _) {
             capturedResult = result;
             capturedLines = lines;
           },
@@ -385,7 +437,7 @@ void main() {
         (_) async => '${_passportLine1.toLowerCase()}\n${_passportLine2.replaceAll('<', ' < ')}',
       );
       await tester.pumpWidget(
-        _scaffold(documentType: DocumentType.passport, onSuccess: (_, lines) => capturedLines = lines),
+        _scaffold(documentType: DocumentType.passport, onSuccess: (_, lines, _) => capturedLines = lines),
       );
       await tester.pump();
 
@@ -401,7 +453,7 @@ void main() {
         (_) async => '  \n  ',
       );
       await tester.pumpWidget(
-        _scaffold(documentType: DocumentType.passport, onSuccess: (result, lines) => called = true),
+        _scaffold(documentType: DocumentType.passport, onSuccess: (result, lines, _) => called = true),
       );
       await tester.pump();
 
@@ -417,7 +469,7 @@ void main() {
         (_) async => 'invalid\ntext',
       );
       await tester.pumpWidget(
-        _scaffold(documentType: DocumentType.passport, onSuccess: (result, lines) => called = true),
+        _scaffold(documentType: DocumentType.passport, onSuccess: (result, lines, _) => called = true),
       );
       await tester.pump();
 
@@ -433,7 +485,7 @@ void main() {
         (_) async => throw PlatformException(code: 'ocr-failed'),
       );
       await tester.pumpWidget(
-        _scaffold(documentType: DocumentType.passport, onSuccess: (result, lines) => called = true),
+        _scaffold(documentType: DocumentType.passport, onSuccess: (result, lines, _) => called = true),
       );
       await tester.pump();
       final state = _buildState(tester);
@@ -447,7 +499,7 @@ void main() {
   group('MRZScannerState result mapping', () {
     testWidgets('a passport scan reports a ScannedPassportMRZ', (tester) async {
       ScannedMRZ? captured;
-      await tester.pumpWidget(_scaffold(documentType: DocumentType.passport, onSuccess: (mrz, _) => captured = mrz));
+      await tester.pumpWidget(_scaffold(documentType: DocumentType.passport, onSuccess: (mrz, _, _) => captured = mrz));
       await tester.pump();
 
       expect(_buildState(tester).debugTryParseAndNotify([_passportLine1, _passportLine2]), isTrue);
@@ -463,7 +515,7 @@ void main() {
     testWidgets('an identity card scan reports a ScannedPassportMRZ carrying the card type', (tester) async {
       ScannedMRZ? captured;
       await tester.pumpWidget(
-        _scaffold(documentType: DocumentType.identityCard, onSuccess: (mrz, _) => captured = mrz),
+        _scaffold(documentType: DocumentType.identityCard, onSuccess: (mrz, _, _) => captured = mrz),
       );
       await tester.pump();
 
@@ -477,7 +529,7 @@ void main() {
     testWidgets('a driving licence scan reports a ScannedDriverLicenseMRZ', (tester) async {
       ScannedMRZ? captured;
       await tester.pumpWidget(
-        _scaffold(documentType: DocumentType.drivingLicence, onSuccess: (mrz, _) => captured = mrz),
+        _scaffold(documentType: DocumentType.drivingLicence, onSuccess: (mrz, _, _) => captured = mrz),
       );
       await tester.pump();
 
@@ -497,7 +549,7 @@ void main() {
         _scaffold(
           documentType: DocumentType.passport,
           engine: OcrEngine.googleMlKit,
-          onSuccess: (_, lines) => capturedLines = lines,
+          onSuccess: (_, lines, _) => capturedLines = lines,
           googleMlKitOcrForTesting: (frame) async {
             seenFrame = frame;
             return <String>[_passportLine1, _passportLine2];

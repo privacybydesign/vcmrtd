@@ -18,7 +18,7 @@ class MRZCameraOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (_, c) {
-        final overlayRect = _calculateOverlaySize(Size(c.maxWidth, c.maxHeight));
+        final overlayRect = RRect.fromRectAndRadius(frameRect(Size(c.maxWidth, c.maxHeight), frameRatio), _frameRadius);
         return Stack(
           children: [
             child,
@@ -33,7 +33,12 @@ class MRZCameraOverlay extends StatelessWidget {
     );
   }
 
-  RRect _calculateOverlaySize(Size size) {
+  static const _frameRadius = Radius.circular(8);
+
+  /// Where the frame lies in a view of [size]: centred, 90% of the width in
+  /// portrait and 75% of the height in landscape. The camera view reads text
+  /// and cuts pictures to this same rectangle.
+  static Rect frameRect(Size size, double frameRatio) {
     double width, height;
     if (size.height > size.width) {
       width = size.width * 0.9;
@@ -42,17 +47,7 @@ class MRZCameraOverlay extends StatelessWidget {
       height = size.height * 0.75;
       width = height * frameRatio;
     }
-    final topOffset = (size.height - height) / 2;
-    final leftOffset = (size.width - width) / 2;
-
-    final rect = RRect.fromLTRBR(
-      leftOffset,
-      topOffset,
-      leftOffset + width,
-      topOffset + height,
-      const Radius.circular(8),
-    );
-    return rect;
+    return Rect.fromLTWH((size.width - width) / 2, (size.height - height) / 2, width, height);
   }
 }
 
