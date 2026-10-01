@@ -286,11 +286,14 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
       if (controller.value.isStreamingImages) await controller.stopImageStream();
       final file = await controller.takePicture();
       final bytes = await file.readAsBytes();
-      if (identical(controller, _controller)) await controller.startImageStream(_processCameraImage);
       return DocumentPicture(jpeg: bytes, frame: frame, previewAspectRatio: _previewAspect);
     } on CameraException catch (e) {
       _log.warning('taking a picture failed: ${e.code}');
       return null;
+    } finally {
+      if (identical(controller, _controller) && !controller.value.isStreamingImages) {
+        await controller.startImageStream(_processCameraImage);
+      }
     }
   }
 

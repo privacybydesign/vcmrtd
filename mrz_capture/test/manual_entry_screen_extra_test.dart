@@ -83,6 +83,39 @@ void main() {
     }
   });
 
+  testWidgets('an expiry date of today is rejected as expired', (tester) async {
+    _setLargeViewport(tester);
+    var completed = false;
+    await tester.pumpWidget(_screen(documentType: DocumentType.passport, onComplete: (_) => completed = true));
+    await tester.pump();
+
+    await tester.enterText(find.byType(TextField).at(0), 'AB123456');
+
+    await tester.tap(find.byType(TextField).at(1));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+
+    // The picker allows today as the earliest expiry; it is picked as midnight, so already past.
+    await tester.tap(find.byType(TextField).at(2));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.edit_outlined));
+    await tester.pumpAndSettle();
+    final now = DateTime.now();
+    await tester.enterText(
+      find.descendant(of: find.byType(Dialog), matching: find.byType(TextField)),
+      '${now.month.toString().padLeft(2, '0')}/${now.day.toString().padLeft(2, '0')}/${now.year}',
+    );
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Continue to NFC Reading'));
+    await tester.pump();
+
+    expect(find.text('Passport has expired'), findsOneWidget);
+    expect(completed, isFalse);
+  });
+
   group('ManualEntryScreen — driving licence submit', () {
     testWidgets('valid MRZ calls onManualEntryComplete with a ScannedDriverLicenseMRZ', (tester) async {
       _setLargeViewport(tester);
