@@ -452,6 +452,67 @@ class AppLocalizationsEn extends AppLocalizations {
   String get docIllustrationDrivingLicence => 'DRIVING LICENCE';
 
   @override
+  String get docPhotoStepLabel => 'Document photo';
+
+  @override
+  String get docPhotoFrontTitle => 'Photograph the front';
+
+  @override
+  String get docPhotoFrontInstructionsPassport =>
+      'Place the page with your photo and personal details inside the frame. Use a flat surface and good light, and avoid glare.';
+
+  @override
+  String get docPhotoFrontInstructionsCard =>
+      'Place the front of your document, the side with your photo, inside the frame. Use a flat surface and good light, and avoid glare.';
+
+  @override
+  String get docPhotoBackTitle => 'Now photograph the back';
+
+  @override
+  String get docPhotoBackInstructions => 'Turn your document over and place the back inside the frame.';
+
+  @override
+  String get docPhotoSideFront => 'Front';
+
+  @override
+  String get docPhotoSideBack => 'Back';
+
+  @override
+  String docPhotoSideProgress(String side, int current, int total) {
+    return '$side · $current of $total';
+  }
+
+  @override
+  String get docPhotoNoBack => 'My document has no back';
+
+  @override
+  String get docPhotoTake => 'Take photo';
+
+  @override
+  String get docPhotoReviewTitle => 'Check the photo';
+
+  @override
+  String get docPhotoReviewMessage => 'Are all details sharp and readable, without glare or anything covering them?';
+
+  @override
+  String get docPhotoReviewScannedMessage =>
+      'This side was photographed while the MRZ was read. Are all details sharp and readable, without glare or anything covering them?';
+
+  @override
+  String get docPhotoRetake => 'Retake';
+
+  @override
+  String get docPhotoUse => 'Use photo';
+
+  @override
+  String get docPhotoErrorNoCamera => 'No camera available';
+
+  @override
+  String docPhotoErrorCamera(String error) {
+    return 'Could not use the camera: $error';
+  }
+
+  @override
   String get faceActionBlink => 'Blink your eyes';
 
   @override
@@ -936,6 +997,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Align the Machine Readable Zone (MRZ) with the frame at the bottom of the screen. Hold steady until scanning completes.';
 
   @override
+  String get proofingScanMrzPhotoInstructions =>
+      'Place the whole side with the Machine Readable Zone (MRZ) inside the frame, on a flat surface in good light. Hold steady: once the MRZ is read, this side is photographed too.';
+
+  @override
   String proofingEnterDetailsManually(String docType) {
     String _temp0 = intl.Intl.selectLogic(docType, {
       'passport': 'passport',
@@ -984,6 +1049,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get proofingWhatDocumentIdentity => 'your document identity';
+
+  @override
+  String get proofingWhatDocumentPhoto => 'your document photo';
 
   @override
   String get proofingWhatFaceVerification => 'your face verification';
@@ -1039,6 +1107,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get proofingRequestNfcStep => 'Submitting the nfc step';
+
+  @override
+  String get proofingRequestDocumentPhotoStep => 'Submitting the document photo step';
 
   @override
   String get proofingRequestFaceStep => 'Submitting the face verification step';

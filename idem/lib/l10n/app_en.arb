@@ -217,6 +217,44 @@
   "docIllustrationNationality": "Nationality: NL",
   "docIllustrationDob": "DOB: 01-01-1990",
   "docIllustrationDrivingLicence": "DRIVING LICENCE",
+  "docPhotoStepLabel": "Document photo",
+  "docPhotoFrontTitle": "Photograph the front",
+  "docPhotoFrontInstructionsPassport": "Place the page with your photo and personal details inside the frame. Use a flat surface and good light, and avoid glare.",
+  "docPhotoFrontInstructionsCard": "Place the front of your document, the side with your photo, inside the frame. Use a flat surface and good light, and avoid glare.",
+  "docPhotoBackTitle": "Now photograph the back",
+  "docPhotoBackInstructions": "Turn your document over and place the back inside the frame.",
+  "docPhotoSideFront": "Front",
+  "docPhotoSideBack": "Back",
+  "docPhotoSideProgress": "{side} · {current} of {total}",
+  "@docPhotoSideProgress": {
+    "placeholders": {
+      "side": {
+        "type": "String"
+      },
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "docPhotoNoBack": "My document has no back",
+  "docPhotoTake": "Take photo",
+  "docPhotoReviewTitle": "Check the photo",
+  "docPhotoReviewMessage": "Are all details sharp and readable, without glare or anything covering them?",
+  "docPhotoReviewScannedMessage": "This side was photographed while the MRZ was read. Are all details sharp and readable, without glare or anything covering them?",
+  "docPhotoRetake": "Retake",
+  "docPhotoUse": "Use photo",
+  "docPhotoErrorNoCamera": "No camera available",
+  "docPhotoErrorCamera": "Could not use the camera: {error}",
+  "@docPhotoErrorCamera": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "faceActionBlink": "Blink your eyes",
   "faceActionTurnLeft": "Turn your head left",
   "faceActionTurnRight": "Turn your head right",
@@ -545,6 +583,7 @@
     }
   },
   "proofingScanMrzInstructions": "Align the Machine Readable Zone (MRZ) with the frame at the bottom of the screen. Hold steady until scanning completes.",
+  "proofingScanMrzPhotoInstructions": "Place the whole side with the Machine Readable Zone (MRZ) inside the frame, on a flat surface in good light. Hold steady: once the MRZ is read, this side is photographed too.",
   "proofingEnterDetailsManually": "Enter {docType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} details manually",
   "@proofingEnterDetailsManually": {
     "placeholders": {
@@ -572,6 +611,7 @@
   "proofingWhatVerification": "your verification",
   "proofingWhatDocumentDetails": "your document details",
   "proofingWhatDocumentIdentity": "your document identity",
+  "proofingWhatDocumentPhoto": "your document photo",
   "proofingWhatFaceVerification": "your face verification",
   "proofingNotAVerificationLink": "This is not a verification link.",
   "proofingSessionNoAttributes": "This session does not specify what to collect",
@@ -625,6 +665,7 @@
   },
   "proofingRequestDocumentStep": "Submitting the document step",
   "proofingRequestNfcStep": "Submitting the nfc step",
+  "proofingRequestDocumentPhotoStep": "Submitting the document photo step",
   "proofingRequestFaceStep": "Submitting the face verification step",
   "proofingRequestSubmitVerification": "Submitting the verification"
 }

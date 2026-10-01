@@ -684,6 +684,10 @@ bool nativeFaceVerificationRequested(List<String>? steps, String selfieLocation)
 /// with that list.
 const stepDocumentCapture = 'document_capture';
 const stepNfcRead = 'nfc_read';
+// stepDocumentPhoto is a photo of the document's printed data page
+// (flow.StepDocumentPhoto): always taken in this app, never in the browser,
+// and independent of every other step.
+const stepDocumentPhoto = 'document_photo';
 // stepFaceVerification is the aggregate "the complete live face-verification
 // stage" step (flow.StepFaceVerification server-side) — distinct from the
 // three granular sub-steps below, which a flow can also list individually.
@@ -906,6 +910,36 @@ class ProofingPhotoInfo {
   static String _sniffImageMimeType(Uint8List bytes) => _isPng(bytes) ? 'image/png' : 'image/jpeg';
 
   Map<String, dynamic> toJson() => {'imageBase64': imageBase64, 'mimeType': mimeType};
+}
+
+/// One side of the document, photographed for the document_photo step.
+/// [bsnRegion] is where the printed BSN is on [photo], only when that's known
+/// for sure: the server blurs that box when the relying party may not see
+/// the BSN. Mirrors the server's per-side document photo request.
+class ProofingDocumentPhotoSide {
+  final ProofingPhotoInfo photo;
+  final ProofingImageRegion? bsnRegion;
+
+  const ProofingDocumentPhotoSide({required this.photo, this.bsnRegion});
+
+  Map<String, dynamic> toJson() => {
+    'image': photo.imageBase64,
+    'mimeType': photo.mimeType,
+    'bsnRegion': ?bsnRegion?.toJson(),
+  };
+}
+
+/// A box on an image, normalized to 0-1 with a top-left origin. Mirrors
+/// api.imageRegion: the server refuses one that doesn't lie within the image.
+class ProofingImageRegion {
+  final double x;
+  final double y;
+  final double w;
+  final double h;
+
+  const ProofingImageRegion({required this.x, required this.y, required this.w, required this.h});
+
+  Map<String, dynamic> toJson() => {'x': x, 'y': y, 'w': w, 'h': h};
 }
 
 /// The raw chip evidence identity-proofing-service needs to independently
@@ -1337,6 +1371,24 @@ class ProofingSessionClient {
       ),
     );
     _check(response, (l) => l.proofingRequestNfcStep);
+    return ProofingStepResponse.fromJson(json.decode(response.body));
+  }
+
+  /// Submits the document_photo step - the photos of the document's
+  /// [front] and, unless it has none worth taking (a passport), its [back],
+  /// released to the relying party as the result's documentImage - in one
+  /// request once both are taken. The back is left out entirely without one.
+  Future<ProofingStepResponse> submitDocumentPhotoStep(
+    ProofingSessionRef ref, {
+    required ProofingDocumentPhotoSide front,
+    ProofingDocumentPhotoSide? back,
+  }) async {
+    final response = await http.post(
+      _appUri(ref, '/steps/document_photo'),
+      headers: _headers(ref, json: true),
+      body: json.encode({'front': front.toJson(), 'back': ?back?.toJson()}),
+    );
+    _check(response, (l) => l.proofingRequestDocumentPhotoStep);
     return ProofingStepResponse.fromJson(json.decode(response.body));
   }
 

@@ -21,6 +21,14 @@ import 'proofing_session_client.dart';
 /// document_capture; every other combination, including document_capture's
 /// own absence, is legitimate.
 ///
+/// document_photo depends on nothing and nothing depends on it. With
+/// document_capture it is part of the document scan and shares its number:
+/// the MRZ scanner photographs the side it reads, and whatever side is still
+/// missing is taken right after (routing.dart's _documentPhotoFromScan).
+/// Without it, it's numbered where the flow lists it, after every one of
+/// this app's other stages listed before it (the server makes it current in
+/// exactly that order too).
+///
 /// A flow has no separate result step: its last capture step also submits
 /// the session (routing.dart's _submitProofingSession), so a flow where this
 /// app does one step shows "1 of 1". The document data screen still shown
@@ -35,6 +43,7 @@ class FlowStepPlan {
   final int totalSteps;
   final int? documentCaptureStepNumber;
   final int? nfcReadStepNumber;
+  final int? documentPhotoStepNumber;
   final int? faceVerificationStepNumber;
   final int resultStepNumber;
 
@@ -44,6 +53,7 @@ class FlowStepPlan {
     required this.nfcReadStepNumber,
     required this.faceVerificationStepNumber,
     required this.resultStepNumber,
+    this.documentPhotoStepNumber,
   });
 
   /// vcmrtd's own fixed sequence ([defaultPlan]), also each screen's
@@ -74,10 +84,29 @@ class FlowStepPlan {
   factory FlowStepPlan.fromSteps(List<String>? steps, {String selfieLocation = 'native'}) {
     if (steps == null) return defaultPlan;
 
+    // Taken with the document scan: not a stage of its own.
+    final photoWithScan = steps.contains(stepDocumentCapture) && steps.contains(stepDocumentPhoto);
+    final photoAt = photoWithScan ? -1 : steps.indexOf(stepDocumentPhoto);
+    int? documentPhotoStepNumber;
     var next = 1;
-    final documentCaptureStepNumber = steps.contains(stepDocumentCapture) ? next++ : null;
-    final nfcReadStepNumber = steps.contains(stepNfcRead) ? next++ : null;
-    final faceVerificationStepNumber = nativeFaceVerificationRequested(steps, selfieLocation) ? next++ : null;
+    // Takes the photo's number first when the flow lists it before the
+    // stage that would otherwise get [next].
+    int take(bool listedAfterPhoto) {
+      if (photoAt >= 0 && documentPhotoStepNumber == null && listedAfterPhoto) documentPhotoStepNumber = next++;
+      return next++;
+    }
+
+    bool listedAfterPhoto(List<String> stage) => steps.indexWhere(stage.contains) > photoAt;
+
+    final documentCaptureStepNumber = steps.contains(stepDocumentCapture)
+        ? take(listedAfterPhoto([stepDocumentCapture]))
+        : null;
+    final nfcReadStepNumber = steps.contains(stepNfcRead) ? take(listedAfterPhoto([stepNfcRead])) : null;
+    final faceVerificationStepNumber = nativeFaceVerificationRequested(steps, selfieLocation)
+        ? take(listedAfterPhoto(faceSteps))
+        : null;
+    if (photoAt >= 0) documentPhotoStepNumber ??= next++;
+    if (photoWithScan) documentPhotoStepNumber = documentCaptureStepNumber;
     // The last step submits; a degenerate flow with none still counts one.
     final resultStepNumber = next > 1 ? next - 1 : 1;
 
@@ -85,6 +114,7 @@ class FlowStepPlan {
       totalSteps: resultStepNumber,
       documentCaptureStepNumber: documentCaptureStepNumber,
       nfcReadStepNumber: nfcReadStepNumber,
+      documentPhotoStepNumber: documentPhotoStepNumber,
       faceVerificationStepNumber: faceVerificationStepNumber,
       resultStepNumber: resultStepNumber,
     );

@@ -14,6 +14,7 @@ import 'package:idem/providers/liveness_mode_provider.dart';
 import 'package:idem/utils/document_dates.dart';
 import 'package:idem/services/flow_step_plan.dart';
 import 'package:idem/widgets/pages/document_capture_only_result_screen.dart';
+import 'package:idem/widgets/pages/document_photo_screen.dart';
 import 'package:idem/widgets/pages/document_selection_screen.dart';
 import 'package:idem/widgets/pages/face_verification_entry_screen.dart';
 import 'package:idem/widgets/pages/driving_licence_data_screen.dart';
@@ -70,6 +71,7 @@ const _nfcReadingPath = '/nfc_reading';
 const _resultPath = '/result';
 const _faceVerificationPath = '/face_verification';
 const _documentCaptureResultPath = '/document_capture_result';
+const _documentPhotoPath = '/document_photo';
 const _settingsPath = '/settings';
 const _qrScannerPath = '/qr_scanner';
 const _proofingConsentPath = '/proofing_consent';
@@ -107,6 +109,34 @@ class ResultRouteArgs {
     this.plan,
     this.submittedTo,
     this.browserFaceStep = false,
+  });
+}
+
+/// The arguments of the /document_photo route: what the steps before it
+/// on this device collected, handed on untouched to whatever follows the
+/// photo (see [_continueAtServerStep]) - the photo itself needs none of it.
+class DocumentPhotoRouteArgs {
+  final ScannedMRZ? scannedMrz;
+
+  /// The side the MRZ is on, photographed as it was read
+  /// ([DocumentPhotoScreen.scanned]).
+  final Uint8List? scanned;
+  final DocumentType? documentType;
+  final DocumentData? document;
+  final RawDocumentData? rawDocument;
+  final FaceVerificationOutcome? faceOutcome;
+
+  /// The step badges; the pinned session's when null.
+  final FlowStepPlan? plan;
+
+  const DocumentPhotoRouteArgs({
+    this.scannedMrz,
+    this.scanned,
+    this.documentType,
+    this.document,
+    this.rawDocument,
+    this.faceOutcome,
+    this.plan,
   });
 }
 
@@ -157,13 +187,36 @@ void _continueAfterStep(
 /// the scan completes (`POST .../steps/document_capture`), before anything
 /// else happens, and then continues wherever the server says
 /// ([_continueAtServerStep]) - not where this route happens to lead.
-Future<void> _afterDocumentCaptured(BuildContext context, ScannedMRZ scannedMrz, DocumentType documentType) async {
+///
+/// Except for the document photo, when the scanner took a [picture] as it
+/// read the MRZ ([_scannerTakesPicture]): that picture is the photo of the
+/// side the MRZ is on, so the document_photo step follows the scan right
+/// away, wherever the flow lists it - the document is in the user's hand
+/// now, not after the chip read.
+Future<void> _afterDocumentCaptured(
+  BuildContext context,
+  ScannedMRZ scannedMrz,
+  DocumentType documentType, {
+  DocumentPicture? picture,
+  Future<Uint8List> Function(DocumentPicture picture) preparePicture = prepareDocumentPhotoInBackground,
+}) async {
   final activeSession = ProviderScope.containerOf(context).read(activeProofingSessionProvider);
   final steps = activeSession?.info.steps;
 
   if (activeSession != null && steps != null && steps.contains(stepDocumentCapture)) {
+    // Prepared alongside the submission, so the photo is ready by the time
+    // the server answers.
+    final photo = picture != null && steps.contains(stepDocumentPhoto)
+        ? _preparedOrNull(preparePicture(picture))
+        : null;
     final response = await _submitDocumentCaptureStep(context, activeSession, scannedMrz, documentType);
     if (!context.mounted) return;
+    final mrzSide = await photo;
+    if (!context.mounted) return;
+    if (response != null && mrzSide != null && response.lifecycle != proofingLifecycleComplete) {
+      _documentPhotoFromScan(context, mrzSide, scannedMrz, documentType);
+      return;
+    }
     _continueAfterStep(
       context,
       activeSession,
@@ -187,6 +240,34 @@ Future<void> _afterDocumentCaptured(BuildContext context, ScannedMRZ scannedMrz,
       documentType: documentType,
     );
   }
+}
+
+/// Whether the MRZ scanner should photograph the document as it reads the
+/// MRZ: when [session]'s flow scans the document and wants its photo.
+bool _scannerTakesPicture(ActiveProofingSession? session) {
+  final steps = session?.info.steps;
+  return steps != null && steps.contains(stepDocumentCapture) && steps.contains(stepDocumentPhoto);
+}
+
+/// [photo], or null when preparing it failed: the photo is then taken on its
+/// own screen instead.
+Future<Uint8List?> _preparedOrNull(Future<Uint8List> photo) async {
+  try {
+    return await photo;
+  } on Exception {
+    return null;
+  }
+}
+
+/// The document_photo step, right after the MRZ scan that took [mrzSide]:
+/// the photo screen opens on its review - the user always sees what is sent.
+/// A passport's MRZ is on its photo page, so that is the whole photo; a
+/// card's (ID card, driving licence) is on its back, so the front follows.
+void _documentPhotoFromScan(BuildContext context, Uint8List mrzSide, ScannedMRZ scannedMrz, DocumentType documentType) {
+  context.push(
+    _documentPhotoPath,
+    extra: DocumentPhotoRouteArgs(scanned: mrzSide, scannedMrz: scannedMrz, documentType: documentType),
+  );
 }
 
 /// The step after [step] in [steps], for a server that doesn't name one.
@@ -274,6 +355,25 @@ void _continueAtServerStep(
     return;
   }
 
+  if (currentStep == stepDocumentPhoto) {
+    // Always this app's step; whatever this device collected so far rides
+    // along to the step after it.
+    final args = DocumentPhotoRouteArgs(
+      scannedMrz: scannedMrz,
+      documentType: documentType,
+      document: document,
+      rawDocument: rawDocument,
+      faceOutcome: faceOutcome,
+      plan: plan,
+    );
+    if (resume) {
+      context.go(_documentPhotoPath, extra: args);
+    } else {
+      context.push(_documentPhotoPath, extra: args);
+    }
+    return;
+  }
+
   if (_isFaceStep(currentStep)) {
     if (!nativeFaceVerificationRequested(info.steps, info.selfieLocation)) {
       // The browser runs the face step; this app's part is done. The
@@ -339,13 +439,22 @@ void _afterConsent(BuildContext context, ActiveProofingSession session) {
     return;
   }
 
+  // document_photo needs nothing before it: it goes first unless the flow
+  // lists a face step before it.
+  final photoAt = steps.indexOf(stepDocumentPhoto);
+  final faceAt = steps.indexWhere(faceSteps.contains);
+  if (photoAt >= 0 && (faceAt < 0 || photoAt < faceAt)) {
+    context.go(_documentPhotoPath, extra: const DocumentPhotoRouteArgs());
+    return;
+  }
+
   if (stepsRequestFace(steps)) {
     context.go(_faceVerificationPath, extra: {'nfcImageBytes': _photoBytes(session.info.referencePhoto)});
     return;
   }
 
-  // Degenerate: a flow with none of document_capture/nfc_read/selfie/
-  // liveness/face_match at all - nothing to capture, submit immediately.
+  // Degenerate: a flow with none of document_capture/nfc_read/document_photo/
+  // selfie/liveness/face_match at all - nothing to capture, submit immediately.
   context.go(_documentCaptureResultPath, extra: {'session': session});
 }
 
@@ -506,6 +615,31 @@ Future<ProofingStepResponse?> _submitNfcStep(
       device: await currentProofingDeviceInfo(),
       faceStepFollows: stepsRequestFace(session.info.steps),
     ),
+  );
+}
+
+/// Sends the document photos to the pinned flow session once the user
+/// accepted the last one (`POST .../steps/document_photo`) - the [back] left
+/// out when there is none. No bsnRegion: nothing on this device locates the
+/// printed BSN reliably yet, and a guessed box would blur the wrong part.
+/// Returns the server's response, or null when it wasn't stored.
+Future<ProofingStepResponse?> _submitDocumentPhotoStep(
+  BuildContext context,
+  ActiveProofingSession session,
+  Uint8List front,
+  Uint8List? back,
+) {
+  ProofingDocumentPhotoSide side(Uint8List jpeg) => ProofingDocumentPhotoSide(
+    photo: ProofingPhotoInfo(imageBase64: base64Encode(jpeg), mimeType: 'image/jpeg'),
+  );
+
+  final client = ProviderScope.containerOf(context).read(proofingSessionClientProvider);
+  return submitProofingStep(
+    context,
+    session: session,
+    what: context.l10n.proofingWhatDocumentPhoto,
+    submit: () =>
+        client.submitDocumentPhotoStep(session.ref, front: side(front), back: back == null ? null : side(back)),
   );
 }
 
@@ -700,7 +834,11 @@ extension CustomRouteExtensions on BuildContext {
 
 final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
 
-GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEngine? faceVerificationEngine}) {
+GoRouter createRouter({
+  ScannerWidgetBuilder? scannerBuilder,
+  FaceVerificationEngine? faceVerificationEngine,
+  DocumentPhotoCamera? documentPhotoCamera,
+}) {
   return GoRouter(
     initialLocation: selectDocTypePath,
     observers: [routeObserver],
@@ -754,12 +892,21 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
         path: _mrzReaderPath,
         builder: (context, state) {
           final params = MrzReaderRouteParams.fromQueryParams(state.uri.queryParameters);
+          final providers = ProviderScope.containerOf(context);
           // Document reading starts as soon as the MRZ camera opens.
-          markActiveProofingStepStarted(ProviderScope.containerOf(context), stepDocumentCapture);
+          markActiveProofingStepStarted(providers, stepDocumentCapture);
           final plan = _activePlan(context);
+          final takesPicture = _scannerTakesPicture(providers.read(activeProofingSessionProvider));
           return ScannerWrapper(
             documentType: params.documentType,
-            onMrzScanned: (result) => _afterDocumentCaptured(context, result, params.documentType),
+            capturePicture: takesPicture,
+            onMrzScanned: (result, [picture]) => _afterDocumentCaptured(
+              context,
+              result,
+              params.documentType,
+              picture: picture,
+              preparePicture: documentPhotoCamera?.prepare ?? prepareDocumentPhotoInBackground,
+            ),
             onManualEntry: () {
               context.pushManualEntryScreen(ManualEntryRouteParams(documentType: params.documentType));
             },
@@ -862,6 +1009,50 @@ GoRouter createRouter({ScannerWidgetBuilder? scannerBuilder, FaceVerificationEng
             scannedMrz: extra['scannedMrz'] as ScannedMRZ?,
             faceVerification: extra['faceVerification'] as FaceVerificationOutcome?,
             onBackPressed: () => context.go(selectDocTypePath),
+          );
+        },
+      ),
+      GoRoute(
+        path: _documentPhotoPath,
+        builder: (context, state) {
+          final args = state.extra as DocumentPhotoRouteArgs? ?? const DocumentPhotoRouteArgs();
+          final providers = ProviderScope.containerOf(context);
+          // The camera opens with this screen.
+          markActiveProofingStepStarted(providers, stepDocumentPhoto);
+          final plan = args.plan ?? _activePlan(context);
+          return DocumentPhotoScreen(
+            // Reached with go on a resume, when there's nothing to pop.
+            onBack: () => context.canPop() ? context.pop() : context.go(selectDocTypePath),
+            stepNumber: plan.documentPhotoStepNumber ?? plan.totalSteps,
+            totalSteps: plan.totalSteps,
+            camera: documentPhotoCamera,
+            // What decides whether a back is asked for: the document type the
+            // MRZ scan / chip read on this device found, or the chip access
+            // key the server kept; unknown otherwise.
+            documentType:
+                args.documentType ?? providers.read(activeProofingSessionProvider)?.info.chipAccess?.documentType,
+            scanned: args.scanned,
+            onPhotosTaken: (front, back) async {
+              final session = providers.read(activeProofingSessionProvider);
+              if (session == null) {
+                context.go(selectDocTypePath);
+                return;
+              }
+              final response = await _submitDocumentPhotoStep(context, session, front, back);
+              if (!context.mounted) return;
+              _continueAfterStep(
+                context,
+                session,
+                response,
+                completedStep: stepDocumentPhoto,
+                scannedMrz: args.scannedMrz,
+                documentType: args.documentType,
+                document: args.document,
+                rawDocument: args.rawDocument,
+                faceOutcome: args.faceOutcome,
+                plan: args.plan,
+              );
+            },
           );
         },
       ),

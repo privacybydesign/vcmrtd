@@ -613,6 +613,67 @@ void main() {
       );
     });
 
+    test('submitDocumentPhotoStep posts front and back to .../steps/document_photo, leaving out a missing back '
+        'and a bsnRegion nobody gave', () async {
+      final bodies = <Map<String, dynamic>>[];
+      await http.runWithClient(
+        () async {
+          const front = ProofingDocumentPhotoSide(
+            photo: ProofingPhotoInfo(imageBase64: 'ZnJvbnQ=', mimeType: 'image/jpeg'),
+          );
+          const back = ProofingDocumentPhotoSide(
+            photo: ProofingPhotoInfo(imageBase64: 'YmFjaw==', mimeType: 'image/jpeg'),
+            bsnRegion: ProofingImageRegion(x: 0.1, y: 0.2, w: 0.3, h: 0.05),
+          );
+          final response = await const ProofingSessionClient().submitDocumentPhotoStep(ref, front: front, back: back);
+          expect(response.readyToSubmit, isTrue);
+          await const ProofingSessionClient().submitDocumentPhotoStep(ref, front: front);
+        },
+        () => MockClient((request) async {
+          expect(request.method, 'POST');
+          expect(request.url.toString(), 'https://proof.example.com/api/v1/app/tok-1/steps/document_photo');
+          expect(request.headers['Content-Type'], startsWith('application/json'));
+          bodies.add(json.decode(request.body) as Map<String, dynamic>);
+          return http.Response(
+            json.encode({
+              'status': 'in_progress',
+              'completedSteps': ['document_photo'],
+              'currentStep': '',
+              'lifecycle': 'ACTIVE',
+              'readyToSubmit': true,
+            }),
+            200,
+          );
+        }),
+      );
+      expect(bodies[0], {
+        'front': {'image': 'ZnJvbnQ=', 'mimeType': 'image/jpeg'},
+        'back': {
+          'image': 'YmFjaw==',
+          'mimeType': 'image/jpeg',
+          'bsnRegion': {'x': 0.1, 'y': 0.2, 'w': 0.3, 'h': 0.05},
+        },
+      });
+      // A passport: no back key at all.
+      expect(bodies[1], {
+        'front': {'image': 'ZnJvbnQ=', 'mimeType': 'image/jpeg'},
+      });
+    });
+
+    test('submitDocumentPhotoStep throws when the server responds with a non-200 status', () async {
+      await http.runWithClient(() async {
+        expect(
+          () => const ProofingSessionClient().submitDocumentPhotoStep(
+            ref,
+            front: const ProofingDocumentPhotoSide(
+              photo: ProofingPhotoInfo(imageBase64: 'anBlZw==', mimeType: 'image/jpeg'),
+            ),
+          ),
+          throwsA(isA<Exception>()),
+        );
+      }, () => MockClient((request) async => http.Response('invalid image', 400)));
+    });
+
     test('submitNfcStep throws when the server responds with a non-200 status', () async {
       await http.runWithClient(() async {
         expect(

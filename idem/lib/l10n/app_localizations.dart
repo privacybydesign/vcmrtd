@@ -830,6 +830,114 @@ abstract class AppLocalizations {
   /// **'DRIVING LICENCE'**
   String get docIllustrationDrivingLicence;
 
+  /// No description provided for @docPhotoStepLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Document photo'**
+  String get docPhotoStepLabel;
+
+  /// No description provided for @docPhotoFrontTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Photograph the front'**
+  String get docPhotoFrontTitle;
+
+  /// No description provided for @docPhotoFrontInstructionsPassport.
+  ///
+  /// In en, this message translates to:
+  /// **'Place the page with your photo and personal details inside the frame. Use a flat surface and good light, and avoid glare.'**
+  String get docPhotoFrontInstructionsPassport;
+
+  /// No description provided for @docPhotoFrontInstructionsCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Place the front of your document, the side with your photo, inside the frame. Use a flat surface and good light, and avoid glare.'**
+  String get docPhotoFrontInstructionsCard;
+
+  /// No description provided for @docPhotoBackTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Now photograph the back'**
+  String get docPhotoBackTitle;
+
+  /// No description provided for @docPhotoBackInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn your document over and place the back inside the frame.'**
+  String get docPhotoBackInstructions;
+
+  /// No description provided for @docPhotoSideFront.
+  ///
+  /// In en, this message translates to:
+  /// **'Front'**
+  String get docPhotoSideFront;
+
+  /// No description provided for @docPhotoSideBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get docPhotoSideBack;
+
+  /// No description provided for @docPhotoSideProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'{side} · {current} of {total}'**
+  String docPhotoSideProgress(String side, int current, int total);
+
+  /// No description provided for @docPhotoNoBack.
+  ///
+  /// In en, this message translates to:
+  /// **'My document has no back'**
+  String get docPhotoNoBack;
+
+  /// No description provided for @docPhotoTake.
+  ///
+  /// In en, this message translates to:
+  /// **'Take photo'**
+  String get docPhotoTake;
+
+  /// No description provided for @docPhotoReviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the photo'**
+  String get docPhotoReviewTitle;
+
+  /// No description provided for @docPhotoReviewMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Are all details sharp and readable, without glare or anything covering them?'**
+  String get docPhotoReviewMessage;
+
+  /// No description provided for @docPhotoReviewScannedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This side was photographed while the MRZ was read. Are all details sharp and readable, without glare or anything covering them?'**
+  String get docPhotoReviewScannedMessage;
+
+  /// No description provided for @docPhotoRetake.
+  ///
+  /// In en, this message translates to:
+  /// **'Retake'**
+  String get docPhotoRetake;
+
+  /// No description provided for @docPhotoUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Use photo'**
+  String get docPhotoUse;
+
+  /// No description provided for @docPhotoErrorNoCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'No camera available'**
+  String get docPhotoErrorNoCamera;
+
+  /// No description provided for @docPhotoErrorCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not use the camera: {error}'**
+  String docPhotoErrorCamera(String error);
+
   /// No description provided for @faceActionBlink.
   ///
   /// In en, this message translates to:
@@ -1652,6 +1760,12 @@ abstract class AppLocalizations {
   /// **'Align the Machine Readable Zone (MRZ) with the frame at the bottom of the screen. Hold steady until scanning completes.'**
   String get proofingScanMrzInstructions;
 
+  /// No description provided for @proofingScanMrzPhotoInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Place the whole side with the Machine Readable Zone (MRZ) inside the frame, on a flat surface in good light. Hold steady: once the MRZ is read, this side is photographed too.'**
+  String get proofingScanMrzPhotoInstructions;
+
   /// No description provided for @proofingEnterDetailsManually.
   ///
   /// In en, this message translates to:
@@ -1729,6 +1843,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'your document identity'**
   String get proofingWhatDocumentIdentity;
+
+  /// No description provided for @proofingWhatDocumentPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'your document photo'**
+  String get proofingWhatDocumentPhoto;
 
   /// No description provided for @proofingWhatFaceVerification.
   ///
@@ -1819,6 +1939,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Submitting the nfc step'**
   String get proofingRequestNfcStep;
+
+  /// No description provided for @proofingRequestDocumentPhotoStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitting the document photo step'**
+  String get proofingRequestDocumentPhotoStep;
 
   /// No description provided for @proofingRequestFaceStep.
   ///

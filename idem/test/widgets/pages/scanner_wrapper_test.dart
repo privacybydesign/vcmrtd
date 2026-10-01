@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vcmrtd/vcmrtd.dart';
@@ -7,16 +9,19 @@ import 'package:mrz_capture/mrz_capture.dart';
 import 'package:idem/widgets/pages/scanner_wrapper.dart';
 
 class _FakeScanner extends StatelessWidget {
-  const _FakeScanner({required this.documentType, required this.onSuccess});
+  const _FakeScanner({required this.documentType, required this.onSuccess, this.picture});
 
   final DocumentType documentType;
-  final ValueChanged<ScannedMRZ> onSuccess;
+  final MrzScannedWithPicture onSuccess;
+
+  /// What the scanner reports it photographed.
+  final DocumentPicture? picture;
 
   @override
   Widget build(BuildContext context) {
     return Center(
       child: ElevatedButton(
-        onPressed: () => onSuccess(_scannedPassport(documentType)),
+        onPressed: () => onSuccess(_scannedPassport(documentType), picture),
         child: Text('fake scanner ${documentType.name}'),
       ),
     );
@@ -38,17 +43,26 @@ Widget _buildWrapper({
   ValueChanged<ScannedMRZ>? onMrzScanned,
   VoidCallback? onManualEntry,
   VoidCallback? onBack,
+  bool capturePicture = false,
+  void Function(bool capturePicture)? onBuildScanner,
+  DocumentPicture? picture,
+  ValueChanged<DocumentPicture?>? onPicture,
 }) {
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     home: ScannerWrapper(
       documentType: documentType,
-      onMrzScanned: onMrzScanned ?? (_) {},
+      onMrzScanned: (mrz, [scannedPicture]) {
+        onMrzScanned?.call(mrz);
+        onPicture?.call(scannedPicture);
+      },
       onManualEntry: onManualEntry ?? () {},
       onBack: onBack ?? () {},
-      scannerBuilder: ({required documentType, required onSuccess}) {
-        return _FakeScanner(documentType: documentType, onSuccess: onSuccess);
+      capturePicture: capturePicture,
+      scannerBuilder: ({required documentType, required capturePicture, required onSuccess}) {
+        onBuildScanner?.call(capturePicture);
+        return _FakeScanner(documentType: documentType, onSuccess: onSuccess, picture: picture);
       },
     ),
   );
@@ -107,6 +121,35 @@ void main() {
       expect(manualCount, 1);
     });
 
+    testWidgets('asks the scanner for no picture by default, and says to align the MRZ', (tester) async {
+      final asked = <bool>[];
+      await tester.pumpWidget(_buildWrapper(onBuildScanner: asked.add));
+
+      expect(asked.last, isFalse);
+      expect(find.textContaining('Align the Machine Readable Zone'), findsOneWidget);
+    });
+
+    testWidgets('capturePicture asks the scanner for a picture, says the side is photographed too, and forwards the '
+        'picture with the scan', (tester) async {
+      final asked = <bool>[];
+      final pictures = <DocumentPicture?>[];
+      final picture = DocumentPicture(
+        jpeg: Uint8List.fromList([1, 2, 3]),
+        frame: const Rect.fromLTRB(0, 0, 1, 1),
+        previewAspectRatio: 9 / 16,
+      );
+      await tester.pumpWidget(
+        _buildWrapper(capturePicture: true, onBuildScanner: asked.add, picture: picture, onPicture: pictures.add),
+      );
+
+      expect(asked.last, isTrue);
+      expect(find.textContaining('this side is photographed too'), findsOneWidget);
+
+      await tester.tap(find.text('fake scanner ${DocumentType.passport.name}'));
+      await tester.pump();
+      expect(pictures.single, same(picture));
+    });
+
     testWidgets('forwards the first scan result and ignores duplicate success events', (tester) async {
       final scanned = <ScannedMRZ>[];
       await tester.pumpWidget(_buildWrapper(documentType: DocumentType.identityCard, onMrzScanned: scanned.add));
@@ -130,10 +173,10 @@ void main() {
           navigatorObservers: [routeObserver],
           home: ScannerWrapper(
             documentType: DocumentType.passport,
-            onMrzScanned: scanned.add,
+            onMrzScanned: (mrz, [_]) => scanned.add(mrz),
             onManualEntry: () {},
             onBack: () {},
-            scannerBuilder: ({required documentType, required onSuccess}) {
+            scannerBuilder: ({required documentType, required capturePicture, required onSuccess}) {
               return _FakeScanner(documentType: documentType, onSuccess: onSuccess);
             },
           ),

@@ -452,6 +452,68 @@ class AppLocalizationsNl extends AppLocalizations {
   String get docIllustrationDrivingLicence => 'RIJBEWIJS';
 
   @override
+  String get docPhotoStepLabel => 'Documentfoto';
+
+  @override
+  String get docPhotoFrontTitle => 'Maak een foto van de voorkant';
+
+  @override
+  String get docPhotoFrontInstructionsPassport =>
+      'Leg de pagina met je foto en persoonsgegevens binnen het kader. Gebruik een vlakke ondergrond en goed licht, en vermijd schittering.';
+
+  @override
+  String get docPhotoFrontInstructionsCard =>
+      'Leg de voorkant van je document, de kant met je foto, binnen het kader. Gebruik een vlakke ondergrond en goed licht, en vermijd schittering.';
+
+  @override
+  String get docPhotoBackTitle => 'Maak nu een foto van de achterkant';
+
+  @override
+  String get docPhotoBackInstructions => 'Draai je document om en leg de achterkant binnen het kader.';
+
+  @override
+  String get docPhotoSideFront => 'Voorkant';
+
+  @override
+  String get docPhotoSideBack => 'Achterkant';
+
+  @override
+  String docPhotoSideProgress(String side, int current, int total) {
+    return '$side · $current van $total';
+  }
+
+  @override
+  String get docPhotoNoBack => 'Mijn document heeft geen achterkant';
+
+  @override
+  String get docPhotoTake => 'Foto maken';
+
+  @override
+  String get docPhotoReviewTitle => 'Controleer de foto';
+
+  @override
+  String get docPhotoReviewMessage =>
+      'Zijn alle gegevens scherp en leesbaar, zonder schittering en zonder dat er iets voor zit?';
+
+  @override
+  String get docPhotoReviewScannedMessage =>
+      'Van deze kant is een foto gemaakt toen de MRZ gelezen werd. Zijn alle gegevens scherp en leesbaar, zonder schittering en zonder dat er iets voor zit?';
+
+  @override
+  String get docPhotoRetake => 'Opnieuw';
+
+  @override
+  String get docPhotoUse => 'Foto gebruiken';
+
+  @override
+  String get docPhotoErrorNoCamera => 'Geen camera beschikbaar';
+
+  @override
+  String docPhotoErrorCamera(String error) {
+    return 'Kan de camera niet gebruiken: $error';
+  }
+
+  @override
   String get faceActionBlink => 'Knipper met je ogen';
 
   @override
@@ -939,6 +1001,10 @@ class AppLocalizationsNl extends AppLocalizations {
       'Lijn de machineleesbare zone (MRZ) uit met het kader onderaan het scherm. Houd je telefoon stil tot het scannen klaar is.';
 
   @override
+  String get proofingScanMrzPhotoInstructions =>
+      'Leg de hele kant met de machineleesbare zone (MRZ) binnen het kader, op een vlakke ondergrond en in goed licht. Houd je telefoon stil: zodra de MRZ gelezen is, wordt van deze kant ook een foto gemaakt.';
+
+  @override
   String proofingEnterDetailsManually(String docType) {
     String _temp0 = intl.Intl.selectLogic(docType, {
       'passport': 'paspoort',
@@ -989,6 +1055,9 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get proofingWhatDocumentIdentity => 'je documentidentiteit';
+
+  @override
+  String get proofingWhatDocumentPhoto => 'je documentfoto';
 
   @override
   String get proofingWhatFaceVerification => 'je gezichtsverificatie';
@@ -1044,6 +1113,9 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get proofingRequestNfcStep => 'NFC-stap versturen';
+
+  @override
+  String get proofingRequestDocumentPhotoStep => 'Documentfotostap versturen';
 
   @override
   String get proofingRequestFaceStep => 'Gezichtsverificatiestap versturen';

@@ -11,8 +11,16 @@ import 'scan_screen.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/services/flow_step_plan.dart';
 
+/// Called with the MRZ read and, when one was asked for, the picture taken
+/// the moment it was read (null when the camera couldn't take it).
+typedef MrzScannedWithPicture = void Function(ScannedMRZ mrz, DocumentPicture? picture);
+
 typedef ScannerWidgetBuilder =
-    Widget Function({required DocumentType documentType, required ValueChanged<ScannedMRZ> onSuccess});
+    Widget Function({
+      required DocumentType documentType,
+      required bool capturePicture,
+      required MrzScannedWithPicture onSuccess,
+    });
 
 class MrzReaderRouteParams {
   final DocumentType documentType;
@@ -30,11 +38,16 @@ class MrzReaderRouteParams {
 
 /// Wrapper around ScannerPage to handle navigation callbacks
 class ScannerWrapper extends StatefulWidget {
-  final Function(ScannedMRZ) onMrzScanned;
+  final void Function(ScannedMRZ mrz, [DocumentPicture? picture]) onMrzScanned;
   final VoidCallback onManualEntry;
   final VoidCallback onBack;
   final DocumentType documentType;
   final ScannerWidgetBuilder? scannerBuilder;
+
+  /// Photographs the document the moment its MRZ is read: the flow asks for
+  /// a photo of the document, and the side with the MRZ needs none of its
+  /// own then.
+  final bool capturePicture;
 
   /// Step badge numbers — default to vcmrtd's fixed 4-step sequence (this
   /// screen is always step 1) so any caller not passing these explicitly
@@ -50,6 +63,7 @@ class ScannerWrapper extends StatefulWidget {
     required this.onBack,
     this.documentType = DocumentType.passport,
     this.scannerBuilder,
+    this.capturePicture = false,
     this.stepNumber = FlowStepPlan.defaultDocumentCaptureStep,
     this.totalSteps = FlowStepPlan.defaultTotalSteps,
   });
@@ -86,10 +100,11 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
         children: [
           scannerBuilder(
             documentType: widget.documentType,
-            onSuccess: (scannedMrz) {
+            capturePicture: widget.capturePicture,
+            onSuccess: (scannedMrz, picture) {
               if (!_hasNavigated) {
                 _hasNavigated = true;
-                widget.onMrzScanned(scannedMrz);
+                widget.onMrzScanned(scannedMrz, picture);
               }
             },
           ),
@@ -145,7 +160,12 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
             context.l10n.proofingPositionDocument(widget.documentType.name),
             style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
           ),
-          Text(context.l10n.proofingScanMrzInstructions, style: TextStyle(color: Colors.white70, fontSize: 14)),
+          Text(
+            widget.capturePicture
+                ? context.l10n.proofingScanMrzPhotoInstructions
+                : context.l10n.proofingScanMrzInstructions,
+            style: TextStyle(color: Colors.white70, fontSize: 14),
+          ),
         ],
       ),
     );
@@ -169,6 +189,10 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
   }
 }
 
-Widget _defaultScannerBuilder({required DocumentType documentType, required ValueChanged<ScannedMRZ> onSuccess}) {
-  return ScannerPage(documentType: documentType, onSuccess: onSuccess);
+Widget _defaultScannerBuilder({
+  required DocumentType documentType,
+  required bool capturePicture,
+  required MrzScannedWithPicture onSuccess,
+}) {
+  return ScannerPage(documentType: documentType, capturePicture: capturePicture, onSuccess: onSuccess);
 }
