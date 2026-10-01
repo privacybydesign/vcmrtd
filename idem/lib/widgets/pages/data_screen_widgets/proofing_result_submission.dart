@@ -55,9 +55,7 @@ mixin ProofingResultSubmission<T extends ConsumerStatefulWidget> on ConsumerStat
             biometrics: ProofingBiometricsInfo(
               faceMatchScore: faceVerification?.matchScore,
               faceVerified: faceVerification != null ? true : null,
-              livenessResult: faceVerification == null
-                  ? 'not_performed'
-                  : (faceVerification.livenessPassed ? 'passed' : 'failed'),
+              livenessResult: _livenessResult(faceVerification),
               engine: faceVerification?.engine,
             ),
             device: device,
@@ -159,4 +157,9 @@ class DocumentWalletOrSubmitSection extends StatelessWidget {
             ),
     );
   }
+}
+
+String _livenessResult(FaceVerificationOutcome? faceVerification) {
+  if (faceVerification == null) return 'not_performed';
+  return faceVerification.livenessPassed ? 'passed' : 'failed';
 }

@@ -856,7 +856,7 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
                 const SizedBox(height: 16),
                 Text(
                   context.l10n.faceSettingUp,
-                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 6),
                 Text(context.l10n.faceTakesAMoment, style: const TextStyle(color: Colors.white60, fontSize: 13)),

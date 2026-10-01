@@ -82,42 +82,42 @@ class _RegulaFaceVerificationScreenState extends ConsumerState<RegulaFaceVerific
         );
         return;
       }
-      setState(() => _status = _Status.matching);
-      final FaceMatch? match;
-      try {
-        match = await matchFace(transactionId);
-      } catch (e) {
-        if (!mounted) return;
-        setState(() {
-          _error = context.l10n.faceRegulaFailedError('$e');
-          _status = _Status.error;
-        });
-        return;
-      }
-      if (!mounted) return;
-      if (match == null) {
-        setState(() {
-          _error = context.l10n.faceRegulaMatchUnavailable;
-          _status = _Status.error;
-        });
-        return;
-      }
-      setState(() {
-        _similarity = match!.similarity;
-        _status = match.matched ? _Status.matched : _Status.noMatch;
-      });
-      if (match.matched) {
-        _continue(FaceVerificationOutcome(engine: 'regula', livenessPassed: true, matchScore: match.similarity));
-      }
+      await _match(matchFace, transactionId);
     } on RegulaLivenessCancelled {
       if (mounted) setState(() => _status = _Status.cancelled);
     } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = context.l10n.faceRegulaFailedError('$e');
-        _status = _Status.error;
-      });
+      if (mounted) _showError(context.l10n.faceRegulaFailedError('$e'));
     }
+  }
+
+  Future<void> _match(Future<FaceMatch?> Function(String) matchFace, String transactionId) async {
+    setState(() => _status = _Status.matching);
+    final FaceMatch? match;
+    try {
+      match = await matchFace(transactionId);
+    } catch (e) {
+      if (mounted) _showError(context.l10n.faceRegulaFailedError('$e'));
+      return;
+    }
+    if (!mounted) return;
+    if (match == null) {
+      _showError(context.l10n.faceRegulaMatchUnavailable);
+      return;
+    }
+    setState(() {
+      _similarity = match!.similarity;
+      _status = match.matched ? _Status.matched : _Status.noMatch;
+    });
+    if (match.matched) {
+      _continue(FaceVerificationOutcome(engine: 'regula', livenessPassed: true, matchScore: match.similarity));
+    }
+  }
+
+  void _showError(String error) {
+    setState(() {
+      _error = error;
+      _status = _Status.error;
+    });
   }
 
   void _continue(FaceVerificationOutcome outcome) {

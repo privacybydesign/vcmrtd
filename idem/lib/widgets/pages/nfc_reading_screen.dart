@@ -432,45 +432,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
         DocumentType.drivingLicence => drivingLicenceReaderProvider,
       };
 
-      NonceAndSessionId? nonceAndSessionId;
-
-      final activeSession = ref.read(activeProofingSessionProvider);
-      ref.read(issuerFaceVerificationProvider.notifier).set(null);
-      if (activeSession == null && ref.read(faceEngineProvider) == FaceEngineChoice.regula) {
-        // Standalone Regula needs the issuer to match, and the issuer's verify
-        // call needs this session's nonce, so the chip read signs it too.
-        try {
-          final startValidation = await ref.read(passportIssuerProvider).startSessionAtPassportIssuer();
-          ref.read(issuerFaceVerificationProvider.notifier).set(startValidation.faceVerification);
-          if (startValidation.faceVerification != null || ref.read(activeAuthenticationProvider)) {
-            nonceAndSessionId = startValidation.nonceAndSessionId;
-          }
-        } catch (e) {
-          // Without the issuer the face step falls back to the on-device engine.
-          debugPrint('passport issuer unavailable for face verification: $e');
-        }
-      }
-      if (nonceAndSessionId == null) {
-        if (activeSession != null) {
-          // Pinned to an identity-proofing-service session: the flow, not
-          // the setting, decides Active Authentication. When it asks for
-          // nfc.chip_auth the chip signs the session's own aaChallenge, since
-          // a skipped check scores as failed and caps the eIDAS level. The
-          // server verifies the AA response against it byte-for-byte and
-          // otherwise reports a genuine chip as CHIP_CLONE_DETECTED. A
-          // missing aaChallenge (older or mismatched server responses) just
-          // skips Active Authentication, the same as an unsupported chip does.
-          final aaChallenge = activeSession.info.aaChallenge;
-          if (activeSession.info.requiresActiveAuthentication && aaChallenge != null && aaChallenge.isNotEmpty) {
-            nonceAndSessionId = NonceAndSessionId(nonce: aaChallenge, sessionId: activeSession.info.id);
-          }
-        } else if (ref.read(activeAuthenticationProvider)) {
-          // No pinned proofing session (standalone scan straight into the
-          // local wallet) — fall back to the legacy passport-issuer flow.
-          final startValidation = await ref.read(passportIssuerProvider).startSessionAtPassportIssuer();
-          nonceAndSessionId = startValidation.nonceAndSessionId;
-        }
-      }
+      final nonceAndSessionId = await _activeAuthenticationParams();
       final result = await ref
           .read(readerProvider(scannedMRZ).notifier)
           .readDocument(iosNfcMessages: _createIosNfcMessageMapper(), activeAuthenticationParams: nonceAndSessionId);
@@ -481,6 +443,56 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
     } catch (e) {
       debugPrint('failed to read document: $e');
     }
+  }
+
+  /// The nonce the chip signs for Active Authentication, or null to skip it.
+  Future<NonceAndSessionId?> _activeAuthenticationParams() async {
+    final activeSession = ref.read(activeProofingSessionProvider);
+    ref.read(issuerFaceVerificationProvider.notifier).set(null);
+    if (activeSession == null && ref.read(faceEngineProvider) == FaceEngineChoice.regula) {
+      final nonceAndSessionId = await _startIssuerFaceVerification();
+      if (nonceAndSessionId != null) return nonceAndSessionId;
+    }
+    if (activeSession != null) return _proofingSessionChallenge(activeSession);
+    if (ref.read(activeAuthenticationProvider)) {
+      // No pinned proofing session (standalone scan straight into the
+      // local wallet) — fall back to the legacy passport-issuer flow.
+      final startValidation = await ref.read(passportIssuerProvider).startSessionAtPassportIssuer();
+      return startValidation.nonceAndSessionId;
+    }
+    return null;
+  }
+
+  /// Standalone Regula needs the issuer to match, and the issuer's verify
+  /// call needs this session's nonce, so the chip read signs it too.
+  Future<NonceAndSessionId?> _startIssuerFaceVerification() async {
+    try {
+      final startValidation = await ref.read(passportIssuerProvider).startSessionAtPassportIssuer();
+      ref.read(issuerFaceVerificationProvider.notifier).set(startValidation.faceVerification);
+      if (startValidation.faceVerification != null || ref.read(activeAuthenticationProvider)) {
+        return startValidation.nonceAndSessionId;
+      }
+    } catch (e) {
+      // Without the issuer the face step falls back to the on-device engine.
+      debugPrint('passport issuer unavailable for face verification: $e');
+    }
+    return null;
+  }
+
+  /// Pinned to an identity-proofing-service session: the flow, not
+  /// the setting, decides Active Authentication. When it asks for
+  /// nfc.chip_auth the chip signs the session's own aaChallenge, since
+  /// a skipped check scores as failed and caps the eIDAS level. The
+  /// server verifies the AA response against it byte-for-byte and
+  /// otherwise reports a genuine chip as CHIP_CLONE_DETECTED. A
+  /// missing aaChallenge (older or mismatched server responses) just
+  /// skips Active Authentication, the same as an unsupported chip does.
+  NonceAndSessionId? _proofingSessionChallenge(ActiveProofingSession activeSession) {
+    final aaChallenge = activeSession.info.aaChallenge;
+    if (activeSession.info.requiresActiveAuthentication && aaChallenge != null && aaChallenge.isNotEmpty) {
+      return NonceAndSessionId(nonce: aaChallenge, sessionId: activeSession.info.id);
+    }
+    return null;
   }
 
   IosNfcMessageMapper _createIosNfcMessageMapper() {

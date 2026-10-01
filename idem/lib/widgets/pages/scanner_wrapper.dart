@@ -181,7 +181,7 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
           onPressed: widget.onManualEntry,
           child: Text(
             context.l10n.proofingEnterDetailsManually(widget.documentType.name),
-            style: TextStyle(color: Colors.black),
+            style: const TextStyle(color: Colors.black),
           ),
         ),
       ),

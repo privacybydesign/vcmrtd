@@ -35,14 +35,19 @@ Uint8List prepareDocumentPhoto(DocumentPicture picture) {
     width: crop.width.toInt(),
     height: crop.height.toInt(),
   );
-  final longEdge = math.max(upright.width, upright.height);
-  final resized = longEdge <= documentPhotoMaxLongEdge
-      ? upright
-      : upright.width >= upright.height
-      ? img.copyResize(upright, width: documentPhotoMaxLongEdge, interpolation: img.Interpolation.average)
-      : img.copyResize(upright, height: documentPhotoMaxLongEdge, interpolation: img.Interpolation.average);
+  final resized = _fitLongEdge(upright, documentPhotoMaxLongEdge);
   resized.exif = img.ExifData();
   return img.encodeJpg(resized, quality: documentPhotoJpegQuality);
+}
+
+/// Scales [image] down so its longer side is at most [maxLongEdge]; returns
+/// it unchanged when it already fits.
+img.Image _fitLongEdge(img.Image image, int maxLongEdge) {
+  if (math.max(image.width, image.height) <= maxLongEdge) return image;
+  if (image.width >= image.height) {
+    return img.copyResize(image, width: maxLongEdge, interpolation: img.Interpolation.average);
+  }
+  return img.copyResize(image, height: maxLongEdge, interpolation: img.Interpolation.average);
 }
 
 /// [prepareDocumentPhoto] off the UI isolate: decoding a full-resolution
@@ -229,11 +234,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
 
   /// The sides asked for, in order: a passport's front alone; a card's
   /// scanned back before its front; otherwise front, then back.
-  late final List<DocumentPhotoSide> _sides = _isPassport
-      ? const [DocumentPhotoSide.front]
-      : widget.scanned != null
-      ? const [DocumentPhotoSide.back, DocumentPhotoSide.front]
-      : const [DocumentPhotoSide.front, DocumentPhotoSide.back];
+  late final List<DocumentPhotoSide> _sides = _sidesToCapture();
   var _index = 0;
   final _taken = <DocumentPhotoSide, Uint8List>{};
   Uint8List? _photo;
@@ -241,6 +242,12 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
   var _sending = false;
 
   bool get _isPassport => widget.documentType == DocumentType.passport;
+
+  List<DocumentPhotoSide> _sidesToCapture() {
+    if (_isPassport) return const [DocumentPhotoSide.front];
+    if (widget.scanned != null) return const [DocumentPhotoSide.back, DocumentPhotoSide.front];
+    return const [DocumentPhotoSide.front, DocumentPhotoSide.back];
+  }
 
   DocumentPhotoSide get _side => _sides[_index];
 
@@ -454,9 +461,45 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
     );
   }
 
-  Widget _buildCamera(BuildContext context) {
+  String _instructions(AppLocalizations l10n, {required bool front}) {
+    if (!front) return l10n.docPhotoBackInstructions;
+    return _isPassport ? l10n.docPhotoFrontInstructionsPassport : l10n.docPhotoFrontInstructionsCard;
+  }
+
+  Widget _buildCameraActions(BuildContext context, {required bool front}) {
     final l10n = context.l10n;
     final ready = _state == _PhotoState.preview;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_state == _PhotoState.error)
+            ElevatedButton(style: actionButtonStyle, onPressed: _openCamera, child: Text(l10n.faceTryAgain))
+          else
+            ElevatedButton.icon(
+              style: actionButtonStyle,
+              onPressed: ready && !_sending ? _capture : null,
+              icon: _state == _PhotoState.capturing
+                  ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.camera_alt),
+              label: Text(l10n.docPhotoTake),
+            ),
+          // Only when the document type is unknown: a card or
+          // licence always has a back, a passport isn't asked for one.
+          if (!front && widget.documentType == null)
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: Colors.white),
+              onPressed: _sending ? null : _skipBack,
+              child: Text(l10n.docPhotoNoBack),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCamera(BuildContext context) {
+    final l10n = context.l10n;
     final front = _side == DocumentPhotoSide.front;
     return Stack(
       fit: StackFit.expand,
@@ -477,11 +520,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
               _buildHeader(
                 context,
                 title: front ? l10n.docPhotoFrontTitle : l10n.docPhotoBackTitle,
-                message: !front
-                    ? l10n.docPhotoBackInstructions
-                    : _isPassport
-                    ? l10n.docPhotoFrontInstructionsPassport
-                    : l10n.docPhotoFrontInstructionsCard,
+                message: _instructions(l10n, front: front),
               ),
               const Spacer(),
               if (_error != null)
@@ -493,33 +532,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
                     style: const TextStyle(color: Colors.white),
                   ),
                 ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (_state == _PhotoState.error)
-                      ElevatedButton(style: actionButtonStyle, onPressed: _openCamera, child: Text(l10n.faceTryAgain))
-                    else
-                      ElevatedButton.icon(
-                        style: actionButtonStyle,
-                        onPressed: ready && !_sending ? _capture : null,
-                        icon: _state == _PhotoState.capturing
-                            ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                            : const Icon(Icons.camera_alt),
-                        label: Text(l10n.docPhotoTake),
-                      ),
-                    // Only when the document type is unknown: a card or
-                    // licence always has a back, a passport isn't asked for one.
-                    if (!front && widget.documentType == null)
-                      TextButton(
-                        style: TextButton.styleFrom(foregroundColor: Colors.white),
-                        onPressed: _sending ? null : _skipBack,
-                        child: Text(l10n.docPhotoNoBack),
-                      ),
-                  ],
-                ),
-              ),
+              _buildCameraActions(context, front: front),
             ],
           ),
         ),

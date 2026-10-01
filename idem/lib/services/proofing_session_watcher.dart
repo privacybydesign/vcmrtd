@@ -87,7 +87,7 @@ class ProofingSessionWatcher {
   Future<void> start() async {
     if (initial.changeKey == null) return;
     var current = initial;
-    while (!_stopped && current.lifecycle != proofingLifecycleComplete && !proofingSessionFinished(current.status)) {
+    while (!_stopped && !_isOver(current)) {
       if (_paused) {
         await (_resumed ??= Completer<void>()).future;
         continue;
@@ -96,24 +96,8 @@ class ProofingSessionWatcher {
       _inflight = httpClient;
       try {
         final next = await client.waitForChange(ref, current.changeKey!, httpClient: httpClient);
-        if (_stopped) return;
-        final lost = next.accessLost;
-        if (lost != null) {
-          onEvent(ProofingSessionAccessLost(ref, lost));
-          return;
-        }
-        // Submitted (on either device): nothing left to watch for.
-        if (next.lifecycle == proofingLifecycleComplete) {
-          onEvent(ProofingSessionCompleted(ref));
-          return;
-        }
-        if (next.resetCount > current.resetCount) {
-          onEvent(ProofingSessionWasReset(ref, next));
-        } else if (next.changeKey != current.changeKey) {
-          onEvent(ProofingSessionUpdated(ref, next));
-        }
+        if (_stopped || _report(current, next)) return;
         current = next;
-        if (current.changeKey == null) return;
       } on ProofingSessionAccessException catch (e) {
         if (!_stopped && e.reason.endsSession) onEvent(ProofingSessionAccessLost(ref, e.reason));
         return;
@@ -126,6 +110,30 @@ class ProofingSessionWatcher {
         if (identical(_inflight, httpClient)) _inflight = null;
       }
     }
+  }
+
+  static bool _isOver(ProofingSessionInfo session) =>
+      session.lifecycle == proofingLifecycleComplete || proofingSessionFinished(session.status);
+
+  /// Reports how [next] differs from [current]; true when there's nothing
+  /// left to watch for.
+  bool _report(ProofingSessionInfo current, ProofingSessionInfo next) {
+    final lost = next.accessLost;
+    if (lost != null) {
+      onEvent(ProofingSessionAccessLost(ref, lost));
+      return true;
+    }
+    // Submitted (on either device): nothing left to watch for.
+    if (next.lifecycle == proofingLifecycleComplete) {
+      onEvent(ProofingSessionCompleted(ref));
+      return true;
+    }
+    if (next.resetCount > current.resetCount) {
+      onEvent(ProofingSessionWasReset(ref, next));
+    } else if (next.changeKey != current.changeKey) {
+      onEvent(ProofingSessionUpdated(ref, next));
+    }
+    return next.changeKey == null;
   }
 
   /// The app went to the background: hang up the open long-poll right away.
