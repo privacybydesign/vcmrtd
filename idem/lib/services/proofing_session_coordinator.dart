@@ -80,7 +80,21 @@ class ProofingSessionCoordinator {
   /// [ProofingSessionAccessException] when the server refuses (expired, a
   /// used or expired handover token, a session already held by another
   /// device).
-  Future<ProofingSessionClaim> connect(ProofingSessionLink link) async {
+  Future<ProofingSessionClaim> connect(ProofingSessionLink link) {
+    if (link is! ProofingHandoverLink) return _connect(link);
+    // The same link twice before the first claim returned (a deep link
+    // delivered twice, a QR read twice): the grant is single-use, so the
+    // second claim would be refused - it gets the first one's outcome.
+    final key = _key(link.apiBase, link.handoverToken);
+    return _connecting[key] ??= _connect(link).whenComplete(() {
+      _connecting.remove(key);
+    });
+  }
+
+  /// Claims in flight, by grant token - see [connect].
+  final Map<String, Future<ProofingSessionClaim>> _connecting = {};
+
+  Future<ProofingSessionClaim> _connect(ProofingSessionLink link) async {
     final claim = switch (link) {
       ProofingHandoverLink() => await _claimOrReuse(link),
       ProofingSessionTokenLink() => throw const ProofingSessionAccessException(
@@ -171,6 +185,8 @@ class ProofingSessionCoordinator {
   }
 
   void _emit(ProofingSessionEvent event) {
+    // A report that came back after dispose.
+    if (_events.isClosed) return;
     // Refused as already complete (409 session_complete - e.g. a device
     // state report racing the other device's submit): the session finished,
     // it wasn't taken away.
@@ -242,21 +258,33 @@ class ProofingSessionCoordinator {
   }
 
   void _reportState(ProofingSessionRef ref, {required bool active}) {
-    client
-        .reportDeviceState(ref, active: active)
-        .then<void>(
-          (info) {
-            final lost = info.accessLost;
-            if (lost != null) {
-              reportAccessLost(ref, lost);
-            } else if (info.lifecycle == proofingLifecycleComplete) {
-              reportCompleted(ref);
-            }
-          },
-          onError: (Object e) {
-            if (e is ProofingSessionAccessException && e.reason.endsSession) reportAccessLost(ref, e.reason);
-          },
-        );
+    _sendDeviceState(ref, active: active).then<void>(
+      (info) {
+        final lost = info.accessLost;
+        if (lost != null) {
+          reportAccessLost(ref, lost);
+        } else if (info.lifecycle == proofingLifecycleComplete) {
+          reportCompleted(ref);
+        }
+      },
+      onError: (Object e) {
+        if (e is ProofingSessionAccessException && e.reason.endsSession) reportAccessLost(ref, e.reason);
+      },
+    );
+  }
+
+  /// The last device state sent, so the next one goes out only after it.
+  Future<void> _lastDeviceState = Future.value();
+
+  /// Sends device states one after another. The server keeps whichever
+  /// arrives last, so an "inactive" overtaking the "active" after it (iOS
+  /// suspends the app mid-request, which finishes on return) would leave the
+  /// device away while it works: the web app then says the app was closed
+  /// and offers a handover.
+  Future<ProofingSessionInfo> _sendDeviceState(ProofingSessionRef ref, {required bool active}) {
+    final sent = _lastDeviceState.then((_) => client.reportDeviceState(ref, active: active));
+    _lastDeviceState = sent.then<void>((_) {}, onError: (Object _) {});
+    return sent;
   }
 
   /// Back in the foreground: nothing continues until the server confirms
@@ -270,7 +298,8 @@ class ProofingSessionCoordinator {
     check.value = ProofingSessionCheck.checking;
     while (run == _resumeCheck && _held == ref && !_backgrounded) {
       try {
-        final info = await client.reportDeviceState(ref, active: true);
+        final info = await _sendDeviceState(ref, active: true);
+        if (run != _resumeCheck) break;
         final lost = info.accessLost;
         if (lost != null) {
           reportAccessLost(ref, lost);
@@ -282,12 +311,14 @@ class ProofingSessionCoordinator {
         }
         break;
       } on ProofingSessionAccessException catch (e) {
+        if (run != _resumeCheck) break;
         if (e.reason.endsSession) {
           reportAccessLost(ref, e.reason);
           break;
         }
         check.value = ProofingSessionCheck.unreachable;
       } catch (_) {
+        if (run != _resumeCheck) break;
         check.value = ProofingSessionCheck.unreachable;
       }
       await Future.delayed(retryDelay);
@@ -297,6 +328,10 @@ class ProofingSessionCoordinator {
 
   void dispose() {
     _watcher?.stop();
+    // Ends a running resume check, and nothing is reported any more.
+    _resumeCheck++;
+    _held = null;
+    _pending = null;
     _events.close();
     check.dispose();
   }

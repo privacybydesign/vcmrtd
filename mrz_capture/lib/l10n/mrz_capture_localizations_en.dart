@@ -30,8 +30,12 @@ class MrzCaptureLocalizationsEn extends MrzCaptureLocalizations {
       '• Passport Number: Usually at the top right of the photo page\n• Date of Birth: Listed as \"Date of birth\" or \"DOB\"\n• Expiry Date: Listed as \"Date of expiry\" or \"Valid until\"';
 
   @override
+  String get mrzHelpIdentityCard =>
+      '• Identity Card Number: On the front of the card\n• Date of Birth: Listed as \"Date of birth\" or \"DOB\"\n• Expiry Date: Listed as \"Date of expiry\" or \"Valid until\"';
+
+  @override
   String get mrzHelpDrivingLicence =>
-      '• The MRZ is at the bottom of the front side of your driver\'s licence\n• You can also get this by scanning the QR Code on the back of your driver\'s licence\n• It\'s a single line of exactly 30 characters\n• Starts with \"D1\", \"D2\", or \"D3\"';
+      '• The MRZ is at the bottom of the front side of your driver\'s licence\n• You can also get this by scanning the QR Code on the back of your driver\'s licence\n• It\'s a single line of exactly 30 characters\n• Starts with \"D1\", \"D2\", or \"DL\"';
 
   @override
   String mrzDocNumberTitle(String docType) {

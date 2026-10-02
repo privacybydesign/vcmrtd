@@ -2,45 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/widgets/common/button_styles.dart';
 
-/// Shown on the document data screen when the current scan was handed off
-/// from a relying party's browser session (see routing.dart's QR handling
-/// and providers/proofing_session_provider.dart). Reaching this screen at
-/// all already means NFC reading and the mandatory on-device face
-/// verification step both succeeded, so there's nothing left to decide here
-/// — just a single action to report that back.
-class SubmitToProofingSessionSection extends StatelessWidget {
-  final String relyingParty;
-  final bool isSubmitting;
-  final VoidCallback onSubmit;
-
-  const SubmitToProofingSessionSection({
-    super.key,
-    required this.relyingParty,
-    required this.isSubmitting,
-    required this.onSubmit,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return _ProofingCard(
-      icon: Icons.verified_user,
-      title: context.l10n.proofingSessionSectionTitle,
-      body: context.l10n.proofingSubmitSectionBody(relyingParty),
-      action: ElevatedButton.icon(
-        onPressed: isSubmitting ? null : onSubmit,
-        icon: isSubmitting
-            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-            : const Icon(Icons.send),
-        label: Text(isSubmitting ? context.l10n.proofingSubmitting : context.l10n.proofingSubmitTo(relyingParty)),
-        style: actionButtonStyle,
-      ),
-    );
-  }
-}
-
-/// Shown on the document data screen instead of [SubmitToProofingSessionSection]
-/// when every step was already sent to the session as it completed, so
-/// there's nothing left to submit - just a confirmation.
+/// Shown on the document data screen when every step was already sent to
+/// the session as it completed, so there's nothing left to submit - just a
+/// confirmation.
 class SubmittedToProofingSessionSection extends StatelessWidget {
   final String relyingParty;
   final bool browserFaceStep;

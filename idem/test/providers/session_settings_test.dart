@@ -64,4 +64,29 @@ void main() {
       expect(container.read(livenessModeProvider), LivenessMode.passive);
     });
   });
+
+  group('UserSettingsSnapshot', () {
+    test("restores the user's settings a session overwrote", () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      container.read(activeAuthenticationProvider.notifier).set(true);
+      container.read(faceEngineProvider.notifier).set(FaceEngineChoice.iris);
+      container.read(livenessModeProvider.notifier).set(LivenessMode.active);
+
+      final snapshot = UserSettingsSnapshot.capture(container);
+      applyProofingSessionSettings(
+        container,
+        _info(requiredChecks: const ['nfc.passive_auth', 'face.match'], faceProvider: faceProviderRegula),
+      );
+      expect(container.read(activeAuthenticationProvider), isFalse);
+      expect(container.read(faceEngineProvider), FaceEngineChoice.regula);
+      expect(container.read(livenessModeProvider), LivenessMode.passive);
+
+      snapshot.restore(container);
+
+      expect(container.read(activeAuthenticationProvider), isTrue);
+      expect(container.read(faceEngineProvider), FaceEngineChoice.iris);
+      expect(container.read(livenessModeProvider), LivenessMode.active);
+    });
+  });
 }

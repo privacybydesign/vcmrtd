@@ -16,6 +16,10 @@ class _FakeCameraPlatform extends CameraPlatform with MockPlatformInterfaceMixin
   PlatformException? takePictureError;
   int takePictureCalls = 0;
   int imageStreamStarts = 0;
+  int disposeCalls = 0;
+
+  /// When set, [takePicture] waits for it.
+  Completer<void>? pictureGate;
 
   @override
   Future<List<CameraDescription>> availableCameras() async => const [
@@ -53,12 +57,13 @@ class _FakeCameraPlatform extends CameraPlatform with MockPlatformInterfaceMixin
   @override
   Future<XFile> takePicture(int cameraId) async {
     takePictureCalls++;
+    await pictureGate?.future;
     if (takePictureError != null) throw takePictureError!;
     return XFile.fromData(jpeg, mimeType: 'image/jpeg');
   }
 
   @override
-  Future<void> dispose(int cameraId) async {}
+  Future<void> dispose(int cameraId) async => disposeCalls++;
 }
 
 void main() {
@@ -114,5 +119,22 @@ void main() {
     expect(platform.takePictureCalls, 1);
     // Started by the camera, then again after the picture.
     expect(platform.imageStreamStarts, 2);
+  });
+
+  testWidgets('leaving the scanner while a picture is taken still releases the camera', (tester) async {
+    final state = await pumpCamera(tester);
+    platform.pictureGate = Completer<void>();
+
+    unawaited(state.takePicture());
+    await tester.pump();
+    // Manual entry pushed on top while the picture is being taken: the
+    // image stream is paused for it, so there is none to stop.
+    state.didPushNext();
+    await tester.pump();
+    platform.pictureGate!.complete();
+    await tester.pump();
+    await tester.pump();
+
+    expect(platform.disposeCalls, 1);
   });
 }

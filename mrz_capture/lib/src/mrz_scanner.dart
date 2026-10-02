@@ -262,7 +262,9 @@ class MRZScannerState extends State<MRZScanner> with RouteAware {
 
   Future<void> _notifyWithPicture(ScannedMRZ mrz, List<String> lines) async {
     final picture = await _cameraView.currentState?.takePicture();
-    if (!mounted) return;
+    // Left the scanner while the picture was taken (back, or manual entry
+    // pushed on top): the scan no longer decides where the user goes.
+    if (!mounted || !(ModalRoute.of(context)?.isCurrent ?? true)) return;
     widget.onSuccess(mrz, lines, picture);
   }
 

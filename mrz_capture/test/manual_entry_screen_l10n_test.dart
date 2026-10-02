@@ -32,6 +32,23 @@ void main() {
     expect(find.text('Door naar het uitlezen via NFC'), findsOneWidget);
   });
 
+  testWidgets('shows help for the document type being entered', (tester) async {
+    tester.view.physicalSize = const Size(1200, 2200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(_screen(DocumentType.identityCard, const Locale('en')));
+    await tester.pump();
+    expect(find.textContaining('Identity Card Number: On the front of the card'), findsOneWidget);
+    expect(find.textContaining('Passport Number'), findsNothing);
+
+    await tester.pumpWidget(_screen(DocumentType.drivingLicence, const Locale('en')));
+    await tester.pump();
+    // The prefixes the validator accepts.
+    expect(find.textContaining('"D1", "D2", or "DL"'), findsOneWidget);
+  });
+
   testWidgets('falls back to English without the delegate', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

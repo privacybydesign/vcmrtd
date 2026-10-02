@@ -1640,30 +1640,6 @@ abstract class AppLocalizations {
   /// **'Everything the app reads from your document'**
   String get proofingAttributeEverything;
 
-  /// No description provided for @proofingSessionSectionTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Identity proofing session'**
-  String get proofingSessionSectionTitle;
-
-  /// No description provided for @proofingSubmitSectionBody.
-  ///
-  /// In en, this message translates to:
-  /// **'This scan is for a session opened by {relyingParty}. Send the document identity and face verification result back to them.'**
-  String proofingSubmitSectionBody(String relyingParty);
-
-  /// No description provided for @proofingSubmitting.
-  ///
-  /// In en, this message translates to:
-  /// **'Submitting...'**
-  String get proofingSubmitting;
-
-  /// No description provided for @proofingSubmitTo.
-  ///
-  /// In en, this message translates to:
-  /// **'Submit to {relyingParty}'**
-  String proofingSubmitTo(String relyingParty);
-
   /// No description provided for @proofingSentTo.
   ///
   /// In en, this message translates to:
@@ -1694,53 +1670,11 @@ abstract class AppLocalizations {
   /// **'Add to Wallet'**
   String get proofingAddToWallet;
 
-  /// No description provided for @proofingSubmittedTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Submitted'**
-  String get proofingSubmittedTitle;
-
-  /// No description provided for @proofingSubmittedDocument.
-  ///
-  /// In en, this message translates to:
-  /// **'Your document identity was sent to {relyingParty}.'**
-  String proofingSubmittedDocument(String relyingParty);
-
-  /// No description provided for @proofingSubmittedDocumentAndFace.
-  ///
-  /// In en, this message translates to:
-  /// **'Your document identity and face verification result were sent to {relyingParty}.'**
-  String proofingSubmittedDocumentAndFace(String relyingParty);
-
-  /// No description provided for @proofingSubmitFailedTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Submit Failed'**
-  String get proofingSubmitFailedTitle;
-
-  /// No description provided for @proofingSubmitFailedMessage.
-  ///
-  /// In en, this message translates to:
-  /// **'Failed to submit the result to the relying party:'**
-  String get proofingSubmitFailedMessage;
-
   /// No description provided for @proofingDialogOk.
   ///
   /// In en, this message translates to:
   /// **'OK'**
   String get proofingDialogOk;
-
-  /// No description provided for @proofingDialogRetryHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Please try again or make an issue in GitHub of this project.'**
-  String get proofingDialogRetryHint;
-
-  /// No description provided for @proofingRetry.
-  ///
-  /// In en, this message translates to:
-  /// **'Retry'**
-  String get proofingRetry;
 
   /// No description provided for @proofingScanDocument.
   ///
@@ -1886,6 +1820,12 @@ abstract class AppLocalizations {
   /// **'{what} failed: too many attempts, please wait a moment and try again'**
   String proofingRequestTooManyAttempts(String what);
 
+  /// No description provided for @proofingRequestTimedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'The server did not respond in time - check your internet connection and try again'**
+  String get proofingRequestTimedOut;
+
   /// No description provided for @proofingRequestFailed.
   ///
   /// In en, this message translates to:
@@ -1915,12 +1855,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reporting the device state'**
   String get proofingRequestDeviceState;
-
-  /// No description provided for @proofingRequestSubmitResult.
-  ///
-  /// In en, this message translates to:
-  /// **'Submitting the result'**
-  String get proofingRequestSubmitResult;
 
   /// No description provided for @proofingRequestStepStarted.
   ///

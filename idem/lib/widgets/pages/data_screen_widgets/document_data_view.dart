@@ -2,27 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtd/vcmrtd.dart';
-import 'package:idem/providers/proofing_session_provider.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:idem/providers/wallet_provider.dart';
-import 'package:idem/services/face_verification_outcome.dart';
-import 'package:idem/services/proofing_chip_evidence.dart';
+import 'package:idem/widgets/common/button_styles.dart';
 
-import 'proofing_result_submission.dart';
+import 'submit_to_proofing_session.dart';
 import 'web_banner.dart';
 
 /// The page every document data screen (passport, driving licence) shares:
 /// the step badge, the document's own [children], and adding the chip read
-/// to the wallet or submitting it to the pinned proofing session.
-class DocumentDataView extends ConsumerStatefulWidget {
+/// to the wallet - or, when it was sent to a proofing session step by step,
+/// confirming that.
+class DocumentDataView extends ConsumerWidget {
   final String title;
   final DocumentData document;
   final RawDocumentData rawDocument;
   final DocumentType documentType;
-  final FaceVerificationOutcome? faceVerification;
 
-  /// Set when every step was already sent to the session as it completed -
-  /// see [DocumentWalletOrSubmitSection.submittedTo].
+  /// The relying party every step was already sent to as it completed (see
+  /// routing.dart's _submitNfcStep), or null for a scan without a session.
   final String? submittedTo;
+
+  /// Whether the browser still does the face step after that.
   final bool browserFaceStep;
   final VoidCallback onBackPressed;
   final int stepNumber;
@@ -35,7 +36,6 @@ class DocumentDataView extends ConsumerStatefulWidget {
     required this.document,
     required this.rawDocument,
     required this.documentType,
-    required this.faceVerification,
     required this.submittedTo,
     required this.browserFaceStep,
     required this.onBackPressed,
@@ -45,14 +45,9 @@ class DocumentDataView extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<DocumentDataView> createState() => _DocumentDataViewState();
-}
-
-class _DocumentDataViewState extends ConsumerState<DocumentDataView> with ProofingResultSubmission<DocumentDataView> {
-  @override
-  Widget build(BuildContext context) {
-    final activeProofingSession = ref.watch(activeProofingSessionProvider);
-    final sessionId = widget.rawDocument.sessionId;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sessionId = rawDocument.sessionId;
+    final submittedTo = this.submittedTo;
 
     return Scaffold(
       body: SafeArea(
@@ -60,10 +55,10 @@ class _DocumentDataViewState extends ConsumerState<DocumentDataView> with Proofi
           children: [
             StepBadgeTopBar(
               icon: Icons.arrow_back,
-              onBack: widget.onBackPressed,
-              current: widget.stepNumber,
-              total: widget.totalSteps,
-              label: widget.title,
+              onBack: onBackPressed,
+              current: stepNumber,
+              total: totalSteps,
+              label: title,
             ),
             Expanded(
               child: SingleChildScrollView(
@@ -72,15 +67,24 @@ class _DocumentDataViewState extends ConsumerState<DocumentDataView> with Proofi
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (sessionId != null) WebBanner(sessionId: sessionId),
-                    ...widget.children,
-                    DocumentWalletOrSubmitSection(
-                      activeProofingSession: activeProofingSession,
-                      isSubmitting: submittingToProofingSession,
-                      onAddToWallet: _addToWallet,
-                      onSubmit: () => _submitToProofingSession(activeProofingSession!),
-                      submittedTo: widget.submittedTo,
-                      browserFaceStep: widget.browserFaceStep,
-                      onDone: widget.onBackPressed,
+                    ...children,
+                    Padding(
+                      padding: const EdgeInsets.only(top: 20),
+                      child: submittedTo != null
+                          ? SubmittedToProofingSessionSection(
+                              relyingParty: submittedTo,
+                              browserFaceStep: browserFaceStep,
+                              onDone: onBackPressed,
+                            )
+                          : ElevatedButton.icon(
+                              onPressed: () {
+                                ref.read(walletProvider.notifier).add(WalletCard.fromDocument(document, documentType));
+                                onBackPressed();
+                              },
+                              style: actionButtonStyle,
+                              icon: const Icon(Icons.account_balance_wallet),
+                              label: Text(context.l10n.proofingAddToWallet),
+                            ),
                     ),
                   ],
                 ),
@@ -89,23 +93,6 @@ class _DocumentDataViewState extends ConsumerState<DocumentDataView> with Proofi
           ],
         ),
       ),
-    );
-  }
-
-  void _addToWallet() {
-    ref.read(walletProvider.notifier).add(WalletCard.fromDocument(widget.document, widget.documentType));
-    widget.onBackPressed();
-  }
-
-  Future<void> _submitToProofingSession(ActiveProofingSession session) {
-    final evidence = ProofingChipEvidence.from(widget.document, widget.rawDocument, widget.documentType);
-    return submitProofingResult(
-      session: session,
-      document: evidence.document,
-      photo: evidence.photo,
-      mrtdEvidence: evidence.mrtdEvidence,
-      faceVerification: widget.faceVerification,
-      onBackPressed: widget.onBackPressed,
     );
   }
 }

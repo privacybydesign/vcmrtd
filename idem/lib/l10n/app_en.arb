@@ -500,24 +500,6 @@
   "proofingAttributeChipChecks": "Document authenticity checks",
   "proofingAttributeBiometrics": "Face verification result",
   "proofingAttributeEverything": "Everything the app reads from your document",
-  "proofingSessionSectionTitle": "Identity proofing session",
-  "proofingSubmitSectionBody": "This scan is for a session opened by {relyingParty}. Send the document identity and face verification result back to them.",
-  "@proofingSubmitSectionBody": {
-    "placeholders": {
-      "relyingParty": {
-        "type": "String"
-      }
-    }
-  },
-  "proofingSubmitting": "Submitting...",
-  "proofingSubmitTo": "Submit to {relyingParty}",
-  "@proofingSubmitTo": {
-    "placeholders": {
-      "relyingParty": {
-        "type": "String"
-      }
-    }
-  },
   "proofingSentTo": "Sent to {relyingParty}",
   "@proofingSentTo": {
     "placeholders": {
@@ -544,28 +526,7 @@
   },
   "proofingDone": "Done",
   "proofingAddToWallet": "Add to Wallet",
-  "proofingSubmittedTitle": "Submitted",
-  "proofingSubmittedDocument": "Your document identity was sent to {relyingParty}.",
-  "@proofingSubmittedDocument": {
-    "placeholders": {
-      "relyingParty": {
-        "type": "String"
-      }
-    }
-  },
-  "proofingSubmittedDocumentAndFace": "Your document identity and face verification result were sent to {relyingParty}.",
-  "@proofingSubmittedDocumentAndFace": {
-    "placeholders": {
-      "relyingParty": {
-        "type": "String"
-      }
-    }
-  },
-  "proofingSubmitFailedTitle": "Submit Failed",
-  "proofingSubmitFailedMessage": "Failed to submit the result to the relying party:",
   "proofingDialogOk": "OK",
-  "proofingDialogRetryHint": "Please try again or make an issue in GitHub of this project.",
-  "proofingRetry": "Retry",
   "proofingScanDocument": "Scan {docType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}}",
   "@proofingScanDocument": {
     "placeholders": {
@@ -639,6 +600,7 @@
       }
     }
   },
+  "proofingRequestTimedOut": "The server did not respond in time - check your internet connection and try again",
   "proofingRequestFailed": "{what} failed: {details}",
   "@proofingRequestFailed": {
     "placeholders": {
@@ -654,7 +616,6 @@
   "proofingRequestFetch": "Fetching the session",
   "proofingRequestWatch": "Watching the session",
   "proofingRequestDeviceState": "Reporting the device state",
-  "proofingRequestSubmitResult": "Submitting the result",
   "proofingRequestStepStarted": "Marking step {step} started",
   "@proofingRequestStepStarted": {
     "placeholders": {

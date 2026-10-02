@@ -42,18 +42,29 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
   late final AppLifecycleListener _lifecycle;
   StreamSubscription<ProofingSessionEvent>? _sessionEvents;
 
+  /// The settings from before the pinned session overwrote them.
+  UserSettingsSnapshot? _userSettings;
+
   @override
   void initState() {
     super.initState();
     // Listen to every newly accepted session through the backend.
     // Unpinning (null) doesn't stop listening - see ProofingSessionWatcher.
     ref.listenManual(activeProofingSessionProvider, (previous, next) {
-      if (next == null) return;
+      final container = ProviderScope.containerOf(context);
+      if (next == null) {
+        // The session ended: the user's own settings apply again.
+        _userSettings?.restore(container);
+        _userSettings = null;
+        return;
+      }
       _sessions.track(next.ref, next.info);
       // The session's language (see lib/l10n/l10n.dart) decides the UI's.
       ref.read(appLocaleProvider.notifier).useSessionLanguage(next.info.language);
-      // The session's flow decides the checks, and Settings shows them.
-      applyProofingSessionSettings(ProviderScope.containerOf(context), next.info);
+      // The session's flow decides the checks, and Settings shows them -
+      // only while it's pinned.
+      _userSettings ??= UserSettingsSnapshot.capture(container);
+      applyProofingSessionSettings(container, next.info);
     });
     _sessionEvents = _sessions.events.listen(_onProofingSessionEvent);
     // Tell the server when this device stops/resumes working on the

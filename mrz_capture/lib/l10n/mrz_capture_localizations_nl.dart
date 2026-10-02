@@ -30,8 +30,12 @@ class MrzCaptureLocalizationsNl extends MrzCaptureLocalizations {
       '• Paspoortnummer: meestal rechtsboven op de pagina met je foto\n• Geboortedatum: staat er als \"Geboortedatum\" of \"Date of birth\"\n• Vervaldatum: staat er als \"Geldig tot\" of \"Date of expiry\"';
 
   @override
+  String get mrzHelpIdentityCard =>
+      '• Documentnummer: op de voorkant van de kaart\n• Geboortedatum: staat er als \"Geboortedatum\" of \"Date of birth\"\n• Vervaldatum: staat er als \"Geldig tot\" of \"Date of expiry\"';
+
+  @override
   String get mrzHelpDrivingLicence =>
-      '• De MRZ staat onderaan op de voorkant van je rijbewijs\n• Je kunt hem ook krijgen door de QR-code op de achterkant van je rijbewijs te scannen\n• Het is één regel van precies 30 tekens\n• Hij begint met \"D1\", \"D2\" of \"D3\"';
+      '• De MRZ staat onderaan op de voorkant van je rijbewijs\n• Je kunt hem ook krijgen door de QR-code op de achterkant van je rijbewijs te scannen\n• Het is één regel van precies 30 tekens\n• Hij begint met \"D1\", \"D2\" of \"DL\"';
 
   @override
   String mrzDocNumberTitle(String docType) {

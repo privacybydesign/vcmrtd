@@ -1,6 +1,5 @@
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:idem/custom/custom_logger_extension.dart';
 import 'package:idem/l10n/l10n.dart';
@@ -84,6 +83,7 @@ class NfcReadingScreen extends ConsumerStatefulWidget {
   const NfcReadingScreen({
     required this.params,
     required this.onSuccess,
+    this.onBack,
     this.stepNumber = FlowStepPlan.defaultNfcReadStep,
     this.totalSteps = FlowStepPlan.defaultTotalSteps,
     super.key,
@@ -92,6 +92,10 @@ class NfcReadingScreen extends ConsumerStatefulWidget {
   final NfcReadingRouteParams params;
 
   final Function(DocumentData, RawDocumentData) onSuccess;
+
+  /// Leaves the screen; pops by default. routing.dart passes one that also
+  /// works when the screen was reached with go and there is nothing to pop.
+  final VoidCallback? onBack;
 
   /// Step badge numbers — default to vcmrtd's fixed 4-step sequence (this
   /// screen is always step 2 there) so any caller not passing these
@@ -165,7 +169,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
     if (state is DocumentReaderPending) {
       return NfcGuidanceScreen(
         onStartReading: startReading,
-        onBack: context.pop,
+        onBack: _leave,
         documentType: widget.params.documentType,
         stepNumber: widget.stepNumber,
         totalSteps: widget.totalSteps,
@@ -399,7 +403,16 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
   /// reader provider's autoDispose cleanup.
   Future<void> _handleBack(BuildContext context) async {
     await cancel();
-    if (context.mounted) Navigator.maybePop(context);
+    if (context.mounted) _leave();
+  }
+
+  void _leave() {
+    final onBack = widget.onBack;
+    if (onBack != null) {
+      onBack();
+    } else {
+      Navigator.maybePop(context);
+    }
   }
 
   Future<void> cancel() async {
@@ -423,7 +436,14 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
     startReading();
   }
 
+  /// True from a Scan tap until its read ends, so a second tap (the screen
+  /// still shows Scan while the session is fetched) doesn't start a second
+  /// read that keeps waiting for the document after the first one is done.
+  var _reading = false;
+
   Future<void> startReading() async {
+    if (_reading) return;
+    _reading = true;
     markActiveProofingStepStarted(ProviderScope.containerOf(context), stepNfcRead);
     try {
       final readerProvider = switch (widget.params.documentType) {
@@ -433,15 +453,19 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
       };
 
       final nonceAndSessionId = await _activeAuthenticationParams();
+      // Left the screen while the session was fetched: nothing to read for.
+      if (!mounted) return;
       final result = await ref
           .read(readerProvider(scannedMRZ).notifier)
           .readDocument(iosNfcMessages: _createIosNfcMessageMapper(), activeAuthenticationParams: nonceAndSessionId);
-      if (result != null) {
+      if (result != null && mounted) {
         final (document, passportDataResult) = result;
         widget.onSuccess(document, passportDataResult);
       }
     } catch (e) {
       debugPrint('failed to read document: $e');
+    } finally {
+      _reading = false;
     }
   }
 

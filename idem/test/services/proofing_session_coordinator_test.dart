@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/widgets.dart' show AppLifecycleState;
@@ -244,6 +245,29 @@ void main() {
       expect(requests, ['POST /api/v1/app/handover/claim-1/claim null', 'GET /api/v1/app/tok-1 dev-1']);
     });
 
+    test('the same link twice before the first claim returned claims once, and both get that claim', () async {
+      final claims = <String>[];
+      final answer = Completer<void>();
+      await http.runWithClient(
+        () async {
+          final coordinator = ProofingSessionCoordinator(client: const ProofingSessionClient());
+          final link = ProofingSessionLink.parse('vcmrtd://verify?handover=claim-1&api=$_api')!;
+          final first = coordinator.connect(link);
+          final second = coordinator.connect(link);
+          answer.complete();
+          expect((await first).ref.deviceToken, 'dev-1');
+          expect((await second).ref.deviceToken, 'dev-1');
+        },
+        () => MockClient((request) async {
+          claims.add(request.url.path);
+          await answer.future;
+          // The grant is single-use: a second claim would be refused.
+          return claims.length == 1 ? _json(_claimBody()) : _refused(409, 'handover_used');
+        }),
+      );
+      expect(claims, ['/api/v1/app/handover/claim-1/claim']);
+    });
+
     test('connect refuses a session-token link without calling the server', () async {
       final requests = <String>[];
       await http.runWithClient(
@@ -377,6 +401,37 @@ void main() {
           }),
         );
         expect(states, ['inactive', 'active']);
+      });
+
+      test('a slow inactive report is sent before the active one, never overtaken by it', () async {
+        final arrived = <String>[];
+        final inactiveAnswer = Completer<void>();
+        await http.runWithClient(
+          () async {
+            final coordinator = ProofingSessionCoordinator(client: const ProofingSessionClient());
+            coordinator.track(ref, info);
+
+            coordinator.appLifecycleChanged(AppLifecycleState.paused);
+            await _settle();
+            // Back before the server answered the inactive report.
+            coordinator.appLifecycleChanged(AppLifecycleState.resumed);
+            await _settle();
+            expect(arrived, ['inactive']);
+
+            inactiveAnswer.complete();
+            await _settle();
+            await _settle();
+            await _settle();
+            expect(arrived, ['inactive', 'active']);
+            expect(coordinator.check.value, ProofingSessionCheck.idle);
+          },
+          () => MockClient((request) async {
+            final state = (json.decode(request.body) as Map)['state'] as String;
+            arrived.add(state);
+            if (state == 'inactive') await inactiveAnswer.future;
+            return _json(_view());
+          }),
+        );
       });
 
       test('reports a claimed session still on the consent screen, and its decline', () async {

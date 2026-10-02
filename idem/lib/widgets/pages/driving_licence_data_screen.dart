@@ -3,7 +3,6 @@ import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/l10n/l10n.dart';
-import 'package:idem/services/face_verification_outcome.dart';
 import 'package:idem/services/flow_step_plan.dart';
 import 'package:idem/widgets/displays/passport_image_widget.dart';
 
@@ -14,10 +13,8 @@ class DrivingLicenceDataScreen extends StatelessWidget {
   final RawDocumentData drivingLicenceDataResult;
   final VoidCallback onBackPressed;
 
-  final FaceVerificationOutcome? faceVerification;
-
   /// Set when every step was already sent to the session as it completed -
-  /// see [DocumentWalletOrSubmitSection.submittedTo].
+  /// see [DocumentDataView.submittedTo].
   final String? submittedTo;
   final bool browserFaceStep;
 
@@ -34,7 +31,6 @@ class DrivingLicenceDataScreen extends StatelessWidget {
     required this.drivingLicence,
     required this.drivingLicenceDataResult,
     required this.onBackPressed,
-    this.faceVerification,
     this.submittedTo,
     this.browserFaceStep = false,
     this.stepNumber = FlowStepPlan.defaultResultStep,
@@ -50,7 +46,6 @@ class DrivingLicenceDataScreen extends StatelessWidget {
       document: licence,
       rawDocument: drivingLicenceDataResult,
       documentType: DocumentType.drivingLicence,
-      faceVerification: faceVerification,
       submittedTo: submittedTo,
       browserFaceStep: browserFaceStep,
       onBackPressed: onBackPressed,

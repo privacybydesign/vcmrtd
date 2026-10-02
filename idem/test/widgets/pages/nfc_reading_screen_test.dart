@@ -6,6 +6,8 @@
 // build()/checkNfcAvailability()/cancel()/reset()/readDocument() so nothing
 // touches hardware.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -44,6 +46,12 @@ class _FakeReader extends DocumentReader<PassportData> {
   int resetCalls = 0;
   int readCalls = 0;
 
+  /// Reads started across every instance.
+  static var totalReads = 0;
+
+  /// When set, a read waits for it: a document not yet held to the phone.
+  static Completer<void>? readGate;
+
   @override
   DocumentReaderState build() => initialState;
 
@@ -72,6 +80,8 @@ class _FakeReader extends DocumentReader<PassportData> {
     NonceAndSessionId? activeAuthenticationParams,
   }) async {
     readCalls++;
+    totalReads++;
+    await readGate?.future;
     // Exercise the iosNfcMessages mapper for a few states so its closure is
     // covered without needing a real chip.
     iosNfcMessages(DocumentReaderConnecting());
@@ -130,7 +140,11 @@ void _setLargeViewport(WidgetTester tester) {
 }
 
 void main() {
-  setUp(() => _FakeReader.initialState = DocumentReaderPending());
+  setUp(() {
+    _FakeReader.initialState = DocumentReaderPending();
+    _FakeReader.totalReads = 0;
+    _FakeReader.readGate = null;
+  });
 
   group('NfcReadingScreen — pending/guidance state', () {
     testWidgets('pending state renders the NfcGuidanceScreen', (tester) async {
@@ -303,6 +317,29 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.byType(NfcGuidanceScreen), findsOneWidget);
+    });
+  });
+
+  group('NfcReadingScreen — tapping Scan twice', () {
+    testWidgets('starts one read, not a second one that waits for the document after the first', (tester) async {
+      _setLargeViewport(tester);
+      _FakeReader.readGate = Completer<void>();
+      await tester.pumpWidget(_app(DocumentType.passport));
+      await tester.pump();
+
+      final guidance = tester.widget<NfcGuidanceScreen>(find.byType(NfcGuidanceScreen));
+      guidance.onStartReading();
+      guidance.onStartReading();
+      await tester.pump(const Duration(milliseconds: 100));
+      _FakeReader.readGate!.complete();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(_FakeReader.totalReads, 1);
+
+      // Once that read ended, Scan starts a new one again.
+      tester.widget<NfcGuidanceScreen>(find.byType(NfcGuidanceScreen)).onStartReading();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(_FakeReader.totalReads, 2);
     });
   });
 

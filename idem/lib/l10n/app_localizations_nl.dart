@@ -910,22 +910,6 @@ class AppLocalizationsNl extends AppLocalizations {
   String get proofingAttributeEverything => 'Alles wat de app uit je document leest';
 
   @override
-  String get proofingSessionSectionTitle => 'Verificatiesessie';
-
-  @override
-  String proofingSubmitSectionBody(String relyingParty) {
-    return 'Deze scan hoort bij een sessie die $relyingParty heeft geopend. Stuur je documentidentiteit en het resultaat van de gezichtsverificatie naar hen terug.';
-  }
-
-  @override
-  String get proofingSubmitting => 'Versturen...';
-
-  @override
-  String proofingSubmitTo(String relyingParty) {
-    return 'Versturen naar $relyingParty';
-  }
-
-  @override
   String proofingSentTo(String relyingParty) {
     return 'Verstuurd naar $relyingParty';
   }
@@ -947,32 +931,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get proofingAddToWallet => 'Toevoegen aan wallet';
 
   @override
-  String get proofingSubmittedTitle => 'Verstuurd';
-
-  @override
-  String proofingSubmittedDocument(String relyingParty) {
-    return 'Je documentidentiteit is naar $relyingParty gestuurd.';
-  }
-
-  @override
-  String proofingSubmittedDocumentAndFace(String relyingParty) {
-    return 'Je documentidentiteit en het resultaat van de gezichtsverificatie zijn naar $relyingParty gestuurd.';
-  }
-
-  @override
-  String get proofingSubmitFailedTitle => 'Versturen mislukt';
-
-  @override
-  String get proofingSubmitFailedMessage => 'Het resultaat kon niet naar de aanvragende partij worden gestuurd:';
-
-  @override
   String get proofingDialogOk => 'OK';
-
-  @override
-  String get proofingDialogRetryHint => 'Probeer het opnieuw of maak een issue aan op GitHub voor dit project.';
-
-  @override
-  String get proofingRetry => 'Opnieuw proberen';
 
   @override
   String proofingScanDocument(String docType) {
@@ -1084,6 +1043,10 @@ class AppLocalizationsNl extends AppLocalizations {
   }
 
   @override
+  String get proofingRequestTimedOut =>
+      'De server reageerde niet op tijd - controleer je internetverbinding en probeer het opnieuw';
+
+  @override
   String proofingRequestFailed(String what, String details) {
     return '$what mislukt: $details';
   }
@@ -1099,9 +1062,6 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get proofingRequestDeviceState => 'Apparaatstatus doorgeven';
-
-  @override
-  String get proofingRequestSubmitResult => 'Resultaat versturen';
 
   @override
   String proofingRequestStepStarted(String step) {

@@ -4,14 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:idem/l10n/l10n.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
 import 'package:image/image.dart' as img;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:vcmrtd/vcmrtd.dart';
-import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/providers/wallet_provider.dart';
-import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/widgets/pages/driving_licence_data_screen.dart';
 import 'package:idem/widgets/pages/passport_data_screen.dart';
 
@@ -67,16 +63,6 @@ void _setLargeViewport(WidgetTester tester) {
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
 }
-
-ActiveProofingSession _fakeProofingSession() => ActiveProofingSession(
-  ref: const ProofingSessionRef(apiBase: 'https://proof.example.com', token: 'tok-1'),
-  info: ProofingSessionInfo(
-    id: 'session-1',
-    relyingParty: 'Acme Corp',
-    requestedAttributes: const ['dg1'],
-    expiresAt: DateTime.now().add(const Duration(minutes: 5)),
-  ),
-);
 
 void main() {
   setUp(() {
@@ -165,13 +151,13 @@ void main() {
     expect(backCount, 1, reason: 'adding to wallet should navigate back to the wallet page');
   });
 
-  testWidgets('PassportDataScreen hides Add to Wallet and shows the submit section once a proofing session is pinned', (
+  testWidgets('a chip read already sent to a session step by step only confirms that, nothing to add or submit', (
     tester,
   ) async {
     _setLargeViewport(tester);
+    var backCount = 0;
     final container = ProviderContainer();
     addTearDown(container.dispose);
-    container.read(activeProofingSessionProvider.notifier).set(_fakeProofingSession());
 
     await tester.pumpWidget(
       UncontrolledProviderScope(
@@ -181,8 +167,9 @@ void main() {
           supportedLocales: AppLocalizations.supportedLocales,
           home: PassportDataScreen(
             document: _passportData(),
-            passportDataResult: _rawDocument(sessionId: 'session-1'),
-            onBackPressed: () {},
+            passportDataResult: _rawDocument(),
+            submittedTo: 'Acme Corp',
+            onBackPressed: () => backCount++,
           ),
         ),
       ),
@@ -190,196 +177,9 @@ void main() {
     await tester.pump();
 
     expect(find.text('Add to Wallet'), findsNothing);
-    expect(find.text('Submit to Acme Corp'), findsOneWidget);
-  });
-
-  testWidgets(
-    'DrivingLicenceDataScreen hides Add to Wallet and shows the submit section once a proofing session is pinned',
-    (tester) async {
-      _setLargeViewport(tester);
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
-      container.read(activeProofingSessionProvider.notifier).set(_fakeProofingSession());
-
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: DrivingLicenceDataScreen(
-              drivingLicence: _drivingLicenceData(),
-              drivingLicenceDataResult: _rawDocument(sessionId: 'session-2'),
-              onBackPressed: () {},
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-
-      expect(find.text('Add to Wallet'), findsNothing);
-      expect(find.text('Submit to Acme Corp'), findsOneWidget);
-    },
-  );
-
-  testWidgets('PassportDataScreen submit success clears the pinned session and shows a success dialog', (tester) async {
-    await http.runWithClient(() async {
-      _setLargeViewport(tester);
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
-      container.read(activeProofingSessionProvider.notifier).set(_fakeProofingSession());
-      var backCount = 0;
-
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: PassportDataScreen(
-              document: _passportData(),
-              passportDataResult: _rawDocument(sessionId: 'session-1'),
-              onBackPressed: () => backCount++,
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-
-      await tester.tap(find.text('Submit to Acme Corp'));
-      await tester.pump();
-
-      expect(find.text('Submitted'), findsOneWidget);
-      expect(container.read(activeProofingSessionProvider), isNull);
-
-      await tester.tap(find.text('Continue'));
-      await tester.pumpAndSettle();
-
-      expect(backCount, 1);
-    }, () => MockClient((request) async => http.Response('{}', 200)));
-  });
-
-  testWidgets('PassportDataScreen submit failure shows an error dialog and Retry submits again', (tester) async {
-    var requestCount = 0;
-    await http.runWithClient(
-      () async {
-        _setLargeViewport(tester);
-        final container = ProviderContainer();
-        addTearDown(container.dispose);
-        container.read(activeProofingSessionProvider.notifier).set(_fakeProofingSession());
-
-        await tester.pumpWidget(
-          UncontrolledProviderScope(
-            container: container,
-            child: MaterialApp(
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
-              supportedLocales: AppLocalizations.supportedLocales,
-              home: PassportDataScreen(
-                document: _passportData(),
-                passportDataResult: _rawDocument(sessionId: 'session-1'),
-                onBackPressed: () {},
-              ),
-            ),
-          ),
-        );
-        await tester.pump();
-
-        await tester.tap(find.text('Submit to Acme Corp'));
-        await tester.pump();
-
-        expect(find.text('Submit Failed'), findsOneWidget);
-        expect(container.read(activeProofingSessionProvider), isNotNull, reason: 'a failed submit keeps the session');
-
-        await tester.tap(find.text('Retry'));
-        await tester.pump();
-
-        expect(requestCount, 2, reason: 'Retry should submit again');
-      },
-      () => MockClient((request) async {
-        requestCount++;
-        return http.Response('server error', 500);
-      }),
-    );
-  });
-
-  testWidgets('DrivingLicenceDataScreen submit success clears the pinned session and shows a success dialog', (
-    tester,
-  ) async {
-    await http.runWithClient(() async {
-      _setLargeViewport(tester);
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
-      container.read(activeProofingSessionProvider.notifier).set(_fakeProofingSession());
-      var backCount = 0;
-
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: MaterialApp(
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: DrivingLicenceDataScreen(
-              drivingLicence: _drivingLicenceData(),
-              drivingLicenceDataResult: _rawDocument(sessionId: 'session-2'),
-              onBackPressed: () => backCount++,
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-
-      await tester.tap(find.text('Submit to Acme Corp'));
-      await tester.pump();
-
-      expect(find.text('Submitted'), findsOneWidget);
-      expect(container.read(activeProofingSessionProvider), isNull);
-
-      await tester.tap(find.text('Continue'));
-      await tester.pumpAndSettle();
-
-      expect(backCount, 1);
-    }, () => MockClient((request) async => http.Response('{}', 200)));
-  });
-
-  testWidgets('DrivingLicenceDataScreen submit failure shows an error dialog and Retry submits again', (tester) async {
-    var requestCount = 0;
-    await http.runWithClient(
-      () async {
-        _setLargeViewport(tester);
-        final container = ProviderContainer();
-        addTearDown(container.dispose);
-        container.read(activeProofingSessionProvider.notifier).set(_fakeProofingSession());
-
-        await tester.pumpWidget(
-          UncontrolledProviderScope(
-            container: container,
-            child: MaterialApp(
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
-              supportedLocales: AppLocalizations.supportedLocales,
-              home: DrivingLicenceDataScreen(
-                drivingLicence: _drivingLicenceData(),
-                drivingLicenceDataResult: _rawDocument(sessionId: 'session-2'),
-                onBackPressed: () {},
-              ),
-            ),
-          ),
-        );
-        await tester.pump();
-
-        await tester.tap(find.text('Submit to Acme Corp'));
-        await tester.pump();
-
-        expect(find.text('Submit Failed'), findsOneWidget);
-
-        await tester.tap(find.text('Retry'));
-        await tester.pump();
-
-        expect(requestCount, 2, reason: 'Retry should submit again');
-      },
-      () => MockClient((request) async {
-        requestCount++;
-        return http.Response('server error', 500);
-      }),
-    );
+    await tester.scrollUntilVisible(find.text('Done'), 300);
+    await tester.tap(find.text('Done'));
+    expect(backCount, 1);
+    expect(container.read(walletProvider), isEmpty);
   });
 }

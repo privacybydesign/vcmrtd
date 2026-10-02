@@ -5,10 +5,8 @@ import 'package:vcmrtd/vcmrtd.dart';
 
 import 'proofing_session_client.dart';
 
-/// What a chip read contributes to an identity-proofing session, built the
-/// same way for the nfc_read step submission (routing.dart's /nfc_reading)
-/// and the flow-less single-shot result (the document data screens) - only
-/// the document type decides how.
+/// What a chip read contributes to an identity-proofing session's nfc_read
+/// step (routing.dart's /nfc_reading) - only the document type decides how.
 class ProofingChipEvidence {
   final ProofingDocumentInfo document;
   final ProofingPhotoInfo photo;

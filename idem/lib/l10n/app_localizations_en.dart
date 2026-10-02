@@ -906,22 +906,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get proofingAttributeEverything => 'Everything the app reads from your document';
 
   @override
-  String get proofingSessionSectionTitle => 'Identity proofing session';
-
-  @override
-  String proofingSubmitSectionBody(String relyingParty) {
-    return 'This scan is for a session opened by $relyingParty. Send the document identity and face verification result back to them.';
-  }
-
-  @override
-  String get proofingSubmitting => 'Submitting...';
-
-  @override
-  String proofingSubmitTo(String relyingParty) {
-    return 'Submit to $relyingParty';
-  }
-
-  @override
   String proofingSentTo(String relyingParty) {
     return 'Sent to $relyingParty';
   }
@@ -943,32 +927,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get proofingAddToWallet => 'Add to Wallet';
 
   @override
-  String get proofingSubmittedTitle => 'Submitted';
-
-  @override
-  String proofingSubmittedDocument(String relyingParty) {
-    return 'Your document identity was sent to $relyingParty.';
-  }
-
-  @override
-  String proofingSubmittedDocumentAndFace(String relyingParty) {
-    return 'Your document identity and face verification result were sent to $relyingParty.';
-  }
-
-  @override
-  String get proofingSubmitFailedTitle => 'Submit Failed';
-
-  @override
-  String get proofingSubmitFailedMessage => 'Failed to submit the result to the relying party:';
-
-  @override
   String get proofingDialogOk => 'OK';
-
-  @override
-  String get proofingDialogRetryHint => 'Please try again or make an issue in GitHub of this project.';
-
-  @override
-  String get proofingRetry => 'Retry';
 
   @override
   String proofingScanDocument(String docType) {
@@ -1078,6 +1037,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get proofingRequestTimedOut =>
+      'The server did not respond in time - check your internet connection and try again';
+
+  @override
   String proofingRequestFailed(String what, String details) {
     return '$what failed: $details';
   }
@@ -1093,9 +1056,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get proofingRequestDeviceState => 'Reporting the device state';
-
-  @override
-  String get proofingRequestSubmitResult => 'Submitting the result';
 
   @override
   String proofingRequestStepStarted(String step) {

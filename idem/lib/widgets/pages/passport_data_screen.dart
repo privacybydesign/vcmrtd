@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/l10n/l10n.dart';
-import 'package:idem/services/face_verification_outcome.dart';
 import 'package:idem/services/flow_step_plan.dart';
 
 import '../../widgets/pages/data_screen_widgets/document_data_view.dart';
@@ -13,10 +12,9 @@ class PassportDataScreen extends StatelessWidget {
   final RawDocumentData passportDataResult;
   final VoidCallback onBackPressed;
   final DocumentType documentType;
-  final FaceVerificationOutcome? faceVerification;
 
   /// Set when every step was already sent to the session as it completed -
-  /// see [DocumentWalletOrSubmitSection.submittedTo].
+  /// see [DocumentDataView.submittedTo].
   final String? submittedTo;
   final bool browserFaceStep;
 
@@ -34,7 +32,6 @@ class PassportDataScreen extends StatelessWidget {
     required this.onBackPressed,
     required this.passportDataResult,
     this.documentType = DocumentType.passport,
-    this.faceVerification,
     this.submittedTo,
     this.browserFaceStep = false,
     this.stepNumber = FlowStepPlan.defaultResultStep,
@@ -48,7 +45,6 @@ class PassportDataScreen extends StatelessWidget {
       document: document,
       rawDocument: passportDataResult,
       documentType: documentType,
-      faceVerification: faceVerification,
       submittedTo: submittedTo,
       browserFaceStep: browserFaceStep,
       onBackPressed: onBackPressed,

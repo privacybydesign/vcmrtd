@@ -19,9 +19,13 @@ class _FakeCamera implements DocumentPhotoCamera {
   /// Every picture taken, each a different image.
   final taken = <Uint8List>[];
 
+  /// When set, [open] waits for it: a camera that takes a while to open.
+  Completer<void>? openGate;
+
   @override
   Future<void> open() async {
     opens++;
+    await openGate?.future;
     if (openError != null) throw openError!;
   }
 
@@ -31,8 +35,12 @@ class _FakeCamera implements DocumentPhotoCamera {
   /// The frame ratio of every picture taken.
   final frameRatios = <double>[];
 
+  /// When set, [takePicture] waits for it: a picture that takes a moment.
+  Completer<void>? pictureGate;
+
   @override
   Future<Uint8List> takePicture({required double frameRatio}) async {
+    await pictureGate?.future;
     final picture = Uint8List.fromList(img.encodeJpg(img.Image(width: 4 + taken.length, height: 3)));
     taken.add(picture);
     frameRatios.add(frameRatio);
@@ -288,6 +296,64 @@ void main() {
 
     await tester.tap(find.byTooltip('Back'));
     expect(backs, 1);
+  });
+
+  testWidgets('back while the next side\'s camera is still opening stays on the previous side\'s photo', (
+    tester,
+  ) async {
+    final camera = _FakeCamera();
+    await tester.pumpWidget(_screen(camera));
+    await tester.pump();
+    await _takeAndReview(tester);
+    camera.openGate = Completer<void>();
+    await _usePhoto(tester);
+    expect(find.text('Back · 2 of 2'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pump();
+    camera.openGate!.complete();
+    await tester.pump();
+    await tester.pump();
+
+    // Not the camera preview the overtaken open would have switched to.
+    expect(find.text('Check the photo'), findsOneWidget);
+    expect(find.text('Front · 1 of 2'), findsOneWidget);
+    expect(find.text('Take photo'), findsNothing);
+  });
+
+  testWidgets('back is ignored while a picture is being taken, so it lands on the side it was taken for', (
+    tester,
+  ) async {
+    final camera = _FakeCamera();
+    Uint8List? sentFront;
+    Uint8List? sentBack;
+    await tester.pumpWidget(
+      _screen(
+        camera,
+        onPhotosTaken: (front, back) async {
+          sentFront = front;
+          sentBack = back;
+        },
+      ),
+    );
+    await tester.pump();
+    await _takeAndReview(tester);
+    await _usePhoto(tester);
+    expect(find.text('Back · 2 of 2'), findsOneWidget);
+
+    camera.pictureGate = Completer<void>();
+    await tester.tap(find.text('Take photo'));
+    await tester.pump();
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pump();
+    camera.pictureGate!.complete();
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Back · 2 of 2'), findsOneWidget);
+    await _usePhoto(tester);
+    expect(sentFront, camera.taken[0]);
+    expect(sentBack, camera.taken[1]);
   });
 
   testWidgets('Retake drops the photo and reopens the camera', (tester) async {

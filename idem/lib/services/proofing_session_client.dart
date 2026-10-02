@@ -721,9 +721,8 @@ bool stepsRequestFace(List<String>? steps) => stepsRequestAny(steps, faceSteps);
 /// document carries them. Mirrors api.documentInfo on the server —
 /// provisional field shape, not an ICAO/ISO standard encoding, until the
 /// shared result schema (identity-proofing-service issue #5) settles it.
-/// [toJson]'s `includeDG11Extras` lets [buildProofingResultBody] drop
-/// personalNumber/placeOfBirth before this ever reaches [toJson] with the
-/// full object still intact — see that function for why.
+/// [toJson]'s `includeDG11Extras` lets [buildProofingNfcStepBody] drop
+/// personalNumber/placeOfBirth when the relying party didn't ask for DG11.
 class ProofingDocumentInfo {
   final String? type;
   final String? number;
@@ -950,8 +949,7 @@ class ProofingImageRegion {
 ///
 /// The server computes and stores its own chipChecks verdict from this
 /// evidence; it never trusts a chipChecks claim the app might send instead
-/// (there is no such field any more on this client — see
-/// [buildProofingResultBody]).
+/// (there is no such field on this client).
 class ProofingMrtdEvidence {
   /// The raw EF.SOD (Security Object Document) exactly as read off the
   /// chip, hex-encoded.
@@ -1033,24 +1031,6 @@ class ProofingMrtdEvidence {
   };
 }
 
-/// Face-verification outcome, mirroring [FaceVerificationOutcome].
-/// [faceMatchScore] is null for the Iris SDK, which doesn't expose one.
-class ProofingBiometricsInfo {
-  final double? faceMatchScore; // DG2 vs. live face, 0..1
-  final bool? faceVerified;
-  final String? livenessResult; // "passed" | "failed" | "not_performed"
-  final String? engine; // "on_device" | "iris"
-
-  const ProofingBiometricsInfo({this.faceMatchScore, this.faceVerified, this.livenessResult, this.engine});
-
-  Map<String, dynamic> toJson() => {
-    if (faceMatchScore != null) 'faceMatchScore': faceMatchScore,
-    if (faceVerified != null) 'faceVerified': faceVerified,
-    if (livenessResult != null) 'livenessResult': livenessResult,
-    if (engine != null) 'engine': engine,
-  };
-}
-
 /// App build and device platform. Not gated by the session's
 /// requestedAttributes server-side — it's operational metadata, not part of
 /// the identity result.
@@ -1067,17 +1047,14 @@ class ProofingDeviceInfo {
 }
 
 /// Attribute keys a relying party can list in a session's
-/// requestedAttributes to opt into part of the result. Mirrors
-/// attrDocument/attrDG11/attrDG2/attrFaceImage/attrChipChecks/attrBiometrics
-/// in identity-proofing-service's backend/internal/api/sessions.go — keep in
-/// sync with that list.
+/// requestedAttributes to opt into part of the result - the ones the nfc_read
+/// step's body is gated by. Mirrors the proofing engine's attribute keys
+/// (yivi-businesswallet's backend/internal/proofingengine/sessions.go) — keep
+/// in sync with that list.
 const _attrDocument = 'dg1';
 const _attrDG11 = 'dg11';
 const _attrDG2 = 'dg2';
 const _attrFaceImage = 'face_image';
-const _attrChipChecks = 'chip_checks';
-const _attrBiometrics = 'biometrics';
-const _attrSelfie = 'selfie';
 
 /// Whether any of [keys] was requested. Mirrors the server's attrRequested:
 /// an empty [requestedAttributes] list is unrestricted (matches everything)
@@ -1089,60 +1066,10 @@ bool _attrRequested(List<String> requestedAttributes, List<String> keys) {
   return keys.any(requestedAttributes.contains);
 }
 
-/// Builds the JSON body for `POST .../result`, keeping only the parts
-/// [requestedAttributes] asked for — the same data-minimisation boundary
-/// identity-proofing-service's buildResult applies server-side (see that
-/// package's docs/session-model.md, "Result shape and attribute
-/// filtering"). [requestedAttributes] must come from the fetched
-/// [ProofingSessionInfo] (i.e. from the token the QR/deep link carried, not
-/// from the QR payload itself — the QR only encodes apiBase/token; the
-/// session's requestedAttributes is what the app-facing GET returns for
-/// that token), so a party can't get more collected than what its own
-/// session actually requested.
-///
-/// This exists so the data never leaves the device in the first place for
-/// anything the relying party didn't ask for, rather than relying solely on
-/// the server dropping it after receiving it. [device] is never gated, same
-/// as server-side — it's operational metadata, not part of the identity
-/// result.
-Map<String, dynamic> buildProofingResultBody({
-  required String status,
-  String? errorCode,
-  required List<String> requestedAttributes,
-  ProofingDocumentInfo? document,
-  ProofingPhotoInfo? photo,
-  ProofingPhotoInfo? selfie,
-  ProofingMrtdEvidence? mrtdEvidence,
-  ProofingBiometricsInfo? biometrics,
-  ProofingDeviceInfo? device,
-}) {
-  final includeDocument = document != null && _attrRequested(requestedAttributes, [_attrDocument]);
-  final includeDG11 = _attrRequested(requestedAttributes, [_attrDG11]);
-  final includePhoto = photo != null && _attrRequested(requestedAttributes, [_attrDG2, _attrFaceImage]);
-  final includeSelfie = selfie != null && _attrRequested(requestedAttributes, [_attrSelfie]);
-  final includeMrtdEvidence = mrtdEvidence != null && _attrRequested(requestedAttributes, [_attrChipChecks]);
-  final includeBiometrics = biometrics != null && _attrRequested(requestedAttributes, [_attrBiometrics]);
-
-  return {
-    'status': status,
-    'errorCode': ?errorCode,
-    if (includeDocument) 'document': document.toJson(includeDG11Extras: includeDG11),
-    if (includePhoto) 'photo': photo.toJson(),
-    if (includeSelfie) 'selfie': selfie.toJson(),
-    if (includeMrtdEvidence) 'mrtdEvidence': mrtdEvidence.toJson(),
-    if (includeBiometrics) 'biometrics': biometrics.toJson(),
-    if (device != null) 'device': device.toJson(),
-  };
-}
-
-/// Builds the JSON body for `POST .../steps/nfc` — the nfc_read step, used
-/// instead of [buildProofingResultBody]/`POST .../result` whenever the
-/// session's face-verification stage is deferred to the browser hosted flow
-/// (see [nativeFaceVerificationRequested]). Only document/photo/device are
-/// gated by [requestedAttributes], the same as the single-shot body;
-/// [mrtdEvidence] is always included, unconditionally — unlike the result
-/// body's `chip_checks`-gated inclusion, this is the raw evidence the step
-/// endpoint needs to run Passive/Active Authentication itself, not part of
+/// Builds the JSON body for `POST .../steps/nfc` — the nfc_read step. Only
+/// document/photo/device are gated by [requestedAttributes];
+/// [mrtdEvidence] is always included, unconditionally — this is the raw
+/// evidence the step endpoint needs to run Passive/Active Authentication itself, not part of
 /// what the relying party asked to receive back, and the endpoint rejects a
 /// submission without it (`mrtdEvidence is required`). There is no
 /// status/errorCode/selfie/biometrics here — the server decides the session's
@@ -1195,6 +1122,40 @@ class ProofingSessionClient {
     if (ref.deviceToken != null) 'X-Device-Token': ref.deviceToken!,
   };
 
+  /// How long a request may take before it counts as failed, so a dead
+  /// network (or a server that stops answering) ends in an error the app can
+  /// show and retry, rather than a wait without end. Uploads (photos, the
+  /// chip's data) and the submit, which the server scores, get longer.
+  static const requestTimeout = Duration(seconds: 15);
+  static const uploadTimeout = Duration(seconds: 60);
+
+  static Future<http.Response> _post(
+    Uri uri, {
+    Map<String, String>? headers,
+    Object? body,
+    Duration timeout = requestTimeout,
+  }) => _timed((client) => client.post(uri, headers: headers, body: body), timeout);
+
+  static Future<http.Response> _get(Uri uri, {Map<String, String>? headers}) =>
+      _timed((client) => client.get(uri, headers: headers), requestTimeout);
+
+  /// Sends [request] on a client of its own, which is closed when it times
+  /// out: that aborts the request, so it can't still reach the server after
+  /// the app gave up on it (a device-state report overtaking the next one).
+  static Future<http.Response> _timed(
+    Future<http.Response> Function(http.Client client) request,
+    Duration timeout,
+  ) async {
+    final client = http.Client();
+    try {
+      return await request(
+        client,
+      ).timeout(timeout, onTimeout: () => throw Exception(currentL10n.proofingRequestTimedOut));
+    } finally {
+      client.close();
+    }
+  }
+
   static Uri _appUri(ProofingSessionRef ref, [String path = '']) =>
       Uri.parse('${ref.apiBase}/api/v1/app/${ref.token}$path');
 
@@ -1213,9 +1174,12 @@ class ProofingSessionClient {
   /// it, which the server then revokes. The session itself - and every step
   /// already done - stays as it was.
   Future<ProofingSessionClaim> claimHandover(ProofingHandoverLink link) async {
-    final response = await http.post(
+    final response = await _post(
       Uri.parse('${link.apiBase}/api/v1/app/handover/${Uri.encodeComponent(link.handoverToken)}/claim'),
       headers: {'Accept-Language': deviceAcceptLanguage()},
+      // The grant is single-use: a claim given up on while the server still
+      // takes it can't be made again, so it gets as long as an upload.
+      timeout: uploadTimeout,
     );
     _check(response, (l) => l.proofingRequestClaim);
     return _claimFromJson(link.apiBase, json.decode(response.body) as Map<String, dynamic>);
@@ -1232,7 +1196,7 @@ class ProofingSessionClient {
 
   /// The session's current state, as the server sees it.
   Future<ProofingSessionInfo> fetchSession(ProofingSessionRef ref) async {
-    final response = await http.get(_appUri(ref), headers: _headers(ref));
+    final response = await _get(_appUri(ref), headers: _headers(ref));
     _check(response, (l) => l.proofingRequestFetch);
     return ProofingSessionInfo.fromJson(json.decode(response.body));
   }
@@ -1258,59 +1222,13 @@ class ProofingSessionClient {
   /// 409 session_complete once the session was submitted, so the
   /// coordinator stops reporting at that point.
   Future<ProofingSessionInfo> reportDeviceState(ProofingSessionRef ref, {required bool active}) async {
-    final response = await http.post(
+    final response = await _post(
       _appUri(ref, '/device/state'),
       headers: _headers(ref, json: true),
       body: json.encode({'state': active ? 'active' : 'inactive'}),
     );
     _check(response, (l) => l.proofingRequestDeviceState);
     return ProofingSessionInfo.fromJson(json.decode(response.body));
-  }
-
-  /// Submits the outcome. [status] must be one of: approved, rejected,
-  /// needs_review, cancelled. Body shape mirrors the server's
-  /// appResultRequest (document/photo/selfie/mrtdEvidence/biometrics/device) — each
-  /// part is sent only when [requestedAttributes] asked for it, [device]
-  /// excepted. The server computes and stores its own chipChecks verdict
-  /// from [mrtdEvidence] — this client has no way to send a self-reported
-  /// one; there's nothing to trust there. [requestedAttributes] should be
-  /// the calling session's `ProofingSessionInfo.requestedAttributes`, so
-  /// nothing is filtered against a list the app made up itself. See
-  /// [buildProofingResultBody].
-  ///
-  /// Only for sessions without a flow (the step endpoints require one) and
-  /// flows the step endpoints can't carry yet (document_capture without
-  /// nfc_read, a face step without a chip read).
-  Future<void> submitResult(
-    ProofingSessionRef ref, {
-    required String status,
-    String? errorCode,
-    required List<String> requestedAttributes,
-    ProofingDocumentInfo? document,
-    ProofingPhotoInfo? photo,
-    ProofingPhotoInfo? selfie,
-    ProofingMrtdEvidence? mrtdEvidence,
-    ProofingBiometricsInfo? biometrics,
-    ProofingDeviceInfo? device,
-  }) async {
-    final response = await http.post(
-      _appUri(ref, '/result'),
-      headers: _headers(ref, json: true),
-      body: json.encode(
-        buildProofingResultBody(
-          status: status,
-          errorCode: errorCode,
-          requestedAttributes: requestedAttributes,
-          document: document,
-          photo: photo,
-          selfie: selfie,
-          mrtdEvidence: mrtdEvidence,
-          biometrics: biometrics,
-          device: device,
-        ),
-      ),
-    );
-    _check(response, (l) => l.proofingRequestSubmitResult);
   }
 
   /// Tells the server the user just began [step] (`POST .../steps/{step}/start`)
@@ -1320,7 +1238,7 @@ class ProofingSessionClient {
   /// Callers go through [markActiveProofingStepStarted], which never lets a
   /// failure here interrupt the user.
   Future<void> markStepStarted(ProofingSessionRef ref, String step) async {
-    final response = await http.post(_appUri(ref, '/steps/$step/start'), headers: _headers(ref));
+    final response = await _post(_appUri(ref, '/steps/$step/start'), headers: _headers(ref));
     _check(response, (l) => l.proofingRequestStepStarted(step));
   }
 
@@ -1334,7 +1252,7 @@ class ProofingSessionClient {
     required ProofingDocumentInfo document,
     ProofingChipAccess? chipAccess,
   }) async {
-    final response = await http.post(
+    final response = await _post(
       _appUri(ref, '/steps/document_capture'),
       headers: _headers(ref, json: true),
       body: json.encode({'document': document.toJson(), 'chipAccess': ?chipAccess?.toJson()}),
@@ -1356,7 +1274,8 @@ class ProofingSessionClient {
     ProofingDeviceInfo? device,
     bool faceStepFollows = false,
   }) async {
-    final response = await http.post(
+    final response = await _post(
+      timeout: uploadTimeout,
       _appUri(ref, '/steps/nfc'),
       headers: _headers(ref, json: true),
       body: json.encode(
@@ -1383,7 +1302,8 @@ class ProofingSessionClient {
     required ProofingDocumentPhotoSide front,
     ProofingDocumentPhotoSide? back,
   }) async {
-    final response = await http.post(
+    final response = await _post(
+      timeout: uploadTimeout,
       _appUri(ref, '/steps/document_photo'),
       headers: _headers(ref, json: true),
       body: json.encode({'front': front.toJson(), 'back': ?back?.toJson()}),
@@ -1403,7 +1323,8 @@ class ProofingSessionClient {
     String? livenessTransactionId,
   }) async {
     assert((selfie == null) != (livenessTransactionId == null), 'pass exactly one of selfie/livenessTransactionId');
-    final response = await http.post(
+    final response = await _post(
+      timeout: uploadTimeout,
       _appUri(ref, '/steps/selfie'),
       headers: _headers(ref, json: true),
       body: json.encode(
@@ -1424,11 +1345,8 @@ class ProofingSessionClient {
   /// submitted first) just returns the finished state,
   /// so this is safe to retry. Throws [ProofingStepsIncompleteException]
   /// when a step still lacks a result.
-  ///
-  /// Flow sessions only: a session without a flow still sends its single
-  /// result through [submitResult].
   Future<ProofingStepResponse> submitSession(ProofingSessionRef ref) async {
-    final response = await http.post(_appUri(ref, '/submit'), headers: _headers(ref));
+    final response = await _post(_appUri(ref, '/submit'), headers: _headers(ref), timeout: uploadTimeout);
     if (response.statusCode == 409 && _errorCodeOf(response) == 'steps_incomplete') {
       throw const ProofingStepsIncompleteException();
     }
