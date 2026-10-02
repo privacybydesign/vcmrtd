@@ -92,23 +92,32 @@ class ProofingSessionWatcher {
         await (_resumed ??= Completer<void>()).future;
         continue;
       }
-      final httpClient = http.Client();
-      _inflight = httpClient;
-      try {
-        final next = await client.waitForChange(ref, current.changeKey!, httpClient: httpClient);
-        if (_stopped || _report(current, next)) return;
-        current = next;
-      } on ProofingSessionAccessException catch (e) {
-        if (!_stopped && e.reason.endsSession) onEvent(ProofingSessionAccessLost(ref, e.reason));
-        return;
-      } catch (_) {
-        if (_stopped) return; // stop() aborted the wait
-        if (_paused) continue; // pause() aborted the wait on purpose
-        await Future.delayed(retryDelay);
-      } finally {
-        httpClient.close();
-        if (identical(_inflight, httpClient)) _inflight = null;
-      }
+      final next = await _waitForChange(current);
+      if (next == null) return;
+      current = next;
+    }
+  }
+
+  /// One long-poll for a change from [current]: the session to watch on from
+  /// ([current] again after a failed request), or null when watching ends.
+  Future<ProofingSessionInfo?> _waitForChange(ProofingSessionInfo current) async {
+    final httpClient = http.Client();
+    _inflight = httpClient;
+    try {
+      final next = await client.waitForChange(ref, current.changeKey!, httpClient: httpClient);
+      if (_stopped || _report(current, next)) return null;
+      return next;
+    } on ProofingSessionAccessException catch (e) {
+      if (!_stopped && e.reason.endsSession) onEvent(ProofingSessionAccessLost(ref, e.reason));
+      return null;
+    } catch (_) {
+      if (_stopped) return null; // stop() aborted the wait
+      // pause() aborted the wait on purpose: no retry delay.
+      if (!_paused) await Future.delayed(retryDelay);
+      return current;
+    } finally {
+      httpClient.close();
+      if (identical(_inflight, httpClient)) _inflight = null;
     }
   }
 

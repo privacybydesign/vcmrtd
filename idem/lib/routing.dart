@@ -193,21 +193,7 @@ Future<void> _afterDocumentCaptured(
     final photo = picture != null && steps.contains(stepDocumentPhoto)
         ? _preparedOrNull(preparePicture(picture))
         : null;
-    final response = await _submitDocumentCaptureStep(context, activeSession, scannedMrz, documentType);
-    if (!context.mounted) return;
-    final mrzSide = await photo;
-    if (!context.mounted) return;
-    if (response != null && mrzSide != null && response.lifecycle != proofingLifecycleComplete) {
-      _documentPhotoFromScan(context, mrzSide, scannedMrz, documentType);
-      return;
-    }
-    _continueAfterStep(
-      context,
-      activeSession,
-      response,
-      completedStep: stepDocumentCapture,
-      collected: CollectedStepData(scannedMrz: scannedMrz, documentType: documentType),
-    );
+    await _submitDocumentCaptureAndContinue(context, activeSession, scannedMrz, documentType, photo);
     return;
   }
 
@@ -227,6 +213,33 @@ Future<void> _afterDocumentCaptured(
       documentType: documentType,
     );
   }
+}
+
+/// Submits the document_capture step of [activeSession]'s flow, then goes on
+/// with the document photo from the scan ([photo], when there is one) or
+/// wherever the server says.
+Future<void> _submitDocumentCaptureAndContinue(
+  BuildContext context,
+  ActiveProofingSession activeSession,
+  ScannedMRZ scannedMrz,
+  DocumentType documentType,
+  Future<Uint8List?>? photo,
+) async {
+  final response = await _submitDocumentCaptureStep(context, activeSession, scannedMrz, documentType);
+  if (!context.mounted) return;
+  final mrzSide = await photo;
+  if (!context.mounted) return;
+  if (response != null && mrzSide != null && response.lifecycle != proofingLifecycleComplete) {
+    _documentPhotoFromScan(context, mrzSide, scannedMrz, documentType);
+    return;
+  }
+  _continueAfterStep(
+    context,
+    activeSession,
+    response,
+    completedStep: stepDocumentCapture,
+    collected: CollectedStepData(scannedMrz: scannedMrz, documentType: documentType),
+  );
 }
 
 /// Whether the MRZ scanner should photograph the document as it reads the

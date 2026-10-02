@@ -305,13 +305,13 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
       _error = null;
     });
     // Back, or a later open, overtook this one while the camera opened.
-    bool overtaken() => !mounted || attempt != _openAttempt || _state != _PhotoState.opening;
+    bool overtaken() => attempt != _openAttempt || _state != _PhotoState.opening;
     try {
       await _camera.open();
-      if (overtaken()) return;
+      if (!mounted || overtaken()) return;
       setState(() => _state = _PhotoState.preview);
     } catch (e) {
-      if (overtaken()) return;
+      if (!mounted || overtaken()) return;
       _showError(
         e is DocumentPhotoNoCameraException
             ? context.l10n.docPhotoErrorNoCamera
@@ -324,18 +324,18 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
     final index = _index;
     setState(() => _state = _PhotoState.capturing);
     // Only the side it was taken for gets the picture.
-    bool overtaken() => !mounted || _index != index || _state != _PhotoState.capturing;
+    bool overtaken() => _index != index || _state != _PhotoState.capturing;
     try {
       final photo = await _camera.takePicture(frameRatio: _frameRatio);
       // The review doesn't need the camera.
       await _camera.close();
-      if (overtaken()) return;
+      if (!mounted || overtaken()) return;
       setState(() {
         _photo = photo;
         _state = _PhotoState.review;
       });
     } catch (e) {
-      if (overtaken()) return;
+      if (!mounted || overtaken()) return;
       _showError(context.l10n.docPhotoErrorCamera('$e'));
     }
   }

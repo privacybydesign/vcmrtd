@@ -297,33 +297,42 @@ class ProofingSessionCoordinator {
     final run = ++_resumeCheck;
     check.value = ProofingSessionCheck.checking;
     while (run == _resumeCheck && _held == ref && !_backgrounded) {
-      try {
-        final info = await _sendDeviceState(ref, active: true);
-        if (run != _resumeCheck) break;
-        final lost = info.accessLost;
-        if (lost != null) {
-          reportAccessLost(ref, lost);
-        } else if (info.lifecycle == proofingLifecycleComplete) {
-          // Submitted on the other device while this one was away.
-          reportCompleted(ref);
-        } else {
-          _emit(ProofingSessionUpdated(ref, info));
-        }
-        break;
-      } on ProofingSessionAccessException catch (e) {
-        if (run != _resumeCheck) break;
-        if (e.reason.endsSession) {
-          reportAccessLost(ref, e.reason);
-          break;
-        }
-        check.value = ProofingSessionCheck.unreachable;
-      } catch (_) {
-        if (run != _resumeCheck) break;
-        check.value = ProofingSessionCheck.unreachable;
-      }
+      if (await _tryConfirm(ref, run)) break;
       await Future.delayed(retryDelay);
     }
     if (run == _resumeCheck) check.value = ProofingSessionCheck.idle;
+  }
+
+  /// One try of resume check [run]: true once it's settled (confirmed, the
+  /// session ended, or a later check took over), false to retry.
+  Future<bool> _tryConfirm(ProofingSessionRef ref, int run) async {
+    try {
+      final info = await _sendDeviceState(ref, active: true);
+      if (run == _resumeCheck) _reportConfirmed(ref, info);
+      return true;
+    } on ProofingSessionAccessException catch (e) {
+      if (run != _resumeCheck) return true;
+      if (e.reason.endsSession) {
+        reportAccessLost(ref, e.reason);
+        return true;
+      }
+    } catch (_) {
+      if (run != _resumeCheck) return true;
+    }
+    check.value = ProofingSessionCheck.unreachable;
+    return false;
+  }
+
+  void _reportConfirmed(ProofingSessionRef ref, ProofingSessionInfo info) {
+    final lost = info.accessLost;
+    if (lost != null) {
+      reportAccessLost(ref, lost);
+    } else if (info.lifecycle == proofingLifecycleComplete) {
+      // Submitted on the other device while this one was away.
+      reportCompleted(ref);
+    } else {
+      _emit(ProofingSessionUpdated(ref, info));
+    }
   }
 
   void dispose() {
