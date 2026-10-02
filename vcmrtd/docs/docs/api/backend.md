@@ -26,7 +26,16 @@ Start a new document validation session. Returns a session ID and nonce for Acti
 
 **POST** `/api/start-validation`
 
-**Request Body**: Empty
+**Request Body**: Optional. Wallets from before the capability declaration send
+none and are treated as Regula-only. Sent by `startSessionAtPassportIssuer(request: StartValidationRequest(...))`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `face_verification.capabilities` | string[] | The face verification methods this build can run (`regula`, `iris`). A fact about the build, not a preference: the issuer picks. |
+| `face_verification.previous_method` | string? | On a retry within one document flow: the method assigned last time, so the issuer keeps it. |
+| `face_verification.attempt` | int? | On a retry: the number of this attempt, starting at 2. |
+| `face_verification.preferred_method` | string? | A tester's preference; honoured only by issuers configured to (staging). |
+| `client` | object? | `platform`, `flavor`, `app_version`: coarse labels for the issuer's recordings. |
 
 **Response**:
 
@@ -35,10 +44,16 @@ Start a new document validation session. Returns a session ID and nonce for Acti
 | `session_id` | string | Unique session identifier (32 hex characters) |
 | `nonce` | string | Challenge for Active Authentication (8 hex characters) |
 | `face_verification` | object | Optional. Present only when the issuer's policy requires the face verification step for this session; absent means the step does not apply and the app skips it. |
-| `face_verification.face_api_url` | string | Absolute `https` URL of the Face API the liveness session must run against. |
+| `face_verification.method` | string | The assigned method, `regula` or `iris`. Issuers from before methods existed omit it; the client then reads `regula`. |
+| `face_verification.face_api_url` | string | Absolute `https` URL of the Face API the liveness session must run against. Present for `regula` only. |
 
-An announcement that is not an object, or whose `face_api_url` is not an absolute
-`https` URL, is treated by the client as absent.
+The client (`DefaultPassportIssuer.parseStartValidationResponse`) treats as absent:
+an announcement that is not an object, a Regula announcement whose `face_api_url`
+is not an absolute `https` URL, and a `method` this build does not know. The
+issuer then rejects issuance for missing evidence, so skipping is fail-closed.
+
+A 400 with a "please update the Yivi app" body means none of the declared
+methods is enabled at this issuer.
 
 ---
 
@@ -58,7 +73,19 @@ Verify passport data without issuing credentials.
 | `ef_sod` | string | Base64-encoded EF.SOD (Security Object Document) |
 | `aa_signature` | string? | Base64-encoded Active Authentication signature (optional) |
 
-**Response**: Returns `passive_authentication_passed`, `active_authentication_passed`, and `document_signer_certificate` information.
+**Response**: Returns `authentic_content`, `authentic_chip`, `is_expired`, an
+optional advisory `face_match` (Regula) and, when the session's assigned face
+verification method is `iris`, a `face_session`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `face_session.face_session_id` | string | Sent back as `face_session_id` at issuance. |
+| `face_session.stream_url` | string | `wss://…/stream/{face_session_id}`: where the wallet streams camera frames. |
+| `face_session.token` | string | Presented as the first message on the stream, never in the URL. |
+| `face_session.expires_in` | int | Seconds until the session expires if streaming has not started. |
+
+Verification does not consume the session: the same session continues into the
+issue call.
 
 ---
 
@@ -80,7 +107,18 @@ Verify passport and initiate Verifiable Credential issuance.
 
 **POST** `/api/issue-passport`
 
-**Request Body**: Same format as verify-passport
+**Request Body**: Same format as verify-passport, plus the face verification
+evidence for the method the session was assigned (`RawDocumentData`):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `liveness_transaction_id` | string? | Regula: the completed liveness transaction. |
+| `face_session_id` | string? | Iris: the face session from the verify response. |
+| `face_attempt` | int? | Which attempt at the face step this is within the flow, from 1. Recording only. |
+| `face_duration_ms` | int? | Milliseconds from intro confirmation to the evidence being in hand. Recording only. |
+
+Issuance is fail-closed: missing or mismatched evidence is a 400 whose body the
+app shows on its error screen.
 
 **Response**:
 
