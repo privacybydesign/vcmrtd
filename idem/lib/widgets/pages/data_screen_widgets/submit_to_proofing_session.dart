@@ -2,18 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/widgets/common/button_styles.dart';
 
+/// What the session still waits for once this app sent every step it
+/// performs.
+enum PendingStep {
+  /// Nothing: every step is in.
+  none,
+
+  /// The face step, which the browser runs.
+  browserFace,
+}
+
 /// Shown on the document data screen when every step was already sent to
 /// the session as it completed, so there's nothing left to submit - just a
 /// confirmation.
 class SubmittedToProofingSessionSection extends StatelessWidget {
   final String relyingParty;
-  final bool browserFaceStep;
+  final PendingStep pendingStep;
   final VoidCallback onDone;
 
   const SubmittedToProofingSessionSection({
     super.key,
     required this.relyingParty,
-    required this.browserFaceStep,
+    required this.pendingStep,
     required this.onDone,
   });
 
@@ -22,9 +32,10 @@ class SubmittedToProofingSessionSection extends StatelessWidget {
     return _ProofingCard(
       icon: Icons.check_circle,
       title: context.l10n.proofingSentTo(relyingParty),
-      body: browserFaceStep
-          ? context.l10n.proofingSentBrowserFace(relyingParty)
-          : context.l10n.proofingSentEverything(relyingParty),
+      body: switch (pendingStep) {
+        PendingStep.browserFace => context.l10n.proofingSentBrowserFace(relyingParty),
+        PendingStep.none => context.l10n.proofingSentEverything(relyingParty),
+      },
       action: ElevatedButton(onPressed: onDone, style: actionButtonStyle, child: Text(context.l10n.proofingDone)),
     );
   }

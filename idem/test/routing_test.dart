@@ -183,7 +183,7 @@ DrivingLicenceData _drivingLicenceData() {
 }
 
 ScannerWidgetBuilder _scannerBuilder() {
-  return ({required documentType, required capturePicture, required onSuccess}) {
+  return ({required documentType, required scanPicture, required onSuccess}) {
     return _FakeScanner(documentType: documentType, onSuccess: onSuccess);
   };
 }
@@ -991,7 +991,7 @@ void main() {
             await tester.pump();
 
             final scanner = tester.widget<ScannerWrapper>(find.byType(ScannerWrapper));
-            expect(scanner.capturePicture, isTrue);
+            expect(scanner.scanPicture, MrzScanPicture.capture);
             final mrzSide = _jpeg();
             scanner.onMrzScanned(
               _scannedPassport(documentType),

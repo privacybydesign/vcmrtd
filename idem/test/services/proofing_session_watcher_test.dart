@@ -87,6 +87,37 @@ void main() {
     );
   });
 
+  test('a resume before the hung-up long-poll fails polls again without the retry delay', () async {
+    final polls = <_HangingClient>[];
+    await http.runWithClient(
+      () async {
+        final watcher = ProofingSessionWatcher(
+          client: const ProofingSessionClient(),
+          ref: _ref,
+          initial: _info(),
+          onEvent: (_) {},
+          retryDelay: const Duration(hours: 1),
+        );
+        unawaited(watcher.start());
+        await pumpEventQueue();
+        expect(polls, hasLength(1));
+
+        // Back in the foreground before the aborted wait even surfaced.
+        watcher.pause();
+        watcher.resume();
+        await pumpEventQueue();
+        expect(polls, hasLength(2), reason: 'the hang-up was on purpose, not a network failure');
+        watcher.stop();
+        polls.last.close();
+      },
+      () {
+        final client = _HangingClient();
+        polls.add(client);
+        return client;
+      },
+    );
+  });
+
   test('waitForChange long-polls the events endpoint with the given key', () async {
     await http.runWithClient(
       () async {

@@ -13,6 +13,7 @@ import 'package:idem/providers/passport_issuer_provider.dart';
 import 'package:idem/providers/liveness_mode_provider.dart';
 import 'package:idem/utils/document_dates.dart';
 import 'package:idem/services/flow_step_plan.dart';
+import 'package:idem/widgets/pages/data_screen_widgets/submit_to_proofing_session.dart';
 import 'package:idem/widgets/pages/document_photo_screen.dart';
 import 'package:idem/widgets/pages/document_selection_screen.dart';
 import 'package:idem/widgets/pages/face_verification_entry_screen.dart';
@@ -96,7 +97,7 @@ class ResultRouteArgs {
   /// Set when every step was already sent to the session as it completed:
   /// the screen only confirms that, nothing is left to submit.
   final String? submittedTo;
-  final bool browserFaceStep;
+  final PendingStep pendingStep;
 
   const ResultRouteArgs({
     required this.document,
@@ -104,7 +105,7 @@ class ResultRouteArgs {
     required this.documentType,
     this.plan,
     this.submittedTo,
-    this.browserFaceStep = false,
+    this.pendingStep = PendingStep.none,
   });
 }
 
@@ -150,7 +151,7 @@ void _continueAfterStep(
     session,
     lifecycle: response.lifecycle,
     readyToSubmit: response.readyToSubmit,
-    currentStep: response.currentStep ?? _localStepAfter(session.info.steps!, completedStep),
+    currentStep: response.currentStep ?? _localStepAfter(session.info.steps ?? _flowlessSteps, completedStep),
     collected: collected,
   );
 }
@@ -182,7 +183,7 @@ Future<void> _afterDocumentCaptured(
   ScannedMRZ scannedMrz,
   DocumentType documentType, {
   DocumentPicture? picture,
-  Future<Uint8List> Function(DocumentPicture picture) preparePicture = prepareDocumentPhotoInBackground,
+  Future<Uint8List> Function(DocumentPicture picture) preparePicture = preparePhotoInBackground,
 }) async {
   final activeSession = ProviderScope.containerOf(context).read(activeProofingSessionProvider);
   final steps = activeSession?.info.steps;
@@ -193,7 +194,7 @@ Future<void> _afterDocumentCaptured(
     final photo = picture != null && steps.contains(stepDocumentPhoto)
         ? _preparedOrNull(preparePicture(picture))
         : null;
-    await _submitDocumentCaptureAndContinue(context, activeSession, scannedMrz, documentType, photo);
+    await _submitCaptureAndContinue(context, activeSession, scannedMrz, documentType, photo);
     return;
   }
 
@@ -218,7 +219,7 @@ Future<void> _afterDocumentCaptured(
 /// Submits the document_capture step of [activeSession]'s flow, then goes on
 /// with the document photo from the scan ([photo], when there is one) or
 /// wherever the server says.
-Future<void> _submitDocumentCaptureAndContinue(
+Future<void> _submitCaptureAndContinue(
   BuildContext context,
   ActiveProofingSession activeSession,
   ScannedMRZ scannedMrz,
@@ -272,6 +273,10 @@ void _documentPhotoFromScan(BuildContext context, Uint8List mrzSide, ScannedMRZ 
     ),
   );
 }
+
+/// vcmrtd's own sequence, which a session created without a flow
+/// ([ProofingSessionInfo.steps] null) runs.
+const _flowlessSteps = [stepDocumentCapture, stepNfcRead, stepFaceVerification];
 
 /// The step after [step] in [steps], for a server that doesn't name one.
 String _localStepAfter(List<String> steps, String step) {
@@ -383,7 +388,7 @@ void _continueAtFaceStep(
   final documentType = collected.documentType;
   final chipRead = document != null && rawDocument != null && documentType != null;
 
-  if (!nativeFaceVerificationRequested(info.steps, info.selfieLocation)) {
+  if (!nativeFaceRequested(info.steps, info.selfieLocation)) {
     // The browser runs the face step; this app's part is done. The
     // listener keeps watching.
     if (chipRead) {
@@ -396,7 +401,7 @@ void _continueAtFaceStep(
           // The session is unpinned by the time /result builds.
           plan: collected.plan ?? _planFor(session),
           submittedTo: info.relyingParty,
-          browserFaceStep: true,
+          pendingStep: PendingStep.browserFace,
         ),
       );
       return;
@@ -627,7 +632,7 @@ Future<ProofingStepResponse?> _submitNfcStep(
       photo: evidence.photo,
       mrtdEvidence: evidence.mrtdEvidence,
       device: await currentProofingDeviceInfo(),
-      faceStepFollows: stepsRequestFace(session.info.steps),
+      photoInclusion: stepsRequestFace(session.info.steps) ? PhotoInclusion.always : PhotoInclusion.whenRequested,
     ),
   );
 }
@@ -898,19 +903,21 @@ GoRouter createRouter({
           final params = MrzReaderRouteParams.fromQueryParams(state.uri.queryParameters);
           final providers = ProviderScope.containerOf(context);
           final plan = _activePlan(context);
-          final takesPicture = _scannerTakesPicture(providers.read(activeProofingSessionProvider));
+          final scanPicture = _scannerTakesPicture(providers.read(activeProofingSessionProvider))
+              ? MrzScanPicture.capture
+              : MrzScanPicture.none;
           // Document reading starts as soon as the MRZ camera opens.
           return _ReportsStepStarted(
             step: stepDocumentCapture,
             child: ScannerWrapper(
               documentType: params.documentType,
-              capturePicture: takesPicture,
+              scanPicture: scanPicture,
               onMrzScanned: (result, [picture]) => _afterDocumentCaptured(
                 context,
                 result,
                 params.documentType,
                 picture: picture,
-                preparePicture: documentPhotoCamera?.prepare ?? prepareDocumentPhotoInBackground,
+                preparePicture: documentPhotoCamera?.prepare ?? preparePhotoInBackground,
               ),
               onManualEntry: () {
                 context.pushManualEntryScreen(ManualEntryRouteParams(documentType: params.documentType));
@@ -1004,7 +1011,7 @@ Widget _buildResultRoute(BuildContext context, GoRouterState state) {
       passportDataResult: args.rawDocument,
       documentType: args.documentType,
       submittedTo: args.submittedTo,
-      browserFaceStep: args.browserFaceStep,
+      pendingStep: args.pendingStep,
       onBackPressed: () => context.go(selectDocTypePath),
       stepNumber: plan.resultStepNumber,
       totalSteps: plan.totalSteps,
@@ -1013,7 +1020,7 @@ Widget _buildResultRoute(BuildContext context, GoRouterState state) {
       drivingLicence: args.document as DrivingLicenceData,
       drivingLicenceDataResult: args.rawDocument,
       submittedTo: args.submittedTo,
-      browserFaceStep: args.browserFaceStep,
+      pendingStep: args.pendingStep,
       onBackPressed: () => context.go(selectDocTypePath),
       stepNumber: plan.resultStepNumber,
       totalSteps: plan.totalSteps,

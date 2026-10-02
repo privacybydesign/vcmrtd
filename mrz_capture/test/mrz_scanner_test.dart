@@ -131,7 +131,7 @@ void main() {
       expect(tester.widget<MRZCameraView>(find.byType(MRZCameraView)).frameRatio, MRZCameraOverlay.cardFrameRatio);
     });
 
-    testWidgets('capturePicture reports the read once the picture was attempted; no '
+    testWidgets('scanPicture capture reports the read once the picture was attempted; no '
         'camera means no picture', (tester) async {
       final reads = <(ScannedMRZ, DocumentPicture?)>[];
       await tester.pumpWidget(
@@ -139,7 +139,7 @@ void main() {
           home: MRZScanner(
             documentType: DocumentType.passport,
             engine: OcrEngine.googleMlKit,
-            capturePicture: true,
+            scanPicture: MrzScanPicture.capture,
             initializeCamera: false,
             onSuccess: (mrz, _, picture) => reads.add((mrz, picture)),
           ),

@@ -12,14 +12,14 @@ class ScannerPage extends ConsumerStatefulWidget {
   final DocumentType documentType;
 
   /// Whether to photograph the document the moment its MRZ is read
-  /// ([MRZScanner.capturePicture]).
-  final bool capturePicture;
+  /// ([MRZScanner.scanPicture]).
+  final MrzScanPicture scanPicture;
   final void Function(ScannedMRZ mrz, DocumentPicture? picture) onSuccess;
 
   const ScannerPage({
     super.key,
     this.documentType = DocumentType.passport,
-    this.capturePicture = false,
+    this.scanPicture = MrzScanPicture.none,
     required this.onSuccess,
   });
 
@@ -35,7 +35,7 @@ class _ScannerPageState extends ConsumerState<ScannerPage> {
     return MRZScanner(
       controller: controller,
       documentType: widget.documentType,
-      capturePicture: widget.capturePicture,
+      scanPicture: widget.scanPicture,
       engine: ref.watch(ocrEngineProvider),
       routeObserver: routeObserver,
       onSuccess: (scannedMRZ, lines, picture) => widget.onSuccess(scannedMRZ, picture),

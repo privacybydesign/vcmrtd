@@ -71,6 +71,10 @@ class ProofingSessionWatcher {
   Completer<void>? _resumed;
   http.Client? _inflight;
 
+  /// The long-poll [pause] hung up, so its failure isn't taken for a network
+  /// error - even when [resume] already ran by the time it surfaces.
+  http.Client? _abortedByPause;
+
   ProofingSessionWatcher({
     required this.client,
     required this.ref,
@@ -113,11 +117,12 @@ class ProofingSessionWatcher {
     } catch (_) {
       if (_stopped) return null; // stop() aborted the wait
       // pause() aborted the wait on purpose: no retry delay.
-      if (!_paused) await Future.delayed(retryDelay);
+      if (!identical(_abortedByPause, httpClient)) await Future.delayed(retryDelay);
       return current;
     } finally {
       httpClient.close();
       if (identical(_inflight, httpClient)) _inflight = null;
+      if (identical(_abortedByPause, httpClient)) _abortedByPause = null;
     }
   }
 
@@ -152,6 +157,7 @@ class ProofingSessionWatcher {
   /// app often never delivers. No polling until [resume].
   void pause() {
     _paused = true;
+    _abortedByPause = _inflight;
     _inflight?.close();
   }
 

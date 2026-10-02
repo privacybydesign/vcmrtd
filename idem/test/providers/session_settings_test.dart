@@ -55,13 +55,15 @@ void main() {
     test('leaves the settings alone for a server that does not say', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
+      container.read(activeAuthenticationProvider.notifier).set(true);
       container.read(faceEngineProvider.notifier).set(FaceEngineChoice.iris);
+      container.read(livenessModeProvider.notifier).set(LivenessMode.active);
 
       applyProofingSessionSettings(container, _info());
 
-      expect(container.read(activeAuthenticationProvider), isFalse);
+      expect(container.read(activeAuthenticationProvider), isTrue);
       expect(container.read(faceEngineProvider), FaceEngineChoice.iris);
-      expect(container.read(livenessModeProvider), LivenessMode.passive);
+      expect(container.read(livenessModeProvider), LivenessMode.active);
     });
   });
 

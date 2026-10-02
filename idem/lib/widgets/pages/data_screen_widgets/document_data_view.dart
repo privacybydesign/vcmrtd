@@ -24,7 +24,7 @@ class DocumentDataView extends ConsumerWidget {
   final String? submittedTo;
 
   /// Whether the browser still does the face step after that.
-  final bool browserFaceStep;
+  final PendingStep pendingStep;
   final VoidCallback onBackPressed;
   final int stepNumber;
   final int totalSteps;
@@ -37,7 +37,7 @@ class DocumentDataView extends ConsumerWidget {
     required this.rawDocument,
     required this.documentType,
     required this.submittedTo,
-    required this.browserFaceStep,
+    required this.pendingStep,
     required this.onBackPressed,
     required this.stepNumber,
     required this.totalSteps,
@@ -73,7 +73,7 @@ class DocumentDataView extends ConsumerWidget {
                       child: submittedTo != null
                           ? SubmittedToProofingSessionSection(
                               relyingParty: submittedTo,
-                              browserFaceStep: browserFaceStep,
+                              pendingStep: pendingStep,
                               onDone: onBackPressed,
                             )
                           : ElevatedButton.icon(

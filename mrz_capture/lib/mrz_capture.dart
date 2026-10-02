@@ -17,7 +17,7 @@ export 'src/document_picture.dart' show DocumentPicture;
 export 'src/manual_entry_screen.dart' show ManualEntryScreen;
 export 'src/mrz_controller.dart' show MRZController;
 export 'src/mrz_helper.dart' show MRZHelper;
-export 'src/mrz_scanner.dart' show MRZScanner, MRZScannerState, MrzScannedCallback;
+export 'src/mrz_scanner.dart' show MRZScanner, MRZScannerState, MrzScanPicture, MrzScannedCallback;
 export 'src/ocr_engine.dart' show OcrEngine;
 export 'src/picture_file.dart' show readAndDeletePicture;
 export 'src/scanned_mrz.dart' show ScannedMRZ, ScannedPassportMRZ, ScannedDriverLicenseMRZ;

@@ -43,8 +43,8 @@ Widget _buildWrapper({
   ValueChanged<ScannedMRZ>? onMrzScanned,
   VoidCallback? onManualEntry,
   VoidCallback? onBack,
-  bool capturePicture = false,
-  void Function(bool capturePicture)? onBuildScanner,
+  MrzScanPicture scanPicture = MrzScanPicture.none,
+  void Function(MrzScanPicture scanPicture)? onBuildScanner,
   DocumentPicture? picture,
   ValueChanged<DocumentPicture?>? onPicture,
 }) {
@@ -59,9 +59,9 @@ Widget _buildWrapper({
       },
       onManualEntry: onManualEntry ?? () {},
       onBack: onBack ?? () {},
-      capturePicture: capturePicture,
-      scannerBuilder: ({required documentType, required capturePicture, required onSuccess}) {
-        onBuildScanner?.call(capturePicture);
+      scanPicture: scanPicture,
+      scannerBuilder: ({required documentType, required scanPicture, required onSuccess}) {
+        onBuildScanner?.call(scanPicture);
         return _FakeScanner(documentType: documentType, onSuccess: onSuccess, picture: picture);
       },
     ),
@@ -122,16 +122,16 @@ void main() {
     });
 
     testWidgets('asks the scanner for no picture by default, and says to align the MRZ', (tester) async {
-      final asked = <bool>[];
+      final asked = <MrzScanPicture>[];
       await tester.pumpWidget(_buildWrapper(onBuildScanner: asked.add));
 
-      expect(asked.last, isFalse);
+      expect(asked.last, MrzScanPicture.none);
       expect(find.textContaining('Align the Machine Readable Zone'), findsOneWidget);
     });
 
-    testWidgets('capturePicture asks the scanner for a picture, says the side is photographed too, and forwards the '
+    testWidgets('a capture asks the scanner for a picture, says the side is photographed too, and forwards the '
         'picture with the scan', (tester) async {
-      final asked = <bool>[];
+      final asked = <MrzScanPicture>[];
       final pictures = <DocumentPicture?>[];
       final picture = DocumentPicture(
         jpeg: Uint8List.fromList([1, 2, 3]),
@@ -139,10 +139,15 @@ void main() {
         previewAspectRatio: 9 / 16,
       );
       await tester.pumpWidget(
-        _buildWrapper(capturePicture: true, onBuildScanner: asked.add, picture: picture, onPicture: pictures.add),
+        _buildWrapper(
+          scanPicture: MrzScanPicture.capture,
+          onBuildScanner: asked.add,
+          picture: picture,
+          onPicture: pictures.add,
+        ),
       );
 
-      expect(asked.last, isTrue);
+      expect(asked.last, MrzScanPicture.capture);
       expect(find.textContaining('this side is photographed too'), findsOneWidget);
 
       await tester.tap(find.text('fake scanner ${DocumentType.passport.name}'));
@@ -176,7 +181,7 @@ void main() {
             onMrzScanned: (mrz, [_]) => scanned.add(mrz),
             onManualEntry: () {},
             onBack: () {},
-            scannerBuilder: ({required documentType, required capturePicture, required onSuccess}) {
+            scannerBuilder: ({required documentType, required scanPicture, required onSuccess}) {
               return _FakeScanner(documentType: documentType, onSuccess: onSuccess);
             },
           ),

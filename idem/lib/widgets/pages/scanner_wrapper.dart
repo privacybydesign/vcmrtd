@@ -18,7 +18,7 @@ typedef MrzScannedWithPicture = void Function(ScannedMRZ mrz, DocumentPicture? p
 typedef ScannerWidgetBuilder =
     Widget Function({
       required DocumentType documentType,
-      required bool capturePicture,
+      required MrzScanPicture scanPicture,
       required MrzScannedWithPicture onSuccess,
     });
 
@@ -47,7 +47,7 @@ class ScannerWrapper extends StatefulWidget {
   /// Photographs the document the moment its MRZ is read: the flow asks for
   /// a photo of the document, and the side with the MRZ needs none of its
   /// own then.
-  final bool capturePicture;
+  final MrzScanPicture scanPicture;
 
   /// Step badge numbers — default to vcmrtd's fixed 4-step sequence (this
   /// screen is always step 1) so any caller not passing these explicitly
@@ -63,7 +63,7 @@ class ScannerWrapper extends StatefulWidget {
     required this.onBack,
     this.documentType = DocumentType.passport,
     this.scannerBuilder,
-    this.capturePicture = false,
+    this.scanPicture = MrzScanPicture.none,
     this.stepNumber = FlowStepPlan.defaultDocumentCaptureStep,
     this.totalSteps = FlowStepPlan.defaultTotalSteps,
   });
@@ -100,7 +100,7 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
         children: [
           scannerBuilder(
             documentType: widget.documentType,
-            capturePicture: widget.capturePicture,
+            scanPicture: widget.scanPicture,
             onSuccess: (scannedMrz, picture) {
               if (!_hasNavigated) {
                 _hasNavigated = true;
@@ -161,7 +161,7 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
             style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
           ),
           Text(
-            widget.capturePicture
+            widget.scanPicture == MrzScanPicture.capture
                 ? context.l10n.proofingScanMrzPhotoInstructions
                 : context.l10n.proofingScanMrzInstructions,
             style: TextStyle(color: Colors.white70, fontSize: 14),
@@ -191,8 +191,8 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
 
 Widget _defaultScannerBuilder({
   required DocumentType documentType,
-  required bool capturePicture,
+  required MrzScanPicture scanPicture,
   required MrzScannedWithPicture onSuccess,
 }) {
-  return ScannerPage(documentType: documentType, capturePicture: capturePicture, onSuccess: onSuccess);
+  return ScannerPage(documentType: documentType, scanPicture: scanPicture, onSuccess: onSuccess);
 }

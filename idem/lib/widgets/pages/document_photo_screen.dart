@@ -52,7 +52,7 @@ img.Image _fitLongEdge(img.Image image, int maxLongEdge) {
 
 /// [prepareDocumentPhoto] off the UI isolate: decoding a full-resolution
 /// picture takes a while.
-Future<Uint8List> prepareDocumentPhotoInBackground(DocumentPicture picture) => compute(prepareDocumentPhoto, picture);
+Future<Uint8List> preparePhotoInBackground(DocumentPicture picture) => compute(prepareDocumentPhoto, picture);
 
 /// The camera the document photo is taken with: the device's back camera,
 /// or a fake in tests.
@@ -145,7 +145,7 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
   }
 
   @override
-  Future<Uint8List> prepare(DocumentPicture picture) => prepareDocumentPhotoInBackground(picture);
+  Future<Uint8List> prepare(DocumentPicture picture) => preparePhotoInBackground(picture);
 
   /// The preview's width / height as drawn: the camera's (landscape)
   /// [aspectRatio] turned upright in a portrait view.
@@ -382,7 +382,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
   }
 
   Future<void> _send(Uint8List front, Uint8List? back) async {
-    if (_sending) return;
+    if (_sending || !mounted) return;
     setState(() => _sending = true);
     try {
       await widget.onPhotosTaken(front, back);

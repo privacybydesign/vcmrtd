@@ -49,6 +49,10 @@ class _RegulaFaceVerificationScreenState extends ConsumerState<RegulaFaceVerific
   double? _similarity;
   Timer? _autoContinueTimer;
 
+  /// Set once [RegulaFaceVerificationScreen.matchFace] was called: from then
+  /// on the issuer's session is used up.
+  bool _issuerAsked = false;
+
   @override
   void dispose() {
     _autoContinueTimer?.cancel();
@@ -91,7 +95,10 @@ class _RegulaFaceVerificationScreenState extends ConsumerState<RegulaFaceVerific
   }
 
   Future<void> _match(Future<FaceMatch?> Function(String) matchFace, String transactionId) async {
-    setState(() => _status = _Status.matching);
+    setState(() {
+      _status = _Status.matching;
+      _issuerAsked = true;
+    });
     final FaceMatch? match;
     try {
       match = await matchFace(transactionId);
@@ -127,7 +134,7 @@ class _RegulaFaceVerificationScreenState extends ConsumerState<RegulaFaceVerific
   }
 
   /// A failure after the issuer was asked can't retry: its session is used up.
-  VoidCallback get _retry => widget.matchFace == null ? _run : widget.onBackPressed;
+  VoidCallback get _retry => _issuerAsked ? widget.onBackPressed : _run;
 
   @override
   Widget build(BuildContext context) {
@@ -194,7 +201,7 @@ class _RegulaFaceVerificationScreenState extends ConsumerState<RegulaFaceVerific
                   title: l10n.faceSomethingWentWrong,
                   subtitle: _error ?? '',
                   onRetry: _retry,
-                  retryLabel: widget.matchFace == null ? null : l10n.faceRegulaScanAgain,
+                  retryLabel: _issuerAsked ? l10n.faceRegulaScanAgain : null,
                 ),
               },
             ),

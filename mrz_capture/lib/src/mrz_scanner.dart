@@ -15,10 +15,19 @@ import 'ocr_engine.dart';
 import 'scanned_mrz.dart';
 
 /// Called with the MRZ that was read, the MRZ lines it was parsed from and,
-/// when [MRZScanner.capturePicture] asked for one, the camera's picture of the
+/// when [MRZScanner.scanPicture] asked for one, the camera's picture of the
 /// document taken right after the read (null when it asked for none, or the
 /// camera couldn't take it).
 typedef MrzScannedCallback = void Function(ScannedMRZ mrz, List<String> lines, DocumentPicture? picture);
+
+/// Whether [MRZScanner] photographs the document as it reads the MRZ.
+enum MrzScanPicture {
+  /// Only the MRZ is read.
+  none,
+
+  /// A picture is taken the moment the MRZ is read ([MRZScanner.scanPicture]).
+  capture,
+}
 
 class MRZScanner extends StatefulWidget {
   const MRZScanner({
@@ -29,7 +38,7 @@ class MRZScanner extends StatefulWidget {
     this.initialDirection = CameraLensDirection.back,
     this.showOverlay = true,
     this.documentType = DocumentType.passport,
-    this.capturePicture = false,
+    this.scanPicture = MrzScanPicture.none,
     @visibleForTesting this.initializeCamera = true,
     @visibleForTesting this.googleMlKitOcrForTesting,
   }) : super(key: controller);
@@ -60,7 +69,7 @@ class MRZScanner extends StatefulWidget {
   /// Takes a picture of the document the moment its MRZ is read, and hands
   /// it to [onSuccess]: the read's check digits just proved the MRZ sharp and
   /// inside the frame, so the side it is on needs no photo of its own.
-  final bool capturePicture;
+  final MrzScanPicture scanPicture;
 
   @visibleForTesting
   final bool initializeCamera;
@@ -253,7 +262,7 @@ class MRZScannerState extends State<MRZScanner> with RouteAware {
   void _notify(ScannedMRZ mrz, List<String> lines) {
     _log.info('MRZ Scanned');
     _log.info(mrz.documentType.toString());
-    if (!widget.capturePicture) {
+    if (widget.scanPicture == MrzScanPicture.none) {
       widget.onSuccess(mrz, lines, null);
       return;
     }

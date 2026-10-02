@@ -538,28 +538,25 @@ void main() {
     });
   });
 
-  group('nativeFaceVerificationRequested', () {
+  group('nativeFaceRequested', () {
     test('null steps always means vcmrtd runs it, regardless of selfieLocation', () {
-      expect(nativeFaceVerificationRequested(null, 'browser'), isTrue);
-      expect(nativeFaceVerificationRequested(null, 'native'), isTrue);
+      expect(nativeFaceRequested(null, 'browser'), isTrue);
+      expect(nativeFaceRequested(null, 'native'), isTrue);
     });
 
     test('steps with no face stage at all means neither client runs it', () {
-      expect(nativeFaceVerificationRequested(['document_capture', 'nfc_read'], 'browser'), isFalse);
-      expect(nativeFaceVerificationRequested(['document_capture', 'nfc_read'], 'native'), isFalse);
+      expect(nativeFaceRequested(['document_capture', 'nfc_read'], 'browser'), isFalse);
+      expect(nativeFaceRequested(['document_capture', 'nfc_read'], 'native'), isFalse);
     });
 
     test('a face stage with selfieLocation "browser" defers to the browser hosted flow', () {
-      expect(
-        nativeFaceVerificationRequested(['document_capture', 'nfc_read', 'face_verification'], 'browser'),
-        isFalse,
-      );
-      expect(nativeFaceVerificationRequested(['nfc_read', 'document_capture', 'selfie'], 'browser'), isFalse);
+      expect(nativeFaceRequested(['document_capture', 'nfc_read', 'face_verification'], 'browser'), isFalse);
+      expect(nativeFaceRequested(['nfc_read', 'document_capture', 'selfie'], 'browser'), isFalse);
     });
 
     test('a face stage with selfieLocation "native" (or anything else) runs on-device', () {
-      expect(nativeFaceVerificationRequested(['document_capture', 'nfc_read', 'face_verification'], 'native'), isTrue);
-      expect(nativeFaceVerificationRequested(['selfie', 'face_match'], 'native'), isTrue);
+      expect(nativeFaceRequested(['document_capture', 'nfc_read', 'face_verification'], 'native'), isTrue);
+      expect(nativeFaceRequested(['selfie', 'face_match'], 'native'), isTrue);
     });
   });
 
@@ -592,7 +589,7 @@ void main() {
         requestedAttributes: const ['dg1'],
         photo: const ProofingPhotoInfo(imageBase64: 'img', mimeType: 'image/jpeg'),
         mrtdEvidence: mrtdEvidence,
-        faceStepFollows: true,
+        photoInclusion: PhotoInclusion.always,
       );
       expect(body['photo'], {'imageBase64': 'img', 'mimeType': 'image/jpeg'});
     });

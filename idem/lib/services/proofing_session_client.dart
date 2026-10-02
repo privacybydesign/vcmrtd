@@ -673,10 +673,23 @@ String? _errorCodeOf(http.Response response) {
 /// location value. A null [steps] (no flow at all) always means vcmrtd's own
 /// unconditional face step, regardless of [selfieLocation] — see
 /// [ProofingSessionInfo.selfieLocation]'s doc comment.
-bool nativeFaceVerificationRequested(List<String>? steps, String selfieLocation) {
+bool nativeFaceRequested(List<String>? steps, String selfieLocation) {
   if (steps == null) return true;
   if (!stepsRequestFace(steps)) return false;
   return selfieLocation != 'browser';
+}
+
+/// Whether the NFC step sends the chip's face photo
+/// ([buildProofingNfcStepBody]).
+enum PhotoInclusion {
+  /// Only when requestedAttributes asks for it.
+  whenRequested,
+
+  /// Whatever requestedAttributes says: the flow has a face step, and the
+  /// photo is what that step compares against (server-side, or on a device
+  /// that takes the session over) - the same DG2 is in the mrtdEvidence
+  /// anyway.
+  always,
 }
 
 /// [ProofingSessionInfo.steps] values. Mirrors flow.Step in
@@ -1077,22 +1090,20 @@ bool _attrRequested(List<String> requestedAttributes, List<String> keys) {
 /// has landed and the session is submitted (see
 /// [ProofingSessionClient.submitSession]).
 ///
-/// [faceStepFollows]: the flow has a face step, so the photo is sent
-/// whatever requestedAttributes says - it's what that step compares against
-/// (server-side, or on a device that takes the session over), and the same
-/// DG2 is in [mrtdEvidence] anyway.
+/// [photoInclusion]: [PhotoInclusion.always] when the flow has a face step.
 Map<String, dynamic> buildProofingNfcStepBody({
   required List<String> requestedAttributes,
   ProofingDocumentInfo? document,
   ProofingPhotoInfo? photo,
   required ProofingMrtdEvidence mrtdEvidence,
   ProofingDeviceInfo? device,
-  bool faceStepFollows = false,
+  PhotoInclusion photoInclusion = PhotoInclusion.whenRequested,
 }) {
   final includeDocument = document != null && _attrRequested(requestedAttributes, [_attrDocument]);
   final includeDG11 = _attrRequested(requestedAttributes, [_attrDG11]);
   final includePhoto =
-      photo != null && (faceStepFollows || _attrRequested(requestedAttributes, [_attrDG2, _attrFaceImage]));
+      photo != null &&
+      (photoInclusion == PhotoInclusion.always || _attrRequested(requestedAttributes, [_attrDG2, _attrFaceImage]));
 
   return {
     if (includeDocument) 'document': document.toJson(includeDG11Extras: includeDG11),
@@ -1272,7 +1283,7 @@ class ProofingSessionClient {
     ProofingPhotoInfo? photo,
     required ProofingMrtdEvidence mrtdEvidence,
     ProofingDeviceInfo? device,
-    bool faceStepFollows = false,
+    PhotoInclusion photoInclusion = PhotoInclusion.whenRequested,
   }) async {
     final response = await _post(
       timeout: uploadTimeout,
@@ -1285,7 +1296,7 @@ class ProofingSessionClient {
           photo: photo,
           mrtdEvidence: mrtdEvidence,
           device: device,
-          faceStepFollows: faceStepFollows,
+          photoInclusion: photoInclusion,
         ),
       ),
     );

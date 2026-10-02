@@ -150,5 +150,35 @@ void main() {
       expect(backs, 1);
       expect(verified, isEmpty);
     });
+
+    testWidgets('a capture that fails before the issuer was asked retries right here', (tester) async {
+      var backs = 0;
+      final asked = <String>[];
+      final regula = _FakeRegula([
+        Exception('camera unavailable'),
+        const RegulaLivenessResult(isLive: true, transactionId: 'tx-2'),
+      ]);
+      final verified = await _pump(
+        tester,
+        regula,
+        matchFace: (tx) async {
+          asked.add(tx);
+          return FaceMatch(matched: true, similarity: 0.9);
+        },
+        onBack: () => backs++,
+      );
+
+      await tester.tap(find.text('Start Verification'));
+      await tester.pump();
+      expect(find.text('Scan document again'), findsNothing);
+
+      await tester.tap(find.text('Try Again'));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 2));
+      expect(backs, 0);
+      expect(asked, ['tx-2']);
+      expect(verified.single.matchScore, 0.9);
+    });
   });
 }

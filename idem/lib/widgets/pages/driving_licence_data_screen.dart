@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/services/flow_step_plan.dart';
+import 'package:idem/widgets/pages/data_screen_widgets/submit_to_proofing_session.dart';
 import 'package:idem/widgets/displays/passport_image_widget.dart';
 
 import '../../widgets/pages/data_screen_widgets/document_data_view.dart';
@@ -16,7 +17,7 @@ class DrivingLicenceDataScreen extends StatelessWidget {
   /// Set when every step was already sent to the session as it completed -
   /// see [DocumentDataView.submittedTo].
   final String? submittedTo;
-  final bool browserFaceStep;
+  final PendingStep pendingStep;
 
   /// Step badge numbers — default to vcmrtd's fixed 4-step sequence (this
   /// screen is always the last, step 4, there) so any caller not passing
@@ -32,7 +33,7 @@ class DrivingLicenceDataScreen extends StatelessWidget {
     required this.drivingLicenceDataResult,
     required this.onBackPressed,
     this.submittedTo,
-    this.browserFaceStep = false,
+    this.pendingStep = PendingStep.none,
     this.stepNumber = FlowStepPlan.defaultResultStep,
     this.totalSteps = FlowStepPlan.defaultTotalSteps,
   });
@@ -47,7 +48,7 @@ class DrivingLicenceDataScreen extends StatelessWidget {
       rawDocument: drivingLicenceDataResult,
       documentType: DocumentType.drivingLicence,
       submittedTo: submittedTo,
-      browserFaceStep: browserFaceStep,
+      pendingStep: pendingStep,
       onBackPressed: onBackPressed,
       stepNumber: stepNumber,
       totalSteps: totalSteps,

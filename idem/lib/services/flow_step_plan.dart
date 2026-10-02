@@ -75,7 +75,7 @@ class FlowStepPlan {
   /// [selfieLocation] mirrors [ProofingSessionInfo.selfieLocation] — when
   /// it's "browser", the face-verification stage doesn't count as one of
   /// THIS APP's own steps at all, even if [steps] lists it: vcmrtd never
-  /// shows a screen for it in that case (see [nativeFaceVerificationRequested],
+  /// shows a screen for it in that case (see [nativeFaceRequested],
   /// routing.dart's /nfc_reading), so counting it would show e.g. "step 3 of
   /// 4" with no screen ever reaching step 3 - the badge would promise a step
   /// that never happens. Defaults to "native" so every existing caller that
@@ -102,7 +102,7 @@ class FlowStepPlan {
         ? take(listedAfterPhoto([stepDocumentCapture]))
         : null;
     final nfcReadStepNumber = steps.contains(stepNfcRead) ? take(listedAfterPhoto([stepNfcRead])) : null;
-    final faceVerificationStepNumber = nativeFaceVerificationRequested(steps, selfieLocation)
+    final faceVerificationStepNumber = nativeFaceRequested(steps, selfieLocation)
         ? take(listedAfterPhoto(faceSteps))
         : null;
     if (photoAt >= 0) documentPhotoStepNumber ??= next++;
