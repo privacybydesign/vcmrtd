@@ -2,13 +2,20 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:face_verification/face_verification.dart';
+import 'package:vcmrtd/vcmrtd.dart' show FaceMatch;
 import 'package:idem/providers/face_engine_provider.dart';
 import 'package:idem/services/face_verification_outcome.dart';
+import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/widgets/pages/face_verification_screen.dart';
 import 'package:idem/widgets/pages/iris_face_verification_screen.dart';
+import 'package:idem/widgets/pages/regula_face_verification_screen.dart';
+import 'package:idem/services/flow_step_plan.dart';
 
 /// Orchestrates the face verification flow for the engine chosen up front
-/// (on-device vs Iris SDK, picked in the advanced settings). Nothing
+/// (Regula, on-device or Iris SDK, picked in the advanced settings).
+/// Regula needs a server that announced it ([faceVerification]) to do the
+/// match: the QR session's, or the passport issuer's for a standalone scan.
+/// Without one it falls back to on-device. Nothing
 /// engine-related — no [FaceVerificationEngine], no Iris SDK instance, no
 /// camera — is created before this screen decides which flow to enter.
 class FaceVerificationEntryScreen extends StatelessWidget {
@@ -28,8 +35,23 @@ class FaceVerificationEntryScreen extends StatelessWidget {
   /// Not applicable to the Iris SDK, which runs its own native flow.
   final LivenessMode livenessMode;
 
+  /// The session's Regula announcement, if any.
+  final ProofingFaceVerification? faceVerification;
+
+  /// Standalone Regula: the passport issuer's match (see RegulaFaceVerificationScreen).
+  final Future<FaceMatch?> Function(String livenessTransactionId)? matchFace;
+
   // Test-only: injects a pre-built on-device engine.
+  @visibleForTesting
   final FaceVerificationEngine? testEngine;
+
+  /// Step badge numbers — default to vcmrtd's fixed 4-step sequence (this
+  /// screen is always step 3 there) so any caller not passing these
+  /// explicitly keeps today's behaviour; routing.dart passes a session's
+  /// actual FlowStepPlan values when a QR/deep-link flow governs the
+  /// numbering.
+  final int stepNumber;
+  final int totalSteps;
 
   const FaceVerificationEntryScreen({
     super.key,
@@ -38,47 +60,73 @@ class FaceVerificationEntryScreen extends StatelessWidget {
     required this.onVerified,
     required this.engineChoice,
     required this.livenessMode,
+    this.faceVerification,
+    this.matchFace,
     this.photoIssueDate,
-  }) : testEngine = null;
+    this.stepNumber = FlowStepPlan.defaultFaceVerificationStep,
+    this.totalSteps = FlowStepPlan.defaultTotalSteps,
+    this.testEngine,
+  });
 
-  const FaceVerificationEntryScreen.withEngine({
-    super.key,
-    required FaceVerificationEngine engine,
-    required this.nfcImageBytes,
-    required this.onBackPressed,
-    required this.onVerified,
-    required this.engineChoice,
-    required this.livenessMode,
-    this.photoIssueDate,
-  }) : testEngine = engine;
+  /// The engine that actually runs: a session whose flow chose Regula gets
+  /// Regula whatever the setting; otherwise Regula only when a server offers it.
+  static FaceEngineChoice effectiveEngine(FaceEngineChoice choice, ProofingFaceVerification? faceVerification) {
+    if (faceVerification?.requiredBySession ?? false) return FaceEngineChoice.regula;
+    return choice == FaceEngineChoice.regula && !(faceVerification?.isRegula ?? false)
+        ? FaceEngineChoice.onDevice
+        : choice;
+  }
+
+  /// The engine a proofing session's flow runs on, whatever the setting:
+  /// Regula for a Regula flow, the on-device engine for one the server
+  /// scores with its own. Without a session (or a server that doesn't say)
+  /// the setting applies.
+  static FaceEngineChoice sessionEngine(FaceEngineChoice setting, ProofingSessionInfo? session) =>
+      switch (session?.faceProvider) {
+        faceProviderRegula => FaceEngineChoice.regula,
+        faceProviderEngine => FaceEngineChoice.onDevice,
+        _ => setting,
+      };
+
+  /// The on-device liveness mode a proofing session's flow asks for: active
+  /// when it requires face.liveness, passive otherwise. Without a session (or
+  /// a server that doesn't list its checks) the setting applies.
+  static LivenessMode sessionLivenessMode(LivenessMode setting, ProofingSessionInfo? session) {
+    final checks = session?.requiredChecks;
+    if (checks == null) return setting;
+    return checks.contains(checkFaceLiveness) ? LivenessMode.active : LivenessMode.passive;
+  }
 
   @override
   Widget build(BuildContext context) {
-    switch (engineChoice) {
+    switch (effectiveEngine(engineChoice, faceVerification)) {
+      case FaceEngineChoice.regula:
+        return RegulaFaceVerificationScreen(
+          faceVerification: faceVerification!,
+          matchFace: matchFace,
+          onBackPressed: onBackPressed,
+          onVerified: onVerified,
+          stepNumber: stepNumber,
+          totalSteps: totalSteps,
+        );
       case FaceEngineChoice.iris:
         return IrisFaceVerificationScreen(
           nfcImageBytes: nfcImageBytes,
           onBackPressed: onBackPressed,
           onVerified: onVerified,
+          stepNumber: stepNumber,
+          totalSteps: totalSteps,
         );
       case FaceEngineChoice.onDevice:
-        final engine = testEngine;
-        if (engine != null) {
-          return FlutterFaceVerificationScreen.withEngine(
-            engine: engine,
-            mode: livenessMode,
-            nfcImageBytes: nfcImageBytes,
-            onBackPressed: onBackPressed,
-            onVerified: onVerified,
-            photoIssueDate: photoIssueDate,
-          );
-        }
         return FlutterFaceVerificationScreen(
           mode: livenessMode,
           nfcImageBytes: nfcImageBytes,
           onBackPressed: onBackPressed,
           onVerified: onVerified,
           photoIssueDate: photoIssueDate,
+          stepNumber: stepNumber,
+          totalSteps: totalSteps,
+          testEngine: testEngine,
         );
     }
   }

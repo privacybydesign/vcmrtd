@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
 class SecurityContent extends StatelessWidget {
@@ -8,10 +9,10 @@ class SecurityContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _buildSecurityDetails();
+    return _buildSecurityDetails(context);
   }
 
-  Widget _buildSecurityDetails() {
+  Widget _buildSecurityDetails(BuildContext context) {
     final dgCount = [
       passport.mrz,
       passport.photoImageData,
@@ -42,7 +43,7 @@ class SecurityContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Available Data Groups',
+            context.l10n.docAvailableDataGroups,
             style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[800], fontSize: 16),
           ),
           const SizedBox(height: 12),
@@ -50,7 +51,7 @@ class SecurityContent extends StatelessWidget {
             children: [
               Icon(Icons.dataset, color: Colors.green[600], size: 20),
               const SizedBox(width: 8),
-              Text('Data Groups Read: $dgCount/16'),
+              Text(context.l10n.docDataGroupsRead(dgCount, 16)),
             ],
           ),
           if (passport.aaPublicKey != null) ...[
@@ -59,7 +60,7 @@ class SecurityContent extends StatelessWidget {
               children: [
                 Icon(Icons.verified_user, color: Colors.blue[600], size: 20),
                 const SizedBox(width: 8),
-                Text('Active Authentication Available'),
+                Text(context.l10n.docActiveAuthenticationAvailable),
               ],
             ),
           ],

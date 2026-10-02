@@ -1,14 +1,14 @@
 ﻿import 'package:vcmrtd/vcmrtd.dart';
 import 'package:flutter/material.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:flutter/foundation.dart';
 import 'package:idem/services/jpeg2000_converter.dart';
 
 class PassportImageWidget extends StatefulWidget {
-  final String header;
   final Uint8List? imageData;
   final ImageType? imageType;
 
-  const PassportImageWidget({super.key, required this.header, required this.imageData, required this.imageType});
+  const PassportImageWidget({super.key, required this.imageData, required this.imageType});
 
   @override
   State<PassportImageWidget> createState() => _PassportImageWidgetState();
@@ -95,7 +95,7 @@ class _PassportImageWidgetState extends State<PassportImageWidget> {
   @override
   Widget build(BuildContext context) {
     if (widget.imageData == null || widget.imageData!.isEmpty) {
-      return const Center(child: Text("No image data available."));
+      return Center(child: Text(context.l10n.docImageNoData));
     }
 
     if (widget.imageType == ImageType.jpeg) {
@@ -103,14 +103,18 @@ class _PassportImageWidgetState extends State<PassportImageWidget> {
         widget.imageData!,
         fit: BoxFit.contain,
         gaplessPlayback: true,
-        errorBuilder: (context, error, stackTrace) => const Text("Error displaying JPEG image."),
+        errorBuilder: (context, error, stackTrace) => Text(context.l10n.docImageJpegError),
       );
     } else if (widget.imageType == ImageType.jpeg2000) {
       if (_isConverting) {
-        return const Center(
+        return Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: [CircularProgressIndicator(), SizedBox(height: 16), Text("Converting JPEG2000 image...")],
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(context.l10n.docImageConvertingJpeg2000),
+            ],
           ),
         );
       } else if (_convertedImage != null) {
@@ -118,13 +122,13 @@ class _PassportImageWidgetState extends State<PassportImageWidget> {
           _convertedImage!,
           fit: BoxFit.contain,
           gaplessPlayback: true,
-          errorBuilder: (context, error, stackTrace) => const Text("Error displaying converted JPEG2000 image."),
+          errorBuilder: (context, error, stackTrace) => Text(context.l10n.docImageJpeg2000DisplayError),
         );
       } else {
-        return const Center(child: Text("Failed to convert JPEG2000 image."));
+        return Center(child: Text(context.l10n.docImageJpeg2000ConvertFailed));
       }
     } else {
-      return const Center(child: Text("Unknown or unsupported image type."));
+      return Center(child: Text(context.l10n.docImageUnsupportedType));
     }
   }
 

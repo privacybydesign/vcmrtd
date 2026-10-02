@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/providers/wallet_provider.dart';
@@ -26,15 +27,6 @@ PassportData _passportData() {
 }
 
 void main() {
-  group('WalletEmptyState', () {
-    testWidgets('shows the empty state copy', (tester) async {
-      await tester.pumpWidget(const MaterialApp(home: WalletEmptyState()));
-      await tester.pump();
-
-      expect(find.text('Your wallet is empty'), findsOneWidget);
-    });
-  });
-
   group('WalletList', () {
     testWidgets('lists cards, most recently added first', (tester) async {
       final container = ProviderContainer();
@@ -45,7 +37,11 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
-          child: MaterialApp(home: WalletList(cards: container.read(walletProvider))),
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: WalletList(cards: container.read(walletProvider)),
+          ),
         ),
       );
       await tester.pump();
@@ -63,7 +59,11 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
-          child: MaterialApp(home: WalletList(cards: container.read(walletProvider))),
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: WalletList(cards: container.read(walletProvider)),
+          ),
         ),
       );
       await tester.pump();

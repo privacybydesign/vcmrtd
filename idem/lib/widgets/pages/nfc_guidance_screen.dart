@@ -8,28 +8,35 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:mrz_capture/mrz_capture.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:idem/widgets/common/document_illustrations.dart';
+import 'package:idem/services/flow_step_plan.dart';
 
 /// NFC guidance screen - helps users position phone correctly for NFC reading
 class NfcGuidanceScreen extends StatefulWidget {
   final VoidCallback onStartReading;
   final VoidCallback onBack;
-  final VoidCallback? onTroubleshooting;
   final DocumentType documentType;
+
+  /// Step badge numbers — default to vcmrtd's fixed 4-step sequence (this
+  /// screen is always step 2 there); see NfcReadingScreen's matching fields.
+  final int stepNumber;
+  final int totalSteps;
 
   const NfcGuidanceScreen({
     super.key,
     required this.onStartReading,
     required this.onBack,
-    this.onTroubleshooting,
     required this.documentType,
+    this.stepNumber = FlowStepPlan.defaultNfcReadStep,
+    this.totalSteps = FlowStepPlan.defaultTotalSteps,
   });
 
   @override
   State<NfcGuidanceScreen> createState() => _NfcGuidanceScreenState();
 }
 
-class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProviderStateMixin {
+class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _positionAnimation;
   var _isNfcAvailable = false;
@@ -66,7 +73,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
       isNfcAvailable = false;
     }
 
-    if (!mounted) return;
+    if (!mounted || isNfcAvailable == _isNfcAvailable) return;
 
     setState(() {
       _isNfcAvailable = isNfcAvailable;
@@ -93,26 +100,18 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
-                      'Read the chip',
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF212121)),
+                    Text(
+                      context.l10n.docNfcGuidanceTitle,
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF212121)),
                     ),
                     const SizedBox(height: 4.0),
                     Text(
-                      'Place your phone on the ${widget.documentType.displayName}',
+                      context.l10n.docNfcGuidancePlacePhone(widget.documentType.name),
                       style: const TextStyle(fontSize: 15, color: Color(0xFF6B7280)),
                     ),
                     const SizedBox(height: 24.0),
                     // Animation area
-                    SizedBox(
-                      height: 240,
-                      child: AnimatedBuilder(
-                        animation: _animationController,
-                        builder: (context, child) {
-                          return _buildPositioningDiagram();
-                        },
-                      ),
-                    ),
+                    SizedBox(height: 240, child: _buildPositioningDiagram()),
                     const SizedBox(height: 24.0),
 
                     // Instruction area
@@ -135,9 +134,9 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
     return StepBadgeTopBar(
       icon: PlatformIcons(context).back,
       onBack: widget.onBack,
-      current: 2,
-      total: 4,
-      label: 'Read ${widget.documentType.displayName}',
+      current: widget.stepNumber,
+      total: widget.totalSteps,
+      label: context.l10n.docReadDocument(widget.documentType.name),
     );
   }
 
@@ -152,7 +151,12 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
         alignment: Alignment.center,
         children: [
           Positioned(bottom: 60, child: buildDocumentIllustration(widget.documentType)),
-          Positioned(top: 40 + (_positionAnimation.value * 20), child: buildPhoneIllustration()),
+          // Only the phone moves; the rest isn't rebuilt every frame.
+          AnimatedBuilder(
+            animation: _positionAnimation,
+            child: buildPhoneIllustration(),
+            builder: (context, phone) => Positioned(top: 40 + (_positionAnimation.value * 20), child: phone!),
+          ),
         ],
       ),
     );
@@ -169,15 +173,13 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Tips for better results:',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
+              Text(
+                context.l10n.docNfcGuidanceTipsTitle,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
               ),
               const SizedBox(height: 8),
               Text(
-                '• Place the ${widget.documentType.displayName} behind your phone like in the example\n'
-                '• Remove phone case if reading fails\n'
-                '• The process may take 10–30 seconds',
+                context.l10n.docNfcGuidanceTips(widget.documentType.name),
                 style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280), height: 1.4),
               ),
             ],
@@ -197,27 +199,18 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: Text(
-                'Scan ${widget.documentType.displayName}',
+                context.l10n.docScanDocument(widget.documentType.name),
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
             ),
           )
         else
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
             child: Text(
-              'NFC is not available',
+              context.l10n.docNfcNotAvailable,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            ),
-          ),
-        const SizedBox(height: 8),
-        if (widget.onTroubleshooting != null)
-          PlatformTextButton(
-            onPressed: widget.onTroubleshooting,
-            child: const Text(
-              'Having trouble?',
-              style: TextStyle(color: Color(0xFF2196F3), fontWeight: FontWeight.w500),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
           ),
       ],

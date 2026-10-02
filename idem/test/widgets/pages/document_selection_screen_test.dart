@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:image/image.dart' as img;
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
@@ -34,6 +35,8 @@ Widget _app({
 }) {
   return ProviderScope(
     child: MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: DocumentTypeSelectionScreen(
         onDocumentTypeSelected: onDocumentTypeSelected,
         onSettingsPressed: onSettingsPressed,
@@ -117,7 +120,6 @@ void main() {
                 requestedAttributes: const [],
                 expiresAt: DateTime.now().add(const Duration(minutes: 10)),
               ),
-              openedAt: DateTime.now(),
             ),
           );
 
@@ -125,6 +127,8 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             home: DocumentTypeSelectionScreen(
               onDocumentTypeSelected: (_) {},
               onSettingsPressed: () {},
@@ -153,6 +157,8 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             home: DocumentTypeSelectionScreen(
               onDocumentTypeSelected: (_) {},
               onSettingsPressed: () {},
@@ -182,6 +188,8 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             home: DocumentTypeSelectionScreen(
               onDocumentTypeSelected: (t) => selected = t,
               onSettingsPressed: () {},
@@ -219,7 +227,6 @@ void main() {
                 requestedAttributes: const [],
                 expiresAt: DateTime.now().add(const Duration(minutes: 10)),
               ),
-              openedAt: DateTime.now(),
             ),
           );
 
@@ -227,6 +234,8 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             home: DocumentTypeSelectionScreen(
               onDocumentTypeSelected: (_) {},
               onSettingsPressed: () {},
@@ -250,6 +259,8 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             home: DocumentTypeSelectionScreen(
               onDocumentTypeSelected: (_) {},
               onSettingsPressed: () {},

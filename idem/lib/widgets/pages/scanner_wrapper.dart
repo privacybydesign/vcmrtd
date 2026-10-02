@@ -1,16 +1,26 @@
-﻿// Scanner wrapper for new navigation flow
+// Scanner wrapper for new navigation flow
 // Provides callbacks for the scanner page to integrate with navigation
 
 import 'package:flutter/material.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 
 import '../../routing.dart';
 import 'scan_screen.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:idem/services/flow_step_plan.dart';
+
+/// Called with the MRZ read and, when one was asked for, the picture taken
+/// the moment it was read (null when the camera couldn't take it).
+typedef MrzScannedWithPicture = void Function(ScannedMRZ mrz, DocumentPicture? picture);
 
 typedef ScannerWidgetBuilder =
-    Widget Function({required DocumentType documentType, required ValueChanged<ScannedMRZ> onSuccess});
+    Widget Function({
+      required DocumentType documentType,
+      required MrzScanPicture scanPicture,
+      required MrzScannedWithPicture onSuccess,
+    });
 
 class MrzReaderRouteParams {
   final DocumentType documentType;
@@ -28,11 +38,23 @@ class MrzReaderRouteParams {
 
 /// Wrapper around ScannerPage to handle navigation callbacks
 class ScannerWrapper extends StatefulWidget {
-  final Function(ScannedMRZ) onMrzScanned;
+  final void Function(ScannedMRZ mrz, [DocumentPicture? picture]) onMrzScanned;
   final VoidCallback onManualEntry;
   final VoidCallback onBack;
   final DocumentType documentType;
   final ScannerWidgetBuilder? scannerBuilder;
+
+  /// Photographs the document the moment its MRZ is read: the flow asks for
+  /// a photo of the document, and the side with the MRZ needs none of its
+  /// own then.
+  final MrzScanPicture scanPicture;
+
+  /// Step badge numbers — default to vcmrtd's fixed 4-step sequence (this
+  /// screen is always step 1) so any caller not passing these explicitly
+  /// keeps today's behaviour; routing.dart passes a session's actual
+  /// [FlowStepPlan] values when a QR/deep-link flow governs the numbering.
+  final int stepNumber;
+  final int totalSteps;
 
   const ScannerWrapper({
     super.key,
@@ -41,6 +63,9 @@ class ScannerWrapper extends StatefulWidget {
     required this.onBack,
     this.documentType = DocumentType.passport,
     this.scannerBuilder,
+    this.scanPicture = MrzScanPicture.none,
+    this.stepNumber = FlowStepPlan.defaultDocumentCaptureStep,
+    this.totalSteps = FlowStepPlan.defaultTotalSteps,
   });
 
   @override
@@ -75,10 +100,11 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
         children: [
           scannerBuilder(
             documentType: widget.documentType,
-            onSuccess: (scannedMrz) {
+            scanPicture: widget.scanPicture,
+            onSuccess: (scannedMrz, picture) {
               if (!_hasNavigated) {
                 _hasNavigated = true;
-                widget.onMrzScanned(scannedMrz);
+                widget.onMrzScanned(scannedMrz, picture);
               }
             },
           ),
@@ -107,7 +133,11 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
                     onPressed: widget.onBack,
                   ),
                 ),
-                StepBadge(current: 1, total: 4, label: 'Scan ${_getDocumentTypeName()}'),
+                StepBadge(
+                  current: widget.stepNumber,
+                  total: widget.totalSteps,
+                  label: context.l10n.proofingScanDocument(widget.documentType.name),
+                ),
               ],
             ),
           ),
@@ -119,52 +149,50 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
   }
 
   Widget _buildOverlayCard(BuildContext context) {
-    return Card(
-      color: Colors.transparent,
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(0.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Position the ${widget.documentType.displayName}',
-              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            Text(
-              'Align the Machine Readable Zone (MRZ) with the frame at the bottom of the screen. Hold steady until scanning completes.',
-              style: TextStyle(color: Colors.white70, fontSize: 14),
-            ),
-          ],
-        ),
+    // The inset a Card's default margin used to give it.
+    return Padding(
+      padding: const EdgeInsets.all(4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.l10n.proofingPositionDocument(widget.documentType.name),
+            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          Text(
+            widget.scanPicture == MrzScanPicture.capture
+                ? context.l10n.proofingScanMrzPhotoInstructions
+                : context.l10n.proofingScanMrzInstructions,
+            style: TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildBottomControls(BuildContext context) {
-    return Container(
+    return Padding(
       padding: const EdgeInsets.fromLTRB(30, 24, 24, 32),
-      decoration: BoxDecoration(color: Colors.transparent),
       child: SafeArea(
         top: false,
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black),
-          onPressed: () {
-            widget.onManualEntry();
-          },
-          child: Text('Enter ${_getDocumentTypeName()} details manually', style: TextStyle(color: Colors.black)),
+          onPressed: widget.onManualEntry,
+          child: Text(
+            context.l10n.proofingEnterDetailsManually(widget.documentType.name),
+            style: const TextStyle(color: Colors.black),
+          ),
         ),
       ),
     );
   }
-
-  String _getDocumentTypeName() {
-    return widget.documentType.displayName;
-  }
 }
 
-Widget _defaultScannerBuilder({required DocumentType documentType, required ValueChanged<ScannedMRZ> onSuccess}) {
-  return ScannerPage(documentType: documentType, onSuccess: onSuccess);
+Widget _defaultScannerBuilder({
+  required DocumentType documentType,
+  required MrzScanPicture scanPicture,
+  required MrzScannedWithPicture onSuccess,
+}) {
+  return ScannerPage(documentType: documentType, scanPicture: scanPicture, onSuccess: onSuccess);
 }

@@ -10,11 +10,15 @@ import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:image/image.dart' as img;
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:face_verification/face_verification.dart';
 import 'package:idem/widgets/pages/face_verification_entry_screen.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:idem/routing.dart';
+import 'package:idem/services/face_verification_outcome.dart';
 import 'package:mrz_capture/mrz_capture.dart';
+import 'package:idem/widgets/pages/document_photo_screen.dart';
 import 'package:idem/widgets/pages/document_selection_screen.dart';
 import 'package:idem/widgets/pages/driving_licence_data_screen.dart';
 import 'package:idem/widgets/pages/passport_data_screen.dart';
@@ -26,17 +30,18 @@ import 'package:idem/widgets/pages/proofing_session_consent_screen.dart';
 import 'package:idem/widgets/pages/settings_screen.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/services/proofing_session_client.dart';
+import 'package:idem/services/proofing_session_watcher.dart';
 
 class _FakeScanner extends StatelessWidget {
   const _FakeScanner({required this.documentType, required this.onSuccess});
 
   final DocumentType documentType;
-  final ValueChanged<ScannedMRZ> onSuccess;
+  final MrzScannedWithPicture onSuccess;
 
   @override
   Widget build(BuildContext context) {
     return TextButton(
-      onPressed: () => onSuccess(_scannedPassport(documentType)),
+      onPressed: () => onSuccess(_scannedPassport(documentType), null),
       child: Text('fake route scanner ${documentType.name}'),
     );
   }
@@ -107,6 +112,23 @@ class _FakeWorker implements FaceVerificationWorker {
   void debugEmitFrameError(Object e) {}
 }
 
+class _FakeDocumentPhotoCamera implements DocumentPhotoCamera {
+  @override
+  Future<void> open() async {}
+
+  @override
+  Widget buildPreview(BuildContext context) => const SizedBox.expand();
+
+  @override
+  Future<Uint8List> takePicture({required double frameRatio}) async => _jpeg();
+
+  @override
+  Future<Uint8List> prepare(DocumentPicture picture) async => picture.jpeg;
+
+  @override
+  Future<void> close() async {}
+}
+
 Uint8List _jpeg() {
   return Uint8List.fromList(img.encodeJpg(img.Image(width: 2, height: 2)));
 }
@@ -161,13 +183,19 @@ DrivingLicenceData _drivingLicenceData() {
 }
 
 ScannerWidgetBuilder _scannerBuilder() {
-  return ({required documentType, required onSuccess}) {
+  return ({required documentType, required scanPicture, required onSuccess}) {
     return _FakeScanner(documentType: documentType, onSuccess: onSuccess);
   };
 }
 
 Widget _routerApp(GoRouter router) {
-  return ProviderScope(child: MaterialApp.router(routerConfig: router));
+  return ProviderScope(
+    child: MaterialApp.router(
+      routerConfig: router,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+    ),
+  );
 }
 
 class _RouteExtensionHarness extends StatelessWidget {
@@ -209,7 +237,76 @@ class _RouteExtensionHarness extends StatelessWidget {
   }
 }
 
+const _faceSteps = [stepFaceVerification, stepSelfie, stepLiveness, stepFaceMatch];
+
+/// Answers the step endpoints the way identity-proofing-service does for a
+/// flow of [steps]: each submission is recorded and the response names the
+/// first step still without a result (the server's currentStep), and
+/// readyToSubmit once there is none. The session only gets its outcome
+/// (COMPLETE) from `POST .../submit` - so the app has something real to
+/// follow.
+Future<http.Response> Function(http.Request) _flowServer(List<String> steps) {
+  final done = <String>{};
+  var submitted = false;
+  return (request) async {
+    final path = request.url.path;
+    List<String> remaining() => steps.where((step) => !done.contains(step)).toList();
+    if (request.method == 'POST' && path.endsWith('/submit')) {
+      if (remaining().isNotEmpty) return http.Response(json.encode({'code': 'steps_incomplete'}), 409);
+      final alreadyRecorded = submitted;
+      submitted = true;
+      return http.Response(
+        json.encode({
+          'status': 'approved',
+          'completedSteps': done.toList(),
+          'currentStep': '',
+          'lifecycle': 'COMPLETE',
+          'readyToSubmit': false,
+          'alreadyRecorded': alreadyRecorded,
+        }),
+        200,
+      );
+    }
+    if (request.method != 'POST' || !path.contains('/steps/') || path.endsWith('/start')) {
+      return http.Response('{}', 200);
+    }
+    if (path.endsWith('/steps/document_capture')) done.add(stepDocumentCapture);
+    if (path.endsWith('/steps/nfc')) done.addAll([stepNfcRead, stepDocumentCapture]);
+    if (path.endsWith('/steps/selfie')) done.addAll(_faceSteps);
+    if (path.endsWith('/steps/document_photo')) done.add(stepDocumentPhoto);
+    final left = remaining();
+    return http.Response(
+      json.encode({
+        'status': 'in_progress',
+        'completedSteps': done.toList(),
+        'currentStep': left.isEmpty ? '' : left.first,
+        'lifecycle': 'ACTIVE',
+        'readyToSubmit': left.isEmpty,
+      }),
+      200,
+    );
+  };
+}
+
+/// Lets a step submission (progress dialog, request, dialog closing) run
+/// to completion.
+Future<void> _pumpStepSubmission(WidgetTester tester) async {
+  for (var i = 0; i < 10; i++) {
+    await tester.pump();
+  }
+}
+
 void main() {
+  setUp(() {
+    PackageInfo.setMockInitialValues(
+      appName: 'Idem',
+      packageName: 'foundation.privacybydesign.idem',
+      version: '1.0.0',
+      buildNumber: '1',
+      buildSignature: '',
+    );
+  });
+
   group('routeObserver', () {
     test('is a RouteObserver instance', () {
       expect(routeObserver, isA<RouteObserver<ModalRoute<void>>>());
@@ -236,6 +333,41 @@ void main() {
       expect(find.text('Driving Licence'), findsOneWidget);
     });
 
+    testWidgets('back on face verification and NFC reached with go (nothing to pop) returns to document '
+        'selection', (tester) async {
+      final engine = FaceVerificationEngine.withWorker(_FakeWorker());
+      final router = createRouter(scannerBuilder: _scannerBuilder(), faceVerificationEngine: engine);
+      addTearDown(router.dispose);
+      await tester.pumpWidget(_routerApp(router));
+
+      router.go(
+        '/face_verification',
+        extra: {
+          'nfcImageBytes': Uint8List.fromList([1]),
+        },
+      );
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      tester.widget<FaceVerificationEntryScreen>(find.byType(FaceVerificationEntryScreen)).onBackPressed();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(tester.takeException(), isNull);
+      expect(find.byType(DocumentTypeSelectionScreen), findsOneWidget);
+
+      final params = NfcReadingRouteParams(
+        scannedMRZ: _scannedPassport(DocumentType.passport),
+        documentType: DocumentType.passport,
+      );
+      router.go(Uri(path: '/nfc_reading', queryParameters: params.toQueryParams()).toString());
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      tester.widget<NfcReadingScreen>(find.byType(NfcReadingScreen)).onBack!();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(tester.takeException(), isNull);
+      expect(find.byType(DocumentTypeSelectionScreen), findsOneWidget);
+    });
+
     testWidgets('builds MRZ reader route with injected scanner', (tester) async {
       final router = createRouter(scannerBuilder: _scannerBuilder());
       addTearDown(router.dispose);
@@ -248,7 +380,7 @@ void main() {
       await tester.pump();
 
       expect(find.byType(ScannerWrapper), findsOneWidget);
-      expect(find.text('1 of 4 · Scan ${DocumentType.identityCard.displayName}'), findsOneWidget);
+      expect(find.text('1 of 4 · Scan ID card'), findsOneWidget);
       expect(find.text('fake route scanner ${DocumentType.identityCard.name}'), findsOneWidget);
     });
 
@@ -376,6 +508,595 @@ void main() {
       expect(find.byType(FaceVerificationEntryScreen), findsOneWidget);
     });
 
+    testWidgets('NFC success skips face verification and submits the session straight away when the '
+        "session's steps ask for neither selfie, liveness, nor face_match", (tester) async {
+      final router = createRouter(scannerBuilder: _scannerBuilder());
+      addTearDown(router.dispose);
+      var submits = 0;
+      // Outside the client factory: runWithClient makes a client per request.
+      final server = _flowServer(const [stepDocumentCapture, stepNfcRead]);
+
+      await http.runWithClient(
+        () async {
+          await tester.pumpWidget(_routerApp(router));
+          await tester.pump();
+
+          final container = ProviderScope.containerOf(tester.element(find.byType(DocumentTypeSelectionScreen)));
+          container
+              .read(activeProofingSessionProvider.notifier)
+              .set(
+                ActiveProofingSession(
+                  ref: const ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok'),
+                  info: ProofingSessionInfo(
+                    id: 'sess1',
+                    relyingParty: 'acme-tenant',
+                    requestedAttributes: const [],
+                    expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+                    steps: const [stepDocumentCapture, stepNfcRead],
+                  ),
+                ),
+              );
+
+          router.go(
+            Uri(
+              path: '/mrz_reader',
+              queryParameters: MrzReaderRouteParams(documentType: DocumentType.passport).toQueryParams(),
+            ).toString(),
+          );
+          await tester.pump();
+          await tester.pump();
+
+          tester
+              .widget<ScannerWrapper>(find.byType(ScannerWrapper))
+              .onMrzScanned(_scannedPassport(DocumentType.passport));
+          await tester.pump();
+          await tester.pump();
+          expect(find.byType(NfcReadingScreen), findsOneWidget);
+
+          final events = <ProofingSessionEvent>[];
+          final sub = container.read(proofingSessionCoordinatorProvider).events.listen(events.add);
+          addTearDown(sub.cancel);
+          tester
+              .widgetList<NfcReadingScreen>(find.byType(NfcReadingScreen))
+              .last
+              .onSuccess(_passportData(), _rawDocument());
+          await _pumpStepSubmission(tester);
+          await _pumpStepSubmission(tester);
+
+          // The chip read was the last step, so it also submitted the
+          // session: no face verification, no Submit button to tap.
+          expect(find.byType(FaceVerificationEntryScreen), findsNothing);
+          expect(submits, 1);
+          expect(events.single, isA<ProofingSessionCompleted>());
+        },
+        () => MockClient((request) {
+          if (request.url.path.endsWith('/submit')) submits++;
+          return server(request);
+        }),
+      );
+    });
+
+    testWidgets('NFC success still runs face verification when the session steps ask for just one of '
+        'selfie/liveness/face_match', (tester) async {
+      final engine = FaceVerificationEngine.withWorker(_FakeWorker());
+      final router = createRouter(scannerBuilder: _scannerBuilder(), faceVerificationEngine: engine);
+      addTearDown(router.dispose);
+
+      await http.runWithClient(() async {
+        await tester.pumpWidget(_routerApp(router));
+        await tester.pump();
+
+        final container = ProviderScope.containerOf(tester.element(find.byType(DocumentTypeSelectionScreen)));
+        container
+            .read(activeProofingSessionProvider.notifier)
+            .set(
+              ActiveProofingSession(
+                ref: const ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok'),
+                info: ProofingSessionInfo(
+                  id: 'sess1',
+                  relyingParty: 'acme-tenant',
+                  requestedAttributes: const [],
+                  expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+                  steps: const [stepDocumentCapture, stepNfcRead, stepLiveness],
+                  selfieLocation: 'native',
+                ),
+              ),
+            );
+
+        router.go(
+          Uri(
+            path: '/mrz_reader',
+            queryParameters: MrzReaderRouteParams(documentType: DocumentType.passport).toQueryParams(),
+          ).toString(),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        tester
+            .widget<ScannerWrapper>(find.byType(ScannerWrapper))
+            .onMrzScanned(_scannedPassport(DocumentType.passport));
+        await tester.pump();
+        await tester.pump();
+
+        tester
+            .widgetList<NfcReadingScreen>(find.byType(NfcReadingScreen))
+            .last
+            .onSuccess(_passportData(), _rawDocument());
+        await _pumpStepSubmission(tester);
+
+        expect(find.byType(FaceVerificationEntryScreen), findsOneWidget);
+      }, () => MockClient(_flowServer(const [stepDocumentCapture, stepNfcRead, stepLiveness])));
+    });
+
+    testWidgets('NFC success also runs face verification when the session steps ask for the aggregate '
+        '"face_verification" step (not just the granular selfie/liveness/face_match names)', (tester) async {
+      final engine = FaceVerificationEngine.withWorker(_FakeWorker());
+      final router = createRouter(scannerBuilder: _scannerBuilder(), faceVerificationEngine: engine);
+      addTearDown(router.dispose);
+
+      await http.runWithClient(() async {
+        await tester.pumpWidget(_routerApp(router));
+        await tester.pump();
+
+        final container = ProviderScope.containerOf(tester.element(find.byType(DocumentTypeSelectionScreen)));
+        container
+            .read(activeProofingSessionProvider.notifier)
+            .set(
+              ActiveProofingSession(
+                ref: const ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok'),
+                info: ProofingSessionInfo(
+                  id: 'sess1',
+                  relyingParty: 'acme-tenant',
+                  requestedAttributes: const [],
+                  expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+                  steps: const [stepDocumentCapture, stepNfcRead, stepFaceVerification],
+                  selfieLocation: 'native',
+                ),
+              ),
+            );
+
+        router.go(
+          Uri(
+            path: '/mrz_reader',
+            queryParameters: MrzReaderRouteParams(documentType: DocumentType.passport).toQueryParams(),
+          ).toString(),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        tester
+            .widget<ScannerWrapper>(find.byType(ScannerWrapper))
+            .onMrzScanned(_scannedPassport(DocumentType.passport));
+        await tester.pump();
+        await tester.pump();
+
+        tester
+            .widgetList<NfcReadingScreen>(find.byType(NfcReadingScreen))
+            .last
+            .onSuccess(_passportData(), _rawDocument());
+        await _pumpStepSubmission(tester);
+
+        expect(find.byType(FaceVerificationEntryScreen), findsOneWidget);
+      }, () => MockClient(_flowServer(const [stepDocumentCapture, stepNfcRead, stepFaceVerification])));
+    });
+
+    testWidgets('NFC success skips its own face verification and goes straight to the result route when '
+        'selfieLocation is "browser", even though the session steps do ask for a face stage', (tester) async {
+      final router = createRouter(scannerBuilder: _scannerBuilder());
+      addTearDown(router.dispose);
+
+      await http.runWithClient(() async {
+        await tester.pumpWidget(_routerApp(router));
+        await tester.pump();
+
+        final container = ProviderScope.containerOf(tester.element(find.byType(DocumentTypeSelectionScreen)));
+        container
+            .read(activeProofingSessionProvider.notifier)
+            .set(
+              ActiveProofingSession(
+                ref: const ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok'),
+                info: ProofingSessionInfo(
+                  id: 'sess1',
+                  relyingParty: 'acme-tenant',
+                  requestedAttributes: const [],
+                  expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+                  steps: const [stepDocumentCapture, stepNfcRead, stepFaceVerification],
+                  selfieLocation: 'browser',
+                ),
+              ),
+            );
+
+        router.go(
+          Uri(
+            path: '/mrz_reader',
+            queryParameters: MrzReaderRouteParams(documentType: DocumentType.passport).toQueryParams(),
+          ).toString(),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        tester
+            .widget<ScannerWrapper>(find.byType(ScannerWrapper))
+            .onMrzScanned(_scannedPassport(DocumentType.passport));
+        await tester.pump();
+        await tester.pump();
+        expect(find.byType(NfcReadingScreen), findsOneWidget);
+
+        tester
+            .widgetList<NfcReadingScreen>(find.byType(NfcReadingScreen))
+            .last
+            .onSuccess(_passportData(), _rawDocument());
+        await _pumpStepSubmission(tester);
+
+        expect(find.byType(FaceVerificationEntryScreen), findsNothing);
+        expect(find.byType(PassportDataScreen), findsOneWidget);
+        // 2 of 2: face_verification is deferred to the browser, so it never
+        // occupies a step slot of THIS APP's own sequence (document capture,
+        // nfc read), and the confirmation reuses the last step's number -
+        // see FlowStepPlan.fromSteps.
+        final resultScreen = tester.widget<PassportDataScreen>(find.byType(PassportDataScreen));
+        expect(resultScreen.totalSteps, 2);
+        expect(resultScreen.stepNumber, 2);
+      }, () => MockClient(_flowServer(const [stepDocumentCapture, stepNfcRead, stepFaceVerification])));
+    });
+
+    testWidgets('MRZ scan skips NFC reading entirely and submits the session when steps is just document_capture', (
+      tester,
+    ) async {
+      final documentStepBodies = <Map<String, dynamic>>[];
+      var submitRequests = 0;
+      final server = _flowServer(const [stepDocumentCapture]);
+      await http.runWithClient(
+        () async {
+          final router = createRouter(scannerBuilder: _scannerBuilder());
+          addTearDown(router.dispose);
+
+          await tester.pumpWidget(_routerApp(router));
+          await tester.pump();
+
+          final container = ProviderScope.containerOf(tester.element(find.byType(DocumentTypeSelectionScreen)));
+          container
+              .read(activeProofingSessionProvider.notifier)
+              .set(
+                ActiveProofingSession(
+                  ref: const ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok'),
+                  info: ProofingSessionInfo(
+                    id: 'sess1',
+                    relyingParty: 'acme-tenant',
+                    requestedAttributes: const [],
+                    expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+                    steps: const [stepDocumentCapture],
+                  ),
+                ),
+              );
+
+          router.go(
+            Uri(
+              path: '/mrz_reader',
+              queryParameters: MrzReaderRouteParams(documentType: DocumentType.passport).toQueryParams(),
+            ).toString(),
+          );
+          await tester.pump();
+          await tester.pump();
+
+          final events = <ProofingSessionEvent>[];
+          final sub = container.read(proofingSessionCoordinatorProvider).events.listen(events.add);
+          addTearDown(sub.cancel);
+          tester
+              .widget<ScannerWrapper>(find.byType(ScannerWrapper))
+              .onMrzScanned(_scannedPassport(DocumentType.passport));
+          await _pumpStepSubmission(tester);
+          await _pumpStepSubmission(tester);
+
+          // The scan itself was the whole flow: sent as its own step, which
+          // as the last step also submits the session - ending the
+          // verification (main.dart then tells the user it's done).
+          expect(documentStepBodies, hasLength(1));
+          expect((documentStepBodies.single['document'] as Map)['number'], isNotNull);
+          expect(find.byType(NfcReadingScreen), findsNothing);
+          expect(find.byType(FaceVerificationEntryScreen), findsNothing);
+          expect(submitRequests, 1);
+          expect(events.single, isA<ProofingSessionCompleted>());
+        },
+        () => MockClient((request) async {
+          if (request.url.path.endsWith('/steps/document_capture')) {
+            documentStepBodies.add(json.decode(request.body) as Map<String, dynamic>);
+          }
+          if (request.url.path.endsWith('/submit')) submitRequests++;
+          return server(request);
+        }),
+      );
+    });
+
+    testWidgets('a document scanned in a flow that only takes a document photo continues at that photo', (
+      tester,
+    ) async {
+      final requests = <String>[];
+      await http.runWithClient(
+        () async {
+          final router = createRouter(
+            scannerBuilder: _scannerBuilder(),
+            documentPhotoCamera: _FakeDocumentPhotoCamera(),
+          );
+          addTearDown(router.dispose);
+
+          await tester.pumpWidget(_routerApp(router));
+          await tester.pump();
+
+          final container = ProviderScope.containerOf(tester.element(find.byType(DocumentTypeSelectionScreen)));
+          container
+              .read(activeProofingSessionProvider.notifier)
+              .set(
+                ActiveProofingSession(
+                  ref: const ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok'),
+                  info: ProofingSessionInfo(
+                    id: 'sess1',
+                    relyingParty: 'acme-tenant',
+                    requestedAttributes: const ['document_image'],
+                    expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+                    steps: const [stepDocumentPhoto],
+                    currentStep: stepDocumentPhoto,
+                  ),
+                ),
+              );
+
+          router.go(
+            Uri(
+              path: '/mrz_reader',
+              queryParameters: MrzReaderRouteParams(documentType: DocumentType.passport).toQueryParams(),
+            ).toString(),
+          );
+          await tester.pump();
+          await tester.pump();
+
+          tester
+              .widget<ScannerWrapper>(find.byType(ScannerWrapper))
+              .onMrzScanned(_scannedPassport(DocumentType.passport));
+          await _pumpStepSubmission(tester);
+
+          // Not left on the scanner with nowhere to go.
+          expect(find.byType(DocumentPhotoScreen), findsOneWidget);
+          // The flow has no document_capture step to send the scan to.
+          expect(requests.where((r) => r.endsWith('/steps/document_capture')), isEmpty);
+        },
+        () => MockClient((request) async {
+          requests.add(request.url.path);
+          return http.Response('{}', 200);
+        }),
+      );
+    });
+
+    testWidgets('MRZ scan continues at the document photo the server names next, which is sent as its own step '
+        'and then submits the session', (tester) async {
+      final photoStepBodies = <Map<String, dynamic>>[];
+      var submitRequests = 0;
+      final server = _flowServer(const [stepDocumentCapture, stepDocumentPhoto]);
+      await http.runWithClient(
+        () async {
+          final router = createRouter(
+            scannerBuilder: _scannerBuilder(),
+            documentPhotoCamera: _FakeDocumentPhotoCamera(),
+          );
+          addTearDown(router.dispose);
+
+          await tester.pumpWidget(_routerApp(router));
+          await tester.pump();
+
+          final container = ProviderScope.containerOf(tester.element(find.byType(DocumentTypeSelectionScreen)));
+          container
+              .read(activeProofingSessionProvider.notifier)
+              .set(
+                ActiveProofingSession(
+                  ref: const ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok'),
+                  info: ProofingSessionInfo(
+                    id: 'sess1',
+                    relyingParty: 'acme-tenant',
+                    requestedAttributes: const [],
+                    expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+                    steps: const [stepDocumentCapture, stepDocumentPhoto],
+                  ),
+                ),
+              );
+
+          router.go(
+            Uri(
+              path: '/mrz_reader',
+              queryParameters: MrzReaderRouteParams(documentType: DocumentType.passport).toQueryParams(),
+            ).toString(),
+          );
+          await tester.pump();
+          await tester.pump();
+
+          final events = <ProofingSessionEvent>[];
+          final sub = container.read(proofingSessionCoordinatorProvider).events.listen(events.add);
+          addTearDown(sub.cancel);
+          tester
+              .widget<ScannerWrapper>(find.byType(ScannerWrapper))
+              .onMrzScanned(_scannedPassport(DocumentType.passport));
+          await _pumpStepSubmission(tester);
+
+          final screen = tester.widget<DocumentPhotoScreen>(find.byType(DocumentPhotoScreen));
+          // Part of the document scan: its number, not one of its own.
+          expect(screen.stepNumber, 1);
+          expect(screen.totalSteps, 1);
+          // The scan says it's a passport: only its front is asked for.
+          expect(screen.documentType, DocumentType.passport);
+          expect(find.byType(NfcReadingScreen), findsNothing);
+          expect(submitRequests, 0);
+
+          final photo = _jpeg();
+          unawaited(screen.onPhotosTaken(photo, null));
+          await _pumpStepSubmission(tester);
+          await _pumpStepSubmission(tester);
+
+          // Sent without a back or a bsnRegion: nothing locates the printed
+          // BSN yet.
+          expect(photoStepBodies.single, {
+            'front': {'image': base64Encode(photo), 'mimeType': 'image/jpeg'},
+          });
+          expect(submitRequests, 1);
+          expect(events.single, isA<ProofingSessionCompleted>());
+        },
+        () => MockClient((request) async {
+          if (request.url.path.endsWith('/steps/document_photo')) {
+            photoStepBodies.add(json.decode(request.body) as Map<String, dynamic>);
+          }
+          if (request.url.path.endsWith('/submit')) submitRequests++;
+          return server(request);
+        }),
+      );
+    });
+
+    for (final (label, documentType) in [('passport', DocumentType.passport), ('ID card', DocumentType.identityCard)]) {
+      testWidgets('$label scan in a flow with document_photo photographs the MRZ side as it is read, shows it, and '
+          'the photo step follows the scan', (tester) async {
+        final requests = <String>[];
+        final photoStepBodies = <Map<String, dynamic>>[];
+        // Listed after the chip read: the photo still follows the scan.
+        final server = _flowServer(const [stepDocumentCapture, stepNfcRead, stepDocumentPhoto]);
+        await http.runWithClient(
+          () async {
+            final router = createRouter(
+              scannerBuilder: _scannerBuilder(),
+              documentPhotoCamera: _FakeDocumentPhotoCamera(),
+            );
+            addTearDown(router.dispose);
+
+            await tester.pumpWidget(_routerApp(router));
+            await tester.pump();
+
+            final container = ProviderScope.containerOf(tester.element(find.byType(DocumentTypeSelectionScreen)));
+            container
+                .read(activeProofingSessionProvider.notifier)
+                .set(
+                  ActiveProofingSession(
+                    ref: const ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok'),
+                    info: ProofingSessionInfo(
+                      id: 'sess1',
+                      relyingParty: 'acme-tenant',
+                      requestedAttributes: const [],
+                      expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+                      steps: const [stepDocumentCapture, stepNfcRead, stepDocumentPhoto],
+                    ),
+                  ),
+                );
+
+            router.go(
+              Uri(
+                path: '/mrz_reader',
+                queryParameters: MrzReaderRouteParams(documentType: documentType).toQueryParams(),
+              ).toString(),
+            );
+            await tester.pump();
+            await tester.pump();
+
+            final scanner = tester.widget<ScannerWrapper>(find.byType(ScannerWrapper));
+            expect(scanner.scanPicture, MrzScanPicture.capture);
+            final mrzSide = _jpeg();
+            scanner.onMrzScanned(
+              _scannedPassport(documentType),
+              DocumentPicture(jpeg: mrzSide, frame: const Rect.fromLTRB(0, 0, 1, 1), previewAspectRatio: 9 / 16),
+            );
+            await _pumpStepSubmission(tester);
+            await _pumpStepSubmission(tester);
+
+            // Always shown before it is sent.
+            final screen = tester.widget<DocumentPhotoScreen>(find.byType(DocumentPhotoScreen));
+            expect(screen.scanned, mrzSide);
+            expect(screen.documentType, documentType);
+            expect(photoStepBodies, isEmpty);
+            if (documentType == DocumentType.passport) {
+              // The MRZ is on the photo page: that is the whole photo.
+              unawaited(screen.onPhotosTaken(mrzSide, null));
+              await _pumpStepSubmission(tester);
+              expect(photoStepBodies.single, {
+                'front': {'image': base64Encode(mrzSide), 'mimeType': 'image/jpeg'},
+              });
+            } else {
+              // A card's MRZ is on its back: the front follows.
+              final front = Uint8List.fromList([...mrzSide, 0]);
+              unawaited(screen.onPhotosTaken(front, mrzSide));
+              await _pumpStepSubmission(tester);
+              expect(photoStepBodies.single, {
+                'front': {'image': base64Encode(front), 'mimeType': 'image/jpeg'},
+                'back': {'image': base64Encode(mrzSide), 'mimeType': 'image/jpeg'},
+              });
+            }
+            await _pumpStepSubmission(tester);
+            // The steps sent, in order (their start reports aside).
+            final steps = requests.where((path) => path.contains('/steps/') && !path.endsWith('/start'));
+            expect(steps.map((path) => path.split('/').last).toList(), ['document_capture', 'document_photo']);
+            // The chip read comes next, with the scan's access key.
+            expect(find.byType(NfcReadingScreen), findsOneWidget);
+          },
+          () => MockClient((request) async {
+            requests.add(request.url.path);
+            if (request.url.path.endsWith('/steps/document_photo')) {
+              photoStepBodies.add(json.decode(request.body) as Map<String, dynamic>);
+            }
+            return server(request);
+          }),
+        );
+      });
+    }
+
+    testWidgets('MRZ scan skips NFC reading but still runs face verification, sourcing the comparison photo from '
+        'referencePhoto', (tester) async {
+      final engine = FaceVerificationEngine.withWorker(_FakeWorker());
+      final router = createRouter(scannerBuilder: _scannerBuilder(), faceVerificationEngine: engine);
+      addTearDown(router.dispose);
+
+      await http.runWithClient(() async {
+        final referencePhotoBytes = Uint8List.fromList([1, 2, 3, 4]);
+
+        await tester.pumpWidget(_routerApp(router));
+        await tester.pump();
+
+        final container = ProviderScope.containerOf(tester.element(find.byType(DocumentTypeSelectionScreen)));
+        container
+            .read(activeProofingSessionProvider.notifier)
+            .set(
+              ActiveProofingSession(
+                ref: const ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok'),
+                info: ProofingSessionInfo(
+                  id: 'sess1',
+                  relyingParty: 'acme-tenant',
+                  requestedAttributes: const [],
+                  expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+                  steps: const [stepDocumentCapture, stepFaceMatch],
+                  // The flow puts the face step on this app, so it runs here.
+                  selfieLocation: 'native',
+                  referencePhoto: ProofingPhotoInfo(
+                    imageBase64: base64Encode(referencePhotoBytes),
+                    mimeType: 'image/jpeg',
+                  ),
+                ),
+              ),
+            );
+
+        router.go(
+          Uri(
+            path: '/mrz_reader',
+            queryParameters: MrzReaderRouteParams(documentType: DocumentType.passport).toQueryParams(),
+          ).toString(),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        tester
+            .widget<ScannerWrapper>(find.byType(ScannerWrapper))
+            .onMrzScanned(_scannedPassport(DocumentType.passport));
+        await _pumpStepSubmission(tester);
+
+        expect(find.byType(NfcReadingScreen), findsNothing);
+        expect(find.byType(FaceVerificationEntryScreen), findsOneWidget);
+        expect(
+          tester.widget<FaceVerificationEntryScreen>(find.byType(FaceVerificationEntryScreen)).nfcImageBytes,
+          referencePhotoBytes,
+        );
+      }, () => MockClient(_flowServer(const [stepDocumentCapture, stepFaceMatch])));
+    });
+
     testWidgets('builds result route for passport and driving licence documents', (tester) async {
       tester.view.physicalSize = const Size(1200, 1600);
       tester.view.devicePixelRatio = 1.0;
@@ -387,7 +1108,11 @@ void main() {
       await tester.pumpWidget(_routerApp(router));
       router.go(
         '/result',
-        extra: {'document': _passportData(), 'result': _rawDocument(), 'document_type': DocumentType.passport},
+        extra: ResultRouteArgs(
+          document: _passportData(),
+          rawDocument: _rawDocument(),
+          documentType: DocumentType.passport,
+        ),
       );
       await tester.pump();
       await tester.pump();
@@ -395,11 +1120,11 @@ void main() {
 
       router.go(
         '/result',
-        extra: {
-          'document': _drivingLicenceData(),
-          'result': _rawDocument(),
-          'document_type': DocumentType.drivingLicence,
-        },
+        extra: ResultRouteArgs(
+          document: _drivingLicenceData(),
+          rawDocument: _rawDocument(),
+          documentType: DocumentType.drivingLicence,
+        ),
       );
       await tester.pump();
       await tester.pump();
@@ -416,7 +1141,11 @@ void main() {
       await tester.pumpWidget(_routerApp(router));
       router.go(
         '/result',
-        extra: {'document': _passportData(), 'result': _rawDocument(), 'document_type': DocumentType.passport},
+        extra: ResultRouteArgs(
+          document: _passportData(),
+          rawDocument: _rawDocument(),
+          documentType: DocumentType.passport,
+        ),
       );
       await tester.pump();
       await tester.pump();
@@ -428,11 +1157,11 @@ void main() {
 
       router.go(
         '/result',
-        extra: {
-          'document': _drivingLicenceData(),
-          'result': _rawDocument(),
-          'document_type': DocumentType.drivingLicence,
-        },
+        extra: ResultRouteArgs(
+          document: _drivingLicenceData(),
+          rawDocument: _rawDocument(),
+          documentType: DocumentType.drivingLicence,
+        ),
       );
       await tester.pump();
       await tester.pump();
@@ -466,6 +1195,37 @@ void main() {
       expect(screen.photoIssueDate, issueDate);
       expect(screen.nfcImageBytes, Uint8List.fromList([1]));
     });
+
+    testWidgets(
+      'a face verification that ends after its session was unpinned goes to document selection, not a crash',
+      (tester) async {
+        final router = createRouter(
+          scannerBuilder: _scannerBuilder(),
+          faceVerificationEngine: FaceVerificationEngine.withWorker(_FakeWorker()),
+        );
+        addTearDown(router.dispose);
+
+        await tester.pumpWidget(_routerApp(router));
+        // Opened for a session's selfie: a reference photo, no chip read.
+        router.go(
+          '/face_verification',
+          extra: {
+            'nfcImageBytes': Uint8List.fromList([1]),
+          },
+        );
+        await tester.pump();
+        await tester.pump();
+
+        tester
+            .widget<FaceVerificationEntryScreen>(find.byType(FaceVerificationEntryScreen))
+            .onVerified(const FaceVerificationOutcome(engine: 'on_device', livenessPassed: true));
+        await tester.pump();
+        await tester.pump();
+
+        expect(tester.takeException(), isNull);
+        expect(router.routeInformationProvider.value.uri.path, '/select_doc_type');
+      },
+    );
 
     testWidgets('BuildContext route extensions push expected pages', (tester) async {
       Map<String, dynamic>? faceExtra;
@@ -586,6 +1346,320 @@ void main() {
       expect(pinned.info.relyingParty, 'acme-tenant');
     });
 
+    testWidgets('proofing consent route: Continue on a document_capture-less flow skips straight to face '
+        'verification with the referencePhoto', (tester) async {
+      final engine = FaceVerificationEngine.withWorker(_FakeWorker());
+      final router = createRouter(scannerBuilder: _scannerBuilder(), faceVerificationEngine: engine);
+      addTearDown(router.dispose);
+      final sessionRef = const ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok');
+      final referencePhotoBytes = Uint8List.fromList([9, 8, 7, 6]);
+      final info = ProofingSessionInfo(
+        id: 'sess1',
+        relyingParty: 'acme-tenant',
+        requestedAttributes: const [],
+        expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+        steps: const ['selfie', 'face_match'],
+        referencePhoto: ProofingPhotoInfo(imageBase64: base64Encode(referencePhotoBytes), mimeType: 'image/jpeg'),
+      );
+
+      await tester.pumpWidget(_routerApp(router));
+      router.push('/proofing_consent', extra: {'ref': sessionRef, 'info': info});
+      await tester.pump();
+      await tester.pump();
+
+      await tester.tap(find.text('Continue'));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byType(FaceVerificationEntryScreen), findsOneWidget);
+      expect(
+        tester.widget<FaceVerificationEntryScreen>(find.byType(FaceVerificationEntryScreen)).nfcImageBytes,
+        referencePhotoBytes,
+      );
+    });
+
+    testWidgets('proofing consent route: Continue on a session whose current step is document_photo opens the '
+        'document photo directly', (tester) async {
+      final router = createRouter(scannerBuilder: _scannerBuilder(), documentPhotoCamera: _FakeDocumentPhotoCamera());
+      addTearDown(router.dispose);
+      final info = ProofingSessionInfo(
+        id: 'sess1',
+        relyingParty: 'acme-tenant',
+        requestedAttributes: const [],
+        expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+        steps: const [stepDocumentPhoto, stepDocumentCapture, stepNfcRead],
+        lifecycle: proofingLifecycleActive,
+        currentStep: stepDocumentPhoto,
+      );
+
+      await tester.pumpWidget(_routerApp(router));
+      router.push(
+        '/proofing_consent',
+        extra: {
+          'ref': const ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok'),
+          'info': info,
+        },
+      );
+      await tester.pump();
+      await tester.pump();
+      await tester.tap(find.text('Continue'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byType(ScannerWrapper), findsNothing);
+      final screen = tester.widget<DocumentPhotoScreen>(find.byType(DocumentPhotoScreen));
+      // Counted with the document scan it belongs to.
+      expect(screen.stepNumber, 1);
+      expect(screen.totalSteps, 2);
+    });
+
+    testWidgets('proofing consent route: Continue on a document_capture-less flow listing document_photo before '
+        'its face step starts with the photo, even from a server that names no current step', (tester) async {
+      final router = createRouter(scannerBuilder: _scannerBuilder(), documentPhotoCamera: _FakeDocumentPhotoCamera());
+      addTearDown(router.dispose);
+      final info = ProofingSessionInfo(
+        id: 'sess1',
+        relyingParty: 'acme-tenant',
+        requestedAttributes: const [],
+        expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+        steps: const [stepDocumentPhoto, stepSelfie],
+      );
+
+      await tester.pumpWidget(_routerApp(router));
+      router.push(
+        '/proofing_consent',
+        extra: {
+          'ref': const ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok'),
+          'info': info,
+        },
+      );
+      await tester.pump();
+      await tester.pump();
+      await tester.tap(find.text('Continue'));
+      await tester.pump();
+      await tester.pump();
+
+      // Nothing on this device says which document it is: both sides.
+      expect(tester.widget<DocumentPhotoScreen>(find.byType(DocumentPhotoScreen)).documentType, isNull);
+      expect(find.byType(FaceVerificationEntryScreen), findsNothing);
+    });
+
+    testWidgets('a device that took the session over at nfc_read opens the chip read directly, with the '
+        "server's chip access key, instead of rescanning the MRZ", (tester) async {
+      final router = createRouter(scannerBuilder: _scannerBuilder());
+      addTearDown(router.dispose);
+      final info = ProofingSessionInfo(
+        id: 'sess1',
+        relyingParty: 'acme-tenant',
+        requestedAttributes: const [],
+        expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+        steps: const [stepDocumentCapture, stepNfcRead, stepFaceVerification],
+        lifecycle: proofingLifecycleActive,
+        currentStep: stepNfcRead,
+        chipAccess: ProofingChipAccess(
+          documentType: DocumentType.identityCard,
+          documentNumber: 'SPECI2014',
+          countryCode: 'NLD',
+          dateOfBirth: DateTime(1965, 3, 10),
+          dateOfExpiry: DateTime(2034, 3, 9),
+        ),
+      );
+
+      await tester.pumpWidget(_routerApp(router));
+      router.push(
+        '/proofing_consent',
+        extra: {
+          'ref': const ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok'),
+          'info': info,
+        },
+      );
+      await tester.pump();
+      await tester.pump();
+      await tester.tap(find.text('Continue'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byType(ScannerWrapper), findsNothing);
+      final nfc = tester.widget<NfcReadingScreen>(find.byType(NfcReadingScreen));
+      expect(nfc.params.documentType, DocumentType.identityCard);
+      final mrz = nfc.params.scannedMRZ as ScannedPassportMRZ;
+      expect(mrz.documentNumber, 'SPECI2014');
+      expect(mrz.dateOfBirth, DateTime(1965, 3, 10));
+      expect(mrz.dateOfExpiry, DateTime(2034, 3, 9));
+    });
+
+    testWidgets('a device that took the session over at the face step compares against the chip photo the server '
+        'holds, so the face check starts by itself', (tester) async {
+      final engine = FaceVerificationEngine.withWorker(_FakeWorker());
+      final router = createRouter(scannerBuilder: _scannerBuilder(), faceVerificationEngine: engine);
+      addTearDown(router.dispose);
+      final chipPhoto = Uint8List.fromList([5, 6, 7, 8]);
+      final info = ProofingSessionInfo(
+        id: 'sess1',
+        relyingParty: 'acme-tenant',
+        requestedAttributes: const [],
+        expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+        steps: const [stepDocumentCapture, stepNfcRead, stepFaceVerification],
+        selfieLocation: 'native',
+        lifecycle: proofingLifecycleActive,
+        currentStep: stepFaceVerification,
+        faceReference: ProofingPhotoInfo(imageBase64: base64Encode(chipPhoto), mimeType: 'image/jp2'),
+      );
+
+      await tester.pumpWidget(_routerApp(router));
+      router.push(
+        '/proofing_consent',
+        extra: {
+          'ref': const ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok'),
+          'info': info,
+        },
+      );
+      await tester.pump();
+      await tester.pump();
+      await tester.tap(find.text('Continue'));
+      await tester.pump();
+      await tester.pump();
+
+      final face = tester.widget<FaceVerificationEntryScreen>(find.byType(FaceVerificationEntryScreen));
+      expect(face.nfcImageBytes, chipPhoto);
+    });
+
+    testWidgets('submitting after the session expired is refused and ends with the expired message, not a retry', (
+      tester,
+    ) async {
+      final router = createRouter(scannerBuilder: _scannerBuilder());
+      addTearDown(router.dispose);
+      final steps = _flowServer(const [stepDocumentCapture]);
+
+      await http.runWithClient(
+        () async {
+          await tester.pumpWidget(_routerApp(router));
+          await tester.pump();
+          final container = ProviderScope.containerOf(tester.element(find.byType(DocumentTypeSelectionScreen)));
+          const sessionRef = ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok', deviceToken: 'dev');
+          final info = ProofingSessionInfo(
+            id: 'sess1',
+            relyingParty: 'acme-tenant',
+            requestedAttributes: const [],
+            expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+            steps: const [stepDocumentCapture],
+          );
+          container
+              .read(activeProofingSessionProvider.notifier)
+              .set(ActiveProofingSession(ref: sessionRef, info: info));
+          final coordinator = container.read(proofingSessionCoordinatorProvider);
+          coordinator.track(sessionRef, info);
+          final events = <ProofingSessionEvent>[];
+          final sub = coordinator.events.listen(events.add);
+          addTearDown(sub.cancel);
+
+          router.go(
+            Uri(
+              path: '/mrz_reader',
+              queryParameters: MrzReaderRouteParams(documentType: DocumentType.passport).toQueryParams(),
+            ).toString(),
+          );
+          await tester.pump();
+          await tester.pump();
+          tester
+              .widget<ScannerWrapper>(find.byType(ScannerWrapper))
+              .onMrzScanned(_scannedPassport(DocumentType.passport));
+          await _pumpStepSubmission(tester);
+          await _pumpStepSubmission(tester);
+
+          // main.dart turns this into "Verification stopped: This
+          // verification session has expired...".
+          expect((events.single as ProofingSessionAccessLost).reason, ProofingAccessDenial.expired);
+          expect(find.text('Could not send'), findsNothing);
+          expect(find.text('Retry'), findsNothing);
+        },
+        () => MockClient((request) async {
+          if (request.url.path.endsWith('/submit')) {
+            return http.Response(json.encode({'error': 'session expired', 'code': 'session_expired'}), 410);
+          }
+          return steps(request);
+        }),
+      );
+    });
+
+    testWidgets("the server's COMPLETE after the chip read (the other device already submitted) ends the "
+        'verification, even though the flow it was pinned with still lists a native face step', (tester) async {
+      final engine = FaceVerificationEngine.withWorker(_FakeWorker());
+      final router = createRouter(scannerBuilder: _scannerBuilder(), faceVerificationEngine: engine);
+      addTearDown(router.dispose);
+      final documentStepBodies = <Map<String, dynamic>>[];
+
+      await http.runWithClient(
+        () async {
+          await tester.pumpWidget(_routerApp(router));
+          await tester.pump();
+          final container = ProviderScope.containerOf(tester.element(find.byType(DocumentTypeSelectionScreen)));
+          const sessionRef = ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok', deviceToken: 'dev');
+          final info = ProofingSessionInfo(
+            id: 'sess1',
+            relyingParty: 'acme-tenant',
+            requestedAttributes: const [],
+            expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+            steps: const [stepDocumentCapture, stepNfcRead, stepFaceVerification],
+            selfieLocation: 'native',
+          );
+          container
+              .read(activeProofingSessionProvider.notifier)
+              .set(ActiveProofingSession(ref: sessionRef, info: info));
+          // main.dart tracks every pinned session.
+          final coordinator = container.read(proofingSessionCoordinatorProvider);
+          coordinator.track(sessionRef, info);
+          final events = <ProofingSessionEvent>[];
+          final sub = coordinator.events.listen(events.add);
+          addTearDown(sub.cancel);
+          router.go(
+            Uri(
+              path: '/mrz_reader',
+              queryParameters: MrzReaderRouteParams(documentType: DocumentType.passport).toQueryParams(),
+            ).toString(),
+          );
+          await tester.pump();
+          await tester.pump();
+
+          tester
+              .widget<ScannerWrapper>(find.byType(ScannerWrapper))
+              .onMrzScanned(_scannedPassport(DocumentType.passport));
+          await _pumpStepSubmission(tester);
+          expect(find.byType(NfcReadingScreen), findsOneWidget);
+          final chipAccess = documentStepBodies.single['chipAccess'] as Map<String, dynamic>;
+          expect(chipAccess['documentType'], 'passport');
+          expect(chipAccess['documentNumber'], _scannedPassport(DocumentType.passport).documentNumber);
+          expect(chipAccess['dateOfBirth'], isNotNull);
+
+          tester
+              .widgetList<NfcReadingScreen>(find.byType(NfcReadingScreen))
+              .last
+              .onSuccess(_passportData(), _rawDocument());
+          await _pumpStepSubmission(tester);
+
+          expect(find.byType(FaceVerificationEntryScreen), findsNothing);
+          expect(events.single, isA<ProofingSessionCompleted>());
+          expect(coordinator.held, isNull);
+        },
+        () => MockClient((request) async {
+          final path = request.url.path;
+          if (path.endsWith('/steps/document_capture')) {
+            documentStepBodies.add(json.decode(request.body) as Map<String, dynamic>);
+            return http.Response(
+              json.encode({'status': 'in_progress', 'currentStep': stepNfcRead, 'lifecycle': 'ACTIVE'}),
+              200,
+            );
+          }
+          if (path.endsWith('/steps/nfc')) {
+            // Another device already did the face step: the server is done.
+            return http.Response(json.encode({'status': 'approved', 'currentStep': '', 'lifecycle': 'COMPLETE'}), 200);
+          }
+          return http.Response('{}', 200);
+        }),
+      );
+    });
+
     testWidgets('proofing consent route: Decline returns to document selection without pinning a session', (
       tester,
     ) async {
@@ -645,7 +1719,7 @@ void main() {
           await tester.pump();
 
           final qrScreen = tester.widget<QrScannerScreen>(find.byType(QrScannerScreen));
-          qrScreen.onScanned('https://proof.example.com/s/tok-empty');
+          qrScreen.onScanned('vcmrtd://verify?handover=grant-empty&api=https://proof.example.com');
           await tester.pump();
           await tester.pump();
 
@@ -654,12 +1728,18 @@ void main() {
           expect(find.text('This session does not specify what to collect'), findsOneWidget);
         },
         () => MockClient((request) async {
+          // Only a claim gets the session (flutter_test's expect can't run in here).
+          if (request.url.path != '/api/v1/app/handover/grant-empty/claim') return http.Response('{}', 404);
           return http.Response(
             json.encode({
-              'id': 'sess-empty',
-              'relyingParty': 'Acme Corp',
-              'requestedAttributes': <String>[],
-              'expiresAt': DateTime.now().add(const Duration(minutes: 10)).toIso8601String(),
+              'token': 'tok-empty',
+              'deviceToken': 'dev-1',
+              'session': {
+                'id': 'sess-empty',
+                'relyingParty': 'Acme Corp',
+                'requestedAttributes': <String>[],
+                'expiresAt': DateTime.now().add(const Duration(minutes: 10)).toIso8601String(),
+              },
             }),
             200,
           );
@@ -679,7 +1759,7 @@ void main() {
           await tester.pump();
 
           final qrScreen = tester.widget<QrScannerScreen>(find.byType(QrScannerScreen));
-          qrScreen.onScanned('https://proof.example.com/s/tok-1');
+          qrScreen.onScanned('vcmrtd://verify?handover=grant-1&api=https://proof.example.com');
           await tester.pumpAndSettle();
 
           expect(find.byType(QrScannerScreen), findsNothing);
@@ -687,12 +1767,103 @@ void main() {
           expect(find.text('acme-tenant'), findsOneWidget);
         },
         () => MockClient((request) async {
+          // Only a claim gets the session (flutter_test's expect can't run in here).
+          if (request.url.path != '/api/v1/app/handover/grant-1/claim') return http.Response('{}', 404);
           return http.Response(
             json.encode({
-              'id': 'sess-1',
-              'relyingParty': 'acme-tenant',
-              'requestedAttributes': ['dg1'],
-              'expiresAt': DateTime.now().add(const Duration(minutes: 10)).toIso8601String(),
+              'token': 'tok-1',
+              'deviceToken': 'dev-1',
+              'session': {
+                'id': 'sess-1',
+                'relyingParty': 'acme-tenant',
+                'requestedAttributes': ['dg1'],
+                'expiresAt': DateTime.now().add(const Duration(minutes: 10)).toIso8601String(),
+              },
+            }),
+            200,
+          );
+        }),
+      );
+    });
+
+    testWidgets('back on the QR scanner while the session is claimed still shows the consent screen', (tester) async {
+      final router = createRouter(scannerBuilder: _scannerBuilder());
+      addTearDown(router.dispose);
+      final answer = Completer<void>();
+
+      await http.runWithClient(
+        () async {
+          await tester.pumpWidget(_routerApp(router));
+          router.push('/qr_scanner');
+          await tester.pump();
+          await tester.pump();
+
+          final qrScreen = tester.widget<QrScannerScreen>(find.byType(QrScannerScreen));
+          qrScreen.onScanned('vcmrtd://verify?handover=grant-back&api=https://proof.example.com');
+          await tester.pump();
+          // The user leaves the scanner before the claim came back.
+          router.pop();
+          await tester.pumpAndSettle();
+          answer.complete();
+          await tester.pumpAndSettle();
+
+          expect(tester.takeException(), isNull);
+          expect(find.byType(ProofingSessionConsentScreen), findsOneWidget);
+          expect(find.textContaining('nothing to pop'), findsNothing);
+        },
+        () => MockClient((request) async {
+          await answer.future;
+          return http.Response(
+            json.encode({
+              'token': 'tok-1',
+              'deviceToken': 'dev-1',
+              'session': {
+                'id': 'sess-1',
+                'relyingParty': 'acme-tenant',
+                'requestedAttributes': ['dg1'],
+                'expiresAt': DateTime.now().add(const Duration(minutes: 10)).toIso8601String(),
+              },
+            }),
+            200,
+          );
+        }),
+      );
+    });
+
+    testWidgets('a scanned session switches to its language before the consent screen', (tester) async {
+      final router = createRouter(scannerBuilder: _scannerBuilder());
+      addTearDown(router.dispose);
+
+      await http.runWithClient(
+        () async {
+          await tester.pumpWidget(_routerApp(router));
+          router.push('/qr_scanner');
+          await tester.pump();
+          await tester.pump();
+
+          final qrScreen = tester.widget<QrScannerScreen>(find.byType(QrScannerScreen));
+          qrScreen.onScanned('vcmrtd://verify?handover=grant-1&api=https://proof.example.com');
+          await tester.pumpAndSettle();
+
+          final container = ProviderScope.containerOf(tester.element(find.byType(ProofingSessionConsentScreen)));
+          final locale = container.read(appLocaleProvider);
+          // The session language is global; hand the next tests English back.
+          container.read(appLocaleProvider.notifier).useSessionLanguage('en');
+          expect(locale, const Locale('nl'));
+        },
+        () => MockClient((request) async {
+          if (request.url.path != '/api/v1/app/handover/grant-1/claim') return http.Response('{}', 404);
+          return http.Response(
+            json.encode({
+              'token': 'tok-1',
+              'deviceToken': 'dev-1',
+              'session': {
+                'id': 'sess-1',
+                'relyingParty': 'acme-tenant',
+                'requestedAttributes': ['dg1'],
+                'expiresAt': DateTime.now().add(const Duration(minutes: 10)).toIso8601String(),
+                'language': 'nl',
+              },
             }),
             200,
           );
@@ -711,7 +1882,7 @@ void main() {
         await tester.pump();
 
         final qrScreen = tester.widget<QrScannerScreen>(find.byType(QrScannerScreen));
-        qrScreen.onScanned('https://proof.example.com/s/tok-down');
+        qrScreen.onScanned('vcmrtd://verify?handover=grant-down&api=https://proof.example.com');
         await tester.pump();
         await tester.pump();
 
@@ -734,7 +1905,11 @@ void main() {
 
       router.go(
         '/result',
-        extra: {'document': _passportData(), 'result': _rawDocument(), 'document_type': DocumentType.identityCard},
+        extra: ResultRouteArgs(
+          document: _passportData(),
+          rawDocument: _rawDocument(),
+          documentType: DocumentType.identityCard,
+        ),
       );
 
       await tester.pump();

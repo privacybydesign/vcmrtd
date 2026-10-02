@@ -1,9 +1,13 @@
-﻿import 'dart:io';
+import 'dart:async';
+import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:logging/logging.dart';
 import 'camera_overlay.dart';
+import 'document_picture.dart';
+import 'picture_file.dart';
 
 class OcrFrame {
   OcrFrame({
@@ -138,10 +142,15 @@ class MRZCameraView extends StatefulWidget {
     this.initialDirection = CameraLensDirection.back,
     required this.showOverlay,
     this.routeObserver,
+    this.frameRatio = MRZCameraOverlay.passportFrameRatio,
     this.initializeCamera = true,
   });
 
   final Function(OcrFrame frame) onImage;
+
+  /// The document frame's width / height ([MRZCameraOverlay.frameRatio]):
+  /// what is drawn, where text is read and what a picture is cut to.
+  final double frameRatio;
   final CameraLensDirection initialDirection;
   final bool showOverlay;
 
@@ -161,6 +170,8 @@ class MRZCameraView extends StatefulWidget {
 }
 
 class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
+  static final Logger _log = Logger('MRZCameraView');
+
   CameraController? _controller;
   int _cameraIndex = 0;
   List<CameraDescription> _cameras = [];
@@ -199,9 +210,7 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
 
     final controller = _controller;
     _controller = null;
-
-    controller?.stopImageStream();
-    controller?.dispose();
+    if (controller != null) unawaited(_release(controller));
 
     super.dispose();
   }
@@ -264,18 +273,66 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
     setState(() {});
   }
 
+  /// Takes a picture with the running camera, with where the document frame
+  /// lay in the preview; null when there's no camera or it failed. The frame
+  /// stream pauses for it (not every platform takes a picture while
+  /// streaming) and resumes after.
+  Future<DocumentPicture?> takePicture() async {
+    final controller = _controller;
+    final viewSize = _viewSize;
+    if (controller == null || !controller.value.isInitialized || viewSize == null) return null;
+    final frame = DocumentPicture.frameInPreview(_overlayRect(viewSize), _previewRect(viewSize));
+    try {
+      if (controller.value.isStreamingImages) await controller.stopImageStream();
+      final file = await controller.takePicture();
+      final bytes = await readAndDeletePicture(file);
+      return DocumentPicture(jpeg: bytes, frame: frame, previewAspectRatio: _previewAspect);
+    } catch (e) {
+      // Also a camera released mid-capture (the user left), or a picture
+      // file that can't be read: the scan simply goes on without a picture.
+      _log.warning('taking a picture failed: ${e is CameraException ? e.code : e}');
+      return null;
+    } finally {
+      if (identical(controller, _controller) && !controller.value.isStreamingImages) {
+        try {
+          await controller.startImageStream(_processCameraImage);
+        } catch (e) {
+          _log.warning('restarting the live feed failed: $e');
+        }
+      }
+    }
+  }
+
   Future<void> _stopLiveFeed() async {
     final controller = _controller;
     _controller = null;
     if (mounted) setState(() {});
-    await controller?.stopImageStream();
-    await controller?.dispose();
+    if (controller != null) await _release(controller);
+  }
+
+  /// Stops [controller]'s image stream, if it runs, and always disposes it.
+  /// The stream isn't running while a picture is being taken, and stopping
+  /// it then throws - which must not keep the camera from being released.
+  static Future<void> _release(CameraController controller) async {
+    try {
+      if (controller.value.isStreamingImages) await controller.stopImageStream();
+    } catch (e) {
+      _log.warning('stopping the live feed failed: $e');
+    } finally {
+      try {
+        await controller.dispose();
+      } catch (e) {
+        _log.warning('releasing the camera failed: $e');
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final body = _liveFeedBody();
-    return Scaffold(body: widget.showOverlay ? MRZCameraOverlay(child: body) : body);
+    return Scaffold(
+      body: widget.showOverlay ? MRZCameraOverlay(frameRatio: widget.frameRatio, child: body) : body,
+    );
   }
 
   Widget _liveFeedBody() {
@@ -296,7 +353,7 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
           Transform.scale(
             scale: scale,
             child: Center(
-              child: AspectRatio(aspectRatio: 9 / 16, child: CameraPreview(_controller!)),
+              child: AspectRatio(aspectRatio: _previewAspect, child: CameraPreview(_controller!)),
             ),
           ),
         ],
@@ -500,23 +557,13 @@ class MRZCameraViewState extends State<MRZCameraView> with RouteAware {
     );
   }
 
-  Rect _overlayRect(Size size) {
-    const documentFrameRatio = 1.42;
+  Rect _overlayRect(Size size) => MRZCameraOverlay.frameRect(size, widget.frameRatio);
 
-    double width, height;
-    if (size.height > size.width) {
-      width = size.width * 0.9;
-      height = width / documentFrameRatio;
-    } else {
-      height = size.height * 0.75;
-      width = height * documentFrameRatio;
-    }
-
-    return Rect.fromLTWH((size.width - width) / 2, (size.height - height) / 2 - 60.0, width, height);
-  }
+  /// The preview's upright width / height, as it is drawn.
+  static const _previewAspect = 9 / 16;
 
   Rect _previewRect(Size size) {
-    const previewAspect = 9 / 16;
+    const previewAspect = _previewAspect;
 
     double baseW, baseH;
     if (size.width / size.height > previewAspect) {

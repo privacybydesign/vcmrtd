@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/providers/wallet_provider.dart';
 import 'package:idem/theme/text_styles.dart';
@@ -41,7 +42,7 @@ class DocumentTypeSelectionScreen extends ConsumerWidget {
         actions: [
           if (hasCards)
             IconButton(
-              tooltip: 'New scan',
+              tooltip: context.l10n.docNewScan,
               icon: const Icon(Icons.add, size: 32),
               onPressed: () => _showNewScanSheet(context),
             ),
@@ -182,7 +183,7 @@ class _ProofingSessionBanner extends StatelessWidget implements PreferredSizeWid
       color: Colors.indigo[900],
       alignment: Alignment.center,
       child: Text(
-        'Connected — will send results to $relyingParty',
+        context.l10n.docConnectedBanner(relyingParty),
         style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
         overflow: TextOverflow.ellipsis,
       ),
@@ -205,7 +206,11 @@ class _NewScanSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('New scan', style: Theme.of(context).defaultTextStyles.primaryLarge, textAlign: TextAlign.center),
+            Text(
+              context.l10n.docNewScan,
+              style: Theme.of(context).defaultTextStyles.primaryLarge,
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 16),
             ..._documentTypeOptions(context, onDocumentTypeSelected),
           ],
@@ -218,29 +223,25 @@ class _NewScanSheet extends StatelessWidget {
 List<Widget> _documentTypeOptions(BuildContext context, Function(DocumentType) onDocumentTypeSelected) {
   return [
     _OptionCard(
-      context: context,
-      title: 'Passport',
-      subtitle: 'Use a machine readable passport',
+      title: context.l10n.docPassport,
+      subtitle: context.l10n.docPassportSubtitle,
       icon: Icons.book,
       accentColor: const Color(0xFF6b6868),
       onTap: () => onDocumentTypeSelected(DocumentType.passport),
-      showBadge: true,
-      badgeText: 'Most common',
+      badgeText: context.l10n.docMostCommon,
     ),
     const SizedBox(height: 16),
     _OptionCard(
-      context: context,
-      title: 'Identity Card',
-      subtitle: 'Use a machine readable identity card',
+      title: context.l10n.docIdentityCard,
+      subtitle: context.l10n.docIdentityCardSubtitle,
       icon: Icons.credit_card,
       accentColor: const Color(0xFF4CAF50),
       onTap: () => onDocumentTypeSelected(DocumentType.identityCard),
     ),
     const SizedBox(height: 16),
     _OptionCard(
-      context: context,
-      title: 'Driving Licence',
-      subtitle: 'Use a machine readable driving licence. Currently works primarily with Dutch licences.',
+      title: context.l10n.docDrivingLicence,
+      subtitle: context.l10n.docDrivingLicenceSubtitle,
       icon: Icons.directions_car,
       accentColor: const Color(0xFF2196F3),
       onTap: () => onDocumentTypeSelected(DocumentType.drivingLicence),
@@ -250,9 +251,8 @@ List<Widget> _documentTypeOptions(BuildContext context, Function(DocumentType) o
 
 Widget _qrScanOption(BuildContext context, VoidCallback onScanQrPressed) {
   return _OptionCard(
-    context: context,
-    title: 'Scan QR code',
-    subtitle: 'Scan any QR code with the camera',
+    title: context.l10n.docScanQrTitle,
+    subtitle: context.l10n.docScanQrSubtitle,
     icon: Icons.qr_code_scanner,
     accentColor: const Color(0xFF9C27B0),
     onTap: onScanQrPressed,
@@ -261,9 +261,8 @@ Widget _qrScanOption(BuildContext context, VoidCallback onScanQrPressed) {
 
 Widget _advancedSettingsOption(BuildContext context, VoidCallback onSettingsPressed) {
   return _OptionCard(
-    context: context,
-    title: 'Advanced settings',
-    subtitle: 'Ocr Engine, Face Verification and more',
+    title: context.l10n.docAdvancedSettings,
+    subtitle: context.l10n.docAdvancedSettingsSubtitle,
     icon: Icons.settings,
     accentColor: const Color(0xFF757575),
     onTap: onSettingsPressed,
@@ -294,13 +293,13 @@ class _Header extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'Verify your Identity',
+              context.l10n.docVerifyIdentityTitle,
               style: Theme.of(context).defaultTextStyles.primaryLarge,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
-              'Select the type of document you want to use for verification.',
+              context.l10n.docSelectDocumentTypePrompt,
               style: Theme.of(context).defaultTextStyles.secondary,
               textAlign: TextAlign.left,
             ),
@@ -313,23 +312,19 @@ class _Header extends StatelessWidget {
 
 class _OptionCard extends StatelessWidget {
   const _OptionCard({
-    required this.context,
     required this.title,
     required this.subtitle,
     required this.icon,
     required this.accentColor,
     required this.onTap,
-    this.showBadge = false,
     this.badgeText,
   });
 
-  final BuildContext context;
   final String title;
   final String subtitle;
   final IconData icon;
   final Color accentColor;
   final VoidCallback onTap;
-  final bool showBadge;
   final String? badgeText;
 
   @override
@@ -381,7 +376,7 @@ class _OptionCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (showBadge && badgeText != null)
+              if (badgeText != null)
                 Positioned(
                   top: 8,
                   right: 8,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
 import 'package:mrz_capture/mrz_capture.dart';
+import 'package:idem/l10n/l10n.dart';
 
 /// Full screen QR code scanner, built on Google ML Kit's barcode scanner.
 class QrScannerScreen extends StatefulWidget {
@@ -63,7 +64,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         ),
         SafeArea(
           child: IconButton(
-            tooltip: 'Back',
+            tooltip: context.l10n.docBack,
             icon: const Icon(Icons.arrow_back, color: Colors.white),
             onPressed: widget.onBack,
           ),

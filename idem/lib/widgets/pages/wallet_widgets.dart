@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:idem/providers/wallet_provider.dart';
 import 'package:idem/services/jpeg2000_converter.dart';
 
@@ -12,33 +13,6 @@ import 'package:idem/services/jpeg2000_converter.dart';
 /// Example-app-only: cards live in memory ([walletProvider]), so this list is
 /// empty again after a restart — there is no real wallet or issuance backend
 /// behind it.
-class WalletEmptyState extends StatelessWidget {
-  const WalletEmptyState({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.account_balance_wallet_outlined, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            const Text('Your wallet is empty', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            Text(
-              'Scan a document and tap "Add to Wallet" to see it here.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey[600]),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class WalletList extends ConsumerWidget {
   final List<WalletCard> cards;
   const WalletList({super.key, required this.cards});
@@ -53,6 +27,7 @@ class WalletList extends ConsumerWidget {
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: WalletCardTile(
+            key: ValueKey(card.id),
             card: card,
             onTap: () =>
                 showWalletCardDetails(context, card, onRemove: () => ref.read(walletProvider.notifier).remove(card.id)),
@@ -98,8 +73,8 @@ class WalletCardTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       card.documentNumber != null
-                          ? '${card.documentType.displayName} · ${card.documentNumber}'
-                          : card.documentType.displayName,
+                          ? '${card.documentType.localizedName(context.l10n)} · ${card.documentNumber}'
+                          : card.documentType.localizedName(context.l10n),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(fontSize: 13, color: Colors.grey[600]),
@@ -164,13 +139,14 @@ class _WalletCardDetailsSheet extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              card.documentType.displayName,
+              card.documentType.localizedName(context.l10n),
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 15, color: Colors.grey[600]),
             ),
             const SizedBox(height: 20),
-            if (card.documentNumber != null) _DetailRow(label: 'Document number', value: card.documentNumber!),
-            _DetailRow(label: 'Added', value: _formatAddedAt(card.addedAt)),
+            if (card.documentNumber != null)
+              _DetailRow(label: context.l10n.docWalletDocumentNumber, value: card.documentNumber!),
+            _DetailRow(label: context.l10n.docWalletAdded, value: _formatAddedAt(card.addedAt)),
             const SizedBox(height: 24),
             OutlinedButton.icon(
               onPressed: onRemove,
@@ -179,7 +155,7 @@ class _WalletCardDetailsSheet extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
               icon: const Icon(Icons.delete_outline),
-              label: const Text('Remove from wallet'),
+              label: Text(context.l10n.docRemoveFromWallet),
             ),
           ],
         ),
@@ -209,19 +185,43 @@ class WalletPhoto extends StatefulWidget {
 }
 
 class _WalletPhotoState extends State<WalletPhoto> {
+  /// Converted photos by their original bytes, so a tile scrolling back into
+  /// view or the details sheet doesn't decode the same photo again.
+  static final _convertedCache = Expando<Uint8List>();
+
   Uint8List? _converted;
   bool _converting = false;
 
   @override
   void initState() {
     super.initState();
-    if (widget.imageType == ImageType.jpeg2000) _convert();
+    _startConversion();
   }
 
-  Future<void> _convert() async {
-    setState(() => _converting = true);
-    final result = await decodeImage(widget.imageData, context);
-    if (!mounted) return;
+  @override
+  void didUpdateWidget(WalletPhoto oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.imageData != oldWidget.imageData || widget.imageType != oldWidget.imageType) _startConversion();
+  }
+
+  void _startConversion() {
+    _converted = null;
+    _converting = false;
+    if (widget.imageType != ImageType.jpeg2000) return;
+    final cached = _convertedCache[widget.imageData];
+    if (cached != null) {
+      _converted = cached;
+      return;
+    }
+    _converting = true;
+    _convert(widget.imageData);
+  }
+
+  Future<void> _convert(Uint8List imageData) async {
+    final result = await decodeImage(imageData, context);
+    if (result != null) _convertedCache[imageData] = result;
+    // A newer photo may have replaced this one meanwhile.
+    if (!mounted || !identical(imageData, widget.imageData)) return;
     setState(() {
       _converted = result;
       _converting = false;

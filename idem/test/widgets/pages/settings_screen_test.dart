@@ -2,6 +2,7 @@ import 'package:face_verification/face_verification.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:idem/providers/active_authenticiation_provider.dart';
 import 'package:idem/providers/face_engine_provider.dart';
@@ -15,7 +16,11 @@ void main() {
       var pressed = false;
       await tester.pumpWidget(
         ProviderScope(
-          child: MaterialApp(home: SettingsScreen(onBackPressed: () => pressed = true)),
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: SettingsScreen(onBackPressed: () => pressed = true),
+          ),
         ),
       );
       await tester.pump();
@@ -30,7 +35,11 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
-          child: MaterialApp(home: SettingsScreen(onBackPressed: () {})),
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: SettingsScreen(onBackPressed: () {}),
+          ),
         ),
       );
       await tester.pump();
@@ -47,13 +56,18 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
-          child: MaterialApp(home: SettingsScreen(onBackPressed: () {})),
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: SettingsScreen(onBackPressed: () {}),
+          ),
         ),
       );
       await tester.pump();
 
       expect(find.text('Face verification engine'), findsOneWidget);
-      expect(find.text('Open source'), findsOneWidget);
+      expect(find.text('Regula'), findsOneWidget);
+      expect(container.read(faceEngineProvider), FaceEngineChoice.regula);
 
       await tester.tap(find.text('Face verification engine'));
       await tester.pumpAndSettle();
@@ -72,7 +86,11 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
-          child: MaterialApp(home: SettingsScreen(onBackPressed: () {})),
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: SettingsScreen(onBackPressed: () {}),
+          ),
         ),
       );
       await tester.pump();
@@ -98,7 +116,11 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
-          child: MaterialApp(home: SettingsScreen(onBackPressed: () {})),
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: SettingsScreen(onBackPressed: () {}),
+          ),
         ),
       );
       await tester.pump();
@@ -117,7 +139,11 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
-          child: MaterialApp(home: SettingsScreen(onBackPressed: () {}, showOcrEngineForTesting: true)),
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: SettingsScreen(onBackPressed: () {}, showOcrEngineForTesting: true),
+          ),
         ),
       );
       await tester.pump();

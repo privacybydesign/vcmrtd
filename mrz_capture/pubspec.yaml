@@ -10,6 +10,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   vcmrtd:
     path: ../vcmrtd
   camera: ^0.12.0
@@ -23,12 +25,16 @@ dependencies:
       ref: v3.0.0
 
 dev_dependencies:
+  camera_platform_interface: ^2.13.1
   flutter_lints: ^6.0.0
   flutter_test:
     sdk: flutter
   lints: ^6.0.0
+  plugin_platform_interface: ^2.1.8
 
 flutter:
+  # Generates lib/l10n/mrz_capture_localizations.dart from lib/l10n/*.arb - see l10n.yaml.
+  generate: true
   plugin:
     platforms:
       # Tesseract4Android is the free software OCR engine and is Android-only.

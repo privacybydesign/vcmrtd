@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'dart:async';
 import 'dart:typed_data';
@@ -81,8 +82,10 @@ Widget _buildScreenWithPortrait() {
   final worker = _FakeWorker2();
   final engine = FaceVerificationEngine.withWorker(worker);
   return MaterialApp(
-    home: FlutterFaceVerificationScreen.withEngine(
-      engine: engine,
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: FlutterFaceVerificationScreen(
+      testEngine: engine,
       nfcImageBytes: _fakePortraitPng(),
       onBackPressed: () {},
       onVerified: (_) {},
@@ -94,8 +97,10 @@ Widget _buildScreen() {
   final worker = _FakeWorker2();
   final engine = FaceVerificationEngine.withWorker(worker);
   return MaterialApp(
-    home: FlutterFaceVerificationScreen.withEngine(
-      engine: engine,
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: FlutterFaceVerificationScreen(
+      testEngine: engine,
       nfcImageBytes: Uint8List(1),
       onBackPressed: () {},
       onVerified: (_) {},
@@ -107,8 +112,10 @@ Widget _buildScreenWithBack(VoidCallback onBackPressed) {
   final worker = _FakeWorker2();
   final engine = FaceVerificationEngine.withWorker(worker);
   return MaterialApp(
-    home: FlutterFaceVerificationScreen.withEngine(
-      engine: engine,
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: FlutterFaceVerificationScreen(
+      testEngine: engine,
       nfcImageBytes: Uint8List(1),
       onBackPressed: onBackPressed,
       onVerified: (_) {},
@@ -119,8 +126,10 @@ Widget _buildScreenWithBack(VoidCallback onBackPressed) {
 Widget _buildScreenWithWorker(_FakeWorker2 worker) {
   final engine = FaceVerificationEngine.withWorker(worker);
   return MaterialApp(
-    home: FlutterFaceVerificationScreen.withEngine(
-      engine: engine,
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: FlutterFaceVerificationScreen(
+      testEngine: engine,
       nfcImageBytes: Uint8List(1),
       onBackPressed: () {},
       onVerified: (_) {},
@@ -132,8 +141,10 @@ Widget _buildScreenWithIssueDate(DateTime issueDate) {
   final worker = _FakeWorker2();
   final engine = FaceVerificationEngine.withWorker(worker);
   return MaterialApp(
-    home: FlutterFaceVerificationScreen.withEngine(
-      engine: engine,
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: FlutterFaceVerificationScreen(
+      testEngine: engine,
       nfcImageBytes: Uint8List(1),
       photoIssueDate: issueDate,
       onBackPressed: () {},
@@ -277,7 +288,13 @@ void main() {
       ).debugOnLivenessEvent({'type': 'passiveProgress', 'started': true, 'elapsedMs': 1000, 'targetMs': 5000});
       await tester.pump();
 
-      await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+      await tester.pumpWidget(
+        const MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: SizedBox(),
+        ),
+      );
       await tester.pump();
 
       expect(worker.stopCalls, greaterThanOrEqualTo(1));
@@ -624,8 +641,10 @@ void main() {
       var verifiedCount = 0;
       await tester.pumpWidget(
         MaterialApp(
-          home: FlutterFaceVerificationScreen.withEngine(
-            engine: FaceVerificationEngine.withWorker(_FakeWorker2()),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: FlutterFaceVerificationScreen(
+            testEngine: FaceVerificationEngine.withWorker(_FakeWorker2()),
             nfcImageBytes: Uint8List(1),
             onBackPressed: () => backCount++,
             onVerified: (_) => verifiedCount++,

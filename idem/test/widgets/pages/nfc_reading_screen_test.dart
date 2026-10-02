@@ -6,9 +6,12 @@
 // build()/checkNfcAvailability()/cancel()/reset()/readDocument() so nothing
 // touches hardware.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vcmrtd/internal.dart';
 import 'package:vcmrtd/vcmrtd.dart';
@@ -43,6 +46,12 @@ class _FakeReader extends DocumentReader<PassportData> {
   int resetCalls = 0;
   int readCalls = 0;
 
+  /// Reads started across every instance.
+  static var totalReads = 0;
+
+  /// When set, a read waits for it: a document not yet held to the phone.
+  static Completer<void>? readGate;
+
   @override
   DocumentReaderState build() => initialState;
 
@@ -71,6 +80,8 @@ class _FakeReader extends DocumentReader<PassportData> {
     NonceAndSessionId? activeAuthenticationParams,
   }) async {
     readCalls++;
+    totalReads++;
+    await readGate?.future;
     // Exercise the iosNfcMessages mapper for a few states so its closure is
     // covered without needing a real chip.
     iosNfcMessages(DocumentReaderConnecting());
@@ -99,21 +110,25 @@ Widget _app(DocumentType documentType) {
     routes: [
       GoRoute(
         path: '/start',
-        builder: (_, __) => const Scaffold(body: Text('start page')),
+        builder: (_, _) => const Scaffold(body: Text('start page')),
       ),
       GoRoute(
         path: '/',
-        builder: (_, __) => NfcReadingScreen(params: params, onSuccess: (_, __) {}),
+        builder: (_, _) => NfcReadingScreen(params: params, onSuccess: (_, _) {}),
       ),
     ],
   );
   addTearDown(router.dispose);
   return ProviderScope(
     overrides: [
-      passportReaderProvider.overrideWith(_FakeReader.new),
-      identityCardReaderProvider.overrideWith(_FakeReader.new),
+      passportReaderProvider.overrideWith2((_) => _FakeReader()),
+      identityCardReaderProvider.overrideWith2((_) => _FakeReader()),
     ],
-    child: MaterialApp.router(routerConfig: router),
+    child: MaterialApp.router(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      routerConfig: router,
+    ),
   );
 }
 
@@ -125,7 +140,11 @@ void _setLargeViewport(WidgetTester tester) {
 }
 
 void main() {
-  setUp(() => _FakeReader.initialState = DocumentReaderPending());
+  setUp(() {
+    _FakeReader.initialState = DocumentReaderPending();
+    _FakeReader.totalReads = 0;
+    _FakeReader.readGate = null;
+  });
 
   group('NfcReadingScreen — pending/guidance state', () {
     testWidgets('pending state renders the NfcGuidanceScreen', (tester) async {
@@ -301,6 +320,29 @@ void main() {
     });
   });
 
+  group('NfcReadingScreen — tapping Scan twice', () {
+    testWidgets('starts one read, not a second one that waits for the document after the first', (tester) async {
+      _setLargeViewport(tester);
+      _FakeReader.readGate = Completer<void>();
+      await tester.pumpWidget(_app(DocumentType.passport));
+      await tester.pump();
+
+      final guidance = tester.widget<NfcGuidanceScreen>(find.byType(NfcGuidanceScreen));
+      guidance.onStartReading();
+      guidance.onStartReading();
+      await tester.pump(const Duration(milliseconds: 100));
+      _FakeReader.readGate!.complete();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(_FakeReader.totalReads, 1);
+
+      // Once that read ended, Scan starts a new one again.
+      tester.widget<NfcGuidanceScreen>(find.byType(NfcGuidanceScreen)).onStartReading();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(_FakeReader.totalReads, 2);
+    });
+  });
+
   group('NfcReadingScreen — returning from a pushed route', () {
     testWidgets('after a completed read resets to pending, instead of a dead-end success screen', (tester) async {
       _setLargeViewport(tester);
@@ -318,11 +360,11 @@ void main() {
         routes: [
           GoRoute(
             path: '/',
-            builder: (_, __) => NfcReadingScreen(params: params, onSuccess: (_, __) {}),
+            builder: (_, _) => NfcReadingScreen(params: params, onSuccess: (_, _) {}),
           ),
           GoRoute(
             path: '/next',
-            builder: (_, __) => const Scaffold(body: Text('face verification')),
+            builder: (_, _) => const Scaffold(body: Text('face verification')),
           ),
         ],
       );
@@ -331,10 +373,14 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            passportReaderProvider.overrideWith(_FakeReader.new),
-            identityCardReaderProvider.overrideWith(_FakeReader.new),
+            passportReaderProvider.overrideWith2((_) => _FakeReader()),
+            identityCardReaderProvider.overrideWith2((_) => _FakeReader()),
           ],
-          child: MaterialApp.router(routerConfig: router),
+          child: MaterialApp.router(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            routerConfig: router,
+          ),
         ),
       );
       await tester.pump(const Duration(milliseconds: 600));
