@@ -134,9 +134,16 @@ class FakeDataGroupReader extends DataGroupReader {
     : steps = steps ?? {},
       super(com, "A0000002471001".parseHex());
 
-  Uint8List _next(String name) {
+  /// (bytesRead, total) pairs a data group read reports through its
+  /// onProgress callback, before it returns (or throws) its queued result.
+  final Map<String, List<(int, int)>> progressReports = {};
+
+  Uint8List _next(String name, [ReadProgressCallback? onProgress]) {
     calls.add(name);
     onRead[name]?.call();
+    for (final (bytesRead, total) in progressReports[name] ?? const <(int, int)>[]) {
+      onProgress?.call(bytesRead, total);
+    }
     final q = steps[name];
     if (q != null && q.isNotEmpty) {
       final s = q.removeAt(0);
@@ -182,37 +189,37 @@ class FakeDataGroupReader extends DataGroupReader {
   Future<Uint8List> activeAuthenticate(Uint8List challenge) async => _next('AA');
 
   @override
-  Future<Uint8List> readDG1() async => _next('DG1');
+  Future<Uint8List> readDG1({ReadProgressCallback? onProgress}) async => _next('DG1', onProgress);
   @override
-  Future<Uint8List> readDG2() async => _next('DG2');
+  Future<Uint8List> readDG2({ReadProgressCallback? onProgress}) async => _next('DG2', onProgress);
   @override
-  Future<Uint8List> readDG3() async => _next('DG3');
+  Future<Uint8List> readDG3({ReadProgressCallback? onProgress}) async => _next('DG3', onProgress);
   @override
-  Future<Uint8List> readDG4() async => _next('DG4');
+  Future<Uint8List> readDG4({ReadProgressCallback? onProgress}) async => _next('DG4', onProgress);
   @override
-  Future<Uint8List> readDG5() async => _next('DG5');
+  Future<Uint8List> readDG5({ReadProgressCallback? onProgress}) async => _next('DG5', onProgress);
   @override
-  Future<Uint8List> readDG6() async => _next('DG6');
+  Future<Uint8List> readDG6({ReadProgressCallback? onProgress}) async => _next('DG6', onProgress);
   @override
-  Future<Uint8List> readDG7() async => _next('DG7');
+  Future<Uint8List> readDG7({ReadProgressCallback? onProgress}) async => _next('DG7', onProgress);
   @override
-  Future<Uint8List> readDG8() async => _next('DG8');
+  Future<Uint8List> readDG8({ReadProgressCallback? onProgress}) async => _next('DG8', onProgress);
   @override
-  Future<Uint8List> readDG9() async => _next('DG9');
+  Future<Uint8List> readDG9({ReadProgressCallback? onProgress}) async => _next('DG9', onProgress);
   @override
-  Future<Uint8List> readDG10() async => _next('DG10');
+  Future<Uint8List> readDG10({ReadProgressCallback? onProgress}) async => _next('DG10', onProgress);
   @override
-  Future<Uint8List> readDG11() async => _next('DG11');
+  Future<Uint8List> readDG11({ReadProgressCallback? onProgress}) async => _next('DG11', onProgress);
   @override
-  Future<Uint8List> readDG12() async => _next('DG12');
+  Future<Uint8List> readDG12({ReadProgressCallback? onProgress}) async => _next('DG12', onProgress);
   @override
-  Future<Uint8List> readDG13() async => _next('DG13');
+  Future<Uint8List> readDG13({ReadProgressCallback? onProgress}) async => _next('DG13', onProgress);
   @override
-  Future<Uint8List> readDG14() async => _next('DG14');
+  Future<Uint8List> readDG14({ReadProgressCallback? onProgress}) async => _next('DG14', onProgress);
   @override
-  Future<Uint8List> readDG15() async => _next('DG15');
+  Future<Uint8List> readDG15({ReadProgressCallback? onProgress}) async => _next('DG15', onProgress);
   @override
-  Future<Uint8List> readDG16() async => _next('DG16');
+  Future<Uint8List> readDG16({ReadProgressCallback? onProgress}) async => _next('DG16', onProgress);
 }
 
 /// DocumentParser stub. Records parse calls, lets tests control which data
@@ -381,14 +388,28 @@ void main() {
         progressForState(DocumentReaderFailed(error: DocumentReadingError.unknown, logs: '', sensitiveLogs: '')),
         0.0,
       );
-      expect(progressForState(DocumentReaderConnecting()), 0.1);
-      expect(progressForState(DocumentReaderReadingCardAccess()), 0.2);
-      expect(progressForState(DocumentReaderAuthenticating()), 0.3);
-      expect(progressForState(DocumentReaderReadingCOM()), 0.4);
-      expect(progressForState(DocumentReaderReadingDataGroup(dataGroup: 'DG1', progress: 0.2)), 0.5 + 0.2 / 4.0);
-      expect(progressForState(DocumentReaderReadingSOD()), 0.8);
-      expect(progressForState(DocumentReaderActiveAuthentication()), 0.9);
+      expect(progressForState(DocumentReaderConnecting()), 0.05);
+      expect(progressForState(DocumentReaderReadingCardAccess()), 0.1);
+      expect(progressForState(DocumentReaderAuthenticating()), 0.15);
+      expect(progressForState(DocumentReaderReadingCOM()), 0.2);
+      expect(progressForState(DocumentReaderReadingDataGroup(dataGroup: 'DG1', progress: 0.5)), closeTo(0.55, 1e-9));
+      expect(progressForState(DocumentReaderReadingSOD()), 0.9);
+      expect(progressForState(DocumentReaderActiveAuthentication()), 0.95);
       expect(progressForState(DocumentReaderSuccess()), 1.0);
+    });
+
+    test('places a data group by the share of the bytes it and the data groups before it take', () {
+      final start = progressForState(DocumentReaderReadingDataGroup(dataGroup: 'DG2', progress: 0.0, shareBefore: 0.1));
+      final end = progressForState(
+        DocumentReaderReadingDataGroup(dataGroup: 'DG2', progress: 1.0, shareBefore: 0.1, share: 0.8),
+      );
+      final middle = progressForState(
+        DocumentReaderReadingDataGroup(dataGroup: 'DG2', progress: 0.5, shareBefore: 0.1, share: 0.8),
+      );
+
+      expect(start, closeTo(0.25 + 0.6 * 0.1, 1e-9));
+      expect(end, closeTo(0.25 + 0.6 * 0.9, 1e-9));
+      expect(middle, closeTo((start + end) / 2, 1e-9));
     });
 
     test('throws on an unknown state', () {
@@ -589,6 +610,49 @@ void main() {
       expect(result, isNotNull);
       expect(h.state, isA<DocumentReaderSuccess>());
       expect(result!.$2.aaSignature, isNull);
+    });
+  });
+
+  group('readDocument data group progress', () {
+    test('reports the bytes read of a data group and lets the photo take most of the progress', () async {
+      final h = makeHarness(present: {DataGroups.dg1, DataGroups.dg2, DataGroups.dg11});
+      h.dgr.progressReports['DG2'] = [(2000, 20000), (10000, 20000), (20000, 20000)];
+      final states = <DocumentReaderState>[];
+      h.container.listen(h.provider, (_, next) => states.add(next));
+
+      await h.reader.readDocument(iosNfcMessages: _msg);
+
+      final dg2 = states.whereType<DocumentReaderReadingDataGroup>().where((s) => s.dataGroup == 'DG2').toList();
+      expect(dg2.map((s) => s.progress), [0.0, 0.1, 0.5, 1.0]);
+      final progress = dg2.map(progressForState).toList();
+      expect(progress, orderedEquals([...progress]..sort()));
+      expect(progress.toSet().length, progress.length);
+      expect(progress.last - progress.first, greaterThan(0.5));
+    });
+
+    test('never moves backwards between data groups', () async {
+      final h = makeHarness(present: {DataGroups.dg1, DataGroups.dg2, DataGroups.dg11, DataGroups.dg15});
+      h.dgr.progressReports['DG1'] = [(50, 100), (100, 100)];
+      h.dgr.progressReports['DG2'] = [(10000, 20000), (20000, 20000)];
+      final progress = <double>[];
+      h.container.listen(h.provider, (_, next) => progress.add(progressForState(next)));
+
+      await h.reader.readDocument(iosNfcMessages: _msg);
+
+      expect(progress, orderedEquals([...progress]..sort()));
+      expect(progress.last, 1.0);
+    });
+
+    test('keeps the progress of a data group within 0 and 1 when more bytes than the total are reported', () async {
+      final h = makeHarness(present: {DataGroups.dg1});
+      h.dgr.progressReports['DG1'] = [(120, 100)];
+      final states = <DocumentReaderState>[];
+      h.container.listen(h.provider, (_, next) => states.add(next));
+
+      await h.reader.readDocument(iosNfcMessages: _msg);
+
+      final dg1 = states.whereType<DocumentReaderReadingDataGroup>().toList();
+      expect(dg1.map((s) => s.progress), [0.0, 1.0]);
     });
   });
 

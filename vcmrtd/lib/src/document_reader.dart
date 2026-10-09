@@ -184,26 +184,29 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
       }
     }
 
+    final shares = _dataGroupShares();
+
     // isMandatory: DG1, DG2 are mandatory; DG15 is mandatory if provided
-    for (final (dataGroup, read, parse, progress, isMandatory) in [
-      (DataGroups.dg1, dataGroupReader.readDG1, documentParser.parseDG1, 0.1, true),
-      (DataGroups.dg2, dataGroupReader.readDG2, documentParser.parseDG2, 0.2, true),
-      (DataGroups.dg3, dataGroupReader.readDG3, documentParser.parseDG3, 0.3, false),
-      (DataGroups.dg4, dataGroupReader.readDG4, documentParser.parseDG4, 0.35, false),
-      (DataGroups.dg5, dataGroupReader.readDG5, documentParser.parseDG5, 0.4, false),
-      (DataGroups.dg6, dataGroupReader.readDG6, documentParser.parseDG6, 0.5, false),
-      (DataGroups.dg7, dataGroupReader.readDG7, documentParser.parseDG7, 0.6, false),
-      (DataGroups.dg8, dataGroupReader.readDG8, documentParser.parseDG8, 0.7, false),
-      (DataGroups.dg9, dataGroupReader.readDG9, documentParser.parseDG9, 0.75, false),
-      (DataGroups.dg10, dataGroupReader.readDG10, documentParser.parseDG10, 0.8, false),
-      (DataGroups.dg11, dataGroupReader.readDG11, documentParser.parseDG11, 0.85, false),
-      (DataGroups.dg12, dataGroupReader.readDG12, documentParser.parseDG12, 0.9, false),
-      (DataGroups.dg13, dataGroupReader.readDG13, documentParser.parseDG13, 0.9, false),
-      (DataGroups.dg14, dataGroupReader.readDG14, documentParser.parseDG14, 0.95, false),
-      (DataGroups.dg15, dataGroupReader.readDG15, documentParser.parseDG15, 0.9, true),
-      (DataGroups.dg16, dataGroupReader.readDG16, documentParser.parseDG16, 1.0, false),
+    for (final (dataGroup, read, parse, isMandatory) in [
+      (DataGroups.dg1, dataGroupReader.readDG1, documentParser.parseDG1, true),
+      (DataGroups.dg2, dataGroupReader.readDG2, documentParser.parseDG2, true),
+      (DataGroups.dg3, dataGroupReader.readDG3, documentParser.parseDG3, false),
+      (DataGroups.dg4, dataGroupReader.readDG4, documentParser.parseDG4, false),
+      (DataGroups.dg5, dataGroupReader.readDG5, documentParser.parseDG5, false),
+      (DataGroups.dg6, dataGroupReader.readDG6, documentParser.parseDG6, false),
+      (DataGroups.dg7, dataGroupReader.readDG7, documentParser.parseDG7, false),
+      (DataGroups.dg8, dataGroupReader.readDG8, documentParser.parseDG8, false),
+      (DataGroups.dg9, dataGroupReader.readDG9, documentParser.parseDG9, false),
+      (DataGroups.dg10, dataGroupReader.readDG10, documentParser.parseDG10, false),
+      (DataGroups.dg11, dataGroupReader.readDG11, documentParser.parseDG11, false),
+      (DataGroups.dg12, dataGroupReader.readDG12, documentParser.parseDG12, false),
+      (DataGroups.dg13, dataGroupReader.readDG13, documentParser.parseDG13, false),
+      (DataGroups.dg14, dataGroupReader.readDG14, documentParser.parseDG14, false),
+      (DataGroups.dg15, dataGroupReader.readDG15, documentParser.parseDG15, true),
+      (DataGroups.dg16, dataGroupReader.readDG16, documentParser.parseDG16, false),
     ]) {
-      if (!(config.shouldRead(dataGroup) && documentParser.documentContainsDataGroup(dataGroup))) {
+      final share = shares[dataGroup];
+      if (share == null) {
         continue;
       }
 
@@ -214,7 +217,14 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
         continue;
       }
 
-      _setState(DocumentReaderReadingDataGroup(dataGroup: dgName, progress: progress));
+      DocumentReaderReadingDataGroup stateAt(double progress) => DocumentReaderReadingDataGroup(
+        dataGroup: dgName,
+        progress: progress,
+        shareBefore: share.before,
+        share: share.size,
+      );
+
+      _setState(stateAt(0.0));
       Uint8List? bytes;
 
       // First, read the bytes from the chip
@@ -222,7 +232,9 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
         await _reconnectionLoop(
           authMethod: method,
           whenConnected: () async {
-            bytes = await read();
+            bytes = await read(
+              onProgress: (bytesRead, total) => _setState(stateAt((bytesRead / total).clamp(0.0, 1.0))),
+            );
             final hexData = bytes!.hex();
             if (hexData.isNotEmpty) {
               _dataGroups[dgName] = hexData;
@@ -348,6 +360,25 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
     _efSodRead = false;
 
     return (document, result);
+  }
+
+  /// The part of all the data groups' bytes that each data group to read is
+  /// expected to take up, as where it starts ([before]) and how much it
+  /// spans ([size]), both as a fraction of the total.
+  Map<DataGroups, ({double before, double size})> _dataGroupShares() {
+    final toRead = DataGroups.values.where(
+      (dataGroup) => config.shouldRead(dataGroup) && documentParser.documentContainsDataGroup(dataGroup),
+    );
+    final totalBytes = toRead.fold(0, (sum, dataGroup) => sum + _typicalDataGroupBytes[dataGroup]!);
+
+    var bytesBefore = 0;
+    final shares = <DataGroups, ({double before, double size})>{};
+    for (final dataGroup in toRead) {
+      final bytes = _typicalDataGroupBytes[dataGroup]!;
+      shares[dataGroup] = (before: bytesBefore / totalBytes, size: bytes / totalBytes);
+      bytesBefore += bytes;
+    }
+    return shares;
   }
 
   Future<void> _setToCancelState() async {
@@ -562,9 +593,21 @@ class DocumentReaderReadingCOM extends DocumentReaderState {}
 class DocumentReaderAuthenticating extends DocumentReaderState {}
 
 class DocumentReaderReadingDataGroup extends DocumentReaderState {
-  DocumentReaderReadingDataGroup({required this.dataGroup, required this.progress});
+  DocumentReaderReadingDataGroup({
+    required this.dataGroup,
+    required this.progress,
+    this.shareBefore = 0.0,
+    this.share = 1.0,
+  });
   final String dataGroup;
+
+  /// Fraction (0 to 1) of this data group that has been read.
   final double progress;
+
+  /// Fraction of the bytes of all data groups to read that come before this
+  /// data group, and that this data group takes up itself.
+  final double shareBefore;
+  final double share;
 }
 
 class DocumentReaderActiveAuthentication extends DocumentReaderState {}
@@ -583,20 +626,48 @@ class DocumentReaderReconnecting extends DocumentReaderState {
 
 enum DocumentReadingError { unknown, timeoutWaitingForTag, tagLost, failedToInitiateSession, invalidatedByUser }
 
+// Typical size in bytes of each data group. The real size is only known once
+// a data group is being read, so these decide how big a part of the progress
+// each data group gets. The photos are by far the largest.
+const _typicalDataGroupBytes = <DataGroups, int>{
+  DataGroups.dg1: 100,
+  DataGroups.dg2: 20000,
+  DataGroups.dg3: 10000,
+  DataGroups.dg4: 10000,
+  DataGroups.dg5: 10000,
+  DataGroups.dg6: 20000,
+  DataGroups.dg7: 5000,
+  DataGroups.dg8: 500,
+  DataGroups.dg9: 500,
+  DataGroups.dg10: 500,
+  DataGroups.dg11: 200,
+  DataGroups.dg12: 200,
+  DataGroups.dg13: 500,
+  DataGroups.dg14: 1000,
+  DataGroups.dg15: 300,
+  DataGroups.dg16: 100,
+};
+
+// The data groups take most of the progress, as they are by far the largest
+// transfer. The steps before and after them are quick.
+const _dataGroupsStart = 0.25;
+const _dataGroupsEnd = 0.85;
+
 double progressForState(DocumentReaderState state) {
   return switch (state) {
     DocumentReaderPending() => 0.0,
     DocumentReaderCancelled() => 0.0,
     DocumentReaderCancelling() => 0.0,
     DocumentReaderFailed() => 0.0,
-    DocumentReaderConnecting() => 0.1,
-    DocumentReaderReadingCardAccess() => 0.2,
-    DocumentReaderAuthenticating() => 0.3,
-    DocumentReaderReadingCOM() => 0.4,
-    DocumentReaderReadingDataGroup(:final progress) => 0.5 + progress / 4.0,
-    DocumentReaderReadingSOD() => 0.8,
+    DocumentReaderConnecting() => 0.05,
+    DocumentReaderReadingCardAccess() => 0.1,
+    DocumentReaderAuthenticating() => 0.15,
+    DocumentReaderReadingCOM() => 0.2,
+    DocumentReaderReadingDataGroup(:final progress, :final shareBefore, :final share) =>
+      _dataGroupsStart + (_dataGroupsEnd - _dataGroupsStart) * (shareBefore + progress * share),
+    DocumentReaderReadingSOD() => 0.9,
     DocumentReaderReconnecting(:final previousState) => progressForState(previousState),
-    DocumentReaderActiveAuthentication() => 0.9,
+    DocumentReaderActiveAuthentication() => 0.95,
     DocumentReaderSuccess() => 1.0,
     _ => throw Exception('unexpected state: $state'),
   };
