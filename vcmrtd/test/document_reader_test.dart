@@ -724,6 +724,27 @@ void main() {
       expect(h.state, isA<DocumentReaderFailed>());
     });
 
+    test('a final tag-lost failure is reported as DocumentReadingError.tagLost', () async {
+      final tagLost = NfcProviderError('PlatformException(500, Communication error, Tag was lost., null)');
+      final h = makeHarness(
+        present: {DataGroups.dg1, DataGroups.dg2},
+        steps: {'DG1': List.generate(5, (_) => _Step.fail(tagLost))},
+      );
+      final result = await h.reader.readDocument(iosNfcMessages: _msg);
+      expect(result, isNull);
+      expect((h.state as DocumentReaderFailed).error, DocumentReadingError.tagLost);
+    });
+
+    test('a final failure that is not a lost tag stays DocumentReadingError.unknown', () async {
+      final h = makeHarness(
+        present: {DataGroups.dg1, DataGroups.dg2},
+        steps: {'DG1': List.generate(5, (_) => _Step.fail(Exception('dg lost')))},
+      );
+      final result = await h.reader.readDocument(iosNfcMessages: _msg);
+      expect(result, isNull);
+      expect((h.state as DocumentReaderFailed).error, DocumentReadingError.unknown);
+    });
+
     test('optional DG read failure is logged and skipped, read still succeeds', () async {
       // DG7 (optional) never manages to be read; unlike a mandatory DG this
       // must not abort the whole document, mirroring how an optional DG's

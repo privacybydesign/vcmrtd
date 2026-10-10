@@ -13,6 +13,14 @@ class NfcProviderError extends ComProviderError {
   NfcProviderError([super.message]);
   NfcProviderError.fromException(Exception e) : super(e.toString());
 
+  // The plugin reports a lost tag as a generic "Communication error" and
+  // carries the platform's own text in the details: Android's
+  // TagLostException message and the English iOS description of
+  // NFCReaderError.readerTransceiveErrorTagConnectionLost.
+  static final _tagLostPattern = RegExp(r'tag was lost|tag connection lost', caseSensitive: false);
+
+  bool get isTagLost => _tagLostPattern.hasMatch(message);
+
   @override
   String toString() => 'NfcProviderError: $message';
 }

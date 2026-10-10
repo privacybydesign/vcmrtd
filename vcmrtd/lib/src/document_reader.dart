@@ -521,8 +521,15 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
     final logs = getLogs();
     final sensitiveLogs = getSensitiveLogs();
 
-    state = DocumentReaderFailed(error: DocumentReadingError.unknown, logs: logs, sensitiveLogs: sensitiveLogs);
+    state = DocumentReaderFailed(error: _readingErrorFor(latestError), logs: logs, sensitiveLogs: sensitiveLogs);
     await nfc.disconnect();
+  }
+
+  DocumentReadingError _readingErrorFor(Object error) {
+    if (error is NfcProviderError && error.isTagLost) {
+      return DocumentReadingError.tagLost;
+    }
+    return DocumentReadingError.unknown;
   }
 
   @override

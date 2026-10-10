@@ -87,5 +87,19 @@ void main() {
     test('is a ComProviderError subtype', () {
       expect(NfcProviderError('x'), isA<ComProviderError>());
     });
+
+    test('isTagLost recognises the Android and iOS tag-lost texts', () {
+      final android = NfcProviderError('PlatformException(500, Communication error, Tag was lost., null)');
+      final ios = NfcProviderError(
+        'PlatformException(500, Communication error with iso7816 tag, Tag connection lost, null)',
+      );
+      expect(android.isTagLost, true);
+      expect(ios.isTagLost, true);
+    });
+
+    test('isTagLost is false for other communication errors', () {
+      expect(NfcProviderError('PlatformException(408, Polling tag timeout, null, null)').isTagLost, false);
+      expect(NfcProviderError().isTagLost, false);
+    });
   });
 }
