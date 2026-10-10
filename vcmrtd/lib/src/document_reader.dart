@@ -529,7 +529,7 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
   }
 
   DocumentReadingError _readingErrorFor(Object error) {
-    if (error is NfcProviderError && error.isTagLost) {
+    if (NfcProviderError.isTagLost(error)) {
       return DocumentReadingError.tagLost;
     }
     return DocumentReadingError.unknown;

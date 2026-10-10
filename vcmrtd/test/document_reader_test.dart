@@ -16,6 +16,7 @@ import 'package:vcmrtd/extensions.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtd/internal.dart';
 import 'package:vcmrtd/src/parsers/document_parser.dart';
+import 'package:vcmrtd/src/proto/pace.dart';
 
 import 'fake_com_provider.dart';
 
@@ -837,6 +838,20 @@ void main() {
       final result = await h.reader.readDocument(iosNfcMessages: _msg);
       expect(result, isNull);
       expect(h.state, isA<DocumentReaderFailed>());
+    });
+
+    test('a tag lost during PACE, wrapped in a PACEError, is reported as tagLost', () async {
+      final h = makeHarness(
+        present: {DataGroups.dg1, DataGroups.dg2},
+        startSessionError: Exception('bac disabled'),
+        startSessionPaceError: PACEError(
+          'PACE key establishment failed: PACE(0); Failed: '
+          'NfcProviderError: PlatformException(500, Communication error, Tag was lost., null)',
+        ),
+      );
+      final result = await h.reader.readDocument(iosNfcMessages: _msg);
+      expect(result, isNull);
+      expect((h.state as DocumentReaderFailed).error, DocumentReadingError.tagLost);
     });
   });
 

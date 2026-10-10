@@ -93,13 +93,23 @@ void main() {
       final ios = NfcProviderError(
         'PlatformException(500, Communication error with iso7816 tag, Tag connection lost, null)',
       );
-      expect(android.isTagLost, true);
-      expect(ios.isTagLost, true);
+      expect(NfcProviderError.isTagLost(android), true);
+      expect(NfcProviderError.isTagLost(ios), true);
+    });
+
+    test('isTagLost recognises the text inside a wrapping exception', () {
+      expect(
+        NfcProviderError.isTagLost(Exception('PACE(0); Failed: PlatformException(500, x, Tag was lost., null)')),
+        true,
+      );
     });
 
     test('isTagLost is false for other communication errors', () {
-      expect(NfcProviderError('PlatformException(408, Polling tag timeout, null, null)').isTagLost, false);
-      expect(NfcProviderError().isTagLost, false);
+      expect(
+        NfcProviderError.isTagLost(NfcProviderError('PlatformException(408, Polling tag timeout, null, null)')),
+        false,
+      );
+      expect(NfcProviderError.isTagLost(NfcProviderError()), false);
     });
   });
 }

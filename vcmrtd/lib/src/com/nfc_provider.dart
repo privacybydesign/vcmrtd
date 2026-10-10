@@ -19,7 +19,9 @@ class NfcProviderError extends ComProviderError {
   // NFCReaderError.readerTransceiveErrorTagConnectionLost.
   static final _tagLostPattern = RegExp(r'tag was lost|tag connection lost', caseSensitive: false);
 
-  bool get isTagLost => _tagLostPattern.hasMatch(message);
+  // Matches on text because PACE rewraps every exception in a PACEError that
+  // only keeps the original message.
+  static bool isTagLost(Object error) => _tagLostPattern.hasMatch(error.toString());
 
   @override
   String toString() => 'NfcProviderError: $message';
