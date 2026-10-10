@@ -461,6 +461,39 @@ void main() {
         expect(h.state, isA<DocumentReaderPending>());
         expect(h.reader.getLogs(), contains('NFC status: NfcStatus.enabled'));
       });
+
+      test('returns to Pending once NFC is switched on again', () async {
+        mockAvailability('disabled');
+        final h = makeHarness();
+        await h.reader.checkNfcAvailability();
+        expect(h.state, isA<DocumentReaderNfcUnavailable>());
+
+        mockAvailability('available');
+        await h.reader.checkNfcAvailability();
+        expect(h.state, isA<DocumentReaderPending>());
+      });
+
+      test('leaves a finished read state alone when NFC is available', () async {
+        mockAvailability('available');
+        final h = makeHarness();
+        await h.reader.readDocument(iosNfcMessages: _msg);
+        expect(h.state, isA<DocumentReaderSuccess>());
+
+        await h.reader.checkNfcAvailability();
+        expect(h.state, isA<DocumentReaderSuccess>());
+      });
+
+      test('readDocument proceeds after NFC was switched on following an unavailable read', () async {
+        mockAvailability('disabled');
+        final h = makeHarness(present: {DataGroups.dg1, DataGroups.dg2});
+        expect(await h.reader.readDocument(iosNfcMessages: _msg), isNull);
+        expect(h.state, isA<DocumentReaderNfcUnavailable>());
+
+        mockAvailability('available');
+        final result = await h.reader.readDocument(iosNfcMessages: _msg);
+        expect(result, isNotNull);
+        expect(h.state, isA<DocumentReaderSuccess>());
+      });
     });
   });
 

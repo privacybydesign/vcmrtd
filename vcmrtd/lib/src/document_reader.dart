@@ -67,6 +67,9 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
       NfcStatus status = await NfcProvider.nfcStatus;
       if (status != NfcStatus.enabled) {
         state = DocumentReaderNfcUnavailable();
+      } else if (state is DocumentReaderNfcUnavailable) {
+        // NFC was switched on again after we reported it unavailable.
+        state = DocumentReaderPending();
       }
       _addLog('NFC status: $status');
     } catch (e) {
