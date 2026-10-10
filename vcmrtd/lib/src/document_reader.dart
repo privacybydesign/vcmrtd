@@ -67,6 +67,9 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
       NfcStatus status = await NfcProvider.nfcStatus;
       if (status != NfcStatus.enabled) {
         state = DocumentReaderNfcUnavailable();
+      } else if (state is DocumentReaderNfcUnavailable) {
+        // NFC was switched on again after we reported it unavailable.
+        state = DocumentReaderPending();
       }
       _addLog('NFC status: $status');
     } catch (e) {
@@ -521,8 +524,15 @@ class DocumentReader<DocType extends DocumentData> extends Notifier<DocumentRead
     final logs = getLogs();
     final sensitiveLogs = getSensitiveLogs();
 
-    state = DocumentReaderFailed(error: DocumentReadingError.unknown, logs: logs, sensitiveLogs: sensitiveLogs);
+    state = DocumentReaderFailed(error: _readingErrorFor(latestError), logs: logs, sensitiveLogs: sensitiveLogs);
     await nfc.disconnect();
+  }
+
+  DocumentReadingError _readingErrorFor(Object error) {
+    if (NfcProviderError.isTagLost(error)) {
+      return DocumentReadingError.tagLost;
+    }
+    return DocumentReadingError.unknown;
   }
 
   @override
