@@ -48,6 +48,10 @@ class AppLocalizationsNl extends AppLocalizations {
       'Met deze QR-code verplaats je het browserdeel van de verificatie naar een andere browser. Open hem met de camera van je telefoon, of scan de QR-code die de browser voor de IDEM-app toont.';
 
   @override
+  String get accessUntrustedServer =>
+      'Deze QR-code komt niet van een verificatiedienst waarmee deze app werkt, dus hij is niet geopend.';
+
+  @override
   String get sessionOpenFailedTitle => 'Verificatie openen mislukt';
 
   @override
@@ -83,15 +87,6 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get commonCancel => 'Annuleren';
-
-  @override
-  String get commonYes => 'Ja';
-
-  @override
-  String get commonNo => 'Nee';
-
-  @override
-  String get nfcAvailableLabel => 'NFC beschikbaar:';
 
   @override
   String get docNewScan => 'Nieuwe scan';
@@ -151,7 +146,8 @@ class AppLocalizationsNl extends AppLocalizations {
   String get docActiveAuthentication => 'Actieve authenticatie';
 
   @override
-  String get docActiveAuthenticationSubtitle => 'Voer actieve authenticatie uit bij het lezen van het document';
+  String get docActiveAuthenticationSubtitle =>
+      'Voer actieve authenticatie uit bij het lezen van het document. Een verificatiesessie volgt haar eigen flow.';
 
   @override
   String get docFaceEngine => 'Engine voor gezichtsverificatie';
@@ -310,9 +306,6 @@ class AppLocalizationsNl extends AppLocalizations {
   String get docNfcNotAvailable => 'NFC is niet beschikbaar';
 
   @override
-  String get docHavingTrouble => 'Lukt het niet?';
-
-  @override
   String get docPersonalInformation => 'Persoonsgegevens';
 
   @override
@@ -364,17 +357,6 @@ class AppLocalizationsNl extends AppLocalizations {
   String get docCategoryDateOfExpiry => 'Vervaldatum';
 
   @override
-  String get docNotAvailable => 'n.v.t.';
-
-  @override
-  String get docWalletEmpty => 'Je wallet is leeg';
-
-  @override
-  String docWalletEmptyHint(String addToWallet) {
-    return 'Scan een document en tik op \"$addToWallet\" om het hier te zien.';
-  }
-
-  @override
   String get docWalletDocumentNumber => 'Documentnummer';
 
   @override
@@ -408,9 +390,6 @@ class AppLocalizationsNl extends AppLocalizations {
   String get docOptionalData => 'Optionele gegevens';
 
   @override
-  String get docNoPhoto => 'Geen foto';
-
-  @override
   String get docAvailableDataGroups => 'Beschikbare datagroepen';
 
   @override
@@ -439,40 +418,6 @@ class AppLocalizationsNl extends AppLocalizations {
     });
     return '$_temp0';
   }
-
-  @override
-  String get docCanNumber => 'CAN-nummer';
-
-  @override
-  String get docCanNumberRequired => 'Vul het CAN-nummer in';
-
-  @override
-  String get docPassportNumber => 'Paspoortnummer';
-
-  @override
-  String get docPassportNumberRequired => 'Vul het paspoortnummer in';
-
-  @override
-  String get docDateOfBirthRequired => 'Kies je geboortedatum';
-
-  @override
-  String get docDateOfExpiryRequired => 'Kies de vervaldatum';
-
-  @override
-  String get docDbaWithPace => 'DBA met PACE';
-
-  @override
-  String docAccessProtocol(String protocol) {
-    return 'Toegangsprotocol: $protocol';
-  }
-
-  @override
-  String docAccessKeyType(String keyType) {
-    return 'Type toegangssleutel: $keyType';
-  }
-
-  @override
-  String get docCopy => 'Kopiëren';
 
   @override
   String get docImageNoData => 'Geen afbeeldingsgegevens beschikbaar.';
@@ -509,6 +454,68 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get docIllustrationDrivingLicence => 'RIJBEWIJS';
+
+  @override
+  String get docPhotoStepLabel => 'Documentfoto';
+
+  @override
+  String get docPhotoFrontTitle => 'Maak een foto van de voorkant';
+
+  @override
+  String get docPhotoFrontInstructionsPassport =>
+      'Leg de pagina met je foto en persoonsgegevens binnen het kader. Gebruik een vlakke ondergrond en goed licht, en vermijd schittering.';
+
+  @override
+  String get docPhotoFrontInstructionsCard =>
+      'Leg de voorkant van je document, de kant met je foto, binnen het kader. Gebruik een vlakke ondergrond en goed licht, en vermijd schittering.';
+
+  @override
+  String get docPhotoBackTitle => 'Maak nu een foto van de achterkant';
+
+  @override
+  String get docPhotoBackInstructions => 'Draai je document om en leg de achterkant binnen het kader.';
+
+  @override
+  String get docPhotoSideFront => 'Voorkant';
+
+  @override
+  String get docPhotoSideBack => 'Achterkant';
+
+  @override
+  String docPhotoSideProgress(String side, int current, int total) {
+    return '$side · $current van $total';
+  }
+
+  @override
+  String get docPhotoNoBack => 'Mijn document heeft geen achterkant';
+
+  @override
+  String get docPhotoTake => 'Foto maken';
+
+  @override
+  String get docPhotoReviewTitle => 'Controleer de foto';
+
+  @override
+  String get docPhotoReviewMessage =>
+      'Zijn alle gegevens scherp en leesbaar, zonder schittering en zonder dat er iets voor zit?';
+
+  @override
+  String get docPhotoReviewScannedMessage =>
+      'Van deze kant is een foto gemaakt toen de MRZ gelezen werd. Zijn alle gegevens scherp en leesbaar, zonder schittering en zonder dat er iets voor zit?';
+
+  @override
+  String get docPhotoRetake => 'Opnieuw';
+
+  @override
+  String get docPhotoUse => 'Foto gebruiken';
+
+  @override
+  String get docPhotoErrorNoCamera => 'Geen camera beschikbaar';
+
+  @override
+  String docPhotoErrorCamera(String error) {
+    return 'Kan de camera niet gebruiken: $error';
+  }
 
   @override
   String get faceActionBlink => 'Knipper met je ogen';
@@ -907,22 +914,6 @@ class AppLocalizationsNl extends AppLocalizations {
   String get proofingAttributeEverything => 'Alles wat de app uit je document leest';
 
   @override
-  String get proofingSessionSectionTitle => 'Verificatiesessie';
-
-  @override
-  String proofingSubmitSectionBody(String relyingParty) {
-    return 'Deze scan hoort bij een sessie die $relyingParty heeft geopend. Stuur je documentidentiteit en het resultaat van de gezichtsverificatie naar hen terug.';
-  }
-
-  @override
-  String get proofingSubmitting => 'Versturen...';
-
-  @override
-  String proofingSubmitTo(String relyingParty) {
-    return 'Versturen naar $relyingParty';
-  }
-
-  @override
   String proofingSentTo(String relyingParty) {
     return 'Verstuurd naar $relyingParty';
   }
@@ -944,32 +935,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get proofingAddToWallet => 'Toevoegen aan wallet';
 
   @override
-  String get proofingSubmittedTitle => 'Verstuurd';
-
-  @override
-  String proofingSubmittedDocument(String relyingParty) {
-    return 'Je documentidentiteit is naar $relyingParty gestuurd.';
-  }
-
-  @override
-  String proofingSubmittedDocumentAndFace(String relyingParty) {
-    return 'Je documentidentiteit en het resultaat van de gezichtsverificatie zijn naar $relyingParty gestuurd.';
-  }
-
-  @override
-  String get proofingSubmitFailedTitle => 'Versturen mislukt';
-
-  @override
-  String get proofingSubmitFailedMessage => 'Het resultaat kon niet naar de aanvragende partij worden gestuurd:';
-
-  @override
   String get proofingDialogOk => 'OK';
-
-  @override
-  String get proofingDialogRetryHint => 'Probeer het opnieuw of maak een issue aan op GitHub voor dit project.';
-
-  @override
-  String get proofingRetry => 'Opnieuw proberen';
 
   @override
   String proofingScanDocument(String docType) {
@@ -996,6 +962,10 @@ class AppLocalizationsNl extends AppLocalizations {
   @override
   String get proofingScanMrzInstructions =>
       'Lijn de machineleesbare zone (MRZ) uit met het kader onderaan het scherm. Houd je telefoon stil tot het scannen klaar is.';
+
+  @override
+  String get proofingScanMrzPhotoInstructions =>
+      'Leg de hele kant met de machineleesbare zone (MRZ) binnen het kader, op een vlakke ondergrond en in goed licht. Houd je telefoon stil: zodra de MRZ gelezen is, wordt van deze kant ook een foto gemaakt.';
 
   @override
   String proofingEnterDetailsManually(String docType) {
@@ -1050,6 +1020,9 @@ class AppLocalizationsNl extends AppLocalizations {
   String get proofingWhatDocumentIdentity => 'je documentidentiteit';
 
   @override
+  String get proofingWhatDocumentPhoto => 'je documentfoto';
+
+  @override
   String get proofingWhatFaceVerification => 'je gezichtsverificatie';
 
   @override
@@ -1074,6 +1047,10 @@ class AppLocalizationsNl extends AppLocalizations {
   }
 
   @override
+  String get proofingRequestTimedOut =>
+      'De server reageerde niet op tijd - controleer je internetverbinding en probeer het opnieuw';
+
+  @override
   String proofingRequestFailed(String what, String details) {
     return '$what mislukt: $details';
   }
@@ -1091,9 +1068,6 @@ class AppLocalizationsNl extends AppLocalizations {
   String get proofingRequestDeviceState => 'Apparaatstatus doorgeven';
 
   @override
-  String get proofingRequestSubmitResult => 'Resultaat versturen';
-
-  @override
   String proofingRequestStepStarted(String step) {
     return 'Stap $step als gestart markeren';
   }
@@ -1103,6 +1077,9 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get proofingRequestNfcStep => 'NFC-stap versturen';
+
+  @override
+  String get proofingRequestDocumentPhotoStep => 'Documentfotostap versturen';
 
   @override
   String get proofingRequestFaceStep => 'Gezichtsverificatiestap versturen';

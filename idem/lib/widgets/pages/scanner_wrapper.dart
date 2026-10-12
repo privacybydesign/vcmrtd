@@ -11,9 +11,18 @@ import 'package:idem/widgets/guided/guided_widgets.dart';
 import '../../routing.dart';
 import 'scan_screen.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:idem/services/flow_step_plan.dart';
+
+/// Called with the MRZ read and, when one was asked for, the picture taken
+/// the moment it was read (null when the camera couldn't take it).
+typedef MrzScannedWithPicture = void Function(ScannedMRZ mrz, DocumentPicture? picture);
 
 typedef ScannerWidgetBuilder =
-    Widget Function({required DocumentType documentType, required ValueChanged<ScannedMRZ> onSuccess});
+    Widget Function({
+      required DocumentType documentType,
+      required MrzScanPicture scanPicture,
+      required MrzScannedWithPicture onSuccess,
+    });
 
 class MrzReaderRouteParams {
   final DocumentType documentType;
@@ -31,11 +40,16 @@ class MrzReaderRouteParams {
 
 /// Wrapper around ScannerPage to handle navigation callbacks
 class ScannerWrapper extends StatefulWidget {
-  final Function(ScannedMRZ) onMrzScanned;
+  final void Function(ScannedMRZ mrz, [DocumentPicture? picture]) onMrzScanned;
   final VoidCallback onManualEntry;
   final VoidCallback onBack;
   final DocumentType documentType;
   final ScannerWidgetBuilder? scannerBuilder;
+
+  /// Photographs the document the moment its MRZ is read: the flow asks for
+  /// a photo of the document, and the side with the MRZ needs none of its
+  /// own then.
+  final MrzScanPicture scanPicture;
 
   /// Step badge numbers — default to vcmrtd's fixed 4-step sequence (this
   /// screen is always step 1) so any caller not passing these explicitly
@@ -51,8 +65,9 @@ class ScannerWrapper extends StatefulWidget {
     required this.onBack,
     this.documentType = DocumentType.passport,
     this.scannerBuilder,
-    this.stepNumber = 1,
-    this.totalSteps = 4,
+    this.scanPicture = MrzScanPicture.none,
+    this.stepNumber = FlowStepPlan.defaultDocumentCaptureStep,
+    this.totalSteps = FlowStepPlan.defaultTotalSteps,
   });
 
   @override
@@ -78,10 +93,10 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
   @override
   void didPopNext() => _hasNavigated = false;
 
-  void _onScanned(ScannedMRZ scannedMrz) {
+  void _onScanned(ScannedMRZ scannedMrz, DocumentPicture? picture) {
     if (!_hasNavigated) {
       _hasNavigated = true;
-      widget.onMrzScanned(scannedMrz);
+      widget.onMrzScanned(scannedMrz, picture);
     }
   }
 
@@ -97,12 +112,8 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
         children: [
           scannerBuilder(
             documentType: widget.documentType,
-            onSuccess: (scannedMrz) {
-              if (!_hasNavigated) {
-                _hasNavigated = true;
-                widget.onMrzScanned(scannedMrz);
-              }
-            },
+            scanPicture: widget.scanPicture,
+            onSuccess: _onScanned,
           ),
           Positioned(left: 0, right: 0, top: 0, child: _buildTopOverlay(context)),
           Positioned(left: 0, right: 0, bottom: 0, child: _buildBottomControls(context)),
@@ -145,41 +156,39 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
   }
 
   Widget _buildOverlayCard(BuildContext context) {
-    return Card(
-      color: Colors.transparent,
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(0.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              context.l10n.proofingPositionDocument(widget.documentType.name),
-              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            Text(context.l10n.proofingScanMrzInstructions, style: TextStyle(color: Colors.white70, fontSize: 14)),
-          ],
-        ),
+    // The inset a Card's default margin used to give it.
+    return Padding(
+      padding: const EdgeInsets.all(4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.l10n.proofingPositionDocument(widget.documentType.name),
+            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          Text(
+            widget.scanPicture == MrzScanPicture.capture
+                ? context.l10n.proofingScanMrzPhotoInstructions
+                : context.l10n.proofingScanMrzInstructions,
+            style: TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildBottomControls(BuildContext context) {
-    return Container(
+    return Padding(
       padding: const EdgeInsets.fromLTRB(30, 24, 24, 32),
-      decoration: BoxDecoration(color: Colors.transparent),
       child: SafeArea(
         top: false,
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black),
-          onPressed: () {
-            widget.onManualEntry();
-          },
+          onPressed: widget.onManualEntry,
           child: Text(
             context.l10n.proofingEnterDetailsManually(widget.documentType.name),
-            style: TextStyle(color: Colors.black),
+            style: const TextStyle(color: Colors.black),
           ),
         ),
       ),
@@ -195,11 +204,15 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
       onDark: true,
       bottomOnDark: false,
       child: Scaffold(
-        backgroundColor: g.ink,
+        backgroundColor: g.header,
         body: Stack(
           children: [
             Positioned.fill(
-              child: scannerBuilder(documentType: widget.documentType, onSuccess: _onScanned),
+              child: scannerBuilder(
+                documentType: widget.documentType,
+                scanPicture: widget.scanPicture,
+                onSuccess: _onScanned,
+              ),
             ),
             Positioned.fill(
               child: IgnorePointer(
@@ -253,18 +266,7 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
 /// `MRZCameraViewState._overlayRect` in mrz_capture), so what the user lines up
 /// with the frame is what gets read.
 @visibleForTesting
-Rect guidedScanFrame(Size size) {
-  const documentFrameRatio = 1.42;
-  double width, height;
-  if (size.height > size.width) {
-    width = size.width * 0.9;
-    height = width / documentFrameRatio;
-  } else {
-    height = size.height * 0.75;
-    width = height * documentFrameRatio;
-  }
-  return Rect.fromLTWH((size.width - width) / 2, (size.height - height) / 2 - 60.0, width, height);
-}
+Rect guidedScanFrame(Size size) => MRZCameraOverlay.frameRect(size, MRZCameraOverlay.passportFrameRatio);
 
 int _mrzLineCount(DocumentType type) => switch (type) {
   DocumentType.passport => 2,
@@ -404,10 +406,18 @@ class _GuidedScanFramePainter extends CustomPainter {
       old.frame != frame || old.mrzLines != mrzLines || old.scrim != scrim || old.highlight != highlight;
 }
 
-Widget _defaultScannerBuilder({required DocumentType documentType, required ValueChanged<ScannedMRZ> onSuccess}) {
-  return ScannerPage(documentType: documentType, onSuccess: onSuccess);
+Widget _defaultScannerBuilder({
+  required DocumentType documentType,
+  required MrzScanPicture scanPicture,
+  required MrzScannedWithPicture onSuccess,
+}) {
+  return ScannerPage(documentType: documentType, scanPicture: scanPicture, onSuccess: onSuccess);
 }
 
-Widget _guidedScannerBuilder({required DocumentType documentType, required ValueChanged<ScannedMRZ> onSuccess}) {
-  return ScannerPage(documentType: documentType, onSuccess: onSuccess, showOverlay: false);
+Widget _guidedScannerBuilder({
+  required DocumentType documentType,
+  required MrzScanPicture scanPicture,
+  required MrzScannedWithPicture onSuccess,
+}) {
+  return ScannerPage(documentType: documentType, scanPicture: scanPicture, onSuccess: onSuccess, showOverlay: false);
 }

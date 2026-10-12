@@ -120,7 +120,6 @@ void main() {
                 requestedAttributes: const [],
                 expiresAt: DateTime.now().add(const Duration(minutes: 10)),
               ),
-              openedAt: DateTime.now(),
             ),
           );
 
@@ -228,7 +227,6 @@ void main() {
                 requestedAttributes: const [],
                 expiresAt: DateTime.now().add(const Duration(minutes: 10)),
               ),
-              openedAt: DateTime.now(),
             ),
           );
 

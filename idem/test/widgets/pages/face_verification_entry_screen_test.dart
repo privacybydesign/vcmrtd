@@ -70,8 +70,8 @@ void main() {
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: FaceVerificationEntryScreen.withEngine(
-          engine: engine,
+        home: FaceVerificationEntryScreen(
+          testEngine: engine,
           nfcImageBytes: Uint8List.fromList([1]),
           onBackPressed: () {},
           onVerified: (_) {},
@@ -97,8 +97,8 @@ void main() {
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: FaceVerificationEntryScreen.withEngine(
-          engine: engine,
+        home: FaceVerificationEntryScreen(
+          testEngine: engine,
           nfcImageBytes: Uint8List(1),
           onBackPressed: () {},
           onVerified: (_) {},
@@ -120,8 +120,8 @@ void main() {
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: FaceVerificationEntryScreen.withEngine(
-          engine: engine,
+        home: FaceVerificationEntryScreen(
+          testEngine: engine,
           nfcImageBytes: Uint8List(1),
           onBackPressed: () {},
           onVerified: (_) {},
@@ -137,7 +137,7 @@ void main() {
     expect(find.byType(FlutterFaceVerificationScreen), findsNothing);
   });
 
-  const regula = ProofingFaceVerification(provider: 'regula', faceApiUrl: 'https://faceapi.test', tag: 'ips:s1');
+  const regula = ProofingFaceVerification(provider: 'regula', faceApiUrl: 'https://faceapi.test', fromSession: true);
 
   test('Regula follows the session\'s flow, else the setting when a server offers it', () {
     expect(FaceVerificationEntryScreen.effectiveEngine(FaceEngineChoice.regula, regula), FaceEngineChoice.regula);
@@ -145,10 +145,39 @@ void main() {
     // A session's flow chose Regula: the setting can't override it.
     expect(FaceVerificationEntryScreen.effectiveEngine(FaceEngineChoice.iris, regula), FaceEngineChoice.regula);
     expect(FaceVerificationEntryScreen.effectiveEngine(FaceEngineChoice.onDevice, regula), FaceEngineChoice.regula);
-    // The passport issuer's offer (no tag) leaves the choice to the user.
-    const issuer = ProofingFaceVerification(provider: 'regula', faceApiUrl: 'https://faceapi.test', tag: '');
+    // The passport issuer's offer leaves the choice to the user.
+    const issuer = ProofingFaceVerification(provider: 'regula', faceApiUrl: 'https://faceapi.test');
     expect(FaceVerificationEntryScreen.effectiveEngine(FaceEngineChoice.iris, issuer), FaceEngineChoice.iris);
     expect(FaceVerificationEntryScreen.effectiveEngine(FaceEngineChoice.regula, issuer), FaceEngineChoice.regula);
+  });
+
+  ProofingSessionInfo session({String? faceProvider, List<String>? requiredChecks}) => ProofingSessionInfo(
+    id: 's1',
+    relyingParty: 'RP',
+    requestedAttributes: const [],
+    expiresAt: DateTime(2030),
+    faceProvider: faceProvider,
+    requiredChecks: requiredChecks,
+  );
+
+  test('a session\'s flow picks the engine, whatever the setting', () {
+    final engineFlow = session(faceProvider: faceProviderEngine);
+    expect(FaceVerificationEntryScreen.sessionEngine(FaceEngineChoice.iris, engineFlow), FaceEngineChoice.onDevice);
+    expect(FaceVerificationEntryScreen.sessionEngine(FaceEngineChoice.regula, engineFlow), FaceEngineChoice.onDevice);
+    final regulaFlow = session(faceProvider: faceProviderRegula);
+    expect(FaceVerificationEntryScreen.sessionEngine(FaceEngineChoice.iris, regulaFlow), FaceEngineChoice.regula);
+    // No session, or a server that doesn't say: the setting.
+    expect(FaceVerificationEntryScreen.sessionEngine(FaceEngineChoice.iris, null), FaceEngineChoice.iris);
+    expect(FaceVerificationEntryScreen.sessionEngine(FaceEngineChoice.iris, session()), FaceEngineChoice.iris);
+  });
+
+  test('a session\'s flow picks the liveness mode, whatever the setting', () {
+    final withLiveness = session(requiredChecks: ['face.match', checkFaceLiveness]);
+    expect(FaceVerificationEntryScreen.sessionLivenessMode(LivenessMode.passive, withLiveness), LivenessMode.active);
+    final withoutLiveness = session(requiredChecks: ['face.match']);
+    expect(FaceVerificationEntryScreen.sessionLivenessMode(LivenessMode.active, withoutLiveness), LivenessMode.passive);
+    expect(FaceVerificationEntryScreen.sessionLivenessMode(LivenessMode.active, null), LivenessMode.active);
+    expect(FaceVerificationEntryScreen.sessionLivenessMode(LivenessMode.active, session()), LivenessMode.active);
   });
 
   testWidgets('regula choice with an announcing session opens the Regula screen', (tester) async {
@@ -158,8 +187,8 @@ void main() {
         child: MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: FaceVerificationEntryScreen.withEngine(
-            engine: engine,
+          home: FaceVerificationEntryScreen(
+            testEngine: engine,
             nfcImageBytes: Uint8List(1),
             onBackPressed: () {},
             onVerified: (_) {},

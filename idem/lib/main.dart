@@ -12,16 +12,17 @@ import 'package:logging/logging.dart';
 import 'package:mrz_capture/mrz_capture.dart' show MrzCaptureLocalizations;
 import 'package:vcmrtd/extensions.dart';
 import 'package:idem/l10n/l10n.dart';
+import 'package:idem/providers/branding_provider.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
+import 'package:idem/providers/session_settings.dart';
 import 'package:idem/routing.dart';
 import 'package:idem/services/proofing_deeplink_channel.dart';
 import 'package:idem/services/proofing_session_client.dart';
-import 'package:idem/theme/app_brand.dart';
+import 'package:idem/theme/app_theme.dart';
 import 'package:idem/services/proofing_session_coordinator.dart';
 import 'package:idem/services/proofing_session_watcher.dart';
 import 'package:idem/widgets/common/issuance_result_dialogs.dart';
 import 'package:idem/widgets/common/proofing_session_check_overlay.dart';
-import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
 
 void main() async {
@@ -32,18 +33,19 @@ void main() async {
   });
 
   WidgetsFlutterBinding.ensureInitialized();
-  if (AppBrand.current.theme.extension<BrandTheme>()?.guided != null) await enableGuidedEdgeToEdge();
-  _registerBrandFontLicenses();
+  await enableGuidedEdgeToEdge();
+  _registerFontLicenses();
   runApp(ProviderScope(child: VcMrtdApp()));
 }
 
 /// The white-label fonts are OFL-licensed, which asks for the licence to
 /// ship with them; this puts it on the platform licence page.
-void _registerBrandFontLicenses() {
+void _registerFontLicenses() {
   LicenseRegistry.addLicense(() async* {
     for (final (family, path) in const [
-      ('Montserrat', 'assets/brands/cm/fonts/OFL-Montserrat.txt'),
-      ('Nunito', 'assets/brands/cm/fonts/OFL-Nunito.txt'),
+      ('Montserrat', 'assets/fonts/OFL-Montserrat.txt'),
+      ('Nunito', 'assets/fonts/OFL-Nunito.txt'),
+      ('Alexandria', 'assets/fonts/OFL-Alexandria.txt'),
     ]) {
       yield LicenseEntryWithLineBreaks([family], await rootBundle.loadString(path));
     }
@@ -61,17 +63,35 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
   late final AppLifecycleListener _lifecycle;
   StreamSubscription<ProofingSessionEvent>? _sessionEvents;
 
+  /// The settings from before the pinned session overwrote them.
+  UserSettingsSnapshot? _userSettings;
+
   @override
   void initState() {
     super.initState();
     // Listen to every newly accepted session through the backend.
     // Unpinning (null) doesn't stop listening - see ProofingSessionWatcher.
     ref.listenManual(activeProofingSessionProvider, (previous, next) {
-      if (next != null) _sessions.track(next.ref, next.info);
+      final container = ProviderScope.containerOf(context);
+      if (next == null) {
+        // The session ended: the user's own settings and look apply again.
+        _userSettings?.restore(container);
+        _userSettings = null;
+        if (previous != null) ref.read(activeBrandingProvider.notifier).reset();
+        return;
+      }
+      // The requester's look, kept current as the session's view changes.
+      ref.read(activeBrandingProvider.notifier).useSession(next.ref, next.info);
+      _sessions.track(next.ref, next.info);
       // The session's language (see lib/l10n/l10n.dart) decides the UI's.
-      if (next != null) ref.read(appLocaleProvider.notifier).useSessionLanguage(next.info.language);
+      ref.read(appLocaleProvider.notifier).useSessionLanguage(next.info.language);
+      // The session's flow decides the checks, and Settings shows them -
+      // only while it's pinned.
+      _userSettings ??= UserSettingsSnapshot.capture(container);
+      applyProofingSessionSettings(container, next.info);
     });
     _sessionEvents = _sessions.events.listen(_onProofingSessionEvent);
+    _router.routerDelegate.addListener(_resetBrandingOutsideSession);
     // Tell the server when this device stops/resumes working on the
     // session, and re-check with it before continuing after a resume.
     _lifecycle = AppLifecycleListener(onStateChange: _sessions.appLifecycleChanged);
@@ -84,6 +104,15 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
   }
 
   BuildContext? get _navigatorContext => _router.routerDelegate.navigatorKey.currentContext;
+
+  /// Back home or at the scanner without a session (a consent screen left
+  /// with Back, say), the app wears its own look again.
+  void _resetBrandingOutsideSession() {
+    final path = _router.routerDelegate.currentConfiguration.uri.path;
+    if (sessionlessPaths.contains(path) && ref.read(activeProofingSessionProvider) == null) {
+      ref.read(activeBrandingProvider.notifier).reset();
+    }
+  }
 
   /// Claims the session a vcmrtd:// deep link points at (a session link or a
   /// handover link) and pushes the consent screen — the deep-link
@@ -114,25 +143,39 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
     }
   }
 
+  /// Shows an info dialog, in the UI's current language, on top of whatever
+  /// screen the router goes to next.
+  void _showInfoAfterNavigation((String, String) Function(AppLocalizations l10n) content) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final context = _navigatorContext;
+      if (context == null) return;
+      final (title, message) = content(context.l10n);
+      DialogHelpers.showInfoDialog(context: context, title: title, message: message);
+    });
+  }
+
+  /// Unpins [sessionRef] and returns to document selection when it is the
+  /// pinned session; returns what was pinned, or null when it is not.
+  ActiveProofingSession? _endPinnedSession(ProofingSessionRef sessionRef) {
+    final pinned = ref.read(activeProofingSessionProvider);
+    if (pinned == null || !pinned.ref.sameAccess(sessionRef)) {
+      return null;
+    }
+    ref.read(activeProofingSessionProvider.notifier).set(null);
+    _router.go(selectDocTypePath);
+    return pinned;
+  }
+
   /// The session was submitted and has its outcome - from this app's Submit
   /// button or on the other device, whichever came first: nothing is left
   /// to do here. A session the app already finished its part of (unpinned,
   /// e.g. face verification handed off to the browser) ends quietly.
   void _onProofingSessionCompleted(ProofingSessionRef sessionRef) {
-    final pinned = ref.read(activeProofingSessionProvider);
-    if (pinned == null || pinned.ref.token != sessionRef.token || pinned.ref.deviceToken != sessionRef.deviceToken)
-      return;
-    ref.read(activeProofingSessionProvider.notifier).set(null);
-    _router.go('/select_doc_type');
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final context = _navigatorContext;
-      if (context == null) return;
-      DialogHelpers.showInfoDialog(
-        context: context,
-        title: context.l10n.sessionCompleteTitle,
-        message: context.l10n.sessionCompleteMessage(pinned.info.relyingParty),
-      );
-    });
+    final pinned = _endPinnedSession(sessionRef);
+    if (pinned == null) return;
+    _showInfoAfterNavigation(
+      (l10n) => (l10n.sessionCompleteTitle, l10n.sessionCompleteMessage(pinned.info.relyingParty)),
+    );
   }
 
   /// The relying party reset the session: the server already dropped every
@@ -140,20 +183,12 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
   /// accepting the request leads (document selection for a document flow),
   /// and tell them why their progress just disappeared.
   void _onProofingSessionReset(ProofingSessionRef sessionRef, ProofingSessionInfo info) {
-    final session = ActiveProofingSession(ref: sessionRef, info: info, openedAt: DateTime.now());
+    final session = ActiveProofingSession(ref: sessionRef, info: info);
     ref.read(activeProofingSessionProvider.notifier).set(session);
     final context = _navigatorContext;
     if (context == null) return;
     restartProofingSessionFlow(context, session);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final context = _navigatorContext;
-      if (context == null) return;
-      DialogHelpers.showInfoDialog(
-        context: context,
-        title: context.l10n.sessionRestartedTitle,
-        message: context.l10n.sessionRestartedMessage(info.relyingParty),
-      );
-    });
+    _showInfoAfterNavigation((l10n) => (l10n.sessionRestartedTitle, l10n.sessionRestartedMessage(info.relyingParty)));
   }
 
   /// This device may no longer act on the session (handed over to another
@@ -161,23 +196,16 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
   /// say why. A session the app already finished its part of (unpinned,
   /// e.g. face verification handed off to the browser) just ends quietly.
   void _onProofingSessionAccessLost(ProofingSessionRef sessionRef, ProofingAccessDenial reason) {
-    final pinned = ref.read(activeProofingSessionProvider);
-    if (pinned == null || pinned.ref.token != sessionRef.token || pinned.ref.deviceToken != sessionRef.deviceToken)
-      return;
-    ref.read(activeProofingSessionProvider.notifier).set(null);
-    _router.go('/select_doc_type');
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final context = _navigatorContext;
-      if (context == null) return;
-      DialogHelpers.showInfoDialog(context: context, title: context.l10n.sessionStoppedTitle, message: reason.message);
-    });
+    final pinned = _endPinnedSession(sessionRef);
+    if (pinned == null) return;
+    _showInfoAfterNavigation((l10n) => (l10n.sessionStoppedTitle, reason.message));
   }
 
   /// The user gave up waiting for the resume check (server unreachable).
   void _abandonProofingSession() {
     _sessions.release();
     ref.read(activeProofingSessionProvider.notifier).set(null);
-    _router.go('/select_doc_type');
+    _router.go(selectDocTypePath);
   }
 
   @override
@@ -201,7 +229,7 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
       localizationsDelegates: const [...AppLocalizations.localizationsDelegates, MrzCaptureLocalizations.delegate],
       supportedLocales: AppLocalizations.supportedLocales,
       locale: ref.watch(appLocaleProvider),
-      theme: AppBrand.current.theme,
+      theme: appTheme(ref.watch(activeBrandingProvider)),
     );
   }
 }

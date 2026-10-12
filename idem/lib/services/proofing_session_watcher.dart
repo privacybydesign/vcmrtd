@@ -71,6 +71,10 @@ class ProofingSessionWatcher {
   Completer<void>? _resumed;
   http.Client? _inflight;
 
+  /// The long-poll [pause] hung up, so its failure isn't taken for a network
+  /// error - even when [resume] already ran by the time it surfaces.
+  http.Client? _abortedByPause;
+
   ProofingSessionWatcher({
     required this.client,
     required this.ref,
@@ -87,44 +91,63 @@ class ProofingSessionWatcher {
   Future<void> start() async {
     if (initial.changeKey == null) return;
     var current = initial;
-    while (!_stopped && current.lifecycle != proofingLifecycleComplete && !proofingSessionFinished(current.status)) {
+    while (!_stopped && !_isOver(current)) {
       if (_paused) {
         await (_resumed ??= Completer<void>()).future;
         continue;
       }
-      final httpClient = http.Client();
-      _inflight = httpClient;
-      try {
-        final next = await client.waitForChange(ref, current.changeKey!, httpClient: httpClient);
-        if (_stopped) return;
-        final lost = next.accessLost;
-        if (lost != null) {
-          onEvent(ProofingSessionAccessLost(ref, lost));
-          return;
-        }
-        // Submitted (on either device): nothing left to watch for.
-        if (next.lifecycle == proofingLifecycleComplete) {
-          onEvent(ProofingSessionCompleted(ref));
-          return;
-        }
-        if (next.resetCount > current.resetCount) {
-          onEvent(ProofingSessionWasReset(ref, next));
-        } else if (next.changeKey != current.changeKey) {
-          onEvent(ProofingSessionUpdated(ref, next));
-        }
-        current = next;
-        if (current.changeKey == null) return;
-      } on ProofingSessionAccessException catch (e) {
-        if (!_stopped && e.reason.endsSession) onEvent(ProofingSessionAccessLost(ref, e.reason));
-        return;
-      } catch (_) {
-        if (_paused) continue; // pause() aborted the wait on purpose
-        await Future.delayed(retryDelay);
-      } finally {
-        httpClient.close();
-        if (identical(_inflight, httpClient)) _inflight = null;
-      }
+      final next = await _waitForChange(current);
+      if (next == null) return;
+      current = next;
     }
+  }
+
+  /// One long-poll for a change from [current]: the session to watch on from
+  /// ([current] again after a failed request), or null when watching ends.
+  Future<ProofingSessionInfo?> _waitForChange(ProofingSessionInfo current) async {
+    final httpClient = http.Client();
+    _inflight = httpClient;
+    try {
+      final next = await client.waitForChange(ref, current.changeKey!, httpClient: httpClient);
+      if (_stopped || _report(current, next)) return null;
+      return next;
+    } on ProofingSessionAccessException catch (e) {
+      if (!_stopped && e.reason.endsSession) onEvent(ProofingSessionAccessLost(ref, e.reason));
+      return null;
+    } catch (_) {
+      if (_stopped) return null; // stop() aborted the wait
+      // pause() aborted the wait on purpose: no retry delay.
+      if (!identical(_abortedByPause, httpClient)) await Future.delayed(retryDelay);
+      return current;
+    } finally {
+      httpClient.close();
+      if (identical(_inflight, httpClient)) _inflight = null;
+      if (identical(_abortedByPause, httpClient)) _abortedByPause = null;
+    }
+  }
+
+  static bool _isOver(ProofingSessionInfo session) =>
+      session.lifecycle == proofingLifecycleComplete || proofingSessionFinished(session.status);
+
+  /// Reports how [next] differs from [current]; true when there's nothing
+  /// left to watch for.
+  bool _report(ProofingSessionInfo current, ProofingSessionInfo next) {
+    final lost = next.accessLost;
+    if (lost != null) {
+      onEvent(ProofingSessionAccessLost(ref, lost));
+      return true;
+    }
+    // Submitted (on either device): nothing left to watch for.
+    if (next.lifecycle == proofingLifecycleComplete) {
+      onEvent(ProofingSessionCompleted(ref));
+      return true;
+    }
+    if (next.resetCount > current.resetCount) {
+      onEvent(ProofingSessionWasReset(ref, next));
+    } else if (next.changeKey != current.changeKey) {
+      onEvent(ProofingSessionUpdated(ref, next));
+    }
+    return next.changeKey == null;
   }
 
   /// The app went to the background: hang up the open long-poll right away.
@@ -134,6 +157,7 @@ class ProofingSessionWatcher {
   /// app often never delivers. No polling until [resume].
   void pause() {
     _paused = true;
+    _abortedByPause = _inflight;
     _inflight?.close();
   }
 
@@ -144,8 +168,11 @@ class ProofingSessionWatcher {
     _resumed = null;
   }
 
+  /// Stops watching, hanging up the open long-poll rather than leaving it
+  /// open until the server's wait window ends.
   void stop() {
     _stopped = true;
+    _inflight?.close();
     resume();
   }
 }

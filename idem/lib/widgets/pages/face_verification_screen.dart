@@ -10,8 +10,10 @@ import 'package:image/image.dart' as img;
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/services/face_verification_outcome.dart';
+import 'package:idem/widgets/common/brand_mark.dart';
 import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
+import 'package:idem/services/flow_step_plan.dart';
 
 // ── Enums & helpers ────────────────────────────────────────────────────────
 
@@ -113,21 +115,10 @@ class FlutterFaceVerificationScreen extends StatefulWidget {
     required this.onVerified,
     this.photoIssueDate,
     this.mode = LivenessMode.passive,
-    this.stepNumber = 3,
-    this.totalSteps = 4,
-  }) : testEngine = null;
-
-  const FlutterFaceVerificationScreen.withEngine({
-    super.key,
-    required FaceVerificationEngine engine,
-    required this.nfcImageBytes,
-    required this.onBackPressed,
-    required this.onVerified,
-    this.photoIssueDate,
-    this.mode = LivenessMode.passive,
-    this.stepNumber = 3,
-    this.totalSteps = 4,
-  }) : testEngine = engine;
+    this.stepNumber = FlowStepPlan.defaultFaceVerificationStep,
+    this.totalSteps = FlowStepPlan.defaultTotalSteps,
+    this.testEngine,
+  });
 
   @override
   State<FlutterFaceVerificationScreen> createState() => FlutterFaceVerificationScreenState();
@@ -879,7 +870,7 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
                 const SizedBox(height: 16),
                 Text(
                   context.l10n.faceSettingUp,
-                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 6),
                 Text(context.l10n.faceTakesAMoment, style: const TextStyle(color: Colors.white60, fontSize: 13)),
@@ -1364,7 +1355,7 @@ extension on FlutterFaceVerificationScreenState {
     return GuidedStatusBar(
       onDark: true,
       child: Scaffold(
-        backgroundColor: g.ink,
+        backgroundColor: g.header,
         body: Stack(
           fit: StackFit.expand,
           children: [
@@ -1433,7 +1424,7 @@ extension on FlutterFaceVerificationScreenState {
             children: [
               GuidedTopBar(
                 leading: GuidedRoundButton(icon: Icons.chevron_left, tooltip: 'Back', onPressed: _handleBack),
-                center: Image.asset(g.markAsset, width: 32, height: 32, excludeFromSemantics: true),
+                center: const BrandMark(size: 32, excludeFromSemantics: true),
               ),
               const GuidedStepBar(step: 3),
               Expanded(
@@ -1611,11 +1602,11 @@ extension on FlutterFaceVerificationScreenState {
           width: 88,
           height: 88,
           decoration: BoxDecoration(
-            color: passed ? g.success : const Color(0xFFD1293D),
+            color: passed ? g.success : g.error,
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: (passed ? g.successBright : const Color(0xFFD1293D)).withValues(alpha: 0.25),
+                color: (passed ? g.successBright : g.error).withValues(alpha: 0.25),
                 spreadRadius: 12,
               ),
             ],

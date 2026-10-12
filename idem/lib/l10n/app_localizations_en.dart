@@ -48,6 +48,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'This QR code moves the browser part of the verification to another browser. Open it with your phone\'s camera instead, or scan the QR code the browser shows for the IDEM app.';
 
   @override
+  String get accessUntrustedServer =>
+      'This QR code isn\'t from a verification service this app works with, so it wasn\'t opened.';
+
+  @override
   String get sessionOpenFailedTitle => 'Could not open verification';
 
   @override
@@ -83,15 +87,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get commonCancel => 'Cancel';
-
-  @override
-  String get commonYes => 'Yes';
-
-  @override
-  String get commonNo => 'No';
-
-  @override
-  String get nfcAvailableLabel => 'NFC available:';
 
   @override
   String get docNewScan => 'New scan';
@@ -151,7 +146,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get docActiveAuthentication => 'Active authentication';
 
   @override
-  String get docActiveAuthenticationSubtitle => 'Perform active authentication when reading the document';
+  String get docActiveAuthenticationSubtitle =>
+      'Perform active authentication when reading the document. A verification session follows its own flow.';
 
   @override
   String get docFaceEngine => 'Face verification engine';
@@ -310,9 +306,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get docNfcNotAvailable => 'NFC is not available';
 
   @override
-  String get docHavingTrouble => 'Having trouble?';
-
-  @override
   String get docPersonalInformation => 'Personal Information';
 
   @override
@@ -364,17 +357,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get docCategoryDateOfExpiry => 'Date of expiry';
 
   @override
-  String get docNotAvailable => 'N/A';
-
-  @override
-  String get docWalletEmpty => 'Your wallet is empty';
-
-  @override
-  String docWalletEmptyHint(String addToWallet) {
-    return 'Scan a document and tap \"$addToWallet\" to see it here.';
-  }
-
-  @override
   String get docWalletDocumentNumber => 'Document number';
 
   @override
@@ -408,9 +390,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get docOptionalData => 'Optional Data';
 
   @override
-  String get docNoPhoto => 'No Photo';
-
-  @override
   String get docAvailableDataGroups => 'Available Data Groups';
 
   @override
@@ -439,40 +418,6 @@ class AppLocalizationsEn extends AppLocalizations {
     });
     return '$_temp0 Data';
   }
-
-  @override
-  String get docCanNumber => 'CAN number';
-
-  @override
-  String get docCanNumberRequired => 'Please enter CAN number';
-
-  @override
-  String get docPassportNumber => 'Passport number';
-
-  @override
-  String get docPassportNumberRequired => 'Please enter passport number';
-
-  @override
-  String get docDateOfBirthRequired => 'Please select Date of Birth';
-
-  @override
-  String get docDateOfExpiryRequired => 'Please select Date of Expiry';
-
-  @override
-  String get docDbaWithPace => 'DBA with PACE';
-
-  @override
-  String docAccessProtocol(String protocol) {
-    return 'Access protocol: $protocol';
-  }
-
-  @override
-  String docAccessKeyType(String keyType) {
-    return 'Access key type: $keyType';
-  }
-
-  @override
-  String get docCopy => 'Copy';
 
   @override
   String get docImageNoData => 'No image data available.';
@@ -509,6 +454,67 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get docIllustrationDrivingLicence => 'DRIVING LICENCE';
+
+  @override
+  String get docPhotoStepLabel => 'Document photo';
+
+  @override
+  String get docPhotoFrontTitle => 'Photograph the front';
+
+  @override
+  String get docPhotoFrontInstructionsPassport =>
+      'Place the page with your photo and personal details inside the frame. Use a flat surface and good light, and avoid glare.';
+
+  @override
+  String get docPhotoFrontInstructionsCard =>
+      'Place the front of your document, the side with your photo, inside the frame. Use a flat surface and good light, and avoid glare.';
+
+  @override
+  String get docPhotoBackTitle => 'Now photograph the back';
+
+  @override
+  String get docPhotoBackInstructions => 'Turn your document over and place the back inside the frame.';
+
+  @override
+  String get docPhotoSideFront => 'Front';
+
+  @override
+  String get docPhotoSideBack => 'Back';
+
+  @override
+  String docPhotoSideProgress(String side, int current, int total) {
+    return '$side · $current of $total';
+  }
+
+  @override
+  String get docPhotoNoBack => 'My document has no back';
+
+  @override
+  String get docPhotoTake => 'Take photo';
+
+  @override
+  String get docPhotoReviewTitle => 'Check the photo';
+
+  @override
+  String get docPhotoReviewMessage => 'Are all details sharp and readable, without glare or anything covering them?';
+
+  @override
+  String get docPhotoReviewScannedMessage =>
+      'This side was photographed while the MRZ was read. Are all details sharp and readable, without glare or anything covering them?';
+
+  @override
+  String get docPhotoRetake => 'Retake';
+
+  @override
+  String get docPhotoUse => 'Use photo';
+
+  @override
+  String get docPhotoErrorNoCamera => 'No camera available';
+
+  @override
+  String docPhotoErrorCamera(String error) {
+    return 'Could not use the camera: $error';
+  }
 
   @override
   String get faceActionBlink => 'Blink your eyes';
@@ -904,22 +910,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get proofingAttributeEverything => 'Everything the app reads from your document';
 
   @override
-  String get proofingSessionSectionTitle => 'Identity proofing session';
-
-  @override
-  String proofingSubmitSectionBody(String relyingParty) {
-    return 'This scan is for a session opened by $relyingParty. Send the document identity and face verification result back to them.';
-  }
-
-  @override
-  String get proofingSubmitting => 'Submitting...';
-
-  @override
-  String proofingSubmitTo(String relyingParty) {
-    return 'Submit to $relyingParty';
-  }
-
-  @override
   String proofingSentTo(String relyingParty) {
     return 'Sent to $relyingParty';
   }
@@ -941,32 +931,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get proofingAddToWallet => 'Add to Wallet';
 
   @override
-  String get proofingSubmittedTitle => 'Submitted';
-
-  @override
-  String proofingSubmittedDocument(String relyingParty) {
-    return 'Your document identity was sent to $relyingParty.';
-  }
-
-  @override
-  String proofingSubmittedDocumentAndFace(String relyingParty) {
-    return 'Your document identity and face verification result were sent to $relyingParty.';
-  }
-
-  @override
-  String get proofingSubmitFailedTitle => 'Submit Failed';
-
-  @override
-  String get proofingSubmitFailedMessage => 'Failed to submit the result to the relying party:';
-
-  @override
   String get proofingDialogOk => 'OK';
-
-  @override
-  String get proofingDialogRetryHint => 'Please try again or make an issue in GitHub of this project.';
-
-  @override
-  String get proofingRetry => 'Retry';
 
   @override
   String proofingScanDocument(String docType) {
@@ -993,6 +958,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get proofingScanMrzInstructions =>
       'Align the Machine Readable Zone (MRZ) with the frame at the bottom of the screen. Hold steady until scanning completes.';
+
+  @override
+  String get proofingScanMrzPhotoInstructions =>
+      'Place the whole side with the Machine Readable Zone (MRZ) inside the frame, on a flat surface in good light. Hold steady: once the MRZ is read, this side is photographed too.';
 
   @override
   String proofingEnterDetailsManually(String docType) {
@@ -1045,6 +1014,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get proofingWhatDocumentIdentity => 'your document identity';
 
   @override
+  String get proofingWhatDocumentPhoto => 'your document photo';
+
+  @override
   String get proofingWhatFaceVerification => 'your face verification';
 
   @override
@@ -1069,6 +1041,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get proofingRequestTimedOut =>
+      'The server did not respond in time - check your internet connection and try again';
+
+  @override
   String proofingRequestFailed(String what, String details) {
     return '$what failed: $details';
   }
@@ -1086,9 +1062,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get proofingRequestDeviceState => 'Reporting the device state';
 
   @override
-  String get proofingRequestSubmitResult => 'Submitting the result';
-
-  @override
   String proofingRequestStepStarted(String step) {
     return 'Marking step $step started';
   }
@@ -1098,6 +1071,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get proofingRequestNfcStep => 'Submitting the nfc step';
+
+  @override
+  String get proofingRequestDocumentPhotoStep => 'Submitting the document photo step';
 
   @override
   String get proofingRequestFaceStep => 'Submitting the face verification step';

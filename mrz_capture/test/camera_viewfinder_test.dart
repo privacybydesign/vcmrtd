@@ -412,7 +412,8 @@ void main() {
       expect(rect.width, 360);
       expect(rect.height, closeTo(360 / 1.42, 0.001));
       expect(rect.left, 20);
-      expect(rect.top, closeTo((800 - (360 / 1.42)) / 2 - 60, 0.001));
+      // Centred like the frame drawn over the preview.
+      expect(rect.top, closeTo((800 - (360 / 1.42)) / 2, 0.001));
     });
 
     testWidgets('overlayRect uses landscape sizing', (tester) async {
@@ -431,7 +432,7 @@ void main() {
       expect(rect.height, expectedHeight);
       expect(rect.width, closeTo(expectedWidth, 0.001));
       expect(rect.left, closeTo((800 - expectedWidth) / 2, 0.001));
-      expect(rect.top, closeTo((400 - expectedHeight) / 2 - 60, 0.001));
+      expect(rect.top, closeTo((400 - expectedHeight) / 2, 0.001));
     });
 
     testWidgets('previewRect centers scaled preview for portrait screen', (tester) async {

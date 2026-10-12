@@ -30,8 +30,13 @@ class _FakeRegula implements RegulaFaceService {
   }
 }
 
-const _announcement = ProofingFaceVerification(provider: 'regula', faceApiUrl: 'https://faceapi.test', tag: 'ips:s1');
-const _issuerAnnouncement = ProofingFaceVerification(provider: 'regula', faceApiUrl: 'https://faceapi.test', tag: '');
+const _announcement = ProofingFaceVerification(
+  provider: 'regula',
+  faceApiUrl: 'https://faceapi.test',
+  tag: 'ips-tref_s1',
+  fromSession: true,
+);
+const _issuerAnnouncement = ProofingFaceVerification(provider: 'regula', faceApiUrl: 'https://faceapi.test');
 
 Future<List<FaceVerificationOutcome>> _pump(
   WidgetTester tester,
@@ -68,7 +73,7 @@ void main() {
     expect(find.text('Liveness Confirmed'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 2));
-    expect(regula.lastTag, 'ips:s1');
+    expect(regula.lastTag, 'ips-tref_s1');
     expect(regula.lastServiceUrl, 'https://faceapi.test');
     expect(verified.single.engine, 'regula');
     expect(verified.single.livenessTransactionId, 'tx-1');
@@ -144,6 +149,36 @@ void main() {
       await tester.tap(find.text('Scan document again'));
       expect(backs, 1);
       expect(verified, isEmpty);
+    });
+
+    testWidgets('a capture that fails before the issuer was asked retries right here', (tester) async {
+      var backs = 0;
+      final asked = <String>[];
+      final regula = _FakeRegula([
+        Exception('camera unavailable'),
+        const RegulaLivenessResult(isLive: true, transactionId: 'tx-2'),
+      ]);
+      final verified = await _pump(
+        tester,
+        regula,
+        matchFace: (tx) async {
+          asked.add(tx);
+          return FaceMatch(matched: true, similarity: 0.9);
+        },
+        onBack: () => backs++,
+      );
+
+      await tester.tap(find.text('Start Verification'));
+      await tester.pump();
+      expect(find.text('Scan document again'), findsNothing);
+
+      await tester.tap(find.text('Try Again'));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 2));
+      expect(backs, 0);
+      expect(asked, ['tx-2']);
+      expect(verified.single.matchScore, 0.9);
     });
   });
 }

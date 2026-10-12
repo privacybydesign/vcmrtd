@@ -1,16 +1,24 @@
 ﻿import 'package:flutter/material.dart';
 
 class MRZCameraOverlay extends StatelessWidget {
-  const MRZCameraOverlay({required this.child, super.key});
+  const MRZCameraOverlay({required this.child, this.frameRatio = passportFrameRatio, super.key});
 
-  static const _documentFrameRatio = 1.42; // Passport's size (ISO/IEC 7810 ID-3) is 125mm × 88mm
+  /// A passport data page (ISO/IEC 7810 ID-3) is 125mm × 88mm.
+  static const passportFrameRatio = 1.42;
+
+  /// An ID card or driving licence (ISO/IEC 7810 ID-1) is 85.6mm × 54mm.
+  static const cardFrameRatio = 85.6 / 54;
+
   final Widget child;
+
+  /// The frame's width / height; the passport page's by default.
+  final double frameRatio;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (_, c) {
-        final overlayRect = _calculateOverlaySize(Size(c.maxWidth, c.maxHeight));
+        final overlayRect = RRect.fromRectAndRadius(frameRect(Size(c.maxWidth, c.maxHeight), frameRatio), _frameRadius);
         return Stack(
           children: [
             child,
@@ -25,26 +33,21 @@ class MRZCameraOverlay extends StatelessWidget {
     );
   }
 
-  RRect _calculateOverlaySize(Size size) {
+  static const _frameRadius = Radius.circular(8);
+
+  /// Where the frame lies in a view of [size]: centred, 90% of the width in
+  /// portrait and 75% of the height in landscape. The camera view reads text
+  /// and cuts pictures to this same rectangle.
+  static Rect frameRect(Size size, double frameRatio) {
     double width, height;
     if (size.height > size.width) {
       width = size.width * 0.9;
-      height = width / _documentFrameRatio;
+      height = width / frameRatio;
     } else {
       height = size.height * 0.75;
-      width = height * _documentFrameRatio;
+      width = height * frameRatio;
     }
-    final topOffset = (size.height - height) / 2;
-    final leftOffset = (size.width - width) / 2;
-
-    final rect = RRect.fromLTRBR(
-      leftOffset,
-      topOffset,
-      leftOffset + width,
-      topOffset + height,
-      const Radius.circular(8),
-    );
-    return rect;
+    return Rect.fromLTWH((size.width - width) / 2, (size.height - height) / 2, width, height);
   }
 }
 

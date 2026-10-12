@@ -84,8 +84,8 @@ Widget _buildScreenWithPortrait() {
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
-    home: FlutterFaceVerificationScreen.withEngine(
-      engine: engine,
+    home: FlutterFaceVerificationScreen(
+      testEngine: engine,
       nfcImageBytes: _fakePortraitPng(),
       onBackPressed: () {},
       onVerified: (_) {},
@@ -99,8 +99,8 @@ Widget _buildScreen() {
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
-    home: FlutterFaceVerificationScreen.withEngine(
-      engine: engine,
+    home: FlutterFaceVerificationScreen(
+      testEngine: engine,
       nfcImageBytes: Uint8List(1),
       onBackPressed: () {},
       onVerified: (_) {},
@@ -114,8 +114,8 @@ Widget _buildScreenWithBack(VoidCallback onBackPressed) {
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
-    home: FlutterFaceVerificationScreen.withEngine(
-      engine: engine,
+    home: FlutterFaceVerificationScreen(
+      testEngine: engine,
       nfcImageBytes: Uint8List(1),
       onBackPressed: onBackPressed,
       onVerified: (_) {},
@@ -128,8 +128,8 @@ Widget _buildScreenWithWorker(_FakeWorker2 worker) {
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
-    home: FlutterFaceVerificationScreen.withEngine(
-      engine: engine,
+    home: FlutterFaceVerificationScreen(
+      testEngine: engine,
       nfcImageBytes: Uint8List(1),
       onBackPressed: () {},
       onVerified: (_) {},
@@ -143,8 +143,8 @@ Widget _buildScreenWithIssueDate(DateTime issueDate) {
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
-    home: FlutterFaceVerificationScreen.withEngine(
-      engine: engine,
+    home: FlutterFaceVerificationScreen(
+      testEngine: engine,
       nfcImageBytes: Uint8List(1),
       photoIssueDate: issueDate,
       onBackPressed: () {},
@@ -643,8 +643,8 @@ void main() {
         MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: FlutterFaceVerificationScreen.withEngine(
-            engine: FaceVerificationEngine.withWorker(_FakeWorker2()),
+          home: FlutterFaceVerificationScreen(
+            testEngine: FaceVerificationEngine.withWorker(_FakeWorker2()),
             nfcImageBytes: Uint8List(1),
             onBackPressed: () => backCount++,
             onVerified: (_) => verifiedCount++,

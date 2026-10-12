@@ -27,21 +27,6 @@ PassportData _passportData() {
 }
 
 void main() {
-  group('WalletEmptyState', () {
-    testWidgets('shows the empty state copy', (tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: WalletEmptyState(),
-        ),
-      );
-      await tester.pump();
-
-      expect(find.text('Your wallet is empty'), findsOneWidget);
-    });
-  });
-
   group('WalletList', () {
     testWidgets('lists cards, most recently added first', (tester) async {
       final container = ProviderContainer();

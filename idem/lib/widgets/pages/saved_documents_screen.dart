@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:idem/providers/wallet_provider.dart';
+import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:idem/widgets/pages/choose_document_screen.dart';
 import 'package:idem/widgets/pages/wallet_widgets.dart';
@@ -127,7 +128,7 @@ class SavedDocumentsScreen extends ConsumerWidget {
                             TextButton.icon(
                               onPressed: () => ref.read(walletProvider.notifier).remove(card.id),
                               style: TextButton.styleFrom(
-                                foregroundColor: const Color(0xFFB3261E),
+                                foregroundColor: g.error,
                                 minimumSize: const Size.fromHeight(44),
                                 shape: const RoundedRectangleBorder(),
                                 textStyle: Theme.of(
@@ -151,11 +152,12 @@ class SavedDocumentsScreen extends ConsumerWidget {
                   children: [
                     GuidedButton(label: 'Scan QR code', icon: Icons.qr_code_scanner, onPressed: onScanQr),
                     const SizedBox(height: 14),
-                    Text(
-                      'Powered by Idem',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 12, color: g.muted),
-                    ),
+                    if (context.brand.showPoweredByIdem)
+                      Text(
+                        'Powered by Idem',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 12, color: g.muted),
+                      ),
                   ],
                 ),
               ),

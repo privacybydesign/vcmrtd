@@ -74,11 +74,7 @@ class SettingsScreen extends ConsumerWidget {
               context: context,
               title: l10n.docFaceEngine,
               current: ref.read(faceEngineProvider),
-              options: [
-                (FaceEngineChoice.regula, _faceEngineLabel(l10n, FaceEngineChoice.regula)),
-                (FaceEngineChoice.onDevice, _faceEngineLabel(l10n, FaceEngineChoice.onDevice)),
-                (FaceEngineChoice.iris, _faceEngineLabel(l10n, FaceEngineChoice.iris)),
-              ],
+              options: [for (final choice in FaceEngineChoice.values) (choice, _faceEngineLabel(l10n, choice))],
               onSelected: (choice) => ref.read(faceEngineProvider.notifier).set(choice),
             ),
           ),
@@ -94,8 +90,8 @@ class SettingsScreen extends ConsumerWidget {
                 title: l10n.docLivenessDetection,
                 current: ref.read(livenessModeProvider),
                 options: [
-                  (LivenessMode.passive, l10n.docLivenessPassive),
-                  (LivenessMode.active, l10n.docLivenessActive),
+                  for (final mode in const [LivenessMode.passive, LivenessMode.active])
+                    (mode, _livenessModeLabel(l10n, mode)),
                 ],
                 onSelected: (mode) => ref.read(livenessModeProvider.notifier).set(mode),
               ),
@@ -111,10 +107,7 @@ class SettingsScreen extends ConsumerWidget {
                 context: context,
                 title: l10n.docOcrEngine,
                 current: ref.read(ocrEngineProvider),
-                options: const [
-                  (OcrEngine.googleMlKit, 'Google ML Kit'),
-                  (OcrEngine.tesseract4android, 'Tesseract4Android'),
-                ],
+                options: [for (final engine in OcrEngine.values) (engine, _ocrEngineLabel(engine))],
                 onSelected: (engine) => ref.read(ocrEngineProvider.notifier).set(engine),
               ),
             ),
@@ -278,11 +271,12 @@ class SettingsScreen extends ConsumerWidget {
                         ),
                       ]),
                     const SizedBox(height: 32),
-                    Text(
-                      'Powered by Idem',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 12, color: g.muted),
-                    ),
+                    if (context.brand.showPoweredByIdem)
+                      Text(
+                        'Powered by Idem',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 12, color: g.muted),
+                      ),
                     FutureBuilder<PackageInfo>(
                       future: PackageInfo.fromPlatform(),
                       builder: (context, snapshot) => snapshot.hasData

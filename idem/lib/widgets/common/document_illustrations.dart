@@ -52,7 +52,7 @@ Widget buildPassportIllustration() {
             height: 90,
             width: double.infinity,
             child: DecoratedBox(
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: Color(0xFF424242),
                 borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
                 border: Border.fromBorderSide(BorderSide(color: Color(0xFF424242), width: 2)),
@@ -65,9 +65,9 @@ Widget buildPassportIllustration() {
                     children: [
                       Text(
                         l10n.docIllustrationPassport,
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
                       ),
-                      Text(l10n.docIllustrationIssuer, style: TextStyle(fontSize: 10, color: Colors.white70)),
+                      Text(l10n.docIllustrationIssuer, style: const TextStyle(fontSize: 10, color: Colors.white70)),
                     ],
                   ),
                 ),
@@ -80,7 +80,7 @@ Widget buildPassportIllustration() {
             height: 100,
             width: double.infinity,
             child: DecoratedBox(
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: Color(0xFFBDBDBD),
                 borderRadius: BorderRadius.vertical(bottom: Radius.circular(8)),
                 border: Border.fromBorderSide(BorderSide(color: Color(0xFF424242), width: 2)),
@@ -88,7 +88,7 @@ Widget buildPassportIllustration() {
               child: Row(
                 children: [
                   // Photo placeholder
-                  SizedBox(
+                  const SizedBox(
                     width: 70,
                     child: Center(
                       child: CircleAvatar(
@@ -104,9 +104,12 @@ Widget buildPassportIllustration() {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(l10n.docIllustrationName, style: TextStyle(fontSize: 10, color: Color(0xFF333333))),
-                        Text(l10n.docIllustrationNationality, style: TextStyle(fontSize: 10, color: Color(0xFF333333))),
-                        Text(l10n.docIllustrationDob, style: TextStyle(fontSize: 10, color: Color(0xFF333333))),
+                        Text(l10n.docIllustrationName, style: const TextStyle(fontSize: 10, color: Color(0xFF333333))),
+                        Text(
+                          l10n.docIllustrationNationality,
+                          style: const TextStyle(fontSize: 10, color: Color(0xFF333333)),
+                        ),
+                        Text(l10n.docIllustrationDob, style: const TextStyle(fontSize: 10, color: Color(0xFF333333))),
                       ],
                     ),
                   ),
@@ -120,7 +123,7 @@ Widget buildPassportIllustration() {
   );
 }
 
-const BorderColor = Color(0xFFB48DA3);
+const _borderColor = Color(0xFFB48DA3);
 
 Widget buildDrivingLicenceIllustration() {
   return Container(
@@ -132,7 +135,7 @@ Widget buildDrivingLicenceIllustration() {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ),
-      border: Border.all(color: BorderColor, width: 1.2),
+      border: Border.all(color: _borderColor, width: 1.2),
       borderRadius: BorderRadius.circular(8),
       boxShadow: [BoxShadow(color: Colors.grey.withValues(alpha: 0.15), blurRadius: 3, offset: const Offset(2, 2))],
     ),

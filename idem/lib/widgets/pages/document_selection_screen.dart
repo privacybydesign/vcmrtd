@@ -4,6 +4,7 @@ import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/providers/wallet_provider.dart';
+import 'package:idem/widgets/common/brand_mark.dart';
 import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/theme/text_styles.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
@@ -52,10 +53,10 @@ class DocumentTypeSelectionScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: brand.appBarLogoAsset != null
-            ? Image.asset(brand.appBarLogoAsset!, height: 32, semanticLabel: brand.appBarTitle)
+        title: brand.logo != null
+            ? const BrandMark(size: 32, onDark: true)
             : Text(
-                brand.appBarTitle,
+                brand.name,
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22),
               ),
         actions: [
@@ -244,18 +245,15 @@ class _NewScanSheet extends StatelessWidget {
 List<Widget> _documentTypeOptions(BuildContext context, Function(DocumentType) onDocumentTypeSelected) {
   return [
     _OptionCard(
-      context: context,
       title: context.l10n.docPassport,
       subtitle: context.l10n.docPassportSubtitle,
       icon: Icons.book,
       accentColor: context.brand.documentOptionAccent ?? const Color(0xFF6b6868),
       onTap: () => onDocumentTypeSelected(DocumentType.passport),
-      showBadge: true,
       badgeText: context.l10n.docMostCommon,
     ),
     const SizedBox(height: 16),
     _OptionCard(
-      context: context,
       title: context.l10n.docIdentityCard,
       subtitle: context.l10n.docIdentityCardSubtitle,
       icon: Icons.credit_card,
@@ -264,7 +262,6 @@ List<Widget> _documentTypeOptions(BuildContext context, Function(DocumentType) o
     ),
     const SizedBox(height: 16),
     _OptionCard(
-      context: context,
       title: context.l10n.docDrivingLicence,
       subtitle: context.l10n.docDrivingLicenceSubtitle,
       icon: Icons.directions_car,
@@ -276,7 +273,6 @@ List<Widget> _documentTypeOptions(BuildContext context, Function(DocumentType) o
 
 Widget _qrScanOption(BuildContext context, VoidCallback onScanQrPressed) {
   return _OptionCard(
-    context: context,
     title: context.l10n.docScanQrTitle,
     subtitle: context.l10n.docScanQrSubtitle,
     icon: Icons.qr_code_scanner,
@@ -287,7 +283,6 @@ Widget _qrScanOption(BuildContext context, VoidCallback onScanQrPressed) {
 
 Widget _advancedSettingsOption(BuildContext context, VoidCallback onSettingsPressed) {
   return _OptionCard(
-    context: context,
     title: context.l10n.docAdvancedSettings,
     subtitle: context.l10n.docAdvancedSettingsSubtitle,
     icon: Icons.settings,
@@ -315,10 +310,10 @@ class _Header extends StatelessWidget {
               width: 80,
               height: 80,
               decoration: BoxDecoration(color: accent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(40)),
-              child: brand.markAsset != null
-                  ? Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Image.asset(brand.markAsset!, excludeFromSemantics: true),
+              child: brand.logo != null
+                  ? const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: BrandMark(size: 56, excludeFromSemantics: true),
                     )
                   : Icon(Icons.document_scanner, size: 40, color: accent),
             ),
@@ -343,23 +338,19 @@ class _Header extends StatelessWidget {
 
 class _OptionCard extends StatelessWidget {
   const _OptionCard({
-    required this.context,
     required this.title,
     required this.subtitle,
     required this.icon,
     required this.accentColor,
     required this.onTap,
-    this.showBadge = false,
     this.badgeText,
   });
 
-  final BuildContext context;
   final String title;
   final String subtitle;
   final IconData icon;
   final Color accentColor;
   final VoidCallback onTap;
-  final bool showBadge;
   final String? badgeText;
 
   @override
@@ -416,7 +407,7 @@ class _OptionCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (showBadge && badgeText != null)
+              if (badgeText != null)
                 Positioned(
                   top: 8,
                   right: 8,
@@ -493,7 +484,7 @@ class _GuidedHome extends StatelessWidget {
             SliverToBoxAdapter(
               child: Container(
                 decoration: BoxDecoration(
-                  color: g.ink,
+                  color: g.header,
                   borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
                 ),
                 padding: EdgeInsets.fromLTRB(20, MediaQuery.paddingOf(context).top + 20, 20, 28),
@@ -502,7 +493,7 @@ class _GuidedHome extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Image.asset(g.logoOnDarkAsset, width: 40, height: 40, semanticLabel: context.brand.appBarTitle),
+                        const BrandMark(size: 40, onDark: true),
                         const Spacer(),
                         GuidedRoundButton(
                           icon: Icons.settings_outlined,
@@ -529,8 +520,7 @@ class _GuidedHome extends StatelessWidget {
                     Text(
                       connected
                           ? 'You accepted a request from $connectedRelyingParty. Continue where you left off.'
-                          : 'When a ${context.brand.appBarTitle} service asks you to verify who you are, it shows a QR '
-                                'code. Scan it here to start.',
+                          : 'When a service asks you to verify who you are, it shows a QR code. Scan it here to start.',
                       style: TextStyle(fontSize: 16, height: 1.5, color: g.heroMuted),
                     ),
                     const SizedBox(height: 24),
@@ -593,11 +583,12 @@ class _GuidedHome extends StatelessWidget {
                       ],
                       const Spacer(),
                       const SizedBox(height: 24),
-                      Text(
-                        'Powered by Idem',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 12, color: g.muted),
-                      ),
+                      if (context.brand.showPoweredByIdem)
+                        Text(
+                          'Powered by Idem',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 12, color: g.muted),
+                        ),
                     ],
                   ),
                 ),

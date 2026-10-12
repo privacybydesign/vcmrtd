@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:idem/theme/app_theme.dart';
 
-/// Per-brand look for a white-label build, carried on [ThemeData.extensions].
+/// Per-brand look, carried on [ThemeData.extensions] and built by
+/// [brandThemeFor].
 ///
 /// Every colour and style here is an override: null means "keep the widget's
-/// own default", so the stock Idem build ([BrandTheme.idem], all nulls) looks
-/// exactly as it did before white-labelling existed. Widgets read it through
-/// [BrandContext.brand], which falls back to [BrandTheme.idem] when no theme
+/// own default". Widgets read it through [BrandContext.brand], which falls
+/// back to [BrandTheme.idem] (all nulls, the classic layout) when no theme
 /// carries one (e.g. a bare MaterialApp in a widget test).
 @immutable
 class BrandTheme extends ThemeExtension<BrandTheme> {
   const BrandTheme({
-    required this.appBarTitle,
-    this.appBarLogoAsset,
-    this.markAsset,
+    required this.name,
+    this.logo,
     this.showPoweredByIdem = false,
     this.accent,
     this.success,
@@ -29,16 +29,14 @@ class BrandTheme extends ThemeExtension<BrandTheme> {
     this.guided,
   });
 
-  static const idem = BrandTheme(appBarTitle: 'VCMRTD');
+  static const idem = BrandTheme(name: 'VCMRTD');
 
-  /// Home app bar title; also the logo's semantic label when [appBarLogoAsset] is set.
-  final String appBarTitle;
+  /// The brand's name: the home app bar title, the wordmark when there is no
+  /// [logo], and the logo's semantic label when there is.
+  final String name;
 
-  /// Logo shown instead of [appBarTitle] on the (dark) home app bar.
-  final String? appBarLogoAsset;
-
-  /// Square brand mark, shown in the home header instead of the generic scanner icon.
-  final String? markAsset;
+  /// Square brand mark; see [BrandMark].
+  final ImageProvider? logo;
 
   /// Adds a "Powered by Idem" line to the home screen.
   final bool showPoweredByIdem;
@@ -91,15 +89,14 @@ extension BrandContext on BuildContext {
   BrandTheme get brand => Theme.of(this).extension<BrandTheme>() ?? BrandTheme.idem;
 }
 
-/// Palette and assets for the guided layout. Only brands that opt into that
-/// layout provide one, so it has no defaults.
+/// Palette for the guided layout, derived from a brand's colours by
+/// [brandThemeFor], so it has no defaults.
 @immutable
 class GuidedStyle {
   const GuidedStyle({
-    required this.logoOnDarkAsset,
-    required this.markAsset,
     required this.headingFontFamily,
     required this.ink,
+    required this.header,
     required this.slate,
     required this.bodyText,
     required this.muted,
@@ -123,16 +120,20 @@ class GuidedStyle {
     required this.successBright,
     required this.successTint,
     required this.successText,
+    required this.error,
     required this.primaryButtonStyle,
     required this.secondaryButtonStyle,
   });
 
-  final String logoOnDarkAsset;
-  final String markAsset;
-  final String headingFontFamily;
+  /// Null is the platform's default font.
+  final String? headingFontFamily;
 
-  /// Primary text, and the background of dark (hero and camera) areas.
+  /// Primary text.
   final Color ink;
+
+  /// The background of dark areas: the home hero, card headers and camera
+  /// screens. Always dark enough for white text.
+  final Color header;
   final Color slate;
   final Color bodyText;
   final Color muted;
@@ -165,6 +166,9 @@ class GuidedStyle {
   final Color successBright;
   final Color successTint;
   final Color successText;
+
+  /// Errors and failed states.
+  final Color error;
 
   final ButtonStyle primaryButtonStyle;
   final ButtonStyle secondaryButtonStyle;

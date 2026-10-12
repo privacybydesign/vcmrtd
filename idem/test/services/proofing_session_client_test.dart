@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -9,6 +10,8 @@ import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/services/proofing_session_client.dart';
 
 void main() {
+  group('timeouts', _timeoutTests);
+
   group('ProofingChipAccess', () {
     test('round-trips a driving licence key through the server view into the NFC screen\'s MRZ', () {
       final key = ProofingChipAccess.fromScannedMrz(
@@ -33,27 +36,76 @@ void main() {
     });
   });
 
+  group('ProofingBranding', () {
+    Map<String, dynamic> view(Object? branding) => {
+      'id': 'sess-1',
+      'relyingParty': 'CM.com B.V.',
+      'expiresAt': '2030-01-01T00:00:00Z',
+      'branding': ?branding,
+    };
+
+    test('parses the requester\'s theme, leaving out what it does not set', () {
+      final info = ProofingSessionInfo.fromJson(
+        view({'name': 'CM Tickets', 'primaryColor': '#036BD2', 'fontFamily': '"Alexandria", sans-serif', 'hasLogo': true}),
+      );
+      expect(info.relyingParty, 'CM.com B.V.');
+      expect(
+        info.branding,
+        const ProofingBranding(
+          name: 'CM Tickets',
+          primaryColor: '#036BD2',
+          fontFamily: '"Alexandria", sans-serif',
+          hasLogo: true,
+        ),
+      );
+    });
+
+    test('is absent from a session without one', () {
+      expect(ProofingSessionInfo.fromJson(view(null)).branding, isNull);
+    });
+  });
+
   group('ProofingFaceVerification', () {
     Map<String, dynamic> view([Object? faceVerification]) => {
       'id': 's1',
       'relyingParty': 'RP',
       'expiresAt': '2030-01-01T00:00:00Z',
-      if (faceVerification != null) 'faceVerification': faceVerification,
+      'faceVerification': ?faceVerification,
     };
 
     test('parses the Regula announcement from the session view', () {
       final info = ProofingSessionInfo.fromJson(
-        view({'provider': 'regula', 'faceApiUrl': 'https://faceapi.test', 'tag': 'ips:s1'}),
+        view({'provider': 'regula', 'faceApiUrl': 'https://faceapi.test', 'tag': 'ips-tref_s1'}),
       );
       expect(info.faceVerification?.isRegula, isTrue);
       expect(info.faceVerification?.faceApiUrl, 'https://faceapi.test');
-      expect(info.faceVerification?.tag, 'ips:s1');
+      expect(info.faceVerification?.tag, 'ips-tref_s1');
+      expect(info.faceVerification?.requiredBySession, isTrue);
     });
 
     test('is absent without an announcement, and not Regula without a Face API url', () {
       expect(ProofingSessionInfo.fromJson(view()).faceVerification, isNull);
-      final partial = ProofingSessionInfo.fromJson(view({'provider': 'regula', 'tag': 'ips:s1'}));
+      final partial = ProofingSessionInfo.fromJson(view({'provider': 'regula'}));
       expect(partial.faceVerification?.isRegula, isFalse);
+    });
+  });
+
+  group('ProofingSessionInfo.requiresActiveAuthentication', () {
+    Map<String, dynamic> view([List<String>? requiredChecks]) => {
+      'id': 's1',
+      'relyingParty': 'RP',
+      'expiresAt': '2030-01-01T00:00:00Z',
+      'requiredChecks': ?requiredChecks,
+    };
+
+    test('follows the flow: on with nfc.chip_auth, off without it', () {
+      final withChipAuth = ProofingSessionInfo.fromJson(view(['nfc.passive_auth', checkNfcChipAuth]));
+      expect(withChipAuth.requiresActiveAuthentication, isTrue);
+      expect(ProofingSessionInfo.fromJson(view(['nfc.passive_auth'])).requiresActiveAuthentication, isFalse);
+    });
+
+    test('is on for a server that does not list its checks', () {
+      expect(ProofingSessionInfo.fromJson(view()).requiresActiveAuthentication, isTrue);
     });
   });
 
@@ -247,138 +299,10 @@ void main() {
     });
   });
 
-  group('ProofingBiometricsInfo.toJson', () {
-    test('includes only the fields that are set', () {
-      final json = const ProofingBiometricsInfo(
-        faceMatchScore: 0.82,
-        faceVerified: true,
-        livenessResult: 'passed',
-        engine: 'on_device',
-      ).toJson();
-      expect(json, {'faceMatchScore': 0.82, 'faceVerified': true, 'livenessResult': 'passed', 'engine': 'on_device'});
-    });
-
-    test('omits the Iris-only-null faceMatchScore when the Iris SDK ran', () {
-      final json = const ProofingBiometricsInfo(faceVerified: true, livenessResult: 'passed', engine: 'iris').toJson();
-      expect(json.containsKey('faceMatchScore'), isFalse);
-      expect(json['engine'], 'iris');
-    });
-  });
-
   group('ProofingDeviceInfo.toJson', () {
     test('includes only the fields that are set', () {
       final json = const ProofingDeviceInfo(appVersion: '0.1.0+11', devicePlatform: 'ios').toJson();
       expect(json, {'appVersion': '0.1.0+11', 'devicePlatform': 'ios'});
-    });
-  });
-
-  group('buildProofingResultBody', () {
-    ProofingDocumentInfo document() => ProofingDocumentInfo.fromPassportData(
-      _fakePassportData(personalNumber: 'ABC123', placeOfBirth: ['Stockholm', 'SWE']),
-    );
-    ProofingPhotoInfo photo() => ProofingPhotoInfo.fromImage(Uint8List.fromList([1, 2, 3]), ImageType.jpeg);
-    ProofingPhotoInfo selfie() => ProofingPhotoInfo.fromSelfie(Uint8List.fromList([4, 5, 6]));
-    const mrtdEvidence = ProofingMrtdEvidence(efSod: 'aabb', dataGroups: {'DG1': '1122'}, documentType: 'icao');
-    const biometrics = ProofingBiometricsInfo(faceVerified: true, livenessResult: 'passed');
-    const device = ProofingDeviceInfo(appVersion: '0.1.0+11', devicePlatform: 'ios');
-
-    test('an empty requestedAttributes list is unrestricted — everything provided is sent', () {
-      final body = buildProofingResultBody(
-        status: 'approved',
-        requestedAttributes: const [],
-        document: document(),
-        photo: photo(),
-        selfie: selfie(),
-        mrtdEvidence: mrtdEvidence,
-        biometrics: biometrics,
-        device: device,
-      );
-      expect(body.keys.toSet(), {'status', 'document', 'photo', 'selfie', 'mrtdEvidence', 'biometrics', 'device'});
-      expect((body['document'] as Map)['personalNumber'], 'ABC123');
-    });
-
-    test('"dg1" alone includes the document but drops the dg11 extras, photo and selfie', () {
-      final body = buildProofingResultBody(
-        status: 'approved',
-        requestedAttributes: const ['dg1'],
-        document: document(),
-        photo: photo(),
-        selfie: selfie(),
-        mrtdEvidence: mrtdEvidence,
-        biometrics: biometrics,
-        device: device,
-      );
-      expect(body.containsKey('document'), isTrue);
-      expect((body['document'] as Map).containsKey('personalNumber'), isFalse);
-      expect((body['document'] as Map).containsKey('placeOfBirth'), isFalse);
-      expect(body.containsKey('photo'), isFalse);
-      expect(body.containsKey('selfie'), isFalse);
-      expect(body.containsKey('mrtdEvidence'), isFalse);
-      expect(body.containsKey('biometrics'), isFalse);
-      // device is operational metadata, never gated.
-      expect(body.containsKey('device'), isTrue);
-    });
-
-    test('"selfie" gates the selfie independently of "dg2"/"face_image" (the document photo)', () {
-      final body = buildProofingResultBody(
-        status: 'approved',
-        requestedAttributes: const ['selfie'],
-        photo: photo(),
-        selfie: selfie(),
-      );
-      expect(body.containsKey('photo'), isFalse);
-      expect(body.containsKey('selfie'), isTrue);
-    });
-
-    test('"dg1" plus "dg11" includes the dg11 extras too', () {
-      final body = buildProofingResultBody(
-        status: 'approved',
-        requestedAttributes: const ['dg1', 'dg11'],
-        document: document(),
-      );
-      expect((body['document'] as Map)['personalNumber'], 'ABC123');
-      expect((body['document'] as Map)['placeOfBirth'], 'Stockholm, SWE');
-    });
-
-    test('"face_image" is an alias for "dg2" for the photo', () {
-      final body = buildProofingResultBody(
-        status: 'approved',
-        requestedAttributes: const ['face_image'],
-        photo: photo(),
-      );
-      expect(body.containsKey('photo'), isTrue);
-      expect(body.containsKey('document'), isFalse);
-    });
-
-    test('"chip_checks" gates mrtdEvidence alone', () {
-      final body = buildProofingResultBody(
-        status: 'approved',
-        requestedAttributes: const ['chip_checks'],
-        mrtdEvidence: mrtdEvidence,
-        biometrics: biometrics,
-      );
-      expect(body.containsKey('mrtdEvidence'), isTrue);
-      expect(body.containsKey('biometrics'), isFalse);
-    });
-
-    test('"biometrics" gates biometrics alone', () {
-      final body = buildProofingResultBody(
-        status: 'approved',
-        requestedAttributes: const ['biometrics'],
-        mrtdEvidence: mrtdEvidence,
-        biometrics: biometrics,
-      );
-      expect(body.containsKey('biometrics'), isTrue);
-      expect(body.containsKey('mrtdEvidence'), isFalse);
-    });
-
-    test('an attribute nothing was requested for is never sent, even when provided', () {
-      final body = buildProofingResultBody(
-        status: 'approved',
-        requestedAttributes: const ['biometrics'],
-        photo: photo(),
-      );
-      expect(body.containsKey('photo'), isFalse);
     });
   });
 
@@ -541,31 +465,6 @@ void main() {
       );
     });
 
-    test('submitResult posts the built body and succeeds on a 200 response', () async {
-      await http.runWithClient(
-        () async {
-          await const ProofingSessionClient().submitResult(ref, status: 'approved', requestedAttributes: const []);
-        },
-        () => MockClient((request) async {
-          expect(request.method, 'POST');
-          expect(request.url.toString(), 'https://proof.example.com/api/v1/app/tok-1/result');
-          expect(request.headers['Content-Type'], 'application/json');
-          final body = json.decode(request.body) as Map<String, dynamic>;
-          expect(body['status'], 'approved');
-          return http.Response('', 200);
-        }),
-      );
-    });
-
-    test('submitResult throws when the server responds with a non-200 status', () async {
-      await http.runWithClient(() async {
-        expect(
-          () => const ProofingSessionClient().submitResult(ref, status: 'approved', requestedAttributes: const []),
-          throwsA(isA<Exception>()),
-        );
-      }, () => MockClient((request) async => http.Response('server error', 500)));
-    });
-
     test('submitNfcStep posts to .../steps/nfc with mrtdEvidence always included, no status', () async {
       await http.runWithClient(
         () async {
@@ -593,6 +492,67 @@ void main() {
       );
     });
 
+    test('submitDocumentPhotoStep posts front and back to .../steps/document_photo, leaving out a missing back '
+        'and a bsnRegion nobody gave', () async {
+      final bodies = <Map<String, dynamic>>[];
+      await http.runWithClient(
+        () async {
+          const front = ProofingDocumentPhotoSide(
+            photo: ProofingPhotoInfo(imageBase64: 'ZnJvbnQ=', mimeType: 'image/jpeg'),
+          );
+          const back = ProofingDocumentPhotoSide(
+            photo: ProofingPhotoInfo(imageBase64: 'YmFjaw==', mimeType: 'image/jpeg'),
+            bsnRegion: ProofingImageRegion(x: 0.1, y: 0.2, w: 0.3, h: 0.05),
+          );
+          final response = await const ProofingSessionClient().submitDocumentPhotoStep(ref, front: front, back: back);
+          expect(response.readyToSubmit, isTrue);
+          await const ProofingSessionClient().submitDocumentPhotoStep(ref, front: front);
+        },
+        () => MockClient((request) async {
+          expect(request.method, 'POST');
+          expect(request.url.toString(), 'https://proof.example.com/api/v1/app/tok-1/steps/document_photo');
+          expect(request.headers['Content-Type'], startsWith('application/json'));
+          bodies.add(json.decode(request.body) as Map<String, dynamic>);
+          return http.Response(
+            json.encode({
+              'status': 'in_progress',
+              'completedSteps': ['document_photo'],
+              'currentStep': '',
+              'lifecycle': 'ACTIVE',
+              'readyToSubmit': true,
+            }),
+            200,
+          );
+        }),
+      );
+      expect(bodies[0], {
+        'front': {'image': 'ZnJvbnQ=', 'mimeType': 'image/jpeg'},
+        'back': {
+          'image': 'YmFjaw==',
+          'mimeType': 'image/jpeg',
+          'bsnRegion': {'x': 0.1, 'y': 0.2, 'w': 0.3, 'h': 0.05},
+        },
+      });
+      // A passport: no back key at all.
+      expect(bodies[1], {
+        'front': {'image': 'ZnJvbnQ=', 'mimeType': 'image/jpeg'},
+      });
+    });
+
+    test('submitDocumentPhotoStep throws when the server responds with a non-200 status', () async {
+      await http.runWithClient(() async {
+        expect(
+          () => const ProofingSessionClient().submitDocumentPhotoStep(
+            ref,
+            front: const ProofingDocumentPhotoSide(
+              photo: ProofingPhotoInfo(imageBase64: 'anBlZw==', mimeType: 'image/jpeg'),
+            ),
+          ),
+          throwsA(isA<Exception>()),
+        );
+      }, () => MockClient((request) async => http.Response('invalid image', 400)));
+    });
+
     test('submitNfcStep throws when the server responds with a non-200 status', () async {
       await http.runWithClient(() async {
         expect(
@@ -607,35 +567,32 @@ void main() {
     });
   });
 
-  group('nativeFaceVerificationRequested', () {
+  group('nativeFaceRequested', () {
     test('null steps always means vcmrtd runs it, regardless of selfieLocation', () {
-      expect(nativeFaceVerificationRequested(null, 'browser'), isTrue);
-      expect(nativeFaceVerificationRequested(null, 'native'), isTrue);
+      expect(nativeFaceRequested(null, 'browser'), isTrue);
+      expect(nativeFaceRequested(null, 'native'), isTrue);
     });
 
     test('steps with no face stage at all means neither client runs it', () {
-      expect(nativeFaceVerificationRequested(['document_capture', 'nfc_read'], 'browser'), isFalse);
-      expect(nativeFaceVerificationRequested(['document_capture', 'nfc_read'], 'native'), isFalse);
+      expect(nativeFaceRequested(['document_capture', 'nfc_read'], 'browser'), isFalse);
+      expect(nativeFaceRequested(['document_capture', 'nfc_read'], 'native'), isFalse);
     });
 
     test('a face stage with selfieLocation "browser" defers to the browser hosted flow', () {
-      expect(
-        nativeFaceVerificationRequested(['document_capture', 'nfc_read', 'face_verification'], 'browser'),
-        isFalse,
-      );
-      expect(nativeFaceVerificationRequested(['nfc_read', 'document_capture', 'selfie'], 'browser'), isFalse);
+      expect(nativeFaceRequested(['document_capture', 'nfc_read', 'face_verification'], 'browser'), isFalse);
+      expect(nativeFaceRequested(['nfc_read', 'document_capture', 'selfie'], 'browser'), isFalse);
     });
 
     test('a face stage with selfieLocation "native" (or anything else) runs on-device', () {
-      expect(nativeFaceVerificationRequested(['document_capture', 'nfc_read', 'face_verification'], 'native'), isTrue);
-      expect(nativeFaceVerificationRequested(['selfie', 'face_match'], 'native'), isTrue);
+      expect(nativeFaceRequested(['document_capture', 'nfc_read', 'face_verification'], 'native'), isTrue);
+      expect(nativeFaceRequested(['selfie', 'face_match'], 'native'), isTrue);
     });
   });
 
   group('buildProofingNfcStepBody', () {
     final mrtdEvidence = const ProofingMrtdEvidence(efSod: 'aa', dataGroups: {'DG1': 'bb'}, documentType: 'icao');
 
-    test('mrtdEvidence is always included, unlike buildProofingResultBody\'s chip_checks gating', () {
+    test('mrtdEvidence is always included, whatever requestedAttributes says', () {
       final body = buildProofingNfcStepBody(requestedAttributes: const [], mrtdEvidence: mrtdEvidence);
       expect(body['mrtdEvidence'], isNotNull);
       expect(body.containsKey('status'), isFalse);
@@ -661,7 +618,7 @@ void main() {
         requestedAttributes: const ['dg1'],
         photo: const ProofingPhotoInfo(imageBase64: 'img', mimeType: 'image/jpeg'),
         mrtdEvidence: mrtdEvidence,
-        faceStepFollows: true,
+        photoInclusion: PhotoInclusion.always,
       );
       expect(body['photo'], {'imageBase64': 'img', 'mimeType': 'image/jpeg'});
     });
@@ -709,4 +666,88 @@ DrivingLicenceData _fakeDrivingLicenceData() {
     categories: [DrivingLicenceCategory(category: 'B', dateOfIssue: '01022024', dateOfExpiry: '01022034')],
     photoImageType: ImageType.jpeg,
   );
+}
+
+void _timeoutTests() {
+  const ref = ProofingSessionRef(apiBase: 'https://proof.example.com', token: 'tok-1');
+
+  testWidgets('a request the server never answers fails after the timeout', (tester) async {
+    Object? error;
+    await http.runWithClient(() async {
+      const ProofingSessionClient()
+          .reportDeviceState(ref, active: true)
+          .then<void>(
+            (_) {},
+            onError: (Object e) {
+              error = e;
+            },
+          );
+      await tester.pump(ProofingSessionClient.requestTimeout - const Duration(seconds: 1));
+      expect(error, isNull);
+      await tester.pump(const Duration(seconds: 2));
+    }, () => MockClient((_) => Completer<http.Response>().future));
+    expect(error, isA<Exception>());
+    expect('$error', contains('did not respond in time'));
+  });
+
+  testWidgets('an upload gets the longer timeout', (tester) async {
+    Object? error;
+    await http.runWithClient(() async {
+      const ProofingSessionClient()
+          .submitSession(ref)
+          .then<void>(
+            (_) {},
+            onError: (Object e) {
+              error = e;
+            },
+          );
+      await tester.pump(ProofingSessionClient.requestTimeout + const Duration(seconds: 1));
+      expect(error, isNull);
+      await tester.pump(ProofingSessionClient.uploadTimeout);
+    }, () => MockClient((_) => Completer<http.Response>().future));
+    expect('$error', contains('did not respond in time'));
+  });
+
+  testWidgets('a timed-out request is aborted, so it cannot still reach the server later', (tester) async {
+    final client = _UnansweredClient();
+    await http.runWithClient(() async {
+      const ProofingSessionClient().reportDeviceState(ref, active: false).then<void>((_) {}, onError: (Object _) {});
+      await tester.pump(const Duration(seconds: 1));
+      expect(client.closed, isFalse);
+      await tester.pump(ProofingSessionClient.requestTimeout);
+    }, () => client);
+    expect(client.closed, isTrue);
+  });
+
+  testWidgets('a claim gets the longer timeout, since its grant can only be used once', (tester) async {
+    Object? error;
+    await http.runWithClient(() async {
+      const ProofingSessionClient()
+          .claimHandover(
+            ProofingSessionLink.parse('vcmrtd://verify?handover=h-1&api=https://proof.example.com')!
+                as ProofingHandoverLink,
+          )
+          .then<void>(
+            (_) {},
+            onError: (Object e) {
+              error = e;
+            },
+          );
+      await tester.pump(ProofingSessionClient.requestTimeout + const Duration(seconds: 1));
+      expect(error, isNull);
+      await tester.pump(ProofingSessionClient.uploadTimeout);
+    }, () => MockClient((_) => Completer<http.Response>().future));
+    expect('$error', contains('did not respond in time'));
+  });
+}
+
+/// Never answers; records whether it was closed (which aborts the request).
+class _UnansweredClient extends http.BaseClient {
+  var closed = false;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) => Completer<http.StreamedResponse>().future;
+
+  @override
+  void close() => closed = true;
 }

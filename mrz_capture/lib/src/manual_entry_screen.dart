@@ -17,11 +17,18 @@ class ManualEntryScreen extends StatefulWidget {
   final Function(ScannedMRZ) onManualEntryComplete;
   final DocumentType documentType;
 
+  /// Step badge numbers - default to the fixed 4-step sequence, where
+  /// document capture is step 1.
+  final int stepNumber;
+  final int totalSteps;
+
   const ManualEntryScreen({
     super.key,
     required this.onBack,
     required this.onManualEntryComplete,
     required this.documentType,
+    this.stepNumber = 1,
+    this.totalSteps = 4,
   });
 
   @override
@@ -46,6 +53,10 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
       MrzCaptureLocalizations.of(context) ?? lookupMrzCaptureLocalizations(const Locale('en'));
 
   String get _docType => widget.documentType.name;
+
+  /// A driving licence is entered as its MRZ line; a passport or identity
+  /// card as its document number and dates.
+  bool get _isDrivingLicence => widget.documentType == DocumentType.drivingLicence;
 
   @override
   void dispose() {
@@ -73,10 +84,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                     children: [
                       _buildHeaderCard(),
                       const SizedBox(height: 32),
-                      if (ManualEntryRules.usesMrzLine(widget.documentType))
-                        ..._buildDriverLicenseFields()
-                      else
-                        ..._buildPassportFields(),
+                      if (_isDrivingLicence) ..._buildDriverLicenseFields() else ..._buildPassportFields(),
                       const SizedBox(height: 24),
                       if (_errorMessage.isNotEmpty)
                         Container(
@@ -124,8 +132,8 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
     return StepBadgeTopBar(
       icon: PlatformIcons(context).back,
       onBack: widget.onBack,
-      current: 1,
-      total: 4,
+      current: widget.stepNumber,
+      total: widget.totalSteps,
       label: _l10n.mrzEnterDetailsLabel(_docType),
     );
   }
@@ -142,10 +150,11 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
           ),
           const SizedBox(height: 8),
-          Text(
-            !ManualEntryRules.usesMrzLine(widget.documentType) ? _l10n.mrzHelpPassport : _l10n.mrzHelpDrivingLicence,
-            style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280), height: 1.4),
-          ),
+          Text(switch (widget.documentType) {
+            DocumentType.drivingLicence => _l10n.mrzHelpDrivingLicence,
+            DocumentType.identityCard => _l10n.mrzHelpIdentityCard,
+            DocumentType.passport => _l10n.mrzHelpPassport,
+          }, style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280), height: 1.4)),
         ],
       ),
     );
@@ -224,21 +233,21 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
               hintText: 'D1NLD15094962111659VW87Z78NB84',
               style: const TextStyle(fontFamily: 'Courier', fontSize: 14),
               validator: (value) => ManualEntryRules.mrzLine(value, l10n: _l10n),
-              onChanged: (value) {
-                setState(() {});
-              },
             ),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(_l10n.mrzCharacterCount, style: const TextStyle(fontSize: 12, color: Color(0xFF666666))),
-                Text(
-                  '${_mrzController.text.length} / 30',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: _mrzController.text.length == 30 ? Colors.green : const Color(0xFF666666),
+                ValueListenableBuilder(
+                  valueListenable: _mrzController,
+                  builder: (context, value, _) => Text(
+                    '${value.text.length} / 30',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: value.text.length == 30 ? Colors.green : const Color(0xFF666666),
+                    ),
                   ),
                 ),
               ],
@@ -270,9 +279,17 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                   child: Icon(icon, size: 18, color: const Color(0xFF6b6868)),
                 ),
                 const SizedBox(width: 12),
-                Text(
-                  title,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF212121)),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF212121)),
+                      ),
+                      Text(hint, style: const TextStyle(fontSize: 12, color: Color(0xFF666666))),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -342,14 +359,8 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
     }
   }
 
-  ScannedPassportMRZ? _createScannedPassport() {
-    if (_selectedDob == null || _selectedExpiry == null) {
-      setState(() {
-        _errorMessage = _l10n.mrzFillAllFields;
-      });
-      return null;
-    }
-
+  /// The form's validators already required both dates.
+  ScannedPassportMRZ _createScannedPassport() {
     return ScannedPassportMRZ.fromManualEntry(
       documentNumber: _docNumberController.text.trim().toUpperCase(),
       dateOfBirth: _selectedDob!,
@@ -385,24 +396,20 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
                 borderRadius: BorderRadius.circular(30),
               ),
               child: Icon(
-                ManualEntryRules.usesMrzLine(widget.documentType) ? Icons.text_fields : Icons.edit_document,
+                _isDrivingLicence ? Icons.text_fields : Icons.edit_document,
                 size: 30,
                 color: const Color(0xFF6b6868),
               ),
             ),
             const SizedBox(height: 16),
             Text(
-              ManualEntryRules.usesMrzLine(widget.documentType)
-                  ? _l10n.mrzHeaderTitleMrz
-                  : _l10n.mrzHeaderTitle(_docType),
+              _isDrivingLicence ? _l10n.mrzHeaderTitleMrz : _l10n.mrzHeaderTitle(_docType),
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF212121)),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
-              ManualEntryRules.usesMrzLine(widget.documentType)
-                  ? _l10n.mrzHeaderSubtitleMrz
-                  : _l10n.mrzHeaderSubtitle(_docType),
+              _isDrivingLicence ? _l10n.mrzHeaderSubtitleMrz : _l10n.mrzHeaderSubtitle(_docType),
               style: const TextStyle(fontSize: 14, color: Color(0xFF666666)),
               textAlign: TextAlign.center,
             ),

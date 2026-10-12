@@ -134,7 +134,7 @@ class _GuidedManualEntryScreenState extends State<GuidedManualEntryScreen> {
                           const SizedBox(height: 12),
                           Text(
                             _parseError!,
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _errorColor),
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: g.error),
                           ),
                         ],
                       ],
@@ -266,15 +266,15 @@ class _GuidedManualEntryScreenState extends State<GuidedManualEntryScreen> {
 
   InputDecoration _decoration(GuidedStyle g, {required String hint}) => InputDecoration(
     hintText: hint,
-    hintStyle: TextStyle(color: g.muted, fontFamily: 'Nunito', letterSpacing: 0),
+    hintStyle: TextStyle(color: g.muted, letterSpacing: 0),
     filled: true,
     fillColor: Colors.white,
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     enabledBorder: _border(g.border, 1),
     focusedBorder: _border(g.action, 2),
-    errorBorder: _border(_errorColor, 1),
-    focusedErrorBorder: _border(_errorColor, 2),
-    errorStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _errorColor),
+    errorBorder: _border(g.error, 1),
+    focusedErrorBorder: _border(g.error, 2),
+    errorStyle: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: g.error),
   );
 
   static OutlineInputBorder _border(Color color, double width) => OutlineInputBorder(
@@ -282,8 +282,6 @@ class _GuidedManualEntryScreenState extends State<GuidedManualEntryScreen> {
     borderSide: BorderSide(color: color, width: width),
   );
 }
-
-const _errorColor = Color(0xFFD1293D);
 
 class _GuidedFieldLabel extends StatelessWidget {
   const _GuidedFieldLabel(this.text, {required this.style});
@@ -336,7 +334,7 @@ class _GuidedDateField extends StatelessWidget {
                 color: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: error != null ? _errorColor : g.border),
+                  side: BorderSide(color: error != null ? g.error : g.border),
                 ),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(12),
@@ -369,7 +367,7 @@ class _GuidedDateField extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 6),
                 child: Text(
                   error,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _errorColor),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: g.error),
                 ),
               ),
           ],

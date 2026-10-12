@@ -32,7 +32,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         child: MaterialApp(
-          home: ScannerPage(documentType: DocumentType.passport, onSuccess: (_) {}),
+          home: ScannerPage(documentType: DocumentType.passport, onSuccess: (_, _) {}),
         ),
       ),
     );
@@ -48,7 +48,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         child: MaterialApp(
-          home: ScannerPage(documentType: DocumentType.drivingLicence, onSuccess: (mrz) => received = mrz),
+          home: ScannerPage(documentType: DocumentType.drivingLicence, onSuccess: (mrz, _) => received = mrz),
         ),
       ),
     );
@@ -67,7 +67,7 @@ void main() {
       UncontrolledProviderScope(
         container: container,
         child: MaterialApp(
-          home: ScannerPage(documentType: DocumentType.passport, onSuccess: (_) {}),
+          home: ScannerPage(documentType: DocumentType.passport, onSuccess: (_, _) {}),
         ),
       ),
     );

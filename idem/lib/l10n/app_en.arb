@@ -12,6 +12,7 @@
   "accessHandoverUsed": "This handover QR code was already used. Ask for a new one in the browser.",
   "accessClaimTokenRequired": "This QR code is from an older version of the verification service and can no longer be used. Ask for a new one in the browser.",
   "accessBrowserHandover": "This QR code moves the browser part of the verification to another browser. Open it with your phone's camera instead, or scan the QR code the browser shows for the IDEM app.",
+  "accessUntrustedServer": "This QR code isn't from a verification service this app works with, so it wasn't opened.",
   "sessionOpenFailedTitle": "Could not open verification",
   "sessionCompleteTitle": "Verification complete",
   "sessionCompleteMessage": "You're done. Your verification was sent to {relyingParty}.",
@@ -37,9 +38,6 @@
   "idDocumentDrivingLicence": "Driving licence",
   "commonTryAgain": "Try Again",
   "commonCancel": "Cancel",
-  "commonYes": "Yes",
-  "commonNo": "No",
-  "nfcAvailableLabel": "NFC available:",
   "docNewScan": "New scan",
   "docConnectedBanner": "Connected — will send results to {relyingParty}",
   "@docConnectedBanner": {
@@ -65,7 +63,7 @@
   "docSettingsTitle": "Settings",
   "docBack": "Back",
   "docActiveAuthentication": "Active authentication",
-  "docActiveAuthenticationSubtitle": "Perform active authentication when reading the document",
+  "docActiveAuthenticationSubtitle": "Perform active authentication when reading the document. A verification session follows its own flow.",
   "docFaceEngine": "Face verification engine",
   "docFaceEngineOpenSource": "Open source",
   "docLivenessDetection": "Liveness detection",
@@ -150,7 +148,6 @@
     }
   },
   "docNfcNotAvailable": "NFC is not available",
-  "docHavingTrouble": "Having trouble?",
   "docPersonalInformation": "Personal Information",
   "docSurname": "Surname",
   "docOtherNames": "Other Names",
@@ -168,16 +165,6 @@
   "docCategory": "Category",
   "docCategoryDateOfIssue": "Date of issue",
   "docCategoryDateOfExpiry": "Date of expiry",
-  "docNotAvailable": "N/A",
-  "docWalletEmpty": "Your wallet is empty",
-  "docWalletEmptyHint": "Scan a document and tap \"{addToWallet}\" to see it here.",
-  "@docWalletEmptyHint": {
-    "placeholders": {
-      "addToWallet": {
-        "type": "String"
-      }
-    }
-  },
   "docWalletDocumentNumber": "Document number",
   "docWalletAdded": "Added",
   "docRemoveFromWallet": "Remove from wallet",
@@ -189,7 +176,6 @@
   "docCountry": "Country",
   "docVersion": "Version",
   "docOptionalData": "Optional Data",
-  "docNoPhoto": "No Photo",
   "docAvailableDataGroups": "Available Data Groups",
   "docDataGroupsRead": "Data Groups Read: {count}/{total}",
   "@docDataGroupsRead": {
@@ -220,30 +206,6 @@
       }
     }
   },
-  "docCanNumber": "CAN number",
-  "docCanNumberRequired": "Please enter CAN number",
-  "docPassportNumber": "Passport number",
-  "docPassportNumberRequired": "Please enter passport number",
-  "docDateOfBirthRequired": "Please select Date of Birth",
-  "docDateOfExpiryRequired": "Please select Date of Expiry",
-  "docDbaWithPace": "DBA with PACE",
-  "docAccessProtocol": "Access protocol: {protocol}",
-  "@docAccessProtocol": {
-    "placeholders": {
-      "protocol": {
-        "type": "String"
-      }
-    }
-  },
-  "docAccessKeyType": "Access key type: {keyType}",
-  "@docAccessKeyType": {
-    "placeholders": {
-      "keyType": {
-        "type": "String"
-      }
-    }
-  },
-  "docCopy": "Copy",
   "docImageNoData": "No image data available.",
   "docImageJpegError": "Error displaying JPEG image.",
   "docImageConvertingJpeg2000": "Converting JPEG2000 image...",
@@ -256,6 +218,44 @@
   "docIllustrationNationality": "Nationality: NL",
   "docIllustrationDob": "DOB: 01-01-1990",
   "docIllustrationDrivingLicence": "DRIVING LICENCE",
+  "docPhotoStepLabel": "Document photo",
+  "docPhotoFrontTitle": "Photograph the front",
+  "docPhotoFrontInstructionsPassport": "Place the page with your photo and personal details inside the frame. Use a flat surface and good light, and avoid glare.",
+  "docPhotoFrontInstructionsCard": "Place the front of your document, the side with your photo, inside the frame. Use a flat surface and good light, and avoid glare.",
+  "docPhotoBackTitle": "Now photograph the back",
+  "docPhotoBackInstructions": "Turn your document over and place the back inside the frame.",
+  "docPhotoSideFront": "Front",
+  "docPhotoSideBack": "Back",
+  "docPhotoSideProgress": "{side} · {current} of {total}",
+  "@docPhotoSideProgress": {
+    "placeholders": {
+      "side": {
+        "type": "String"
+      },
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "docPhotoNoBack": "My document has no back",
+  "docPhotoTake": "Take photo",
+  "docPhotoReviewTitle": "Check the photo",
+  "docPhotoReviewMessage": "Are all details sharp and readable, without glare or anything covering them?",
+  "docPhotoReviewScannedMessage": "This side was photographed while the MRZ was read. Are all details sharp and readable, without glare or anything covering them?",
+  "docPhotoRetake": "Retake",
+  "docPhotoUse": "Use photo",
+  "docPhotoErrorNoCamera": "No camera available",
+  "docPhotoErrorCamera": "Could not use the camera: {error}",
+  "@docPhotoErrorCamera": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "faceActionBlink": "Blink your eyes",
   "faceActionTurnLeft": "Turn your head left",
   "faceActionTurnRight": "Turn your head right",
@@ -501,24 +501,6 @@
   "proofingAttributeChipChecks": "Document authenticity checks",
   "proofingAttributeBiometrics": "Face verification result",
   "proofingAttributeEverything": "Everything the app reads from your document",
-  "proofingSessionSectionTitle": "Identity proofing session",
-  "proofingSubmitSectionBody": "This scan is for a session opened by {relyingParty}. Send the document identity and face verification result back to them.",
-  "@proofingSubmitSectionBody": {
-    "placeholders": {
-      "relyingParty": {
-        "type": "String"
-      }
-    }
-  },
-  "proofingSubmitting": "Submitting...",
-  "proofingSubmitTo": "Submit to {relyingParty}",
-  "@proofingSubmitTo": {
-    "placeholders": {
-      "relyingParty": {
-        "type": "String"
-      }
-    }
-  },
   "proofingSentTo": "Sent to {relyingParty}",
   "@proofingSentTo": {
     "placeholders": {
@@ -545,28 +527,7 @@
   },
   "proofingDone": "Done",
   "proofingAddToWallet": "Add to Wallet",
-  "proofingSubmittedTitle": "Submitted",
-  "proofingSubmittedDocument": "Your document identity was sent to {relyingParty}.",
-  "@proofingSubmittedDocument": {
-    "placeholders": {
-      "relyingParty": {
-        "type": "String"
-      }
-    }
-  },
-  "proofingSubmittedDocumentAndFace": "Your document identity and face verification result were sent to {relyingParty}.",
-  "@proofingSubmittedDocumentAndFace": {
-    "placeholders": {
-      "relyingParty": {
-        "type": "String"
-      }
-    }
-  },
-  "proofingSubmitFailedTitle": "Submit Failed",
-  "proofingSubmitFailedMessage": "Failed to submit the result to the relying party:",
   "proofingDialogOk": "OK",
-  "proofingDialogRetryHint": "Please try again or make an issue in GitHub of this project.",
-  "proofingRetry": "Retry",
   "proofingScanDocument": "Scan {docType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}}",
   "@proofingScanDocument": {
     "placeholders": {
@@ -584,6 +545,7 @@
     }
   },
   "proofingScanMrzInstructions": "Align the Machine Readable Zone (MRZ) with the frame at the bottom of the screen. Hold steady until scanning completes.",
+  "proofingScanMrzPhotoInstructions": "Place the whole side with the Machine Readable Zone (MRZ) inside the frame, on a flat surface in good light. Hold steady: once the MRZ is read, this side is photographed too.",
   "proofingEnterDetailsManually": "Enter {docType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} details manually",
   "@proofingEnterDetailsManually": {
     "placeholders": {
@@ -611,6 +573,7 @@
   "proofingWhatVerification": "your verification",
   "proofingWhatDocumentDetails": "your document details",
   "proofingWhatDocumentIdentity": "your document identity",
+  "proofingWhatDocumentPhoto": "your document photo",
   "proofingWhatFaceVerification": "your face verification",
   "proofingNotAVerificationLink": "This is not a verification link.",
   "proofingSessionNoAttributes": "This session does not specify what to collect",
@@ -638,6 +601,7 @@
       }
     }
   },
+  "proofingRequestTimedOut": "The server did not respond in time - check your internet connection and try again",
   "proofingRequestFailed": "{what} failed: {details}",
   "@proofingRequestFailed": {
     "placeholders": {
@@ -653,7 +617,6 @@
   "proofingRequestFetch": "Fetching the session",
   "proofingRequestWatch": "Watching the session",
   "proofingRequestDeviceState": "Reporting the device state",
-  "proofingRequestSubmitResult": "Submitting the result",
   "proofingRequestStepStarted": "Marking step {step} started",
   "@proofingRequestStepStarted": {
     "placeholders": {
@@ -664,6 +627,7 @@
   },
   "proofingRequestDocumentStep": "Submitting the document step",
   "proofingRequestNfcStep": "Submitting the nfc step",
+  "proofingRequestDocumentPhotoStep": "Submitting the document photo step",
   "proofingRequestFaceStep": "Submitting the face verification step",
   "proofingRequestSubmitVerification": "Submitting the verification"
 }

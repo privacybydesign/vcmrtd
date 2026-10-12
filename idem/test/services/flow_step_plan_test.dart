@@ -91,6 +91,50 @@ void main() {
       expect(reversed.resultStepNumber, 3);
     });
 
+    test('document_photo shares the document scan\'s number, wherever the flow lists it', () {
+      for (final steps in [
+        ['document_capture', 'nfc_read', 'document_photo', 'face_verification'],
+        ['document_capture', 'document_photo', 'nfc_read', 'face_verification'],
+        ['document_photo', 'document_capture', 'nfc_read', 'face_verification'],
+      ]) {
+        final plan = FlowStepPlan.fromSteps(steps, selfieLocation: 'native');
+        expect(plan.totalSteps, 3, reason: '$steps');
+        expect(plan.documentCaptureStepNumber, 1, reason: '$steps');
+        expect(plan.documentPhotoStepNumber, 1, reason: '$steps');
+        expect(plan.nfcReadStepNumber, 2, reason: '$steps');
+        expect(plan.faceVerificationStepNumber, 3, reason: '$steps');
+      }
+    });
+
+    test('without a document scan, document_photo is numbered where the flow lists it', () {
+      final first = FlowStepPlan.fromSteps(['document_photo', 'face_verification'], selfieLocation: 'native');
+      expect(first.documentPhotoStepNumber, 1);
+      expect(first.faceVerificationStepNumber, 2);
+      expect(first.totalSteps, 2);
+
+      final last = FlowStepPlan.fromSteps(['face_verification', 'document_photo'], selfieLocation: 'native');
+      expect(last.faceVerificationStepNumber, 1);
+      expect(last.documentPhotoStepNumber, 2);
+      expect(last.resultStepNumber, 2);
+    });
+
+    test('document_photo alone is a 1-step plan, and counts even when the browser does the face step', () {
+      final alone = FlowStepPlan.fromSteps(['document_photo']);
+      expect(alone.totalSteps, 1);
+      expect(alone.documentPhotoStepNumber, 1);
+      expect(alone.documentCaptureStepNumber, isNull);
+
+      final browserFace = FlowStepPlan.fromSteps(['selfie', 'document_photo'], selfieLocation: 'browser');
+      expect(browserFace.totalSteps, 1);
+      expect(browserFace.documentPhotoStepNumber, 1);
+      expect(browserFace.faceVerificationStepNumber, isNull);
+    });
+
+    test('the default plan (no flow) has no document_photo step', () {
+      expect(FlowStepPlan.fromSteps(null).documentPhotoStepNumber, isNull);
+      expect(FlowStepPlan.fromSteps(['document_capture', 'nfc_read']).documentPhotoStepNumber, isNull);
+    });
+
     test('a degenerate empty steps list still counts one step', () {
       final plan = FlowStepPlan.fromSteps(const []);
       expect(plan.totalSteps, 1);

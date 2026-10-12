@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/widgets.dart' show AppLifecycleState;
@@ -115,7 +116,6 @@ void main() {
             ref,
             selfie: const ProofingPhotoInfo(imageBase64: 'AAAA', mimeType: 'image/jpeg'),
           );
-          expect(response.completedSteps, ['document_capture', 'nfc_read', 'face_verification']);
           expect(response.currentStep, '');
           // The last step doesn't finish the session: it waits for a submit.
           expect(response.readyToSubmit, isTrue);
@@ -155,7 +155,6 @@ void main() {
           final response = await const ProofingSessionClient().submitSession(ref);
           expect(response.complete, isTrue);
           expect(response.status, 'approved');
-          expect(response.alreadyRecorded, isTrue);
         },
         () => MockClient((request) async {
           expect(request.method, 'POST');
@@ -244,6 +243,29 @@ void main() {
         }),
       );
       expect(requests, ['POST /api/v1/app/handover/claim-1/claim null', 'GET /api/v1/app/tok-1 dev-1']);
+    });
+
+    test('the same link twice before the first claim returned claims once, and both get that claim', () async {
+      final claims = <String>[];
+      final answer = Completer<void>();
+      await http.runWithClient(
+        () async {
+          final coordinator = ProofingSessionCoordinator(client: const ProofingSessionClient());
+          final link = ProofingSessionLink.parse('vcmrtd://verify?handover=claim-1&api=$_api')!;
+          final first = coordinator.connect(link);
+          final second = coordinator.connect(link);
+          answer.complete();
+          expect((await first).ref.deviceToken, 'dev-1');
+          expect((await second).ref.deviceToken, 'dev-1');
+        },
+        () => MockClient((request) async {
+          claims.add(request.url.path);
+          await answer.future;
+          // The grant is single-use: a second claim would be refused.
+          return claims.length == 1 ? _json(_claimBody()) : _refused(409, 'handover_used');
+        }),
+      );
+      expect(claims, ['/api/v1/app/handover/claim-1/claim']);
     });
 
     test('connect refuses a session-token link without calling the server', () async {
@@ -379,6 +401,73 @@ void main() {
           }),
         );
         expect(states, ['inactive', 'active']);
+      });
+
+      test('a slow inactive report is sent before the active one, never overtaken by it', () async {
+        final arrived = <String>[];
+        final inactiveAnswer = Completer<void>();
+        await http.runWithClient(
+          () async {
+            final coordinator = ProofingSessionCoordinator(client: const ProofingSessionClient());
+            coordinator.track(ref, info);
+
+            coordinator.appLifecycleChanged(AppLifecycleState.paused);
+            await _settle();
+            // Back before the server answered the inactive report.
+            coordinator.appLifecycleChanged(AppLifecycleState.resumed);
+            await _settle();
+            expect(arrived, ['inactive']);
+
+            inactiveAnswer.complete();
+            await _settle();
+            await _settle();
+            await _settle();
+            expect(arrived, ['inactive', 'active']);
+            expect(coordinator.check.value, ProofingSessionCheck.idle);
+          },
+          () => MockClient((request) async {
+            final state = (json.decode(request.body) as Map)['state'] as String;
+            arrived.add(state);
+            if (state == 'inactive') await inactiveAnswer.future;
+            return _json(_view());
+          }),
+        );
+      });
+
+      test('reports a claimed session still on the consent screen, and its decline', () async {
+        final requests = <String>[];
+        await http.runWithClient(
+          () async {
+            final coordinator = ProofingSessionCoordinator(client: const ProofingSessionClient());
+            final claim = await coordinator.connect(
+              ProofingSessionLink.parse('vcmrtd://verify?handover=c-1&api=$_api')!,
+            );
+            expect(coordinator.held, isNull);
+
+            coordinator.appLifecycleChanged(AppLifecycleState.paused);
+            await _settle();
+            coordinator.appLifecycleChanged(AppLifecycleState.resumed);
+            await _settle();
+            // Nothing to confirm before consent: no resume check blocks the screen.
+            expect(coordinator.check.value, ProofingSessionCheck.idle);
+
+            coordinator.decline(claim.ref);
+            await _settle();
+            coordinator.appLifecycleChanged(AppLifecycleState.paused);
+            await _settle();
+          },
+          () => MockClient((request) async {
+            if (request.url.path.endsWith('/claim')) return _json(_claimBody());
+            requests.add('${request.url.path} ${(json.decode(request.body) as Map)['state']}');
+            return _json(_view());
+          }),
+        );
+        // Declined, it is no longer reported.
+        expect(requests, [
+          '/api/v1/app/tok-1/device/state inactive',
+          '/api/v1/app/tok-1/device/state active',
+          '/api/v1/app/tok-1/device/state inactive',
+        ]);
       });
 
       test('ends the session when the server says it was handed over while backgrounded', () async {

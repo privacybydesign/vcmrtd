@@ -11,11 +11,7 @@ class ActiveProofingSession {
   final ProofingSessionRef ref;
   final ProofingSessionInfo info;
 
-  /// When the app connected to this session (QR scanned, session fetched) —
-  /// reported back as part of the submission's session metadata.
-  final DateTime openedAt;
-
-  const ActiveProofingSession({required this.ref, required this.info, required this.openedAt});
+  const ActiveProofingSession({required this.ref, required this.info});
 }
 
 final proofingSessionClientProvider = Provider((ref) => const ProofingSessionClient());
@@ -42,27 +38,31 @@ class ActiveProofingSessionNotifier extends Notifier<ActiveProofingSession?> {
   @override
   ActiveProofingSession? build() => null;
 
-  void set(ActiveProofingSession? session) => state = session;
+  /// Steps already reported started, keyed by session token, reset count and
+  /// step, so the user going back and forth doesn't resend the same start.
+  /// Only kept for the pinned session: pinning another one (or none) starts
+  /// over, and a relying-party reset bumps the reset count, so every step is
+  /// reported again after one.
+  final Set<String> _startedSteps = {};
+
+  void set(ActiveProofingSession? session) {
+    _startedSteps.clear();
+    state = session;
+  }
 
   /// Replaces the pinned session's state with the server's latest view of
   /// it, if [ref] is still the pinned session - the server, not the app,
   /// knows the current step.
   void updateInfo(ProofingSessionRef ref, ProofingSessionInfo info) {
     final current = state;
-    if (current == null || current.ref.token != ref.token || current.ref.deviceToken != ref.deviceToken) return;
-    state = ActiveProofingSession(ref: current.ref, info: info, openedAt: current.openedAt);
+    if (current == null || !current.ref.sameAccess(ref)) return;
+    state = ActiveProofingSession(ref: current.ref, info: info);
   }
 }
 
 final activeProofingSessionProvider = NotifierProvider<ActiveProofingSessionNotifier, ActiveProofingSession?>(
   ActiveProofingSessionNotifier.new,
 );
-
-/// Steps already reported started, keyed by session token, reset count and
-/// step, so a route rebuilding (or the user going back and forth) doesn't
-/// resend the same start. A relying-party reset bumps the reset count, so
-/// every step is reported again after one.
-final Set<String> _startedProofingSteps = {};
 
 /// Reports that the user just began [step] of the pinned proofing session
 /// (see [ProofingSessionClient.markStepStarted]): fire-and-forget, and a
@@ -73,13 +73,14 @@ void markActiveProofingStepStarted(ProviderContainer container, String step) {
   final session = container.read(activeProofingSessionProvider);
   if (session == null) return;
   final wanted = step == stepFaceVerification
-      ? stepsRequestAny(session.info.steps, [stepFaceVerification, stepSelfie, stepLiveness, stepFaceMatch])
+      ? stepsRequestFace(session.info.steps)
       : stepsRequestAny(session.info.steps, [step]);
   if (!wanted) return;
+  final started = container.read(activeProofingSessionProvider.notifier)._startedSteps;
   final key = '${session.ref.token}|${session.info.resetCount}|$step';
-  if (!_startedProofingSteps.add(key)) return;
+  if (!started.add(key)) return;
   container.read(proofingSessionClientProvider).markStepStarted(session.ref, step).catchError((Object e) {
-    _startedProofingSteps.remove(key);
+    started.remove(key);
     // Refused because this device lost the session: stop the step.
     if (reportIfProofingAccessLost(container, session.ref, e)) return;
     // Otherwise only the audit trail is affected; the step itself carries on.

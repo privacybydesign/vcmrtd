@@ -12,11 +12,9 @@ import 'package:idem/l10n/l10n.dart';
 import 'package:idem/providers/active_authenticiation_provider.dart';
 import 'package:idem/providers/reader_providers.dart';
 import 'package:idem/providers/wallet_provider.dart';
-import 'package:idem/services/face_verification_outcome.dart';
 import 'package:idem/services/proofing_session_client.dart';
-import 'package:idem/theme/app_brand.dart';
+import 'package:idem/theme/app_theme.dart';
 import 'package:idem/theme/brand_theme.dart';
-import 'package:idem/theme/brands/cm_theme.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/routing.dart';
 import 'package:idem/widgets/pages/choose_document_screen.dart';
@@ -83,18 +81,19 @@ WalletCard _walletCard(String id, DocumentType type) => WalletCard(
   addedAt: DateTime(2026, 9, 12),
 );
 
-ProofingSessionInfo _session(String relyingParty) => ProofingSessionInfo(
+ProofingSessionInfo _session(String relyingParty, {ProofingBranding? branding}) => ProofingSessionInfo(
   id: 'session-1',
   relyingParty: relyingParty,
   requestedAttributes: const ['dg1', 'dg2'],
   expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+  branding: branding,
 );
 
-Widget _cm(Widget home, {List overrides = const []}) => ProviderScope(
+Widget _app(Widget home, {List overrides = const []}) => ProviderScope(
   overrides: [...overrides],
   child: MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
-    theme: AppBrand.cm.theme,
+    theme: appTheme(),
     home: home,
   ),
 );
@@ -107,8 +106,8 @@ void _tallViewport(WidgetTester tester) {
 }
 
 void main() {
-  test('only brands that opt in get the guided layout', () {
-    expect(cmBrandTheme.guided, isNotNull);
+  test('the app theme uses the guided layout; a theme without a brand the classic one', () {
+    expect(appTheme().extension<BrandTheme>()!.guided, isNotNull);
     expect(BrandTheme.idem.guided, isNull);
   });
 
@@ -129,7 +128,7 @@ void main() {
     _tallViewport(tester);
     _FakeReader.initialState = DocumentReaderReadingDataGroup(dataGroup: 'DG2', progress: 0.5);
     await tester.pumpWidget(
-      _cm(
+      _app(
         NfcReadingScreen(
           params: NfcReadingRouteParams(
             scannedMRZ: ScannedPassportMRZ(
@@ -154,68 +153,84 @@ void main() {
   });
 
   group('guided result', () {
-    Future<void> pump(WidgetTester tester, {FaceVerificationOutcome? face}) async {
+    Future<void> pump(WidgetTester tester, {String? submittedTo}) async {
       _tallViewport(tester);
       await tester.pumpWidget(
-        _cm(
+        _app(
           PassportDataScreen(
             document: _passport(),
             passportDataResult: RawDocumentData(dataGroups: const {}, efSod: '00'),
             onBackPressed: () {},
-            faceVerification: face,
+            submittedTo: submittedTo,
           ),
         ),
       );
       await tester.pump();
     }
 
-    testWidgets('says verified only after a face match, and never claims the chip is genuine', (tester) async {
-      await pump(tester, face: const FaceVerificationOutcome(engine: 'on_device', livenessPassed: true));
-      expect(find.text('Identity verified'), findsOneWidget);
-      expect(find.text('Face matched'), findsOneWidget);
-      expect(find.text('Anna Maria Eriksson'), findsOneWidget);
-      expect(find.textContaining('genuine'), findsNothing);
-
+    testWidgets('confirms what was read, and never claims the chip is genuine', (tester) async {
       await pump(tester);
       expect(find.text('Document read'), findsOneWidget);
-      expect(find.text('Face matched'), findsNothing);
-      expect(find.text('Chip read'), findsOneWidget);
+      expect(find.text('Anna Maria Eriksson'), findsOneWidget);
+      expect(find.text('Add to wallet'), findsOneWidget);
+      expect(find.textContaining('genuine'), findsNothing);
+    });
+
+    testWidgets('a session that already got every step offers to keep the document', (tester) async {
+      await pump(tester, submittedTo: 'Acme Bank');
+      expect(find.text('Sent to Acme Bank'), findsOneWidget);
+      expect(find.text('Save for next time'), findsOneWidget);
+      expect(find.text('Add to wallet'), findsNothing);
     });
   });
 
   group('guided consent', () {
-    testWidgets('shows the brand mark only when the brand itself is asking', (tester) async {
+    testWidgets('a branded session shows its mark and name, and the org that really asks', (tester) async {
       _tallViewport(tester);
       var consented = 0;
       var declined = 0;
       await tester.pumpWidget(
-        _cm(
+        _app(
           ProofingSessionConsentScreen(
-            info: _session('CM.com'),
+            info: _session('CM.com B.V.', branding: const ProofingBranding(name: 'CM Tickets')),
             onConsent: () => consented++,
             onDecline: () => declined++,
           ),
         ),
       );
-      expect(find.text('CM.com wants to verify your identity'), findsOneWidget);
-      expect(find.byType(Image), findsOneWidget);
+      expect(find.text('CM Tickets wants to verify your identity'), findsOneWidget);
+      expect(find.text('Requested by CM.com B.V.'), findsOneWidget);
+      expect(find.text('Idem'), findsOneWidget, reason: "the app theme's wordmark, as no logo was given");
       await tester.tap(find.text('Continue'));
       await tester.tap(find.text('Decline'));
       expect((consented, declined), (1, 1));
 
+      // The org's own branding: no second name needed.
       await tester.pumpWidget(
-        _cm(ProofingSessionConsentScreen(info: _session('Acme Bank'), onConsent: () {}, onDecline: () {})),
+        _app(
+          ProofingSessionConsentScreen(
+            info: _session('CM.com B.V.', branding: const ProofingBranding(name: 'CM.com B.V.')),
+            onConsent: () {},
+            onDecline: () {},
+          ),
+        ),
       );
-      expect(find.byType(Image), findsNothing);
+      expect(find.textContaining('Requested by'), findsNothing);
+
+      // No branding: the requester's initial.
+      await tester.pumpWidget(
+        _app(ProofingSessionConsentScreen(info: _session('Acme Bank'), onConsent: () {}, onDecline: () {})),
+      );
+      expect(find.text('Idem'), findsNothing);
       expect(find.text('A'), findsOneWidget);
     });
 
-    testWidgets('the idem brand keeps the classic consent screen', (tester) async {
+    testWidgets('a theme without a brand keeps the classic consent screen', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
-          theme: AppBrand.idem.theme,
-          home: ProofingSessionConsentScreen(info: _session('CM.com'), onConsent: () {}, onDecline: () {}),
+          theme: ThemeData(),
+          home: ProofingSessionConsentScreen(info: _session('Acme Bank'), onConsent: () {}, onDecline: () {}),
         ),
       );
       expect(find.text('Identity proofing request'), findsOneWidget);
@@ -226,7 +241,7 @@ void main() {
     Future<void> pump(WidgetTester tester, DocumentType type, {ValueChanged<ScannedMRZ>? onComplete}) async {
       _tallViewport(tester);
       await tester.pumpWidget(
-        _cm(GuidedManualEntryScreen(documentType: type, onBack: () {}, onManualEntryComplete: onComplete ?? (_) {})),
+        _app(GuidedManualEntryScreen(documentType: type, onBack: () {}, onManualEntryComplete: onComplete ?? (_) {})),
       );
     }
 
@@ -267,7 +282,7 @@ void main() {
         container: container,
         child: MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
-          theme: AppBrand.cm.theme,
+          theme: appTheme(),
           home: SettingsScreen(onBackPressed: () {}, showOcrEngineForTesting: false),
         ),
       ),
@@ -282,7 +297,7 @@ void main() {
   testWidgets('guided licence result shows the categories with readable dates', (tester) async {
     _tallViewport(tester);
     await tester.pumpWidget(
-      _cm(
+      _app(
         DrivingLicenceDataScreen(
           drivingLicence: DrivingLicenceData(
             issuingMemberState: 'NLD',
@@ -318,7 +333,7 @@ void main() {
       _tallViewport(tester);
       var scans = 0;
       await tester.pumpWidget(
-        _cm(
+        _app(
           DocumentTypeSelectionScreen(
             onDocumentTypeSelected: (_) {},
             onSettingsPressed: () {},
@@ -339,7 +354,7 @@ void main() {
       _tallViewport(tester);
       var continued = 0;
       await tester.pumpWidget(
-        _cm(
+        _app(
           DocumentTypeSelectionScreen(
             onDocumentTypeSelected: (_) {},
             onSettingsPressed: () {},
@@ -350,7 +365,7 @@ void main() {
         ),
       );
       expect(find.text('Scan QR code'), findsNothing);
-      await tester.tap(find.text('Continue with CM.com'));
+      await tester.tap(find.text('Continue with Acme Bank'));
       expect(continued, 1);
     });
   });
@@ -364,9 +379,9 @@ void main() {
     }) async {
       _tallViewport(tester);
       await tester.pumpWidget(
-        _cm(
+        _app(
           ChooseDocumentScreen(
-            relyingParty: 'CM.com',
+            relyingParty: 'Acme Bank',
             savedDocuments: saved,
             onUseSaved: onUseSaved ?? (_) {},
             onAddNew: onAddNew ?? (_) {},
@@ -412,7 +427,7 @@ void main() {
         container: container,
         child: MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
-          theme: AppBrand.cm.theme,
+          theme: appTheme(),
           home: SavedDocumentsScreen(onBack: () {}, onScanQr: () {}),
         ),
       ),
@@ -428,10 +443,10 @@ void main() {
     _tallViewport(tester);
     final key = GlobalKey<FlutterFaceVerificationScreenState>();
     await tester.pumpWidget(
-      _cm(
-        FlutterFaceVerificationScreen.withEngine(
+      _app(
+        FlutterFaceVerificationScreen(
           key: key,
-          engine: FaceVerificationEngine.withWorker(_IdleWorker()),
+          testEngine: FaceVerificationEngine.withWorker(_IdleWorker()),
           nfcImageBytes: Uint8List.fromList(img.encodePng(img.Image(width: 2, height: 2))),
           onBackPressed: () {},
           onVerified: (_) {},
@@ -448,15 +463,15 @@ void main() {
 
   testWidgets('guided selfie check waits for Start instead of starting once ready', (tester) async {
     _tallViewport(tester);
-    Widget screen(GlobalKey<FlutterFaceVerificationScreenState> key) => FlutterFaceVerificationScreen.withEngine(
+    Widget screen(GlobalKey<FlutterFaceVerificationScreenState> key) => FlutterFaceVerificationScreen(
       key: key,
-      engine: FaceVerificationEngine.withWorker(_IdleWorker()),
+      testEngine: FaceVerificationEngine.withWorker(_IdleWorker()),
       nfcImageBytes: Uint8List.fromList(img.encodePng(img.Image(width: 2, height: 2))),
       onBackPressed: () {},
       onVerified: (_) {},
     );
     final guided = GlobalKey<FlutterFaceVerificationScreenState>();
-    await tester.pumpWidget(_cm(screen(guided)));
+    await tester.pumpWidget(_app(screen(guided)));
     await tester.pump();
     expect(guided.currentState!.debugAutoStarts, isFalse);
 
@@ -471,24 +486,6 @@ void main() {
     );
     await tester.pump();
     expect(classic.currentState!.debugAutoStarts, isTrue);
-  });
-
-  testWidgets('guided result offers to save the document when sharing', (tester) async {
-    _tallViewport(tester);
-    await tester.pumpWidget(
-      _cm(
-        PassportDataScreen(
-          document: _passport(),
-          passportDataResult: RawDocumentData(dataGroups: const {}, efSod: '00'),
-          onBackPressed: () {},
-        ),
-        overrides: [activeProofingSessionProvider.overrideWith(_PinnedSession.new)],
-      ),
-    );
-    await tester.pump();
-    expect(find.text('Share with CM.com'), findsOneWidget);
-    expect(find.text('Save for next time'), findsOneWidget);
-    expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
   });
 
   test('wallet cards made from a read document can be shared again', () {
@@ -519,7 +516,7 @@ void main() {
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
-        await tester.pumpWidget(_cm(QrScannerScreen(onScanned: (_) {}, onBack: () {})));
+        await tester.pumpWidget(_app(QrScannerScreen(onScanned: (_) {}, onBack: () {})));
         await tester.pump();
         expect(tester.takeException(), isNull);
         final instructions = tester.getRect(find.byKey(guidedQrInstructionsKey));
@@ -546,7 +543,7 @@ void main() {
       ProviderScope(
         child: MaterialApp.router(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
-          theme: AppBrand.cm.theme,
+          theme: appTheme(),
           routerConfig: router,
         ),
       ),
@@ -555,7 +552,7 @@ void main() {
       proofingConsentPath,
       extra: {
         'ref': const ProofingSessionRef(apiBase: 'https://proof.example.com', token: 'tok'),
-        'info': _session('CM.com'),
+        'info': _session('Acme Bank'),
       },
     );
     await tester.pumpAndSettle();
@@ -590,7 +587,7 @@ void main() {
         ],
         child: MaterialApp.router(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
-          theme: AppBrand.cm.theme,
+          theme: appTheme(),
           routerConfig: router,
         ),
       ),
@@ -618,7 +615,7 @@ class _RecordingProofingClient extends ProofingSessionClient {
     ProofingPhotoInfo? photo,
     required ProofingMrtdEvidence mrtdEvidence,
     ProofingDeviceInfo? device,
-    bool faceStepFollows = false,
+    PhotoInclusion photoInclusion = PhotoInclusion.whenRequested,
   }) async {
     nfcSteps.add(ref);
     return const ProofingStepResponse(status: 'ok', lifecycle: proofingLifecycleComplete);
@@ -631,12 +628,11 @@ class _PinnedFlowSession extends ActiveProofingSessionNotifier {
     ref: const ProofingSessionRef(apiBase: 'https://proof.example.com', token: 'tok', deviceToken: 'dev'),
     info: ProofingSessionInfo(
       id: 'session-1',
-      relyingParty: 'CM.com',
+      relyingParty: 'Acme Bank',
       requestedAttributes: const ['dg1', 'dg2'],
       expiresAt: DateTime.now().add(const Duration(minutes: 10)),
       steps: const [stepDocumentCapture, stepNfcRead],
     ),
-    openedAt: DateTime.now(),
   );
 }
 
@@ -644,8 +640,7 @@ class _PinnedSession extends ActiveProofingSessionNotifier {
   @override
   ActiveProofingSession? build() => ActiveProofingSession(
     ref: const ProofingSessionRef(apiBase: 'https://proof.example.com', token: 'tok'),
-    info: _session('CM.com'),
-    openedAt: DateTime.now(),
+    info: _session('Acme Bank'),
   );
 }
 

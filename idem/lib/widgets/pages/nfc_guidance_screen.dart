@@ -10,14 +10,15 @@ import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/widgets/common/document_illustrations.dart';
+import 'package:idem/widgets/common/brand_mark.dart';
 import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
+import 'package:idem/services/flow_step_plan.dart';
 
 /// NFC guidance screen - helps users position phone correctly for NFC reading
 class NfcGuidanceScreen extends StatefulWidget {
   final VoidCallback onStartReading;
   final VoidCallback onBack;
-  final VoidCallback? onTroubleshooting;
   final DocumentType documentType;
 
   /// Step badge numbers — default to vcmrtd's fixed 4-step sequence (this
@@ -29,17 +30,16 @@ class NfcGuidanceScreen extends StatefulWidget {
     super.key,
     required this.onStartReading,
     required this.onBack,
-    this.onTroubleshooting,
     required this.documentType,
-    this.stepNumber = 2,
-    this.totalSteps = 4,
+    this.stepNumber = FlowStepPlan.defaultNfcReadStep,
+    this.totalSteps = FlowStepPlan.defaultTotalSteps,
   });
 
   @override
   State<NfcGuidanceScreen> createState() => _NfcGuidanceScreenState();
 }
 
-class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProviderStateMixin {
+class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _positionAnimation;
   var _isNfcAvailable = false;
@@ -76,7 +76,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
       isNfcAvailable = false;
     }
 
-    if (!mounted) return;
+    if (!mounted || isNfcAvailable == _isNfcAvailable) return;
 
     setState(() {
       _isNfcAvailable = isNfcAvailable;
@@ -117,15 +117,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
                     ),
                     const SizedBox(height: 24.0),
                     // Animation area
-                    SizedBox(
-                      height: 240,
-                      child: AnimatedBuilder(
-                        animation: _animationController,
-                        builder: (context, child) {
-                          return _buildPositioningDiagram();
-                        },
-                      ),
-                    ),
+                    SizedBox(height: 240, child: _buildPositioningDiagram()),
                     const SizedBox(height: 24.0),
 
                     // Instruction area
@@ -168,7 +160,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
             children: [
               GuidedTopBar(
                 leading: GuidedRoundButton(icon: Icons.chevron_left, tooltip: 'Back', onPressed: widget.onBack),
-                center: Image.asset(g.markAsset, width: 32, height: 32, semanticLabel: context.brand.appBarTitle),
+                center: const BrandMark(size: 32),
               ),
               const GuidedStepBar(step: 2),
               Expanded(
@@ -208,7 +200,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
                                     width: 28,
                                     height: 28,
                                     alignment: Alignment.center,
-                                    decoration: BoxDecoration(color: g.ink, shape: BoxShape.circle),
+                                    decoration: BoxDecoration(color: g.header, shape: BoxShape.circle),
                                     child: Text('${i + 1}', style: g.heading(13, color: Colors.white)),
                                   ),
                                   const SizedBox(width: 12),
@@ -242,10 +234,6 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
                       const SizedBox(height: 12),
                     ],
                     GuidedButton(label: 'Start reading', onPressed: _isNfcAvailable ? widget.onStartReading : null),
-                    if (widget.onTroubleshooting != null) ...[
-                      const SizedBox(height: 4),
-                      TextButton(onPressed: widget.onTroubleshooting, child: const Text('Having trouble?')),
-                    ],
                   ],
                 ),
               ),
@@ -277,7 +265,12 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
         alignment: Alignment.center,
         children: [
           Positioned(bottom: 60, child: buildDocumentIllustration(widget.documentType)),
-          Positioned(top: 40 + (_positionAnimation.value * 20), child: buildPhoneIllustration()),
+          // Only the phone moves; the rest isn't rebuilt every frame.
+          AnimatedBuilder(
+            animation: _positionAnimation,
+            child: buildPhoneIllustration(),
+            builder: (context, phone) => Positioned(top: 40 + (_positionAnimation.value * 20), child: phone!),
+          ),
         ],
       ),
     );
@@ -332,15 +325,6 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with TickerProvid
               context.l10n.docNfcNotAvailable,
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            ),
-          ),
-        const SizedBox(height: 8),
-        if (widget.onTroubleshooting != null)
-          PlatformTextButton(
-            onPressed: widget.onTroubleshooting,
-            child: Text(
-              context.l10n.docHavingTrouble,
-              style: TextStyle(color: context.brand.accent ?? const Color(0xFF2196F3), fontWeight: FontWeight.w500),
             ),
           ),
       ],

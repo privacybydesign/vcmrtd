@@ -91,7 +91,7 @@ extension on _QrScannerScreenState {
     return GuidedStatusBar(
       onDark: true,
       child: Scaffold(
-        backgroundColor: g.ink,
+        backgroundColor: g.header,
         body: Stack(
           children: [
             Positioned.fill(
@@ -134,7 +134,7 @@ extension on _QrScannerScreenState {
                                     ),
                                     const SizedBox(height: 8),
                                     Text(
-                                      'You’ll find it on the ${context.brand.appBarTitle} website or app that asked you to verify.',
+                                      'You’ll find it on the website or app that asked you to verify.',
                                       textAlign: TextAlign.center,
                                       style: TextStyle(fontSize: 15, height: 1.5, color: g.heroMuted),
                                     ),

@@ -20,6 +20,7 @@ Future<ProofingStepResponse?> submitProofingStep(
   final container = ProviderScope.containerOf(context);
   final navigator = Navigator.of(context, rootNavigator: true);
   while (true) {
+    if (!context.mounted) return null;
     showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -56,7 +57,7 @@ Future<ProofingStepResponse?> submitProofingStep(
           ],
         ),
       );
-      if (retry != true || !context.mounted) return null;
+      if (retry != true) return null;
     }
   }
 }
