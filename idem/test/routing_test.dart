@@ -17,6 +17,7 @@ import 'package:idem/widgets/pages/face_verification_entry_screen.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/routing.dart';
 import 'package:idem/widgets/pages/guided_manual_entry_screen.dart';
+import 'package:idem/services/document_photo_quality.dart';
 import 'package:idem/services/face_verification_outcome.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:idem/widgets/pages/document_photo_screen.dart';
@@ -115,8 +116,12 @@ class _FakeWorker implements FaceVerificationWorker {
 }
 
 class _FakeDocumentPhotoCamera implements DocumentPhotoCamera {
+  /// The preview shows the document readable, so the photo can be taken.
   @override
-  Future<void> open() async {}
+  Future<void> open({required double frameRatio, required ValueChanged<DocumentPhotoIssue?> onFrameChecked}) async {
+    onFrameChecked(null);
+    onFrameChecked(null);
+  }
 
   @override
   Widget buildPreview(BuildContext context) => const SizedBox.expand();

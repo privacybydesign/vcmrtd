@@ -1,12 +1,15 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:idem/l10n/l10n.dart';
+import 'package:idem/services/document_photo_quality.dart';
 import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:vcmrtd/vcmrtd.dart';
@@ -57,8 +60,11 @@ Future<Uint8List> preparePhotoInBackground(DocumentPicture picture) => compute(p
 /// The camera the document photo is taken with: the device's back camera,
 /// or a fake in tests.
 abstract class DocumentPhotoCamera {
-  /// Opens the camera; throws when there is none or it can't be opened.
-  Future<void> open();
+  /// Opens the camera; throws when there is none or it can't be opened. While
+  /// it's open, [onFrameChecked] gets what keeps the document inside the frame
+  /// of [frameRatio] from being readable (null: nothing) for a few preview
+  /// frames a second.
+  Future<void> open({required double frameRatio, required ValueChanged<DocumentPhotoIssue?> onFrameChecked});
 
   /// The live preview, once [open] completed.
   Widget buildPreview(BuildContext context);
@@ -86,16 +92,45 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
   /// The size the preview was last laid out at: where the frame is drawn.
   Size? _viewSize;
 
+  /// Where the latest [open] wants its preview frames checked, and what it
+  /// wants to hear.
+  double _frameRatio = MRZCameraOverlay.cardFrameRatio;
+  ValueChanged<DocumentPhotoIssue?>? _onFrameChecked;
+
+  /// Whether a preview frame is being checked: frames that arrive meanwhile
+  /// are skipped.
+  var _checking = false;
+
+  static const _deviceRotations = {
+    DeviceOrientation.portraitUp: 0,
+    DeviceOrientation.landscapeLeft: 90,
+    DeviceOrientation.portraitDown: 180,
+    DeviceOrientation.landscapeRight: 270,
+  };
+
   @override
-  Future<void> open() async {
-    if (_controller != null) return;
+  Future<void> open({required double frameRatio, required ValueChanged<DocumentPhotoIssue?> onFrameChecked}) async {
+    _frameRatio = frameRatio;
+    _onFrameChecked = onFrameChecked;
+    final open = _controller;
+    if (open != null) {
+      // Still open after a picture that failed: its preview frames stopped.
+      if (!open.value.isStreamingImages) await open.startImageStream(_checkFrame);
+      return;
+    }
     final generation = ++_generation;
     final cameras = await availableCameras();
     if (cameras.isEmpty) throw const DocumentPhotoNoCameraException();
     final back = cameras.firstWhere((c) => c.lensDirection == CameraLensDirection.back, orElse: () => cameras.first);
-    final controller = CameraController(back, ResolutionPreset.veryHigh, enableAudio: false);
+    final controller = CameraController(
+      back,
+      ResolutionPreset.veryHigh,
+      enableAudio: false,
+      imageFormatGroup: Platform.isAndroid ? ImageFormatGroup.yuv420 : ImageFormatGroup.bgra8888,
+    );
     try {
       await controller.initialize();
+      if (generation == _generation) await controller.startImageStream(_checkFrame);
     } catch (_) {
       await controller.dispose();
       rethrow;
@@ -105,6 +140,40 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
       return;
     }
     _controller = controller;
+  }
+
+  void _checkFrame(CameraImage image) {
+    final controller = _controller;
+    final viewSize = _viewSize;
+    final onFrameChecked = _onFrameChecked;
+    if (_checking || controller == null || viewSize == null || onFrameChecked == null || image.planes.isEmpty) return;
+
+    final camera = controller.description;
+    final deviceRotation = _deviceRotations[controller.value.deviceOrientation] ?? 0;
+    final rotation = camera.lensDirection == CameraLensDirection.front
+        ? (camera.sensorOrientation + deviceRotation) % 360
+        : (camera.sensorOrientation - deviceRotation + 360) % 360;
+    final plane = image.planes.first;
+    // Android's first YUV420 plane is the brightness; iOS streams BGRA.
+    final frame = Platform.isAndroid
+        ? LumaFrame.luma(bytes: plane.bytes, width: image.width, height: image.height, bytesPerRow: plane.bytesPerRow)
+        : LumaFrame.bgra(bytes: plane.bytes, width: image.width, height: image.height, bytesPerRow: plane.bytesPerRow);
+    // The preview frames are the preview: the frame lies in them where it lies
+    // in the preview.
+    final region = DocumentPicture.frameInPreview(
+      MRZCameraOverlay.frameRect(viewSize, _frameRatio),
+      _previewRect(viewSize, controller.value.aspectRatio),
+    );
+    _checking = true;
+    final generation = _generation;
+    unawaited(
+      assessFrameInBackground(frame, rotation: rotation, region: region)
+          .then((issue) {
+            // Not when the camera closed or reopened while the frame was checked.
+            if (generation == _generation && _onFrameChecked == onFrameChecked) onFrameChecked(issue);
+          }, onError: (_) {}) // A frame that couldn't be checked is skipped like a busy one.
+          .whenComplete(() => _checking = false),
+    );
   }
 
   @override
@@ -132,6 +201,8 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
     final controller = _controller;
     final viewSize = _viewSize;
     if (controller == null || viewSize == null) throw StateError('camera not open');
+    // Not every platform takes a picture while it streams preview frames.
+    if (controller.value.isStreamingImages) await controller.stopImageStream();
     final file = await controller.takePicture();
     final picture = DocumentPicture(
       jpeg: await readAndDeletePicture(file),
@@ -170,6 +241,7 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
   @override
   Future<void> close() async {
     _generation++;
+    _onFrameChecked = null;
     final controller = _controller;
     _controller = null;
     await controller?.dispose();
@@ -182,6 +254,12 @@ class DocumentPhotoNoCameraException implements Exception {
 }
 
 enum _PhotoState { opening, preview, capturing, review, error }
+
+/// How long the photo can't be taken while the preview frames look unreadable.
+/// The checks can be wrong about a document or a camera, and a user who can't
+/// take the photo would see the session expire: after this the photo can be
+/// taken anyway, and the review still asks whether it's readable.
+const documentPhotoQualityWaiveDelay = Duration(seconds: 5);
 
 /// Which side of the document is being photographed.
 enum DocumentPhotoSide { front, back }
@@ -241,6 +319,14 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
   String? _error;
   var _sending = false;
 
+  /// Whether the preview frames show the document readable.
+  final _quality = DocumentPhotoQuality();
+
+  /// Set once the preview showed for [documentPhotoQualityWaiveDelay]: the
+  /// photo can be taken however the frames look.
+  var _qualityWaived = false;
+  Timer? _waiveTimer;
+
   bool get _isPassport => widget.documentType == DocumentType.passport;
 
   List<DocumentPhotoSide> _sidesToCapture() {
@@ -277,6 +363,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _waiveTimer?.cancel();
     unawaited(_camera.close());
     super.dispose();
   }
@@ -300,16 +387,22 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
 
   Future<void> _openCamera() async {
     final attempt = ++_openAttempt;
+    _waiveTimer?.cancel();
+    _quality.reset();
     setState(() {
       _state = _PhotoState.opening;
       _error = null;
+      _qualityWaived = false;
     });
     // Back, or a later open, overtook this one while the camera opened.
     bool overtaken() => attempt != _openAttempt || _state != _PhotoState.opening;
     try {
-      await _camera.open();
+      await _camera.open(frameRatio: _frameRatio, onFrameChecked: _onFrameChecked);
       if (!mounted || overtaken()) return;
       setState(() => _state = _PhotoState.preview);
+      _waiveTimer = Timer(documentPhotoQualityWaiveDelay, () {
+        if (mounted) setState(() => _qualityWaived = true);
+      });
     } catch (e) {
       if (!mounted || overtaken()) return;
       _showError(
@@ -320,8 +413,14 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
     }
   }
 
+  void _onFrameChecked(DocumentPhotoIssue? issue) {
+    if (!mounted || (_state != _PhotoState.opening && _state != _PhotoState.preview)) return;
+    if (_quality.update(issue)) setState(() {});
+  }
+
   Future<void> _capture() async {
     final index = _index;
+    _waiveTimer?.cancel();
     setState(() => _state = _PhotoState.capturing);
     // Only the side it was taken for gets the picture.
     bool overtaken() => _index != index || _state != _PhotoState.capturing;
@@ -477,9 +576,16 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
     return _isPassport ? l10n.docPhotoFrontInstructionsPassport : l10n.docPhotoFrontInstructionsCard;
   }
 
+  String _qualityHint(AppLocalizations l10n, DocumentPhotoIssue issue) => switch (issue) {
+    DocumentPhotoIssue.glare => l10n.docPhotoHintGlare,
+    DocumentPhotoIssue.tooDark => l10n.docPhotoHintTooDark,
+    DocumentPhotoIssue.blurry => l10n.docPhotoHintBlurry,
+  };
+
   Widget _buildCameraActions(BuildContext context, {required bool front}) {
     final l10n = context.l10n;
-    final ready = _state == _PhotoState.preview;
+    final ready = _state == _PhotoState.preview && (_quality.clear || _qualityWaived);
+    final issue = _state == _PhotoState.preview ? _quality.issue : null;
     // The main action on the dark header, so it stands out whatever the primary.
     final style = context.guided.heroButtonStyle;
     return Padding(
@@ -487,6 +593,23 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (issue != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(8)),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, color: Colors.white, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(_qualityHint(l10n, issue), style: const TextStyle(color: Colors.white, fontSize: 14)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           if (_state == _PhotoState.error)
             ElevatedButton(style: style, onPressed: _openCamera, child: Text(l10n.faceTryAgain))
           else
