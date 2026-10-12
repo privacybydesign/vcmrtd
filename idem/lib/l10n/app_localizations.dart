@@ -896,6 +896,24 @@ abstract class AppLocalizations {
   /// **'Take photo'**
   String get docPhotoTake;
 
+  /// No description provided for @docPhotoHintGlare.
+  ///
+  /// In en, this message translates to:
+  /// **'Reflection on the document. Tilt it slightly.'**
+  String get docPhotoHintGlare;
+
+  /// No description provided for @docPhotoHintTooDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Too dark. Move to a place with more light.'**
+  String get docPhotoHintTooDark;
+
+  /// No description provided for @docPhotoHintBlurry.
+  ///
+  /// In en, this message translates to:
+  /// **'Not sharp yet. Hold your phone still.'**
+  String get docPhotoHintBlurry;
+
   /// No description provided for @docPhotoReviewTitle.
   ///
   /// In en, this message translates to:

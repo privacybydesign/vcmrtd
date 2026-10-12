@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:idem/l10n/l10n.dart';
+import 'package:idem/services/document_photo_quality.dart';
 import 'package:idem/widgets/pages/document_photo_screen.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtd/vcmrtd.dart';
@@ -22,11 +23,21 @@ class _FakeCamera implements DocumentPhotoCamera {
   /// When set, [open] waits for it: a camera that takes a while to open.
   Completer<void>? openGate;
 
+  /// What the preview frames report on opening: readable by default, so the
+  /// photo can be taken straight away.
+  List<DocumentPhotoIssue?> frames = const [null, null];
+
+  /// Reports a checked preview frame, like the device camera does a few
+  /// times a second while it's open.
+  ValueChanged<DocumentPhotoIssue?>? onFrameChecked;
+
   @override
-  Future<void> open() async {
+  Future<void> open({required double frameRatio, required ValueChanged<DocumentPhotoIssue?> onFrameChecked}) async {
     opens++;
+    this.onFrameChecked = onFrameChecked;
     await openGate?.future;
     if (openError != null) throw openError!;
+    frames.forEach(onFrameChecked);
   }
 
   @override
@@ -97,6 +108,12 @@ Future<void> _usePhoto(WidgetTester tester) async {
   await tester.pump();
   await tester.pump();
 }
+
+bool _takePhotoEnabled(WidgetTester tester) => tester
+    .widget<ElevatedButton>(
+      find.ancestor(of: find.text('Take photo'), matching: find.byWidgetPredicate((w) => w is ElevatedButton)),
+    )
+    .enabled;
 
 double _frameRatio(WidgetTester tester) => tester.widget<MRZCameraOverlay>(find.byType(MRZCameraOverlay)).frameRatio;
 
@@ -390,6 +407,67 @@ void main() {
     sending.complete();
     await tester.pump();
     expect(tester.widget<ElevatedButton>(find.widgetWithText(ElevatedButton, 'Use photo')).onPressed, isNotNull);
+  });
+
+  testWidgets('the photo cannot be taken while the preview shows the document unreadable; a hint says why', (
+    tester,
+  ) async {
+    final camera = _FakeCamera()..frames = const [DocumentPhotoIssue.glare, DocumentPhotoIssue.glare];
+    await tester.pumpWidget(_screen(camera));
+    await tester.pump();
+
+    expect(_takePhotoEnabled(tester), isFalse);
+    expect(find.text('Reflection on the document. Tilt it slightly.'), findsOneWidget);
+
+    camera.onFrameChecked!(null);
+    camera.onFrameChecked!(null);
+    await tester.pump();
+    expect(_takePhotoEnabled(tester), isTrue);
+    expect(find.text('Reflection on the document. Tilt it slightly.'), findsNothing);
+  });
+
+  testWidgets('the hint follows the issue the preview frames agree on', (tester) async {
+    final camera = _FakeCamera()..frames = const [DocumentPhotoIssue.tooDark, DocumentPhotoIssue.tooDark];
+    await tester.pumpWidget(_screen(camera));
+    await tester.pump();
+    expect(find.text('Too dark. Move to a place with more light.'), findsOneWidget);
+
+    camera.onFrameChecked!(DocumentPhotoIssue.blurry);
+    camera.onFrameChecked!(DocumentPhotoIssue.blurry);
+    await tester.pump();
+    expect(find.text('Not sharp yet. Hold your phone still.'), findsOneWidget);
+    expect(_takePhotoEnabled(tester), isFalse);
+  });
+
+  testWidgets('the photo can be taken anyway once the preview showed for a while, so the session never gets stuck', (
+    tester,
+  ) async {
+    final camera = _FakeCamera()..frames = const [DocumentPhotoIssue.blurry, DocumentPhotoIssue.blurry];
+    await tester.pumpWidget(_screen(camera));
+    await tester.pump();
+    expect(_takePhotoEnabled(tester), isFalse);
+
+    await tester.pump(documentPhotoQualityWaiveDelay);
+    expect(_takePhotoEnabled(tester), isTrue);
+    // Still says what the frames show.
+    expect(find.text('Not sharp yet. Hold your phone still.'), findsOneWidget);
+
+    await _takeAndReview(tester);
+    expect(find.text('Check the photo'), findsOneWidget);
+  });
+
+  testWidgets('a reopened camera checks its frames afresh', (tester) async {
+    final camera = _FakeCamera();
+    await tester.pumpWidget(_screen(camera));
+    await tester.pump();
+    await tester.pump(documentPhotoQualityWaiveDelay);
+    await _takeAndReview(tester);
+
+    camera.frames = const [DocumentPhotoIssue.glare, DocumentPhotoIssue.glare];
+    await tester.tap(find.text('Retake'));
+    await tester.pump();
+    await tester.pump();
+    expect(_takePhotoEnabled(tester), isFalse);
   });
 
   testWidgets('a camera that cannot be opened says so and offers to try again', (tester) async {
