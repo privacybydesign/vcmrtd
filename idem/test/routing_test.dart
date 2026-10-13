@@ -116,9 +116,10 @@ class _FakeWorker implements FaceVerificationWorker {
 class _FakeDocumentPhotoCamera implements DocumentPhotoCamera {
   /// The preview shows the document readable, so the photo can be taken.
   @override
-  Future<void> open({required double frameRatio, required ValueChanged<DocumentPhotoIssue?> onFrameChecked}) async {
-    onFrameChecked(null);
-    onFrameChecked(null);
+  Future<void> open({required double frameRatio, required ValueChanged<Set<DocumentPhotoIssue>> onFrameChecked}) async {
+    for (var i = 0; i < DocumentPhotoQuality.framesToAgree; i++) {
+      onFrameChecked(const {});
+    }
   }
 
   @override
