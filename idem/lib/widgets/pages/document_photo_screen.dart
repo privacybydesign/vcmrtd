@@ -58,6 +58,24 @@ img.Image _fitLongEdge(img.Image image, int maxLongEdge) {
 /// picture takes a while.
 Future<Uint8List> preparePhotoInBackground(DocumentPicture picture) => compute(prepareDocumentPhoto, picture);
 
+const _deviceRotations = {
+  DeviceOrientation.portraitUp: 0,
+  DeviceOrientation.landscapeLeft: 90,
+  DeviceOrientation.portraitDown: 180,
+  DeviceOrientation.landscapeRight: 270,
+};
+
+/// The clockwise degrees that turn a preview frame from [camera] upright.
+/// iOS turns stream frames to the device's orientation itself, and ML Kit
+/// there ignores the rotation it's given.
+int streamFrameRotation(CameraDescription camera, DeviceOrientation deviceOrientation, {required bool ios}) {
+  if (ios) return 0;
+  final deviceRotation = _deviceRotations[deviceOrientation] ?? 0;
+  return camera.lensDirection == CameraLensDirection.front
+      ? (camera.sensorOrientation + deviceRotation) % 360
+      : (camera.sensorOrientation - deviceRotation + 360) % 360;
+}
+
 /// The camera the document photo is taken with: the device's back camera,
 /// or a fake in tests.
 abstract class DocumentPhotoCamera {
@@ -100,13 +118,6 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
   /// Text recognition is slower than a frame: one read at a time, frames use the latest result.
   var _reading = false;
   bool? _readable;
-
-  static const _deviceRotations = {
-    DeviceOrientation.portraitUp: 0,
-    DeviceOrientation.landscapeLeft: 90,
-    DeviceOrientation.portraitDown: 180,
-    DeviceOrientation.landscapeRight: 270,
-  };
 
   @override
   Future<void> open({required double frameRatio, required ValueChanged<Set<DocumentPhotoIssue>> onFrameChecked}) async {
@@ -160,14 +171,11 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
       return;
     }
 
-    final camera = controller.description;
-    final deviceRotation = _deviceRotations[controller.value.deviceOrientation] ?? 0;
-    // iOS turns stream frames to the device's orientation itself, and ML Kit there ignores the rotation it's given.
-    final rotation = Platform.isIOS
-        ? 0
-        : camera.lensDirection == CameraLensDirection.front
-        ? (camera.sensorOrientation + deviceRotation) % 360
-        : (camera.sensorOrientation - deviceRotation + 360) % 360;
+    final rotation = streamFrameRotation(
+      controller.description,
+      controller.value.deviceOrientation,
+      ios: Platform.isIOS,
+    );
     final plane = image.planes.first;
     final frame = Platform.isAndroid
         ? LumaFrame.luma(bytes: plane.bytes, width: image.width, height: image.height, bytesPerRow: plane.bytesPerRow)

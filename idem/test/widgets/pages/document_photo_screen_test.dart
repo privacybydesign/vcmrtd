@@ -1,7 +1,8 @@
 import 'dart:async';
-import 'dart:typed_data';
 
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:idem/l10n/l10n.dart';
@@ -550,6 +551,27 @@ void main() {
       const m = DocumentPicture.frameMargin;
       expect(prepared.width, closeTo(900 * (0.8 + 2 * 0.8 * m), 2));
       expect(prepared.height, closeTo(1600 * (0.2 + 2 * 0.2 * m), 2));
+    });
+  });
+
+  group('streamFrameRotation', () {
+    const back = CameraDescription(name: 'back', lensDirection: CameraLensDirection.back, sensorOrientation: 90);
+    const front = CameraDescription(name: 'front', lensDirection: CameraLensDirection.front, sensorOrientation: 270);
+
+    test('turns a back camera\'s frame by its sensor orientation less the device\'s', () {
+      expect(streamFrameRotation(back, DeviceOrientation.portraitUp, ios: false), 90);
+      expect(streamFrameRotation(back, DeviceOrientation.landscapeLeft, ios: false), 0);
+      expect(streamFrameRotation(back, DeviceOrientation.portraitDown, ios: false), 270);
+      expect(streamFrameRotation(back, DeviceOrientation.landscapeRight, ios: false), 180);
+    });
+
+    test('turns a front camera\'s frame by its sensor orientation plus the device\'s', () {
+      expect(streamFrameRotation(front, DeviceOrientation.portraitUp, ios: false), 270);
+      expect(streamFrameRotation(front, DeviceOrientation.landscapeLeft, ios: false), 0);
+    });
+
+    test('leaves iOS frames as they are', () {
+      expect(streamFrameRotation(back, DeviceOrientation.landscapeLeft, ios: true), 0);
     });
   });
 }
