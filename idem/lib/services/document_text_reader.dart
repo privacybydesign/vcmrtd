@@ -18,6 +18,7 @@ class DocumentTextReader {
     final sideways = rotation % 180 != 0;
     final uprightWidth = (sideways ? image.height : image.width).toDouble();
     final uprightHeight = (sideways ? image.width : image.height).toDouble();
+
     final text = await (_recognizer ??= TextRecognizer()).processImage(_input(image, rotation));
     final lines = [
       for (final block in text.blocks)
@@ -29,6 +30,7 @@ class DocumentTextReader {
             line.boundingBox.bottom / uprightHeight,
           ),
     ];
+
     return textReadable(lines, region);
   }
 

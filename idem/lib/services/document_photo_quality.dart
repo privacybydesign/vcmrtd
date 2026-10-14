@@ -72,6 +72,8 @@ const _lumaBlue = 29;
 const _lumaGreen = 150;
 const _lumaRed = 77;
 
+const _bgraBytesPerPixel = 4;
+
 class LumaFrame {
   /// Android's YUV420/NV21: the first plane is brightness.
   const LumaFrame.luma({required this.bytes, required this.width, required this.height, required this.bytesPerRow})
@@ -88,7 +90,7 @@ class LumaFrame {
 
   int brightnessAt(int x, int y) {
     if (!isBgra) return bytes[y * bytesPerRow + x];
-    final i = y * bytesPerRow + x * 4;
+    final i = y * bytesPerRow + x * _bgraBytesPerPixel;
     return (bytes[i] * _lumaBlue + bytes[i + 1] * _lumaGreen + bytes[i + 2] * _lumaRed) >> 8;
   }
 }
@@ -182,6 +184,7 @@ Set<DocumentPhotoIssue> checkFrame(LumaFrame frame, {required int rotation, requ
   final sample = sampleDocument(frame, rotation: rotation, region: sampled);
   final scaleX = sample.width / sampled.width;
   final scaleY = sample.height / sampled.height;
+
   return (
     sample,
     Rect.fromLTRB(
@@ -356,12 +359,14 @@ _Edge? _findEdge(DocumentSample sample, Rect frame, _Side side) {
       profile[i] = at(from, to, i - outside - reach);
       sums[i + 1] = sums[i] + profile[i];
     }
+
     final steps = [
       for (var d = -outside; d <= inside; d++)
         (sum(d + outside + reach + _edgeGap, d + outside + 2 * reach) -
                 sum(d + outside, d + outside + reach - _edgeGap)) /
             _edgeWindow,
     ];
+
     for (var j = 0; j < steps.length; j++) {
       final step = steps[j].abs();
       if (step < _minEdgeStep) continue;
@@ -414,6 +419,7 @@ _Edge? _fitEdge(List<_EdgePoint> points) {
       }
     }
   }
+
   if (best == null) return null;
 
   _Edge edge = (slope: best.slope, offset: best.offset);
@@ -436,6 +442,7 @@ _Edge? _fitEdge(List<_EdgePoint> points) {
     final slope = variance == 0 ? 0.0 : (covariance / variance).clamp(-_maxEdgeSlope, _maxEdgeSlope);
     edge = (slope: slope, offset: meanD - slope * meanA);
   }
+
   return edge;
 }
 
@@ -479,6 +486,7 @@ class DocumentFrameChecker {
       rotation: rotation,
       region: (region.left, region.top, region.right, region.bottom),
     ));
+
     return pending.future;
   }
 
@@ -537,6 +545,7 @@ int _paperBrightness(DocumentSample sample) {
     seen += histogram[b];
     if (seen > below) return b;
   }
+
   return _brightnessLevels - 1;
 }
 
@@ -551,6 +560,7 @@ List<List<int>> _tileHistograms(DocumentSample document) {
       histograms[row + x * columns ~/ document.width][document.pixels[offset + x]]++;
     }
   }
+
   return [
     for (final histogram in histograms)
       if (histogram.any((count) => count > 0)) histogram,
@@ -565,6 +575,7 @@ int _percentile(List<int> histogram, double share) {
     seen += histogram[b];
     if (seen > below) return b;
   }
+
   return _brightnessLevels - 1;
 }
 
@@ -573,6 +584,7 @@ bool _glaring(List<int> histogram, [int brightness = _clippedBrightness]) {
   for (var b = brightness; b < _brightnessLevels; b++) {
     bright += histogram[b];
   }
+
   return bright / histogram.reduce((a, b) => a + b) > _glareTileShare;
 }
 
