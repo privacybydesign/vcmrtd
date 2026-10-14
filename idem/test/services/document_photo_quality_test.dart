@@ -278,14 +278,10 @@ void main() {
     });
 
     test('text that is not readable is an issue of a document found, only', () {
-      expect(withReadability(const {}, readable: false), {DocumentPhotoIssue.unreadable});
-      expect(withReadability({DocumentPhotoIssue.glare}, readable: false), {
-        DocumentPhotoIssue.glare,
-        DocumentPhotoIssue.unreadable,
-      });
-      expect(withReadability({DocumentPhotoIssue.glare}, readable: true), {DocumentPhotoIssue.glare});
-      expect(withReadability({DocumentPhotoIssue.noDocument}, readable: false), {DocumentPhotoIssue.noDocument});
-      expect(withReadability({DocumentPhotoIssue.tooDark}, readable: false), {DocumentPhotoIssue.tooDark});
+      expect(withUnreadable(const {}), {DocumentPhotoIssue.unreadable});
+      expect(withUnreadable({DocumentPhotoIssue.glare}), {DocumentPhotoIssue.glare, DocumentPhotoIssue.unreadable});
+      expect(withUnreadable({DocumentPhotoIssue.noDocument}), {DocumentPhotoIssue.noDocument});
+      expect(withUnreadable({DocumentPhotoIssue.tooDark}), {DocumentPhotoIssue.tooDark});
     });
   });
 
@@ -301,29 +297,31 @@ void main() {
       frame.right / uprightWidth,
       frame.bottom / uprightHeight,
     );
-    LumaFrame sensorFrame({bool withCard = true}) {
+    LumaFrame sensorFrame(bool Function(Offset upright) onCard) {
       final bytes = Uint8List(uprightWidth * uprightHeight);
       for (var uy = 0; uy < uprightHeight; uy++) {
         for (var ux = 0; ux < uprightWidth; ux++) {
-          final onCard = withCard && frame.contains(Offset(ux + 0.5, uy + 0.5));
           // Upright (ux, uy) is sensor (uy, height - 1 - ux), the sensor
           // frame uprightHeight wide and uprightWidth high.
-          bytes[(uprightWidth - 1 - ux) * uprightHeight + uy] = onCard ? 200 : 60;
+          bytes[(uprightWidth - 1 - ux) * uprightHeight + uy] = onCard(Offset(ux + 0.5, uy + 0.5)) ? 200 : 60;
         }
       }
       return LumaFrame.luma(bytes: bytes, width: uprightHeight, height: uprightWidth, bytesPerRow: uprightHeight);
     }
 
+    LumaFrame cardFrame() => sensorFrame(frame.contains);
+    LumaFrame emptyFrame() => sensorFrame((_) => false);
+
     test('finds the card where the frame lies in the upright frame', () {
-      expect(checkFrame(sensorFrame(), rotation: 90, region: region), {DocumentPhotoIssue.blurry});
-      expect(checkFrame(sensorFrame(withCard: false), rotation: 90, region: region), {DocumentPhotoIssue.noDocument});
+      expect(checkFrame(cardFrame(), rotation: 90, region: region), {DocumentPhotoIssue.blurry});
+      expect(checkFrame(emptyFrame(), rotation: 90, region: region), {DocumentPhotoIssue.noDocument});
     });
 
     test('DocumentFrameChecker checks every frame on its isolate, in order, like checkFrame', () async {
       final checker = await DocumentFrameChecker.start();
       addTearDown(checker.close);
-      final withCard = sensorFrame();
-      final without = sensorFrame(withCard: false);
+      final withCard = cardFrame();
+      final without = emptyFrame();
       final results = await Future.wait([
         for (final f in [withCard, without, withCard, without]) checker.check(f, rotation: 90, region: region),
       ]);
@@ -335,9 +333,19 @@ void main() {
 
     test('DocumentFrameChecker fails the frames still being checked when it closes', () async {
       final checker = await DocumentFrameChecker.start();
-      final result = checker.check(sensorFrame(), rotation: 90, region: region);
+      final result = checker.check(cardFrame(), rotation: 90, region: region);
       checker.close();
       await expectLater(result, throwsStateError);
+    });
+
+    test('DocumentFrameChecker is busy while a frame is checked', () async {
+      final checker = await DocumentFrameChecker.start();
+      addTearDown(checker.close);
+      expect(checker.busy, isFalse);
+      final result = checker.check(cardFrame(), rotation: 90, region: region);
+      expect(checker.busy, isTrue);
+      await result;
+      expect(checker.busy, isFalse);
     });
   });
 
