@@ -278,6 +278,7 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
     _checker = null;
     _reading = false;
     _readable = null;
+
     await controller?.dispose();
     await textReader?.close();
   }
