@@ -9,7 +9,6 @@ import 'package:flutter/services.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image/image.dart' as img;
 import 'package:mrz_capture/mrz_capture.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/services/document_photo_quality.dart';
 import 'package:idem/theme/brand_theme.dart';
@@ -62,10 +61,7 @@ Future<Uint8List> preparePhotoInBackground(DocumentPicture picture) => compute(p
 /// The camera the document photo is taken with: the device's back camera,
 /// or a fake in tests.
 abstract class DocumentPhotoCamera {
-  /// Opens the camera; throws when there is none or it can't be opened. While
-  /// it's open, [onFrameChecked] gets what keeps the document inside the frame
-  /// of [frameRatio] from being readable (none: nothing, see
-  /// [documentPhotoIssues]) for a few preview frames a second.
+  /// Opens the camera; throws when there is none or it can't be opened.
   Future<void> open({required double frameRatio, required ValueChanged<Set<DocumentPhotoIssue>> onFrameChecked});
 
   /// The live preview, once [open] completed.
@@ -94,33 +90,16 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
   /// The size the preview was last laid out at: where the frame is drawn.
   Size? _viewSize;
 
-  /// Where the latest [open] wants its preview frames checked, and what it
-  /// wants to hear.
   double _frameRatio = MRZCameraOverlay.cardFrameRatio;
   ValueChanged<Set<DocumentPhotoIssue>>? _onFrameChecked;
 
-  /// Checks every preview frame: started and stopped with the camera.
   DocumentFrameChecker? _checker;
 
-  /// Reads the text in preview frames, to find the document by: opened with
-  /// the first frame, closed with the camera.
   TextRecognizer? _textRecognizer;
 
-  /// Whether the text of a preview frame is being read. Reading takes longer
-  /// than a frame lasts, so it reads one frame at a time - the latest, once
-  /// the last read is done - and every frame is checked against the latest
-  /// read, [_readable]: null until the first read is done.
+  /// Text recognition is slower than a frame: one read at a time, frames use the latest result.
   var _reading = false;
   bool? _readable;
-
-  /// In debug builds, where every [_dumpEvery]th checked frame is saved as
-  /// the detection saw it, the last [_dumpCount] of them, to check it against
-  /// real camera frames: on Android, adb pull
-  /// /sdcard/Android/data/foundation.privacybydesign.idem/files/document_frames.
-  Directory? _dumpDirectory;
-  var _frameCount = 0;
-  static const _dumpEvery = 15;
-  static const _dumpCount = 40;
 
   static const _deviceRotations = {
     DeviceOrientation.portraitUp: 0,
@@ -150,14 +129,6 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
       imageFormatGroup: Platform.isAndroid ? ImageFormatGroup.yuv420 : ImageFormatGroup.bgra8888,
     );
     DocumentFrameChecker? checker;
-    if (kDebugMode && _dumpDirectory == null) {
-      try {
-        final base = Platform.isAndroid
-            ? await getExternalStorageDirectory()
-            : await getApplicationDocumentsDirectory();
-        if (base != null) _dumpDirectory = await Directory('${base.path}/document_frames').create();
-      } catch (_) {} // Only a debugging aid.
-    }
     try {
       await controller.initialize();
       checker = await DocumentFrameChecker.start();
@@ -194,12 +165,9 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
         ? (camera.sensorOrientation + deviceRotation) % 360
         : (camera.sensorOrientation - deviceRotation + 360) % 360;
     final plane = image.planes.first;
-    // Android's first YUV420 plane is the brightness; iOS streams BGRA.
     final frame = Platform.isAndroid
         ? LumaFrame.luma(bytes: plane.bytes, width: image.width, height: image.height, bytesPerRow: plane.bytesPerRow)
         : LumaFrame.bgra(bytes: plane.bytes, width: image.width, height: image.height, bytesPerRow: plane.bytesPerRow);
-    // The preview frames are the preview: the frame lies in them where it lies
-    // in the preview.
     final region = DocumentPicture.frameInPreview(
       MRZCameraOverlay.frameRect(viewSize, _frameRatio),
       _previewRect(viewSize, controller.value.aspectRatio),
@@ -211,37 +179,27 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
         _readText(image, rotation, region)
             .then((readable) {
               if (generation == _generation) _readable = readable;
-            }, onError: (_) {}) // A frame whose text couldn't be read leaves the last read.
+            }, onError: (_) {})
             .whenComplete(() {
               if (generation == _generation) _reading = false;
             }),
       );
     }
-    // Until the first read, there's no telling whether the text is readable.
     if (_readable == null) return;
-    final dumpDirectory = _dumpDirectory;
-    final count = _frameCount++;
-    final dumpTo = dumpDirectory != null && count % _dumpEvery == 0
-        ? '${dumpDirectory.path}/frame_${(count ~/ _dumpEvery % _dumpCount).toString().padLeft(2, '0')}.pgm'
-        : null;
     unawaited(
-      checker.check(frame, rotation: rotation, region: region, dumpTo: dumpTo).then((issues) {
-        // Not when the camera closed or reopened while the frame was checked.
+      checker.check(frame, rotation: rotation, region: region).then((issues) {
         final readable = _readable;
         if (generation != _generation || _onFrameChecked != onFrameChecked || readable == null) return;
         onFrameChecked(withReadability(issues, readable: readable));
-      }, onError: (_) {}), // Only when the camera closed while it was checked.
+      }, onError: (_) {}),
     );
   }
 
-  /// Whether the text recognizer reads the text of the document in the frame
-  /// at [region] in [image] ([textReadable]).
   Future<bool> _readText(CameraImage image, int rotation, Rect region) async {
     final sideways = rotation % 180 != 0;
     final uprightWidth = (sideways ? image.height : image.width).toDouble();
     final uprightHeight = (sideways ? image.width : image.height).toDouble();
     final text = await (_textRecognizer ??= TextRecognizer()).processImage(_textInput(image, rotation));
-    // The lines' boxes are in the upright frame's pixels.
     final lines = [
       for (final block in text.blocks)
         for (final line in block.lines)
@@ -255,8 +213,7 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
     return textReadable(lines, region);
   }
 
-  /// [image] as ML Kit reads it. Its text needs only the brightness: on
-  /// Android, that plane with neutral colour after it makes the NV21 it takes.
+  /// On Android, the luma plane plus neutral chroma makes NV21.
   static InputImage _textInput(CameraImage image, int rotation) {
     final plane = image.planes.first;
     final Uint8List bytes;
@@ -366,9 +323,7 @@ class DocumentPhotoNoCameraException implements Exception {
 
 enum _PhotoState { opening, preview, capturing, review, error }
 
-/// The checks can be wrong about a document or a camera, and a user who can't
-/// take the photo would see the session expire: after this the photo can be
-/// taken anyway, and the review still asks whether it's readable.
+/// After this the photo can be taken whatever the checks say.
 const documentPhotoQualityWaiveDelay = Duration(seconds: 5);
 
 /// Which side of the document is being photographed.
@@ -429,11 +384,8 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
   String? _error;
   var _sending = false;
 
-  /// Whether the preview frames show the document readable.
   final _quality = DocumentPhotoQuality();
 
-  /// Set once the preview showed for [documentPhotoQualityWaiveDelay]: the
-  /// photo can be taken however the frames look.
   var _qualityWaived = false;
   Timer? _waiveTimer;
 
@@ -688,7 +640,6 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
 
   String _qualityHint(AppLocalizations l10n, DocumentPhotoIssue issue) => switch (issue) {
     DocumentPhotoIssue.noDocument => l10n.docPhotoHintNoDocument,
-    // Clipped or not, a reflection: the same thing to do about it.
     DocumentPhotoIssue.glare || DocumentPhotoIssue.reflection => l10n.docPhotoHintGlare,
     DocumentPhotoIssue.tilted => l10n.docPhotoHintTilted,
     DocumentPhotoIssue.tooDark => l10n.docPhotoHintTooDark,

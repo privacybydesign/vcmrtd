@@ -5,14 +5,10 @@ import 'dart:ui';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:idem/services/document_photo_quality.dart';
 
-/// Where the frame drawn over the preview lies in a [_scene]: an ID-1 card's
-/// shape, with a margin around it.
 const _frame = Rect.fromLTWH(26, 17, 320, 202);
 const _sceneWidth = 372;
 const _sceneHeight = 236;
 
-/// What's printed on a card at ([x], [y]): four lines of dark strokes across
-/// its middle, its paper plain around them and along its border.
 int _printed(int x, int y) {
   final u = (x - _frame.left) / _frame.width;
   final v = (y - _frame.top) / _frame.height;
@@ -20,9 +16,6 @@ int _printed(int x, int y) {
   return onLine && (x ~/ 2 + y ~/ 3).isEven ? 40 : 200;
 }
 
-/// A sample of a card lying where [onCard] says, on a plain dark table.
-/// [card] makes each of its pixels from what's [_printed] there; [table]
-/// each of the table's.
 DocumentSample _scene({
   bool Function(int x, int y)? onCard,
   int Function(int x, int y, int printed)? card,
@@ -42,16 +35,12 @@ DocumentSample _scene({
 
 Set<DocumentPhotoIssue> _issues(DocumentSample sample) => documentPhotoIssues(sample, frame: _frame);
 
-/// [pixel] under a reflection that lifts it just short of clipping.
 int _hazed(int pixel) => pixel + ((255 - pixel) * 0.85).round();
 
-/// Whether ([x], [y]) lies in [area].
 bool Function(int, int) _in(Rect area) =>
     (x, y) => area.contains(Offset(x + 0.5, y + 0.5));
 
-/// [sample] as a phone camera shows it: its edges blurred over a few pixels,
-/// then sharpened, which leaves a bright and a dark halo along them, and
-/// sensor noise over it all. [blur] is how far, in pixels, the blur reaches.
+/// Blurred edges, sharpening halo and sensor noise, as a phone camera shows it.
 DocumentSample _camera(DocumentSample sample, {int blur = 1}) {
   final w = sample.width;
   final h = sample.height;
@@ -85,8 +74,6 @@ DocumentSample _camera(DocumentSample sample, {int blur = 1}) {
   );
 }
 
-/// A card's paper with security print over it, right up to its edges: pale
-/// fine lines, as on most identity documents.
 int _guilloche(int x, int y, int printed) =>
     printed == 200 ? 200 + (14 * math.sin(x / 1.7 + 3 * math.sin(y / 11))).round() : printed;
 
@@ -99,7 +86,6 @@ void main() {
     test('a card as a phone camera shows it is found: blurred, sharpened, noisy, printed to its edges', () {
       expect(_issues(_camera(_scene())), isEmpty);
       expect(_issues(_camera(_scene(card: _guilloche))), isEmpty);
-      // The sharper the card stands out, the bigger its halo: no reason not to find it.
       expect(_issues(_camera(_scene(card: _guilloche, table: (x, y) => 20), blur: 2)), isEmpty);
       expect(_issues(_camera(_scene(card: _guilloche, table: (x, y) => 120 + (x * 7 + y * 13) % 17))), isEmpty);
       expect(_issues(_camera(_scene(onCard: _in(_frame.shift(const Offset(8, -6))), card: _guilloche))), isEmpty);
@@ -265,7 +251,6 @@ void main() {
   });
 
   group('blur', () {
-    /// A card whose print is blurred away: light that changes smoothly.
     int blurred(int x, int y, int printed) => 170 + (20 * math.sin(x / 9) * math.sin(y / 9)).round();
 
     test('a document without sharp print is blurry', () {
@@ -289,7 +274,6 @@ void main() {
     test('is readable once enough lines of text are read in the frame', () {
       expect(textReadable([line(0.35), line(0.45), line(0.6)], region), isTrue);
       expect(textReadable([line(0.35), line(0.45)], region), isFalse);
-      // Text outside the frame is not on the document.
       expect(textReadable([line(0.35), line(0.45), line(0.1)], region), isFalse);
     });
 
@@ -331,7 +315,6 @@ void main() {
     }
 
     test('finds the card where the frame lies in the upright frame', () {
-      // Plain card: no print to tell sharpness by.
       expect(checkFrame(sensorFrame(), rotation: 90, region: region), {DocumentPhotoIssue.blurry});
       expect(checkFrame(sensorFrame(withCard: false), rotation: 90, region: region), {DocumentPhotoIssue.noDocument});
     });
@@ -396,7 +379,6 @@ void main() {
     const agree = DocumentPhotoQuality.framesToAgree;
     const window = DocumentPhotoQuality.windowFrames;
 
-    /// [quality] fed [issues] for [frames] frames.
     void feed(DocumentPhotoQuality quality, Set<DocumentPhotoIssue> issues, int frames) {
       for (var i = 0; i < frames; i++) {
         quality.update(issues);
