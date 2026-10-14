@@ -12,7 +12,7 @@ import 'package:mrz_capture/mrz_capture.dart';
 enum DocumentPhotoIssue { noDocument, tooDark, glare, reflection, tilted, blurry, unreadable }
 
 /// In the order their hints are shown.
-const documentChecks = [
+const _documentChecks = [
   DocumentPhotoIssue.glare,
   DocumentPhotoIssue.reflection,
   DocumentPhotoIssue.tilted,
@@ -20,50 +20,50 @@ const documentChecks = [
   DocumentPhotoIssue.unreadable,
 ];
 
-const minReadableLines = 3;
+const _minReadableLines = 3;
 
-/// Fractions of the frame's size. [edgeSearchOutside] stays below
+/// Fractions of the frame's size. [_edgeSearchOutside] stays below
 /// [DocumentPicture.frameMargin] so the document is whole in the photo.
-const edgeSearchOutside = 0.06;
-const edgeSearchInside = 0.2;
-const edgeSearchFar = 0.2;
-const edgeProfiles = 12;
-const edgeSpan = 0.8;
+const _edgeSearchOutside = 0.06;
+const _edgeSearchInside = 0.2;
+const _edgeSearchFar = 0.2;
+const _edgeProfiles = 12;
+const _edgeSpan = 0.8;
 
-const minEdgeStep = 12;
-const maxFlatRange = 24;
-const maxFlatShare = 0.6;
-const edgeWindow = 6;
-const edgeGap = 3;
-const minEdgeInliers = 0.5;
-const edgeTolerance = 3.0;
-const maxEdgeSlope = 0.25;
-const maxShapeError = 0.1;
-const documentInset = 0.03;
+const _minEdgeStep = 12;
+const _maxFlatRange = 24;
+const _maxFlatShare = 0.6;
+const _edgeWindow = 6;
+const _edgeGap = 3;
+const _minEdgeInliers = 0.5;
+const _edgeTolerance = 3.0;
+const _maxEdgeSlope = 0.25;
+const _maxShapeError = 0.1;
+const _documentInset = 0.03;
 
-const clippedBrightness = 250;
-const glareColumns = 16;
-const glareRows = 10;
+const _clippedBrightness = 250;
+const _glareColumns = 16;
+const _glareRows = 10;
 
 /// Measured on a Galaxy S9: clean tiles had no clipped pixels, tiles with a
 /// reflection 21% to 57%.
-const glareTileShare = 0.05;
+const _glareTileShare = 0.05;
 
 /// For reflections that don't clip (iPhones keep highlights).
-const nearClippedBrightness = 240;
-const reflectionContrast = 15;
+const _nearClippedBrightness = 240;
+const _reflectionContrast = 15;
 
 /// Loose enough for the slight tilt the glare hint asks for.
-const maxConvergenceDegrees = 8.0;
+const _maxConvergenceDegrees = 8.0;
 
-const tileColumns = 8;
-const tileRows = 5;
-const minSharpness = 60.0;
+const _tileColumns = 8;
+const _tileRows = 5;
+const _minSharpness = 60.0;
 
-const tooDarkPaperBrightness = 60;
-const paperPercentile = 0.9;
+const _tooDarkPaperBrightness = 60;
+const _paperPercentile = 0.9;
 
-const sampleWidth = 640;
+const _sampleWidth = 640;
 
 const _brightnessLevels = 256;
 
@@ -121,7 +121,7 @@ DocumentSample sampleDocument(
   LumaFrame frame, {
   required int rotation,
   required Rect region,
-  int maxWidth = sampleWidth,
+  int maxWidth = _sampleWidth,
 }) {
   final sideways = rotation % 180 != 0;
   final uprightWidth = sideways ? frame.height : frame.width;
@@ -172,7 +172,7 @@ Set<DocumentPhotoIssue> checkFrame(LumaFrame frame, {required int rotation, requ
 }
 
 (DocumentSample, Rect) _sampleFrame(LumaFrame frame, {required int rotation, required Rect region}) {
-  const margin = edgeSearchFar;
+  const margin = _edgeSearchFar;
   final sampled = Rect.fromLTRB(
     (region.left - region.width * margin).clamp(0.0, 1.0),
     (region.top - region.height * margin).clamp(0.0, 1.0),
@@ -194,33 +194,34 @@ Set<DocumentPhotoIssue> checkFrame(LumaFrame frame, {required int rotation, requ
 }
 
 Set<DocumentPhotoIssue> documentPhotoIssues(DocumentSample sample, {required Rect frame}) {
-  final outline = findDocument(sample, frame);
+  final outline = _findDocument(sample, frame);
   if (outline == null) {
-    final inFrame = sample.crop(frame.deflateBy(frame.width * documentInset, frame.height * documentInset));
-    if (hasGlare(inFrame)) return {DocumentPhotoIssue.noDocument, DocumentPhotoIssue.glare};
-    if (hasReflection(inFrame)) return {DocumentPhotoIssue.noDocument, DocumentPhotoIssue.reflection};
+    final inFrame = sample.crop(frame.deflateBy(frame.width * _documentInset, frame.height * _documentInset));
+    if (_hasGlare(inFrame)) return {DocumentPhotoIssue.noDocument, DocumentPhotoIssue.glare};
+    if (_hasReflection(inFrame)) return {DocumentPhotoIssue.noDocument, DocumentPhotoIssue.reflection};
     return {
-      paperBrightness(sample) < tooDarkPaperBrightness ? DocumentPhotoIssue.tooDark : DocumentPhotoIssue.noDocument,
+      _paperBrightness(sample) < _tooDarkPaperBrightness ? DocumentPhotoIssue.tooDark : DocumentPhotoIssue.noDocument,
     };
   }
 
   final area = outline.area;
-  final document = sample.crop(area.deflateBy(area.width * documentInset, area.height * documentInset));
-  if (paperBrightness(document) < tooDarkPaperBrightness) return {DocumentPhotoIssue.tooDark};
+  final document = sample.crop(area.deflateBy(area.width * _documentInset, area.height * _documentInset));
+  if (_paperBrightness(document) < _tooDarkPaperBrightness) return {DocumentPhotoIssue.tooDark};
   return {
-    if (hasGlare(document)) DocumentPhotoIssue.glare,
-    if (hasReflection(document)) DocumentPhotoIssue.reflection,
+    if (_hasGlare(document)) DocumentPhotoIssue.glare,
+    if (_hasReflection(document)) DocumentPhotoIssue.reflection,
     if (outline.tilted) DocumentPhotoIssue.tilted,
-    if (sharpness(document) < minSharpness) DocumentPhotoIssue.blurry,
+    if (_sharpness(document) < _minSharpness) DocumentPhotoIssue.blurry,
   };
 }
 
 bool textReadable(List<Rect> lines, Rect region) =>
-    lines.where((line) => region.contains(line.center)).length >= minReadableLines;
+    lines.where((line) => region.contains(line.center)).length >= _minReadableLines;
 
-Set<DocumentPhotoIssue> withReadability(Set<DocumentPhotoIssue> issues, {required bool readable}) {
+/// Adds [DocumentPhotoIssue.unreadable] to the issues of a frame whose text was not readable.
+Set<DocumentPhotoIssue> withUnreadable(Set<DocumentPhotoIssue> issues) {
   final noDocument = issues.contains(DocumentPhotoIssue.noDocument) || issues.contains(DocumentPhotoIssue.tooDark);
-  return noDocument || readable ? issues : {...issues, DocumentPhotoIssue.unreadable};
+  return noDocument ? issues : {...issues, DocumentPhotoIssue.unreadable};
 }
 
 extension on Rect {
@@ -228,10 +229,10 @@ extension on Rect {
 }
 
 /// Depth inside the frame's side (negative: outside) = offset + slope * position along it.
-typedef Edge = ({double slope, double offset});
+typedef _Edge = ({double slope, double offset});
 
-class DocumentOutline {
-  const DocumentOutline({
+class _DocumentOutline {
+  const _DocumentOutline({
     required this.area,
     required this.top,
     required this.bottom,
@@ -240,26 +241,24 @@ class DocumentOutline {
   });
 
   final Rect area;
-  final Edge? top;
-  final Edge? bottom;
-  final Edge? left;
-  final Edge? right;
+  final _Edge? top;
+  final _Edge? bottom;
+  final _Edge? left;
+  final _Edge? right;
 
   bool get tilted {
-    double angle(Edge edge, {required bool clockwise}) =>
-        math.atan(clockwise ? edge.slope : -edge.slope) * 180 / math.pi;
-    bool apart(Edge? a, Edge? b, {required bool aClockwise}) =>
-        a != null &&
-        b != null &&
-        (angle(a, clockwise: aClockwise) - angle(b, clockwise: !aClockwise)).abs() > maxConvergenceDegrees;
-    return apart(top, bottom, aClockwise: true) || apart(right, left, aClockwise: true);
+    // Opposite sides measure depth from opposite directions: parallel edges have opposite slopes.
+    double degrees(_Edge edge) => math.atan(edge.slope) * 180 / math.pi;
+    bool converge(_Edge? a, _Edge? b) =>
+        a != null && b != null && (degrees(a) + degrees(b)).abs() > _maxConvergenceDegrees;
+    return converge(top, bottom) || converge(right, left);
   }
 }
 
 enum _Side { top, bottom, left, right }
 
 /// One edge may be missing (a passport's fold); it's then placed by the frame's aspect ratio.
-DocumentOutline? findDocument(DocumentSample sample, Rect frame) {
+_DocumentOutline? _findDocument(DocumentSample sample, Rect frame) {
   final edges = {for (final side in _Side.values) side: _findEdge(sample, frame, side)};
   final found = _outline(edges, frame);
   if (found != null || edges.values.any((edge) => edge == null)) return found;
@@ -272,7 +271,7 @@ DocumentOutline? findDocument(DocumentSample sample, Rect frame) {
   return null;
 }
 
-DocumentOutline? _outline(Map<_Side, Edge?> edges, Rect frame) {
+_DocumentOutline? _outline(Map<_Side, _Edge?> edges, Rect frame) {
   if (edges.values.where((edge) => edge == null).length > 1) return null;
 
   double? middle(_Side side) {
@@ -299,7 +298,7 @@ DocumentOutline? _outline(Map<_Side, Edge?> edges, Rect frame) {
   right ??= left + (bottom - top) * ratio;
 
   bool along(double position, double side, double size) =>
-      position - side >= -size * edgeSearchInside && position - side <= size * edgeSearchOutside;
+      position - side >= -size * _edgeSearchInside && position - side <= size * _edgeSearchOutside;
   final inFrame =
       along(-top, -frame.top, frame.height) &&
       along(bottom, frame.bottom, frame.height) &&
@@ -307,11 +306,11 @@ DocumentOutline? _outline(Map<_Side, Edge?> edges, Rect frame) {
       along(right, frame.right, frame.width);
   if (!inFrame) return null;
   if (edges.values.every((edge) => edge != null) &&
-      (((right - left) / (bottom - top)) / ratio - 1).abs() > maxShapeError) {
+      (((right - left) / (bottom - top)) / ratio - 1).abs() > _maxShapeError) {
     return null;
   }
 
-  return DocumentOutline(
+  return _DocumentOutline(
     area: Rect.fromLTRB(left, top, right, bottom),
     top: edges[_Side.top],
     bottom: edges[_Side.bottom],
@@ -320,16 +319,16 @@ DocumentOutline? _outline(Map<_Side, Edge?> edges, Rect frame) {
   );
 }
 
-Edge? _findEdge(DocumentSample sample, Rect frame, _Side side) {
+_Edge? _findEdge(DocumentSample sample, Rect frame, _Side side) {
   final horizontal = side == _Side.top || side == _Side.bottom;
   final length = horizontal ? frame.width : frame.height;
   final across = horizontal ? frame.height : frame.width;
-  final start = (horizontal ? frame.left : frame.top) + length * (1 - edgeSpan) / 2;
-  final outside = (across * edgeSearchFar).round();
-  final inside = (across * edgeSearchInside).round();
-  const reach = edgeGap + edgeWindow;
+  final start = (horizontal ? frame.left : frame.top) + length * (1 - _edgeSpan) / 2;
+  final outside = (across * _edgeSearchFar).round();
+  final inside = (across * _edgeSearchInside).round();
+  const reach = _edgeGap + _edgeWindow;
 
-  final strip = length * edgeSpan / edgeProfiles;
+  final strip = length * _edgeSpan / _edgeProfiles;
   int at(int from, int to, int depth) {
     var sum = 0;
     for (var a = from; a < to; a++) {
@@ -344,12 +343,12 @@ Edge? _findEdge(DocumentSample sample, Rect frame, _Side side) {
     return sum ~/ (to - from);
   }
 
-  final centre = start + length * edgeSpan / 2;
+  final centre = start + length * _edgeSpan / 2;
   final points = <_EdgePoint>[];
   final profile = List.filled(outside + inside + 2 * reach + 1, 0);
   final sums = List.filled(profile.length + 1, 0);
   int sum(int from, int to) => sums[to] - sums[from];
-  for (var p = 0; p < edgeProfiles; p++) {
+  for (var p = 0; p < _edgeProfiles; p++) {
     final from = (start + strip * p).round();
     final to = math.max(from + 1, (start + strip * (p + 1)).round());
     final along = (from + to) ~/ 2;
@@ -359,20 +358,20 @@ Edge? _findEdge(DocumentSample sample, Rect frame, _Side side) {
     }
     final steps = [
       for (var d = -outside; d <= inside; d++)
-        (sum(d + outside + reach + edgeGap, d + outside + 2 * reach) -
-                sum(d + outside, d + outside + reach - edgeGap)) /
-            edgeWindow,
+        (sum(d + outside + reach + _edgeGap, d + outside + 2 * reach) -
+                sum(d + outside, d + outside + reach - _edgeGap)) /
+            _edgeWindow,
     ];
     for (var j = 0; j < steps.length; j++) {
       final step = steps[j].abs();
-      if (step < minEdgeStep) continue;
+      if (step < _minEdgeStep) continue;
       var peak = true;
-      for (var k = math.max(0, j - edgeGap); k <= math.min(steps.length - 1, j + edgeGap) && peak; k++) {
+      for (var k = math.max(0, j - _edgeGap); k <= math.min(steps.length - 1, j + _edgeGap) && peak; k++) {
         peak = k == j || steps[k].abs() < step || (steps[k].abs() == step && k > j);
       }
       if (!peak) continue;
-      final out = profile.sublist(j, j + edgeWindow);
-      if (out.reduce(math.max) - out.reduce(math.min) > math.max(maxFlatRange, step * maxFlatShare)) continue;
+      final out = profile.sublist(j, j + _edgeWindow);
+      if (out.reduce(math.max) - out.reduce(math.min) > math.max(_maxFlatRange, step * _maxFlatShare)) continue;
       points.add((profile: p, along: along - centre, depth: (j - outside).toDouble(), rising: steps[j] > 0));
     }
   }
@@ -384,8 +383,8 @@ Edge? _findEdge(DocumentSample sample, Rect frame, _Side side) {
 typedef _EdgePoint = ({int profile, double along, double depth, bool rising});
 
 /// The outermost line most strips agree on, refitted by least squares.
-Edge? _fitEdge(List<_EdgePoint> points) {
-  final needed = (edgeProfiles * minEdgeInliers).ceil();
+_Edge? _fitEdge(List<_EdgePoint> points) {
+  final needed = (_edgeProfiles * _minEdgeInliers).ceil();
   int support(List<_EdgePoint> on) => on.map((point) => point.profile).toSet().length;
 
   ({double slope, double offset, int support})? best;
@@ -395,12 +394,12 @@ Edge? _fitEdge(List<_EdgePoint> points) {
         if (point.rising == rising) point,
     ];
     if (support(candidates) < needed) continue;
-    for (var s = -maxEdgeSlope; s <= maxEdgeSlope + 1e-9; s += 0.01) {
+    for (var s = -_maxEdgeSlope; s <= _maxEdgeSlope + 1e-9; s += 0.01) {
       final offsets = [for (final point in candidates) (point.depth - s * point.along, point.profile)]
         ..sort((a, b) => a.$1.compareTo(b.$1));
       var from = 0;
       for (var to = 0; to < offsets.length; to++) {
-        while (offsets[to].$1 - offsets[from].$1 > 2 * edgeTolerance) {
+        while (offsets[to].$1 - offsets[from].$1 > 2 * _edgeTolerance) {
           from++;
         }
         final profiles = {for (var i = from; i <= to; i++) offsets[i].$2}.length;
@@ -408,8 +407,8 @@ Edge? _fitEdge(List<_EdgePoint> points) {
         final offset = (offsets[from].$1 + offsets[to].$1) / 2;
         final current = best;
         if (current == null ||
-            offset < current.offset - 2 * edgeTolerance ||
-            (offset <= current.offset + 2 * edgeTolerance && profiles > current.support)) {
+            offset < current.offset - 2 * _edgeTolerance ||
+            (offset <= current.offset + 2 * _edgeTolerance && profiles > current.support)) {
           best = (slope: s, offset: offset, support: profiles);
         }
       }
@@ -417,12 +416,12 @@ Edge? _fitEdge(List<_EdgePoint> points) {
   }
   if (best == null) return null;
 
-  Edge edge = (slope: best.slope, offset: best.offset);
+  _Edge edge = (slope: best.slope, offset: best.offset);
   for (var pass = 0; pass < 2; pass++) {
     final fit = edge;
     final inliers = [
       for (final point in points)
-        if ((point.depth - (fit.offset + fit.slope * point.along)).abs() <= edgeTolerance) point,
+        if ((point.depth - (fit.offset + fit.slope * point.along)).abs() <= _edgeTolerance) point,
     ];
     if (support(inliers) < needed) return pass == 0 ? null : fit;
     final n = inliers.length;
@@ -434,7 +433,7 @@ Edge? _fitEdge(List<_EdgePoint> points) {
       covariance += (point.along - meanA) * (point.depth - meanD);
       variance += (point.along - meanA) * (point.along - meanA);
     }
-    final slope = variance == 0 ? 0.0 : (covariance / variance).clamp(-maxEdgeSlope, maxEdgeSlope);
+    final slope = variance == 0 ? 0.0 : (covariance / variance).clamp(-_maxEdgeSlope, _maxEdgeSlope);
     edge = (slope: slope, offset: meanD - slope * meanA);
   }
   return edge;
@@ -447,6 +446,9 @@ class DocumentFrameChecker {
   final ReceivePort _replies;
   final SendPort _requests;
   final _pending = Queue<Completer<Set<DocumentPhotoIssue>>>();
+
+  /// Like the MRZ scanner's OCR, frames that arrive while one is checked are skipped.
+  bool get busy => _pending.isNotEmpty;
 
   static Future<DocumentFrameChecker> start() async {
     final replies = ReceivePort();
@@ -522,14 +524,14 @@ typedef _FrameRequest = ({
   (double, double, double, double) region,
 });
 
-int paperBrightness(DocumentSample sample) {
+int _paperBrightness(DocumentSample sample) {
   if (sample.pixels.isEmpty) return 0;
   final histogram = List.filled(_brightnessLevels, 0);
   for (final p in sample.pixels) {
     histogram[p]++;
   }
 
-  final below = (sample.pixels.length * paperPercentile).floor();
+  final below = (sample.pixels.length * _paperPercentile).floor();
   var seen = 0;
   for (var b = 0; b < _brightnessLevels; b++) {
     seen += histogram[b];
@@ -539,8 +541,8 @@ int paperBrightness(DocumentSample sample) {
 }
 
 List<List<int>> _tileHistograms(DocumentSample document) {
-  final columns = math.max(1, math.min(glareColumns, document.width));
-  final rows = math.max(1, math.min(glareRows, document.height));
+  final columns = math.max(1, math.min(_glareColumns, document.width));
+  final rows = math.max(1, math.min(_glareRows, document.height));
   final histograms = List.generate(columns * rows, (_) => List.filled(_brightnessLevels, 0));
   for (var y = 0; y < document.height; y++) {
     final row = y * rows ~/ document.height * columns;
@@ -566,32 +568,32 @@ int _percentile(List<int> histogram, double share) {
   return _brightnessLevels - 1;
 }
 
-bool _glaring(List<int> histogram, [int brightness = clippedBrightness]) {
+bool _glaring(List<int> histogram, [int brightness = _clippedBrightness]) {
   var bright = 0;
   for (var b = brightness; b < _brightnessLevels; b++) {
     bright += histogram[b];
   }
-  return bright / histogram.reduce((a, b) => a + b) > glareTileShare;
+  return bright / histogram.reduce((a, b) => a + b) > _glareTileShare;
 }
 
-bool hasGlare(DocumentSample document) => _tileHistograms(document).any(_glaring);
+bool _hasGlare(DocumentSample document) => _tileHistograms(document).any(_glaring);
 
-bool hasReflection(DocumentSample document) {
+bool _hasReflection(DocumentSample document) {
   final histograms = _tileHistograms(document);
   if (histograms.isEmpty) return false;
-  final papers = [for (final histogram in histograms) _percentile(histogram, paperPercentile)]..sort();
-  if (papers[papers.length ~/ 2] > nearClippedBrightness - reflectionContrast) return false;
-  return histograms.any((histogram) => !_glaring(histogram) && _glaring(histogram, nearClippedBrightness));
+  final papers = [for (final histogram in histograms) _percentile(histogram, _paperPercentile)]..sort();
+  if (papers[papers.length ~/ 2] > _nearClippedBrightness - _reflectionContrast) return false;
+  return histograms.any((histogram) => !_glaring(histogram) && _glaring(histogram, _nearClippedBrightness));
 }
 
 /// Laplacian variance over the sharpest quarter of tiles. Pixels next to
 /// clipped ones are skipped: a reflection's edge says nothing about focus.
-double sharpness(DocumentSample sample) {
+double _sharpness(DocumentSample sample) {
   final w = sample.width;
   final h = sample.height;
   if (w < 3 || h < 3) return 0;
-  final columns = tileColumns.clamp(1, w - 2);
-  final rows = tileRows.clamp(1, h - 2);
+  final columns = _tileColumns.clamp(1, w - 2);
+  final rows = _tileRows.clamp(1, h - 2);
   final sums = List.filled(columns * rows, 0.0);
   final sumsOfSquares = List.filled(columns * rows, 0.0);
   final counts = List.filled(columns * rows, 0);
@@ -601,7 +603,7 @@ double sharpness(DocumentSample sample) {
     for (var x = 1; x < w - 1; x++) {
       final tile = row * columns + (x - 1) * columns ~/ (w - 2);
       final i = y * w + x;
-      if (math.max(math.max(p[i], math.max(p[i - 1], p[i + 1])), math.max(p[i - w], p[i + w])) >= clippedBrightness) {
+      if (math.max(math.max(p[i], math.max(p[i - 1], p[i + 1])), math.max(p[i - w], p[i + w])) >= _clippedBrightness) {
         continue;
       }
 
@@ -632,12 +634,12 @@ class DocumentPhotoQuality {
   var _documentFound = false;
   DocumentPhotoIssue? _absence;
 
-  final _results = {for (final check in documentChecks) check: <bool>[]};
+  final _results = {for (final check in _documentChecks) check: <bool>[]};
   final _failing = <DocumentPhotoIssue>{};
 
   DocumentPhotoIssue? get issue {
     if (!_documentFound) return _absence;
-    for (final check in documentChecks) {
+    for (final check in _documentChecks) {
       if (_failing.contains(check)) return check;
     }
     return null;
@@ -646,7 +648,7 @@ class DocumentPhotoQuality {
   bool get clear =>
       _documentFound &&
       _failing.isEmpty &&
-      documentChecks.every((check) => _results[check]!.where((failed) => !failed).length >= framesToAgree);
+      _documentChecks.every((check) => _results[check]!.where((failed) => !failed).length >= framesToAgree);
 
   /// Returns whether [issue] or [clear] changed.
   bool update(Set<DocumentPhotoIssue> frameIssues) {
@@ -676,7 +678,7 @@ class DocumentPhotoQuality {
     }
 
     if (absence == null) {
-      for (final check in documentChecks) {
+      for (final check in _documentChecks) {
         final results = _push(_results[check]!, frameIssues.contains(check));
         final failed = results.where((f) => f).length;
         if (failed >= framesToAgree) {

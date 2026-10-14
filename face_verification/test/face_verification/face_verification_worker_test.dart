@@ -1522,19 +1522,18 @@ void main() {
       expect(result['ok'], isFalse);
     });
 
-    test('pipeline worker returns error for malformed encoded crop input', () async {
+    test('pipeline worker rejects malformed encoded crop input', () async {
       final harness = await _DebugWorkerHarness.spawn(FaceVerificationWorker.debugPipelineWorkerEntry);
       addTearDown(harness.dispose);
 
-      await expectLater(
-        harness.request(
-          'detect_crop_encoded',
-          payload: <String, dynamic>{
-            'bytes': Uint8List.fromList(<int>[1, 2, 3]),
-          },
-        ),
-        throwsA(isA<StateError>()),
+      final result = await harness.request(
+        'detect_crop_encoded',
+        payload: <String, dynamic>{
+          'bytes': Uint8List.fromList(<int>[1, 2, 3]),
+        },
       );
+
+      expect(result['ok'], isFalse);
     });
 
     test('pipeline worker returns error for unknown command', () async {

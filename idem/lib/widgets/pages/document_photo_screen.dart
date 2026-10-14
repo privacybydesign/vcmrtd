@@ -7,11 +7,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image/image.dart' as img;
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/services/document_photo_quality.dart';
+import 'package:idem/services/document_text_reader.dart';
 import 'package:idem/widgets/common/button_styles.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
@@ -95,13 +95,11 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
 
   DocumentFrameChecker? _checker;
 
-  TextRecognizer? _textRecognizer;
+  DocumentTextReader? _textReader;
 
   /// Text recognition is slower than a frame: one read at a time, frames use the latest result.
   var _reading = false;
   bool? _readable;
-
-  static const _neutralChroma = 128;
 
   static const _deviceRotations = {
     DeviceOrientation.portraitUp: 0,
@@ -164,7 +162,10 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
 
     final camera = controller.description;
     final deviceRotation = _deviceRotations[controller.value.deviceOrientation] ?? 0;
-    final rotation = camera.lensDirection == CameraLensDirection.front
+    // iOS turns stream frames to the device's orientation itself, and ML Kit there ignores the rotation it's given.
+    final rotation = Platform.isIOS
+        ? 0
+        : camera.lensDirection == CameraLensDirection.front
         ? (camera.sensorOrientation + deviceRotation) % 360
         : (camera.sensorOrientation - deviceRotation + 360) % 360;
     final plane = image.planes.first;
@@ -180,66 +181,26 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
     if (!_reading) {
       _reading = true;
       unawaited(
-        _readText(image, rotation, region)
+        (_textReader ??= DocumentTextReader())
+            .readable(image, rotation: rotation, region: region)
+            // A failed read counts as unreadable, so the other checks still run.
+            .catchError((_) => false)
             .then((readable) {
               if (generation == _generation) _readable = readable;
-            }, onError: (_) {})
+            })
             .whenComplete(() {
               if (generation == _generation) _reading = false;
             }),
       );
     }
 
-    if (_readable == null) return;
+    if (_readable == null || checker.busy) return;
     unawaited(
       checker.check(frame, rotation: rotation, region: region).then((issues) {
         final readable = _readable;
         if (generation != _generation || _onFrameChecked != onFrameChecked || readable == null) return;
-        onFrameChecked(withReadability(issues, readable: readable));
+        onFrameChecked(readable ? issues : withUnreadable(issues));
       }, onError: (_) {}),
-    );
-  }
-
-  Future<bool> _readText(CameraImage image, int rotation, Rect region) async {
-    final sideways = rotation % 180 != 0;
-    final uprightWidth = (sideways ? image.height : image.width).toDouble();
-    final uprightHeight = (sideways ? image.width : image.height).toDouble();
-    final text = await (_textRecognizer ??= TextRecognizer()).processImage(_textInput(image, rotation));
-    final lines = [
-      for (final block in text.blocks)
-        for (final line in block.lines)
-          Rect.fromLTRB(
-            line.boundingBox.left / uprightWidth,
-            line.boundingBox.top / uprightHeight,
-            line.boundingBox.right / uprightWidth,
-            line.boundingBox.bottom / uprightHeight,
-          ),
-    ];
-    return textReadable(lines, region);
-  }
-
-  /// On Android, the luma plane plus neutral chroma makes NV21.
-  static InputImage _textInput(CameraImage image, int rotation) {
-    final plane = image.planes.first;
-    final Uint8List bytes;
-    if (Platform.isAndroid) {
-      final lumaSize = image.width * image.height;
-      bytes = Uint8List(lumaSize + lumaSize ~/ 2)..fillRange(lumaSize, lumaSize + lumaSize ~/ 2, _neutralChroma);
-      for (var row = 0; row < image.height; row++) {
-        bytes.setRange(row * image.width, (row + 1) * image.width, plane.bytes, row * plane.bytesPerRow);
-      }
-    } else {
-      bytes = plane.bytes;
-    }
-
-    return InputImage.fromBytes(
-      bytes: bytes,
-      metadata: InputImageMetadata(
-        size: Size(image.width.toDouble(), image.height.toDouble()),
-        rotation: InputImageRotationValue.fromRawValue(rotation) ?? InputImageRotation.rotation0deg,
-        format: Platform.isAndroid ? InputImageFormat.nv21 : InputImageFormat.bgra8888,
-        bytesPerRow: Platform.isAndroid ? image.width : plane.bytesPerRow,
-      ),
     );
   }
 
@@ -311,14 +272,14 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
     _onFrameChecked = null;
     final controller = _controller;
     _controller = null;
-    final textRecognizer = _textRecognizer;
-    _textRecognizer = null;
+    final textReader = _textReader;
+    _textReader = null;
     _checker?.close();
     _checker = null;
     _reading = false;
     _readable = null;
     await controller?.dispose();
-    await textRecognizer?.close();
+    await textReader?.close();
   }
 }
 
@@ -673,7 +634,13 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
                     const Icon(Icons.info_outline, color: Colors.white, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(_qualityHint(l10n, issue), style: const TextStyle(color: Colors.white, fontSize: 14)),
+                      child: Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          _qualityHint(l10n, issue),
+                          style: const TextStyle(color: Colors.white, fontSize: 14),
+                        ),
+                      ),
                     ),
                   ],
                 ),
