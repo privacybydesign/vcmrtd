@@ -101,6 +101,8 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
   var _reading = false;
   bool? _readable;
 
+  static const _neutralChroma = 128;
+
   static const _deviceRotations = {
     DeviceOrientation.portraitUp: 0,
     DeviceOrientation.landscapeLeft: 90,
@@ -118,6 +120,7 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
       if (!open.value.isStreamingImages) await open.startImageStream(_checkFrame);
       return;
     }
+
     final generation = ++_generation;
     final cameras = await availableCameras();
     if (cameras.isEmpty) throw const DocumentPhotoNoCameraException();
@@ -168,6 +171,7 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
     final frame = Platform.isAndroid
         ? LumaFrame.luma(bytes: plane.bytes, width: image.width, height: image.height, bytesPerRow: plane.bytesPerRow)
         : LumaFrame.bgra(bytes: plane.bytes, width: image.width, height: image.height, bytesPerRow: plane.bytesPerRow);
+
     final region = DocumentPicture.frameInPreview(
       MRZCameraOverlay.frameRect(viewSize, _frameRatio),
       _previewRect(viewSize, controller.value.aspectRatio),
@@ -185,6 +189,7 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
             }),
       );
     }
+
     if (_readable == null) return;
     unawaited(
       checker.check(frame, rotation: rotation, region: region).then((issues) {
@@ -219,13 +224,14 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
     final Uint8List bytes;
     if (Platform.isAndroid) {
       final lumaSize = image.width * image.height;
-      bytes = Uint8List(lumaSize + lumaSize ~/ 2)..fillRange(lumaSize, lumaSize + lumaSize ~/ 2, 128);
+      bytes = Uint8List(lumaSize + lumaSize ~/ 2)..fillRange(lumaSize, lumaSize + lumaSize ~/ 2, _neutralChroma);
       for (var row = 0; row < image.height; row++) {
         bytes.setRange(row * image.width, (row + 1) * image.width, plane.bytes, row * plane.bytesPerRow);
       }
     } else {
       bytes = plane.bytes;
     }
+
     return InputImage.fromBytes(
       bytes: bytes,
       metadata: InputImageMetadata(

@@ -65,6 +65,13 @@ const paperPercentile = 0.9;
 
 const sampleWidth = 640;
 
+const _brightnessLevels = 256;
+
+/// ITU-R BT.601 luma weights for blue, green and red, scaled to 256.
+const _lumaBlue = 29;
+const _lumaGreen = 150;
+const _lumaRed = 77;
+
 class LumaFrame {
   /// Android's YUV420/NV21: the first plane is brightness.
   const LumaFrame.luma({required this.bytes, required this.width, required this.height, required this.bytesPerRow})
@@ -82,7 +89,7 @@ class LumaFrame {
   int brightnessAt(int x, int y) {
     if (!isBgra) return bytes[y * bytesPerRow + x];
     final i = y * bytesPerRow + x * 4;
-    return (bytes[i] * 29 + bytes[i + 1] * 150 + bytes[i + 2] * 77) >> 8;
+    return (bytes[i] * _lumaBlue + bytes[i + 1] * _lumaGreen + bytes[i + 2] * _lumaRed) >> 8;
   }
 }
 
@@ -102,6 +109,7 @@ class DocumentSample {
     for (var y = 0; y < h; y++) {
       cropped.setRange(y * w, (y + 1) * w, pixels, (top + y) * width + left);
     }
+
     return DocumentSample(cropped, w, h);
   }
 }
@@ -154,6 +162,7 @@ DocumentSample sampleDocument(
       pixels[y * width + x] = sum ~/ (taps * taps);
     }
   }
+
   return DocumentSample(pixels, width, height);
 }
 
@@ -194,6 +203,7 @@ Set<DocumentPhotoIssue> documentPhotoIssues(DocumentSample sample, {required Rec
       paperBrightness(sample) < tooDarkPaperBrightness ? DocumentPhotoIssue.tooDark : DocumentPhotoIssue.noDocument,
     };
   }
+
   final area = outline.area;
   final document = sample.crop(area.deflateBy(area.width * documentInset, area.height * documentInset));
   if (paperBrightness(document) < tooDarkPaperBrightness) return {DocumentPhotoIssue.tooDark};
@@ -258,6 +268,7 @@ DocumentOutline? findDocument(DocumentSample sample, Rect frame) {
     final outline = _outline({...edges, side: null}, frame);
     if (outline != null) return outline;
   }
+
   return null;
 }
 
@@ -299,6 +310,7 @@ DocumentOutline? _outline(Map<_Side, Edge?> edges, Rect frame) {
       (((right - left) / (bottom - top)) / ratio - 1).abs() > maxShapeError) {
     return null;
   }
+
   return DocumentOutline(
     area: Rect.fromLTRB(left, top, right, bottom),
     top: edges[_Side.top],
@@ -364,6 +376,7 @@ Edge? _findEdge(DocumentSample sample, Rect frame, _Side side) {
       points.add((profile: p, along: along - centre, depth: (j - outside).toDouble(), rising: steps[j] > 0));
     }
   }
+
   final edge = _fitEdge(points);
   return edge == null ? null : (slope: edge.slope, offset: edge.offset - edge.slope * centre);
 }
@@ -511,23 +524,24 @@ typedef _FrameRequest = ({
 
 int paperBrightness(DocumentSample sample) {
   if (sample.pixels.isEmpty) return 0;
-  final histogram = List.filled(256, 0);
+  final histogram = List.filled(_brightnessLevels, 0);
   for (final p in sample.pixels) {
     histogram[p]++;
   }
+
   final below = (sample.pixels.length * paperPercentile).floor();
   var seen = 0;
-  for (var b = 0; b < 256; b++) {
+  for (var b = 0; b < _brightnessLevels; b++) {
     seen += histogram[b];
     if (seen > below) return b;
   }
-  return 255;
+  return _brightnessLevels - 1;
 }
 
 List<List<int>> _tileHistograms(DocumentSample document) {
   final columns = math.max(1, math.min(glareColumns, document.width));
   final rows = math.max(1, math.min(glareRows, document.height));
-  final histograms = List.generate(columns * rows, (_) => List.filled(256, 0));
+  final histograms = List.generate(columns * rows, (_) => List.filled(_brightnessLevels, 0));
   for (var y = 0; y < document.height; y++) {
     final row = y * rows ~/ document.height * columns;
     final offset = y * document.width;
@@ -545,16 +559,16 @@ int _percentile(List<int> histogram, double share) {
   final count = histogram.reduce((a, b) => a + b);
   final below = math.min(count - 1, (count * share).floor());
   var seen = 0;
-  for (var b = 0; b < 256; b++) {
+  for (var b = 0; b < _brightnessLevels; b++) {
     seen += histogram[b];
     if (seen > below) return b;
   }
-  return 255;
+  return _brightnessLevels - 1;
 }
 
 bool _glaring(List<int> histogram, [int brightness = clippedBrightness]) {
   var bright = 0;
-  for (var b = brightness; b < 256; b++) {
+  for (var b = brightness; b < _brightnessLevels; b++) {
     bright += histogram[b];
   }
   return bright / histogram.reduce((a, b) => a + b) > glareTileShare;
@@ -590,12 +604,14 @@ double sharpness(DocumentSample sample) {
       if (math.max(math.max(p[i], math.max(p[i - 1], p[i + 1])), math.max(p[i - w], p[i + w])) >= clippedBrightness) {
         continue;
       }
+
       final laplacian = p[i - w] + p[i + w] + p[i - 1] + p[i + 1] - 4 * p[i];
       sums[tile] += laplacian;
       sumsOfSquares[tile] += laplacian * laplacian;
       counts[tile]++;
     }
   }
+
   final variances = [
     for (var t = 0; t < counts.length; t++)
       if (counts[t] > 0) sumsOfSquares[t] / counts[t] - (sums[t] / counts[t]) * (sums[t] / counts[t]),
@@ -644,6 +660,7 @@ class DocumentPhotoQuality {
         : frameIssues.contains(DocumentPhotoIssue.reflection)
         ? DocumentPhotoIssue.reflection
         : DocumentPhotoIssue.noDocument;
+
     _push(_presence, absence);
     for (final candidate in _presence.toSet()) {
       if (_presence.where((a) => a == candidate).length < framesToAgree) continue;
@@ -657,6 +674,7 @@ class DocumentPhotoQuality {
         _failing.clear();
       }
     }
+
     if (absence == null) {
       for (final check in documentChecks) {
         final results = _push(_results[check]!, frameIssues.contains(check));
@@ -668,6 +686,7 @@ class DocumentPhotoQuality {
         }
       }
     }
+
     return before != (issue, clear);
   }
 
