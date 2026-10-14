@@ -22,7 +22,8 @@ class GuidedDetail {
 
 /// Guided layout of the document data screen: a success header, the key
 /// details in one card, and either "add to wallet" or, when every step was
-/// already sent to a session, a confirmation with "save for next time".
+/// already sent to a session, "save for next time" with a confirmation or,
+/// still to be shared, "Share with ...".
 /// Says the chip was read rather than that it's genuine: authenticity is
 /// checked by the backend, not on the phone.
 class GuidedDocumentDataView extends ConsumerStatefulWidget {
@@ -33,8 +34,8 @@ class GuidedDocumentDataView extends ConsumerStatefulWidget {
   final PendingStep pendingStep;
   final VoidCallback onBackPressed;
 
-  /// "passport", "ID card", "driving licence": used in the header text.
-  final String documentName;
+  /// Submits the session; set for [PendingStep.share].
+  final Future<bool> Function()? onShare;
 
   /// The header when nothing was sent to a session, e.g. "Document read".
   final String readTitle;
@@ -55,7 +56,7 @@ class GuidedDocumentDataView extends ConsumerStatefulWidget {
     required this.submittedTo,
     required this.pendingStep,
     required this.onBackPressed,
-    required this.documentName,
+    this.onShare,
     required this.readTitle,
     required this.photoImageData,
     required this.photoImageType,
@@ -71,17 +72,29 @@ class GuidedDocumentDataView extends ConsumerStatefulWidget {
 
 class _GuidedDocumentDataViewState extends ConsumerState<GuidedDocumentDataView> {
   bool _saveForNextTime = false;
+  bool _sharing = false;
 
-  void _addToWallet() {
-    ref
-        .read(walletProvider.notifier)
-        .add(WalletCard.fromDocument(widget.document, widget.documentType, rawData: widget.rawDocument));
+  void _addToWallet() => _addTo(ref.read(walletProvider.notifier));
+
+  void _addTo(WalletNotifier wallet) =>
+      wallet.add(WalletCard.fromDocument(widget.document, widget.documentType, rawData: widget.rawDocument));
+
+  /// Saves the document only once the share went through; the notifier is
+  /// read up front, as completing the session navigates away from here.
+  Future<void> _share() async {
+    final wallet = ref.read(walletProvider.notifier);
+    final save = _saveForNextTime;
+    setState(() => _sharing = true);
+    final shared = await widget.onShare!();
+    if (shared && save) _addTo(wallet);
+    if (mounted) setState(() => _sharing = false);
   }
 
   @override
   Widget build(BuildContext context) {
     final g = context.guided!;
     final submittedTo = widget.submittedTo;
+    final share = widget.pendingStep == PendingStep.share && widget.onShare != null;
     final sessionId = widget.rawDocument.sessionId;
 
     Widget detail(GuidedDetail d, {bool last = false}) => Container(
@@ -138,15 +151,20 @@ class _GuidedDocumentDataViewState extends ConsumerState<GuidedDocumentDataView>
                       ),
                       const SizedBox(height: 20),
                       Text(
-                        submittedTo != null ? context.l10n.proofingSentTo(submittedTo) : widget.readTitle,
+                        share
+                            ? context.l10n.proofingVerifiedTitle
+                            : submittedTo != null
+                            ? context.l10n.proofingSentTo(submittedTo)
+                            : widget.readTitle,
                         textAlign: TextAlign.center,
                         style: g.heading(26),
                       ),
                       const SizedBox(height: 12),
                       Text(
                         switch ((submittedTo, widget.pendingStep)) {
-                          (null, _) => 'We read your ${widget.documentName} chip.',
+                          (null, _) => context.l10n.dataViewChipRead(widget.documentType.name),
                           (final rp?, PendingStep.browserFace) => context.l10n.proofingSentBrowserFace(rp),
+                          (final rp?, PendingStep.share) => context.l10n.proofingShareBody(rp),
                           (final rp?, PendingStep.none) => context.l10n.proofingSentEverything(rp),
                         },
                         textAlign: TextAlign.center,
@@ -205,7 +223,19 @@ class _GuidedDocumentDataViewState extends ConsumerState<GuidedDocumentDataView>
                       ...widget.extra,
                       const Spacer(),
                       const SizedBox(height: 24),
-                      if (submittedTo != null) ...[
+                      if (share) ...[
+                        GuidedSaveForNextTime(
+                          value: _saveForNextTime,
+                          onChanged: (value) => setState(() => _saveForNextTime = value),
+                        ),
+                        const SizedBox(height: 16),
+                        GuidedButton(
+                          label: _sharing
+                              ? context.l10n.proofingSharing
+                              : context.l10n.proofingShareWith(submittedTo ?? ''),
+                          onPressed: _sharing ? null : _share,
+                        ),
+                      ] else if (submittedTo != null) ...[
                         GuidedSaveForNextTime(
                           value: _saveForNextTime,
                           onChanged: (value) => setState(() => _saveForNextTime = value),
@@ -220,7 +250,7 @@ class _GuidedDocumentDataViewState extends ConsumerState<GuidedDocumentDataView>
                         ),
                       ] else ...[
                         GuidedButton(
-                          label: 'Add to wallet',
+                          label: context.l10n.dataViewAddToWallet,
                           onPressed: () {
                             _addToWallet();
                             widget.onBackPressed();

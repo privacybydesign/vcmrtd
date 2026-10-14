@@ -18,6 +18,7 @@ import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/routing.dart';
 import 'package:idem/widgets/pages/choose_document_screen.dart';
+import 'package:idem/widgets/pages/data_screen_widgets/submit_to_proofing_session.dart';
 import 'package:idem/widgets/pages/document_selection_screen.dart';
 import 'package:idem/widgets/pages/face_verification_screen.dart';
 import 'package:idem/widgets/pages/qr_scanner_screen.dart';
@@ -124,6 +125,37 @@ void main() {
     }
   });
 
+  testWidgets('guided scan card opens to the tip and manual entry, and closes again', (tester) async {
+    var manualEntries = 0;
+    await tester.pumpWidget(
+      _app(
+        ScannerWrapper(
+          documentType: DocumentType.passport,
+          onMrzScanned: (_, [_]) {},
+          onManualEntry: () => manualEntries++,
+          onBack: () {},
+          scannerBuilder: ({required documentType, required scanPicture, required onSuccess}) => const SizedBox(),
+        ),
+      ),
+    );
+    const title = 'Place the photo page in the frame';
+    expect(find.text(title), findsOneWidget);
+    expect(find.text('Enter details manually'), findsNothing);
+
+    await tester.tap(find.text(title));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Enter details manually'));
+    expect(manualEntries, 1);
+
+    await tester.fling(find.text(title), const Offset(0, 200), 1000);
+    await tester.pumpAndSettle();
+    expect(find.text('Enter details manually'), findsNothing);
+
+    await tester.fling(find.text(title), const Offset(0, -200), 1000);
+    await tester.pumpAndSettle();
+    expect(find.text('Enter details manually'), findsOneWidget);
+  });
+
   testWidgets('guided NFC reading lists what has been read so far', (tester) async {
     _tallViewport(tester);
     _FakeReader.initialState = DocumentReaderReadingDataGroup(dataGroup: 'DG2', progress: 0.5);
@@ -153,7 +185,12 @@ void main() {
   });
 
   group('guided result', () {
-    Future<void> pump(WidgetTester tester, {String? submittedTo}) async {
+    Future<void> pump(
+      WidgetTester tester, {
+      String? submittedTo,
+      PendingStep pendingStep = PendingStep.none,
+      Future<bool> Function()? onShare,
+    }) async {
       _tallViewport(tester);
       await tester.pumpWidget(
         _app(
@@ -162,6 +199,8 @@ void main() {
             passportDataResult: RawDocumentData(dataGroups: const {}, efSod: '00'),
             onBackPressed: () {},
             submittedTo: submittedTo,
+            pendingStep: pendingStep,
+            onShare: onShare,
           ),
         ),
       );
@@ -182,6 +221,34 @@ void main() {
       expect(find.text('Save for next time'), findsOneWidget);
       expect(find.text('Add to wallet'), findsNothing);
     });
+
+    for (final shared in [true, false]) {
+      testWidgets('a verified session is shared from here, and saved for next time only once shared: $shared', (
+        tester,
+      ) async {
+        var shares = 0;
+        await pump(
+          tester,
+          submittedTo: 'Acme Bank',
+          pendingStep: PendingStep.share,
+          onShare: () async {
+            shares++;
+            return shared;
+          },
+        );
+        expect(find.text('Identity verified'), findsOneWidget);
+        expect(find.text('Done'), findsNothing);
+
+        await tester.tap(find.text('Save for next time'));
+        await tester.pump();
+        await tester.tap(find.text('Share with Acme Bank'));
+        await tester.pump();
+
+        expect(shares, 1);
+        final container = ProviderScope.containerOf(tester.element(find.byType(PassportDataScreen)));
+        expect(container.read(walletProvider), hasLength(shared ? 1 : 0));
+      });
+    }
   });
 
   group('guided consent', () {

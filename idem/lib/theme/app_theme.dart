@@ -1,5 +1,4 @@
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/theme/brand_theme.dart';
@@ -22,11 +21,30 @@ class AppBranding {
     this.error,
     this.header,
     this.font = AppFont.design,
+    this.buttonRadius,
     this.logo,
   });
 
-  /// Idem's own look, used until a session supplies another one.
-  static const idem = AppBranding(name: 'Idem', primary: Color(0xFF3949AB), secondary: Color(0xFF546E7A));
+  /// Idem's own look, used until a session supplies another one: Yivi's
+  /// palette (irmamobile's IrmaThemeData): raspberry primary, warm dark grey
+  /// for text and the header, Yivi's link, success and error colours, the
+  /// platform's font and Yivi's 8px rounded (not pill) buttons, so it reads
+  /// as Yivi and not as any tenant's design. The raspberry stays apart from
+  /// the grey header and ink, so buttons and highlights read as such.
+  static const idem = AppBranding(
+    name: 'Idem',
+    primary: Color(0xFFBA3354),
+    secondary: Color(0xFF484747),
+    text: Color(0xFF484747),
+    header: Color(0xFF484747),
+    surface: Color(0xFFFAFAFA),
+    border: Color(0xFFEAE5E2),
+    link: Color(0xFF1D4E89),
+    success: Color(0xFF00973A),
+    error: Color(0xFFBD1919),
+    font: AppFont.platform,
+    buttonRadius: 8,
+  );
 
   /// [branding] as the app shows it, with [logo] its logo's bytes.
   factory AppBranding.fromSession(ProofingBranding branding, {Uint8List? logo}) {
@@ -70,6 +88,9 @@ class AppBranding {
   final Color? header;
   final AppFont font;
 
+  /// Corner radius of buttons; null gives the design's pill-shaped ones.
+  final double? buttonRadius;
+
   /// Square mark, drawn on light and dark backgrounds alike.
   final ImageProvider? logo;
 }
@@ -77,8 +98,11 @@ class AppBranding {
 /// Large text on the header needs 3:1 (WCAG AA for large text).
 const _minHeaderContrast = 3.0;
 
+/// Below this a filled button's edge is lost against the header behind it.
+const _minButtonOnHeaderContrast = 1.5;
+
 /// The fonts the app draws with: the design's own pair, one the app bundles,
-/// or the platform's own when a theme names only system fonts.
+/// a system font the theme names, or the platform's own.
 @immutable
 class AppFont {
   const AppFont._(this.heading, this.body);
@@ -88,16 +112,46 @@ class AppFont {
   /// The platform's default font for everything.
   static const platform = AppFont._(null, null);
 
-  /// The families the app bundles that a theme may name.
-  static const _bundled = {'alexandria': 'Alexandria', 'montserrat': 'Montserrat', 'nunito': 'Nunito'};
+  /// The families the app bundles that a theme may name: the businesswallet's
+  /// own (frontend/src/index.css).
+  static const _bundled = {
+    'alexandria': 'Alexandria',
+    'montserrat': 'Montserrat',
+    'nunito': 'Nunito',
+    'open sans': 'Open Sans',
+  };
 
-  /// A theme's CSS font-family list as the app can draw it: the first family
-  /// it bundles, else the platform's font; an empty list keeps the design's.
+  /// System fonts a theme may name, as (iOS, Android) draw them: iOS has the
+  /// families themselves, Android its generic serif and monospace ones.
+  static const _system = {
+    'helvetica neue': ('Helvetica Neue', 'sans-serif'),
+    'helvetica': ('Helvetica', 'sans-serif'),
+    'arial': ('Arial', 'sans-serif'),
+    'georgia': ('Georgia', 'serif'),
+    'times new roman': ('Times New Roman', 'serif'),
+    'serif': ('Times New Roman', 'serif'),
+    'ui-monospace': ('Menlo', 'monospace'),
+    'sfmono-regular': ('Menlo', 'monospace'),
+    'menlo': ('Menlo', 'monospace'),
+    'consolas': ('Menlo', 'monospace'),
+    'monospace': ('Menlo', 'monospace'),
+  };
+
+  /// A theme's CSS font-family list as the app can draw it: its first family
+  /// the app bundles or the phone has, else the platform's font; an empty
+  /// list keeps the design's.
   factory AppFont.fromCss(String? css) {
     if (css == null || css.trim().isEmpty) return design;
+    final ios = defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS;
     for (final family in css.split(',')) {
-      final bundled = _bundled[family.trim().replaceAll(RegExp('["\']'), '').toLowerCase()];
+      final name = family.trim().replaceAll(RegExp('["\']'), '').toLowerCase();
+      final bundled = _bundled[name];
       if (bundled != null) return AppFont._(bundled, bundled);
+      final system = _system[name];
+      if (system != null) {
+        final font = ios ? system.$1 : system.$2;
+        return AppFont._(font, font);
+      }
     }
     return platform;
   }
@@ -152,9 +206,26 @@ Color _lighten(Color color, double amount) => Color.lerp(color, Colors.white, am
 /// [color] mixed towards black by [amount].
 Color _darken(Color color, double amount) => Color.lerp(color, Colors.black, amount)!;
 
+/// [color] lightened by at least [amount], and further until it reads on
+/// [header] (3:1, for highlights and large text), so a tenant's dark
+/// primary still shows on the dark header.
+Color _onHeader(Color color, Color header, double amount) {
+  var result = _lighten(color, amount);
+  while (contrastRatio(result, header) < 3 && amount < 1) {
+    amount = (amount + 0.1).clamp(0, 1);
+    result = _lighten(color, amount);
+  }
+  return result;
+}
+
 /// White or ink, whichever reads better on [background].
 Color _readableOn(Color background) =>
     contrastRatio(background, Colors.white) >= contrastRatio(background, AppColors.ink) ? Colors.white : AppColors.ink;
+
+OutlinedBorder _buttonShape(AppBranding branding) {
+  final radius = branding.buttonRadius;
+  return radius == null ? const StadiumBorder() : RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius));
+}
 
 TextStyle _buttonText(AppFont font) => TextStyle(fontFamily: font.body, fontWeight: FontWeight.w700, fontSize: 16);
 
@@ -179,7 +250,7 @@ BrandTheme brandThemeFor(AppBranding branding) {
     elevation: 0,
     minimumSize: const Size(64, 52),
     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-    shape: const StadiumBorder(),
+    shape: _buttonShape(branding),
     textStyle: buttonText,
   );
 
@@ -189,10 +260,19 @@ BrandTheme brandThemeFor(AppBranding branding) {
     elevation: 0,
     minimumSize: const Size(64, 52),
     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-    shape: const StadiumBorder(),
+    shape: _buttonShape(branding),
     side: BorderSide(color: ink, width: 2),
     textStyle: buttonText,
   );
+
+  // A primary close to the header would leave the hero's button (Scan QR
+  // code) as bare text on it: a white one stands out on any header.
+  final heroButtonStyle = contrastRatio(primary, header) >= _minButtonOnHeaderContrast
+      ? primaryButtonStyle
+      : primaryButtonStyle.copyWith(
+          backgroundColor: const WidgetStatePropertyAll(Colors.white),
+          foregroundColor: WidgetStatePropertyAll(ink),
+        );
 
   final badgeBackground = _lighten(secondary, 0.9);
 
@@ -225,13 +305,13 @@ BrandTheme brandThemeFor(AppBranding branding) {
       neutralTile: AppColors.neutralTile,
       buttonGrey: AppColors.buttonGrey,
       heroMuted: AppColors.heroMuted,
-      heroEyebrow: _lighten(primary, 0.6),
-      heroAccent: _lighten(primary, 0.3),
+      heroEyebrow: _onHeader(primary, header, 0.6),
+      heroAccent: _onHeader(primary, header, 0.3),
       action: primary,
       actionTint: _lighten(primary, 0.9),
       actionTintStrong: _lighten(primary, 0.8),
       stepLabel: secondary,
-      stepLabelOnDark: _lighten(secondary, 0.6),
+      stepLabelOnDark: _onHeader(secondary, header, 0.6),
       badgeBackground: badgeBackground,
       illustrationDocument: _darken(secondary, 0.4),
       success: success,
@@ -241,6 +321,7 @@ BrandTheme brandThemeFor(AppBranding branding) {
       error: branding.error ?? AppColors.error,
       primaryButtonStyle: primaryButtonStyle,
       secondaryButtonStyle: secondaryButtonStyle,
+      heroButtonStyle: heroButtonStyle,
     ),
   );
 }
@@ -287,7 +368,7 @@ ThemeData appTheme([AppBranding branding = AppBranding.idem]) {
       style: OutlinedButton.styleFrom(
         foregroundColor: guided.ink,
         minimumSize: const Size(64, 52),
-        shape: const StadiumBorder(),
+        shape: _buttonShape(branding),
         side: BorderSide(color: guided.ink, width: 2),
         textStyle: buttonText,
       ),

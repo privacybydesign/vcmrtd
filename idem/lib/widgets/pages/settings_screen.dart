@@ -173,6 +173,7 @@ class SettingsScreen extends ConsumerWidget {
       ),
     );
 
+    final l10n = context.l10n;
     final faceEngine = ref.watch(faceEngineProvider);
     return GuidedStatusBar(
       onDark: false,
@@ -183,28 +184,25 @@ class SettingsScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               GuidedTopBar(
-                leading: GuidedRoundButton(icon: Icons.chevron_left, tooltip: 'Back', onPressed: onBackPressed),
-                center: const GuidedTopBarTitle('Settings'),
+                leading: GuidedRoundButton(icon: Icons.chevron_left, tooltip: l10n.docBack, onPressed: onBackPressed),
+                center: GuidedTopBarTitle(l10n.docSettingsTitle),
               ),
               Expanded(
                 child: ListView(
                   children: [
                     if (onSavedDocumentsPressed != null)
-                      section('Your documents', [
+                      section(l10n.settingsYourDocuments, [
                         row(
-                          title: 'Saved documents',
-                          subtitle: switch (ref.watch(walletProvider).length) {
-                            0 => 'None on this phone',
-                            final n => '$n on this phone',
-                          },
+                          title: l10n.settingsSavedDocuments,
+                          subtitle: l10n.settingsSavedCount(ref.watch(walletProvider).length),
                           onTap: onSavedDocumentsPressed,
                         ),
                       ]),
-                    section('Chip reading', [
+                    section(l10n.settingsChipReading, [
                       MergeSemantics(
                         child: row(
-                          title: 'Chip check',
-                          subtitle: 'Ask the chip to prove it isn’t a copy (active authentication)',
+                          title: l10n.settingsChipCheck,
+                          subtitle: l10n.settingsChipCheckSubtitle,
                           trailing: Switch(
                             value: ref.watch(activeAuthenticationProvider),
                             activeTrackColor: g.action,
@@ -213,21 +211,21 @@ class SettingsScreen extends ConsumerWidget {
                         ),
                       ),
                     ]),
-                    section('Selfie check', [
+                    section(l10n.settingsSelfieCheck, [
                       row(
-                        title: 'Face engine',
+                        title: l10n.settingsFaceEngine,
                         subtitle: switch (faceEngine) {
                           FaceEngineChoice.regula => 'Regula',
-                          FaceEngineChoice.onDevice => 'Open source, on this phone',
+                          FaceEngineChoice.onDevice => l10n.settingsFaceEngineOnDevice,
                           FaceEngineChoice.iris => 'Iris SDK',
                         },
                         onTap: () => _pickOption<FaceEngineChoice>(
                           context: context,
-                          title: 'Face engine',
+                          title: l10n.settingsFaceEngine,
                           current: ref.read(faceEngineProvider),
-                          options: const [
+                          options: [
                             (FaceEngineChoice.regula, 'Regula'),
-                            (FaceEngineChoice.onDevice, 'Open source'),
+                            (FaceEngineChoice.onDevice, l10n.docFaceEngineOpenSource),
                             (FaceEngineChoice.iris, 'Iris SDK'),
                           ],
                           onSelected: (choice) => ref.read(faceEngineProvider.notifier).set(choice),
@@ -236,31 +234,31 @@ class SettingsScreen extends ConsumerWidget {
                       // Regula falls back to on-device when a session doesn't offer it.
                       if (faceEngine != FaceEngineChoice.iris)
                         row(
-                          title: 'Liveness check',
+                          title: l10n.settingsLivenessCheck,
                           subtitle: switch (ref.watch(livenessModeProvider)) {
-                            LivenessMode.passive => 'Passive: just hold still',
-                            LivenessMode.active => 'Active: follow the prompts',
+                            LivenessMode.passive => l10n.settingsLivenessPassive,
+                            LivenessMode.active => l10n.settingsLivenessActive,
                           },
                           onTap: () => _pickOption<LivenessMode>(
                             context: context,
-                            title: 'Liveness check',
+                            title: l10n.settingsLivenessCheck,
                             current: ref.read(livenessModeProvider),
-                            options: const [
-                              (LivenessMode.passive, 'Passive: just hold still'),
-                              (LivenessMode.active, 'Active: follow the prompts'),
+                            options: [
+                              (LivenessMode.passive, l10n.settingsLivenessPassive),
+                              (LivenessMode.active, l10n.settingsLivenessActive),
                             ],
                             onSelected: (mode) => ref.read(livenessModeProvider.notifier).set(mode),
                           ),
                         ),
                     ]),
                     if (showOcrEngineForTesting ?? Platform.isAndroid)
-                      section('Document scanning', [
+                      section(l10n.settingsDocumentScanning, [
                         row(
-                          title: 'Text recognition',
+                          title: l10n.settingsTextRecognition,
                           subtitle: _ocrEngineLabel(ref.watch(ocrEngineProvider)),
                           onTap: () => _pickOption<OcrEngine>(
                             context: context,
-                            title: 'Text recognition',
+                            title: l10n.settingsTextRecognition,
                             current: ref.read(ocrEngineProvider),
                             options: const [
                               (OcrEngine.googleMlKit, 'Google ML Kit'),
@@ -273,7 +271,7 @@ class SettingsScreen extends ConsumerWidget {
                     const SizedBox(height: 32),
                     if (context.brand.showPoweredByIdem)
                       Text(
-                        'Powered by Idem',
+                        l10n.guidedPoweredByIdem,
                         textAlign: TextAlign.center,
                         style: TextStyle(fontSize: 12, color: g.muted),
                       ),
@@ -283,7 +281,7 @@ class SettingsScreen extends ConsumerWidget {
                           ? Padding(
                               padding: const EdgeInsets.only(top: 4),
                               child: Text(
-                                'Version ${snapshot.data!.version}',
+                                l10n.settingsVersion(snapshot.data!.version),
                                 textAlign: TextAlign.center,
                                 style: TextStyle(fontSize: 12, color: g.muted),
                               ),

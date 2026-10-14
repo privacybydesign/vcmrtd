@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -25,9 +26,13 @@ class _LogoClient extends ProofingSessionClient {
   final Uint8List? logo;
   int fetches = 0;
 
+  /// When set, fetches wait for it, so a test can end the session meanwhile.
+  Completer<void>? gate;
+
   @override
   Future<Uint8List?> fetchBrandingLogo(ProofingSessionRef ref) async {
     fetches++;
+    await gate?.future;
     return logo;
   }
 }
@@ -56,11 +61,48 @@ void main() {
   });
 
   test('a session without branding gets the app\'s own look', () async {
-    final container = ProviderContainer(overrides: [proofingSessionClientProvider.overrideWithValue(_LogoClient(null))]);
+    final container = ProviderContainer(
+      overrides: [proofingSessionClientProvider.overrideWithValue(_LogoClient(null))],
+    );
     addTearDown(container.dispose);
     final notifier = container.read(activeBrandingProvider.notifier);
-    await notifier.useSession(_ref, _info(branding: const ProofingBranding(name: 'CM.com', primaryColor: '#036BD2')));
+    await notifier.useSession(
+      _ref,
+      _info(
+        branding: const ProofingBranding(name: 'CM.com', primaryColor: '#036BD2'),
+      ),
+    );
     await notifier.useSession(_ref, _info());
+    expect(container.read(activeBrandingProvider).name, AppBranding.idem.name);
+  });
+
+  test('a session that ends while its logo is loading leaves the app in its own look', () async {
+    final client = _LogoClient(Uint8List.fromList([1, 2, 3]))..gate = Completer<void>();
+    final container = ProviderContainer(overrides: [proofingSessionClientProvider.overrideWithValue(client)]);
+    addTearDown(container.dispose);
+    final notifier = container.read(activeBrandingProvider.notifier);
+
+    final loading = notifier.useSession(_ref, _info(branding: const ProofingBranding(name: 'CM.com', hasLogo: true)));
+    notifier.endSession(_ref);
+    client.gate!.complete();
+    await loading;
+    expect(container.read(activeBrandingProvider).name, AppBranding.idem.name);
+  });
+
+  test('ending a session drops its branding, but not another session\'s', () async {
+    final container = ProviderContainer(
+      overrides: [proofingSessionClientProvider.overrideWithValue(_LogoClient(null))],
+    );
+    addTearDown(container.dispose);
+    final notifier = container.read(activeBrandingProvider.notifier);
+    await notifier.useSession(_ref, _info(branding: const ProofingBranding(name: 'CM.com')));
+
+    notifier.endSession(
+      const ProofingSessionRef(apiBase: 'https://wallet.example', token: 'other', deviceToken: 'dev'),
+    );
+    expect(container.read(activeBrandingProvider).name, 'CM.com');
+
+    notifier.endSession(_ref);
     expect(container.read(activeBrandingProvider).name, AppBranding.idem.name);
   });
 }

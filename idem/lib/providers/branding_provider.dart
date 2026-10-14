@@ -18,6 +18,17 @@ class ActiveBrandingNotifier extends Notifier<AppBranding> {
   /// (and its logo) instead of fetching the logo again.
   (String, ProofingBranding)? _source;
 
+  /// The last session look built, kept across a [reset] so wearing it again
+  /// (once the QR scanner is popped, say) doesn't fetch its logo twice.
+  ((String, ProofingBranding), AppBranding)? _built;
+
+  /// Bumped by every [reset], so a [useSession] still fetching its logo
+  /// when the session ends doesn't dress the app again afterwards.
+  int _generation = 0;
+
+  /// The session whose branding the app wears, or is loading.
+  String? _sessionToken;
+
   @override
   AppBranding build() => AppBranding.idem;
 
@@ -32,6 +43,14 @@ class ActiveBrandingNotifier extends Notifier<AppBranding> {
     }
     final source = (sessionRef.token, branding);
     if (_source == source) return;
+    _sessionToken = sessionRef.token;
+    final built = _built;
+    if (built != null && built.$1 == source) {
+      _source = source;
+      state = built.$2;
+      return;
+    }
+    final generation = _generation;
     Uint8List? logo;
     if (branding.hasLogo) {
       try {
@@ -40,13 +59,26 @@ class ActiveBrandingNotifier extends Notifier<AppBranding> {
         _log.warning('branding logo unavailable: $e');
       }
     }
+    if (generation != _generation) return;
     _source = source;
     state = AppBranding.fromSession(branding, logo: logo);
+    _built = (source, state);
   }
 
-  /// Back to Idem's own look.
+  /// The session [sessionRef] completed or this device lost it (expired,
+  /// handed over, ...): back to Idem's own look if the app wears its branding,
+  /// pinned or not.
+  void endSession(ProofingSessionRef sessionRef) {
+    if (_sessionToken == sessionRef.token) reset();
+  }
+
+  /// Back to Idem's own look. A no-op when the app already wears it, so
+  /// calling it from a navigation during a build changes nothing.
   void reset() {
+    if (_sessionToken == null && identical(state, AppBranding.idem)) return;
+    _generation++;
     _source = null;
+    _sessionToken = null;
     state = AppBranding.idem;
   }
 }

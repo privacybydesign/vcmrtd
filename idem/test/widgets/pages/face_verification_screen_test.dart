@@ -608,35 +608,7 @@ void main() {
   });
 
   group('FlutterFaceVerificationScreen — rendered result and error UI', () {
-    testWidgets('passed complete event renders successful result screen', (tester) async {
-      await tester.pumpWidget(_buildScreen());
-      await tester.pump();
-      await tester.pump();
-
-      _state(tester).debugOnLivenessEvent({
-        'type': 'complete',
-        'passed': true,
-        'matchScore': 0.92,
-        'antiSpoofScore': 0.88,
-        'antiSpoofPassed': true,
-        'rppg': {'hr': 72.0, 'passed': true, 'sampleCount': 31, 'durationMs': 3000},
-      });
-      await tester.pump();
-
-      expect(find.text('Identity Verified'), findsOneWidget);
-      expect(find.text('92.0%'), findsOneWidget);
-      expect(find.text('88.0%'), findsOneWidget);
-      expect(find.text('72 bpm'), findsOneWidget);
-      expect(find.text('passed'), findsOneWidget);
-      // A passing result auto-continues, so there's no retry button — just a
-      // brief "Continuing…" hint before onVerified fires.
-      expect(find.text('Try Again'), findsNothing);
-      expect(find.text('Continuing…'), findsOneWidget);
-    });
-
-    testWidgets('passed complete event auto-continues to onVerified after a short delay, not onBackPressed', (
-      tester,
-    ) async {
+    testWidgets('a passed complete event continues straight away under a spinner, no result screen', (tester) async {
       var backCount = 0;
       var verifiedCount = 0;
       await tester.pumpWidget(
@@ -664,10 +636,11 @@ void main() {
       });
       await tester.pump();
 
-      expect(verifiedCount, 0);
-      await tester.pump(const Duration(seconds: 2));
       expect(verifiedCount, 1);
       expect(backCount, 0);
+      expect(find.text('Verifying identity...'), findsOneWidget);
+      expect(find.text('92.0%'), findsNothing);
+      expect(find.text('Try Again'), findsNothing);
     });
 
     testWidgets('failed complete event renders failed result and consistency warning', (tester) async {
@@ -692,7 +665,6 @@ void main() {
       expect(find.text('face changed mid-session'), findsOneWidget);
       expect(find.byIcon(Icons.cancel), findsWidgets);
       expect(find.text('Try Again'), findsOneWidget);
-      expect(find.text('Continuing…'), findsNothing);
     });
 
     testWidgets('error screen renders actions and back callback fires', (tester) async {
@@ -722,7 +694,7 @@ void main() {
 
       _state(tester).debugOnLivenessEvent({
         'type': 'complete',
-        'passed': true,
+        'passed': false,
         'matchScore': 0.9,
         'antiSpoofScore': 0.9,
         'antiSpoofPassed': true,
@@ -912,8 +884,8 @@ void main() {
       });
       await tester.pump();
 
-      expect(find.text('Identity Verified'), findsOneWidget);
-      expect(find.text('Match (≥55%)'), findsOneWidget);
+      expect(find.text('Verification Failed'), findsNothing);
+      expect(find.text('Verifying identity...'), findsOneWidget);
     });
 
     testWidgets('result screen renders n/a for missing anti-spoof and rPPG values', (tester) async {
@@ -942,7 +914,7 @@ void main() {
 
       _state(tester).debugOnLivenessEvent({
         'type': 'complete',
-        'passed': true,
+        'passed': false,
         'matchScore': 1,
         'antiSpoofScore': 1,
         'antiSpoofPassed': true,

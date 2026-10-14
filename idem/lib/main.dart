@@ -108,7 +108,11 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
   /// Back home or at the scanner without a session (a consent screen left
   /// with Back, say), the app wears its own look again.
   void _resetBrandingOutsideSession() {
-    final path = _router.routerDelegate.currentConfiguration.uri.path;
+    // The screen on top: a pushed one (the consent screen) leaves the uri
+    // at the screen it was pushed from.
+    final routes = _router.routerDelegate.currentConfiguration;
+    if (routes.isEmpty) return;
+    final path = routes.last.matchedLocation;
     if (sessionlessPaths.contains(path) && ref.read(activeProofingSessionProvider) == null) {
       ref.read(activeBrandingProvider.notifier).reset();
     }
@@ -166,13 +170,32 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
     return pinned;
   }
 
+  /// Leaves the consent screen when it is on top and shows [sessionRef]:
+  /// that session ended before the user accepted it (expired while the
+  /// phone was away, say). Returns whether it did.
+  bool _leaveConsentFor(ProofingSessionRef sessionRef) {
+    final top = _router.routerDelegate.currentConfiguration.last;
+    if (top is! ImperativeRouteMatch || top.matchedLocation != proofingConsentPath) return false;
+    final extra = top.matches.extra;
+    final shown = extra is Map<String, dynamic> ? extra['ref'] : null;
+    if (shown is! ProofingSessionRef || !shown.sameAccess(sessionRef)) return false;
+    _router.go(selectDocTypePath);
+    return true;
+  }
+
   /// The session was submitted and has its outcome - from this app's Submit
   /// button or on the other device, whichever came first: nothing is left
   /// to do here. A session the app already finished its part of (unpinned,
   /// e.g. face verification handed off to the browser) ends quietly.
   void _onProofingSessionCompleted(ProofingSessionRef sessionRef) {
+    ref.read(activeBrandingProvider.notifier).endSession(sessionRef);
     final pinned = _endPinnedSession(sessionRef);
-    if (pinned == null) return;
+    if (pinned == null) {
+      if (_leaveConsentFor(sessionRef)) {
+        _showInfoAfterNavigation((l10n) => (l10n.sessionStoppedTitle, ProofingAccessDenial.complete.message));
+      }
+      return;
+    }
     _showInfoAfterNavigation(
       (l10n) => (l10n.sessionCompleteTitle, l10n.sessionCompleteMessage(pinned.info.relyingParty)),
     );
@@ -196,8 +219,8 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
   /// say why. A session the app already finished its part of (unpinned,
   /// e.g. face verification handed off to the browser) just ends quietly.
   void _onProofingSessionAccessLost(ProofingSessionRef sessionRef, ProofingAccessDenial reason) {
-    final pinned = _endPinnedSession(sessionRef);
-    if (pinned == null) return;
+    ref.read(activeBrandingProvider.notifier).endSession(sessionRef);
+    if (_endPinnedSession(sessionRef) == null && !_leaveConsentFor(sessionRef)) return;
     _showInfoAfterNavigation((l10n) => (l10n.sessionStoppedTitle, reason.message));
   }
 

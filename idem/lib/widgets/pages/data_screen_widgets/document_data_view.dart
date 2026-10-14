@@ -4,6 +4,7 @@ import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/providers/wallet_provider.dart';
+import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/widgets/common/button_styles.dart';
 
 import 'submit_to_proofing_session.dart';
@@ -26,6 +27,9 @@ class DocumentDataView extends ConsumerWidget {
   /// Whether the browser still does the face step after that.
   final PendingStep pendingStep;
   final VoidCallback onBackPressed;
+
+  /// Submits the session; set for [PendingStep.share].
+  final Future<bool> Function()? onShare;
   final int stepNumber;
   final int totalSteps;
   final List<Widget> children;
@@ -39,6 +43,7 @@ class DocumentDataView extends ConsumerWidget {
     required this.submittedTo,
     required this.pendingStep,
     required this.onBackPressed,
+    this.onShare,
     required this.stepNumber,
     required this.totalSteps,
     required this.children,
@@ -75,6 +80,7 @@ class DocumentDataView extends ConsumerWidget {
                               relyingParty: submittedTo,
                               pendingStep: pendingStep,
                               onDone: onBackPressed,
+                              onShare: onShare,
                             )
                           : ElevatedButton.icon(
                               onPressed: () {
@@ -83,7 +89,7 @@ class DocumentDataView extends ConsumerWidget {
                                     .add(WalletCard.fromDocument(document, documentType, rawData: rawDocument));
                                 onBackPressed();
                               },
-                              style: actionButtonStyle,
+                              style: context.brand.primaryButtonStyle ?? actionButtonStyle,
                               icon: const Icon(Icons.account_balance_wallet),
                               label: Text(context.l10n.proofingAddToWallet),
                             ),

@@ -110,11 +110,7 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
     return Scaffold(
       body: Stack(
         children: [
-          scannerBuilder(
-            documentType: widget.documentType,
-            scanPicture: widget.scanPicture,
-            onSuccess: _onScanned,
-          ),
+          scannerBuilder(documentType: widget.documentType, scanPicture: widget.scanPicture, onSuccess: _onScanned),
           Positioned(left: 0, right: 0, top: 0, child: _buildTopOverlay(context)),
           Positioned(left: 0, right: 0, bottom: 0, child: _buildBottomControls(context)),
         ],
@@ -239,11 +235,14 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
                         GuidedTopBar(
                           leading: GuidedRoundButton(
                             icon: Icons.close,
-                            tooltip: 'Close',
+                            tooltip: context.l10n.scanClose,
                             onDark: true,
                             onPressed: widget.onBack,
                           ),
-                          center: GuidedTopBarTitle('Scan ${_guidedDocumentName(widget.documentType)}', onDark: true),
+                          center: GuidedTopBarTitle(
+                            context.l10n.proofingScanDocument(widget.documentType.name),
+                            onDark: true,
+                          ),
                         ),
                         const GuidedStepBar(step: 1, onDark: true),
                       ],
@@ -274,55 +273,127 @@ int _mrzLineCount(DocumentType type) => switch (type) {
   DocumentType.drivingLicence => 1,
 };
 
-String _guidedDocumentName(DocumentType type) => switch (type) {
-  DocumentType.passport => 'passport',
-  DocumentType.identityCard => 'identity card',
-  DocumentType.drivingLicence => 'driving licence',
-};
-
-class _GuidedScanSheet extends StatelessWidget {
+/// The instructions under the scan frame: a card that shows only the step
+/// and what to do, and opens (tap, or swipe up) to the tip and manual entry.
+/// Kept closed it leaves the whole frame, and the text read along its bottom,
+/// in view on smaller phones.
+class _GuidedScanSheet extends StatefulWidget {
   const _GuidedScanSheet({required this.documentType, required this.onManualEntry});
 
   final DocumentType documentType;
   final VoidCallback onManualEntry;
 
   @override
+  State<_GuidedScanSheet> createState() => _GuidedScanSheetState();
+}
+
+class _GuidedScanSheetState extends State<_GuidedScanSheet> {
+  static const _duration = Duration(milliseconds: 280);
+
+  bool _expanded = false;
+
+  void _setExpanded(bool expanded) {
+    if (expanded != _expanded) setState(() => _expanded = expanded);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final g = context.guided!;
-    final (title, tip) = switch (documentType) {
-      DocumentType.passport => (
-        'Place the photo page in the frame',
-        'Make sure the two lines of text at the bottom are sharp and not covered by your fingers or glare.',
-      ),
-      DocumentType.identityCard => (
-        'Place the back of your ID card in the frame',
-        'Make sure the three lines of text at the bottom are sharp and not covered by your fingers or glare.',
-      ),
-      DocumentType.drivingLicence => (
-        'Place the back of your driving licence in the frame',
-        'Make sure the line of text at the bottom is sharp and not covered by your fingers or glare.',
-      ),
-    };
-    return Container(
-      decoration: const BoxDecoration(
+    final l10n = context.l10n;
+    final docType = widget.documentType.name;
+    final (title, tip) = (l10n.scanSheetTitle(docType), l10n.scanSheetTip(docType));
+    return GestureDetector(
+      onVerticalDragEnd: (details) {
+        final velocity = details.primaryVelocity ?? 0;
+        if (velocity < -100) _setExpanded(true);
+        if (velocity > 100) _setExpanded(false);
+      },
+      child: Material(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      padding: const EdgeInsets.fromLTRB(20, 28, 20, 28),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const GuidedStepLabel(step: 1),
-            const SizedBox(height: 16),
-            Text(title, style: g.heading(22, height: 1.25)),
-            const SizedBox(height: 16),
-            Text(tip, style: TextStyle(fontSize: 15, height: 1.5, color: g.bodyText)),
-            const SizedBox(height: 16),
-            GuidedButton(label: 'Enter details manually', secondary: true, onPressed: onManualEntry),
-          ],
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        clipBehavior: Clip.antiAlias,
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Semantics(
+                button: true,
+                expanded: _expanded,
+                hint: _expanded ? l10n.scanHideTips : l10n.scanShowTips,
+                child: InkWell(
+                  onTap: () => _setExpanded(!_expanded),
+                  // The arrow turning is the feedback; a highlight greys half the card.
+                  splashFactory: NoSplash.splashFactory,
+                  highlightColor: Colors.transparent,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 36,
+                            height: 4,
+                            decoration: BoxDecoration(color: g.border, borderRadius: BorderRadius.circular(2)),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const GuidedStepLabel(step: 1),
+                                  const SizedBox(height: 4),
+                                  Text(title, style: g.heading(18, height: 1.3)),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            AnimatedRotation(
+                              turns: _expanded ? 0.5 : 0,
+                              duration: _duration,
+                              curve: Curves.easeOutCubic,
+                              child: Icon(Icons.keyboard_arrow_up, color: g.muted),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              AnimatedSize(
+                duration: _duration,
+                curve: Curves.easeOutCubic,
+                alignment: Alignment.topCenter,
+                child: AnimatedOpacity(
+                  opacity: _expanded ? 1 : 0,
+                  duration: _duration,
+                  child: _expanded
+                      ? Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(tip, style: TextStyle(fontSize: 15, height: 1.5, color: g.bodyText)),
+                              const SizedBox(height: 16),
+                              GuidedButton(
+                                label: l10n.scanEnterDetailsManually,
+                                secondary: true,
+                                onPressed: widget.onManualEntry,
+                              ),
+                            ],
+                          ),
+                        )
+                      : const SizedBox(width: double.infinity),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

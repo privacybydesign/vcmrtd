@@ -22,6 +22,9 @@ class PassportDataScreen extends StatelessWidget {
   final String? submittedTo;
   final PendingStep pendingStep;
 
+  /// Submits the session; set for [PendingStep.share].
+  final Future<bool> Function()? onShare;
+
   /// Step badge numbers — default to vcmrtd's fixed 4-step sequence (this
   /// screen is always the last, step 4, there) so any caller not passing
   /// these explicitly keeps today's behaviour; routing.dart passes a
@@ -38,13 +41,14 @@ class PassportDataScreen extends StatelessWidget {
     this.documentType = DocumentType.passport,
     this.submittedTo,
     this.pendingStep = PendingStep.none,
+    this.onShare,
     this.stepNumber = FlowStepPlan.defaultResultStep,
     this.totalSteps = FlowStepPlan.defaultTotalSteps,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (context.guided != null) return _buildGuided();
+    if (context.guided != null) return _buildGuided(context);
     return DocumentDataView(
       title: context.l10n.docDocumentDataTitle(documentType.name),
       document: document,
@@ -53,6 +57,7 @@ class PassportDataScreen extends StatelessWidget {
       submittedTo: submittedTo,
       pendingStep: pendingStep,
       onBackPressed: onBackPressed,
+      onShare: onShare,
       stepNumber: stepNumber,
       totalSteps: totalSteps,
       children: [
@@ -63,10 +68,10 @@ class PassportDataScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildGuided() {
+  Widget _buildGuided(BuildContext context) {
+    final l10n = context.l10n;
     final mrz = document.mrz;
-    final isIdCard = documentType == DocumentType.identityCard;
-    final date = DateFormat('d MMM y');
+    final date = DateFormat('d MMM y', l10n.localeName);
     return GuidedDocumentDataView(
       document: document,
       rawDocument: passportDataResult,
@@ -74,17 +79,17 @@ class PassportDataScreen extends StatelessWidget {
       submittedTo: submittedTo,
       pendingStep: pendingStep,
       onBackPressed: onBackPressed,
-      documentName: isIdCard ? 'ID card' : 'passport',
-      readTitle: 'Document read',
+      onShare: onShare,
+      readTitle: l10n.dataViewDocumentRead,
       photoImageData: document.photoImageData,
       photoImageType: document.photoImageType,
       holderName: _titleCase(document.displayName),
-      subtitle: '${isIdCard ? 'ID card' : 'Passport'} · ${mrz.country}',
+      subtitle: l10n.dataViewSubtitle(documentType.name, mrz.country),
       details: [
-        GuidedDetail('Date of birth', date.format(mrz.dateOfBirth)),
-        GuidedDetail('Nationality', mrz.nationality),
-        GuidedDetail('Document number', mrz.documentNumber, mono: true),
-        GuidedDetail('Valid until', date.format(mrz.dateOfExpiry)),
+        GuidedDetail(l10n.dataViewDateOfBirth, date.format(mrz.dateOfBirth)),
+        GuidedDetail(l10n.docNationality, mrz.nationality),
+        GuidedDetail(l10n.dataViewDocumentNumber, mrz.documentNumber, mono: true),
+        GuidedDetail(l10n.dataViewValidUntil, date.format(mrz.dateOfExpiry)),
       ],
     );
   }

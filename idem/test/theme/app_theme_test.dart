@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -41,6 +42,41 @@ void main() {
       expect(brand.logo, isNull);
       expect(brand.guided, isNotNull);
       expect(theme.colorScheme.primary, AppBranding.idem.primary);
+    });
+
+    test('highlights on the header stay readable, even with a near-black primary', () {
+      const dark = AppBranding(name: 'Dark', primary: Color(0xFF18181B), secondary: Color(0xFF52525B));
+      for (final branding in [AppBranding.idem, dark]) {
+        final guided = appTheme(branding).extension<BrandTheme>()!.guided!;
+        for (final color in [guided.heroAccent, guided.heroEyebrow, guided.stepLabelOnDark]) {
+          expect(_contrast(color, guided.header), greaterThanOrEqualTo(3), reason: branding.name);
+        }
+      }
+    });
+
+    test('Idem\'s own buttons stand apart from its header and text', () {
+      final guided = appTheme().extension<BrandTheme>()!.guided!;
+      expect(_contrast(guided.action, guided.header), greaterThanOrEqualTo(1.5));
+      expect(guided.action, isNot(guided.ink));
+      expect(guided.heroButtonStyle, same(guided.primaryButtonStyle));
+    });
+
+    test('Idem has its own type and button shape; a tenant keeps the design\'s', () {
+      final idem = appTheme().extension<BrandTheme>()!.guided!;
+      expect(idem.headingFontFamily, isNull);
+      expect(idem.primaryButtonStyle.shape?.resolve({}), isA<RoundedRectangleBorder>());
+
+      const tenant = AppBranding(name: 'Acme', primary: Color(0xFF036BD2), secondary: Color(0xFF5412C7));
+      final guided = appTheme(tenant).extension<BrandTheme>()!.guided!;
+      expect(guided.headingFontFamily, AppFonts.heading);
+      expect(guided.primaryButtonStyle.shape?.resolve({}), isA<StadiumBorder>());
+    });
+
+    test('a primary as dark as the header gets a white hero button', () {
+      const branding = AppBranding(name: 'Dark', primary: Color(0xFF101E1E), secondary: Color(0xFF52525B));
+      final guided = appTheme(branding).extension<BrandTheme>()!.guided!;
+      expect(guided.heroButtonStyle.backgroundColor?.resolve({}), Colors.white);
+      expect(guided.heroButtonStyle.foregroundColor?.resolve({}), guided.ink);
     });
 
     test('takes its colours from the branding', () {
@@ -88,8 +124,24 @@ void main() {
       expect(theme.colorScheme.onPrimary, AppColors.ink);
     });
 
-    test('a theme font the app does not bundle falls back to the platform\'s; none keeps the design\'s', () {
-      expect(AppFont.fromCss('Georgia, "Times New Roman", serif'), AppFont.platform);
+    test('every font the businesswallet offers is drawn as that font', () {
+      // Its theme font options (frontend/src/lib/theme.ts's FONT_OPTIONS).
+      expect(AppFont.fromCss('"Montserrat", system-ui, sans-serif').heading, 'Montserrat');
+      expect(AppFont.fromCss('"Nunito", system-ui, sans-serif').heading, 'Nunito');
+      expect(AppFont.fromCss('"Open Sans", system-ui, sans-serif').heading, 'Open Sans');
+      expect(AppFont.fromCss('"Alexandria", system-ui, sans-serif').heading, 'Alexandria');
+      expect(AppFont.fromCss('system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'), AppFont.platform);
+      expect(AppFont.fromCss('Georgia, "Times New Roman", serif').body, 'serif');
+      expect(AppFont.fromCss('ui-monospace, SFMono-Regular, Menlo, Consolas, monospace').body, 'monospace');
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      expect(AppFont.fromCss('Georgia, "Times New Roman", serif').body, 'Georgia');
+      expect(AppFont.fromCss('"Helvetica Neue", Arial, sans-serif').body, 'Helvetica Neue');
+      expect(AppFont.fromCss('ui-monospace, SFMono-Regular, Menlo, Consolas, monospace').body, 'Menlo');
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    test('a theme naming no font the app knows gets the platform\'s; none keeps the design\'s', () {
+      expect(AppFont.fromCss('"Comic Neue", cursive'), AppFont.platform);
       expect(AppFont.fromCss(''), AppFont.design);
       expect(AppFont.fromCss(null), AppFont.design);
       expect(AppFont.fromCss("'Alexandria', sans-serif").heading, 'Alexandria');

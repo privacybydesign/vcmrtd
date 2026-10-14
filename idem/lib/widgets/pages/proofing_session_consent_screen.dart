@@ -150,7 +150,7 @@ extension on ProofingSessionConsentScreen {
             children: [
               GuidedTopBar(
                 leading: GuidedRoundButton(icon: Icons.close, tooltip: l10n.proofingDecline, onPressed: onDecline),
-                center: const GuidedTopBarTitle('Request'),
+                center: GuidedTopBarTitle(l10n.consentTitle),
               ),
               Expanded(
                 child: SingleChildScrollView(
@@ -178,14 +178,14 @@ extension on ProofingSessionConsentScreen {
                       ),
                       const SizedBox(height: 14),
                       Text(
-                        '$party wants to verify your identity',
+                        l10n.consentHeading(party),
                         textAlign: TextAlign.center,
                         style: g.heading(24, height: 1.25),
                       ),
                       if (party != org) ...[
                         const SizedBox(height: 8),
                         Text(
-                          'Requested by $org',
+                          l10n.consentRequestedBy(org),
                           textAlign: TextAlign.center,
                           style: TextStyle(fontSize: 14, color: g.bodyText),
                         ),
@@ -204,7 +204,7 @@ extension on ProofingSessionConsentScreen {
                       ),
                       const SizedBox(height: 28),
                       Text(
-                        'They will receive',
+                        l10n.consentTheyWillReceive,
                         style: g.heading(16, weight: FontWeight.w600, color: g.slate),
                       ),
                       const SizedBox(height: 10),

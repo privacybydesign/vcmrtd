@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:idem/theme/brand_theme.dart';
 
 /// Building blocks shared by the guided layout's screens (see [GuidedStyle]).
@@ -112,7 +113,7 @@ class GuidedStepBar extends StatelessWidget {
     final filled = onDark ? g.heroAccent : g.action;
     final empty = onDark ? Colors.white.withValues(alpha: 0.2) : g.border;
     return Semantics(
-      label: 'Step $step of $stepCount',
+      label: context.l10n.guidedStepOf(step, stepCount),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
         child: Row(
@@ -144,7 +145,7 @@ class GuidedStepLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final g = context.guided!;
     return Text(
-      'Step $step of ${GuidedStepBar.stepCount}',
+      context.l10n.guidedStepOf(step, GuidedStepBar.stepCount),
       style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: onDark ? g.stepLabelOnDark : g.stepLabel),
     );
   }
@@ -270,12 +271,12 @@ class GuidedSaveForNextTime extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Save for next time',
+                        context.l10n.guidedSaveForNextTime,
                         style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: g.ink),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Keep this document on this phone so you don’t have to scan it again.',
+                        context.l10n.guidedSaveForNextTimeSubtitle,
                         style: TextStyle(fontSize: 13, height: 1.4, color: g.bodyText),
                       ),
                     ],

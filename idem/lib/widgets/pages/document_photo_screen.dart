@@ -8,6 +8,7 @@ import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:image/image.dart' as img;
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:idem/l10n/l10n.dart';
+import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/widgets/common/button_styles.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
@@ -486,10 +487,14 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (_state == _PhotoState.error)
-            ElevatedButton(style: actionButtonStyle, onPressed: _openCamera, child: Text(l10n.faceTryAgain))
+            ElevatedButton(
+              style: context.brand.primaryButtonStyle ?? actionButtonStyle,
+              onPressed: _openCamera,
+              child: Text(l10n.faceTryAgain),
+            )
           else
             ElevatedButton.icon(
-              style: actionButtonStyle,
+              style: context.brand.primaryButtonStyle ?? actionButtonStyle,
               onPressed: ready && !_sending ? _capture : null,
               icon: _state == _PhotoState.capturing
                   ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
@@ -588,7 +593,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
                 const SizedBox(width: 16),
                 Expanded(
                   child: ElevatedButton(
-                    style: actionButtonStyle,
+                    style: context.brand.primaryButtonStyle ?? actionButtonStyle,
                     onPressed: _sending ? null : _usePhoto,
                     child: Text(l10n.docPhotoUse),
                   ),

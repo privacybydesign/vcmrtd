@@ -180,4 +180,9 @@ class MrzCaptureLocalizationsEn extends MrzCaptureLocalizations {
 
   @override
   String get mrzHeaderSubtitleMrz => 'Type the Machine Readable Zone text exactly as it appears';
+
+  @override
+  String mrzStepBadge(int current, int total, String label) {
+    return '$current of $total · $label';
+  }
 }

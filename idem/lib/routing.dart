@@ -86,9 +86,9 @@ const _qrScannerPath = '/qr_scanner';
 const sessionlessPaths = {selectDocTypePath, _qrScannerPath};
 const _proofingConsentPath = '/proofing_consent';
 
-/// Lets tests open the consent screen directly, the way a claimed QR or deep
-/// link does through [openProofingSessionLink].
-@visibleForTesting
+/// Where a claimed QR or deep link shows the session for consent (see
+/// [openProofingSessionLink]); main.dart leaves it when that session ends,
+/// and tests open it directly.
 const proofingConsentPath = _proofingConsentPath;
 const _chooseDocumentPath = '/choose_document';
 const _savedDocumentsPath = '/saved_documents';
@@ -306,10 +306,11 @@ String _localStepAfter(List<String> steps, String step) {
 /// [readyToSubmit] and [currentStep] from the step response (or the session
 /// view) that just arrived, never this app's own idea of what comes next.
 /// After the last step the session isn't finished yet: it waits to be
-/// submitted ([readyToSubmit]), which this app then does right away - the
-/// last step is also the submit. What the screen the user came from
-/// already has ([collected]: the MRZ scan, the chip read, a face outcome)
-/// only fills in what the next screen needs. [resume] is a fresh start on
+/// submitted ([readyToSubmit]), which the user does with Share on the result
+/// screen when this device read the chip, or this app right away otherwise.
+/// What the screen the user came from already has ([collected]: the MRZ
+/// scan, the chip read, a face outcome) only fills in what the next screen
+/// needs. [resume] is a fresh start on
 /// this device (after connecting or a handover): screens are gone to instead
 /// of pushed.
 void _continueAtServerStep(
@@ -327,10 +328,11 @@ void _continueAtServerStep(
     return;
   }
 
-  // Every step has a result: submit it now. An empty currentStep means the
-  // server has nothing left to collect either; submitting lets it decide.
+  // Every step has a result: share it from the result screen, or submit it
+  // now. An empty currentStep means the server has nothing left to collect
+  // either; submitting lets it decide.
   if (readyToSubmit || currentStep.isEmpty) {
-    _submitProofingSession(context, session);
+    if (!_goShareScreen(context, session, collected)) _submitProofingSession(context, session);
     return;
   }
 
@@ -367,6 +369,27 @@ void _continueAtServerStep(
     title: context.l10n.proofingContinueInBrowserTitle,
     message: context.l10n.proofingContinueInBrowserNextStep,
   );
+}
+
+/// Shows the chip read in [collected] as verified, for the user to share
+/// with [session]'s relying party (see [_buildResultRoute]); false without a
+/// chip read on this device. The session stays pinned until it's shared.
+bool _goShareScreen(BuildContext context, ActiveProofingSession session, CollectedStepData collected) {
+  final document = collected.document;
+  final rawDocument = collected.rawDocument;
+  final documentType = collected.documentType;
+  if (document == null || rawDocument == null || documentType == null) return false;
+  context.goResultScreen(
+    ResultRouteArgs(
+      document: document,
+      rawDocument: rawDocument,
+      documentType: documentType,
+      plan: collected.plan ?? _planFor(session),
+      submittedTo: session.info.relyingParty,
+      pendingStep: PendingStep.share,
+    ),
+  );
+  return true;
 }
 
 /// The nfc_read step of [_continueAtServerStep].
@@ -558,8 +581,8 @@ void _showInfoAfterNavigation(GoRouter router, {required String title, required 
 /// the other device takes; an expired session is refused by the server and
 /// ends with that message instead. When a step still lacks a result after
 /// all (e.g. a reset landed in between), the user continues at the server's
-/// current step.
-Future<void> _submitProofingSession(BuildContext context, ActiveProofingSession session) async {
+/// current step. Returns whether the session is complete.
+Future<bool> _submitProofingSession(BuildContext context, ActiveProofingSession session) async {
   final container = ProviderScope.containerOf(context);
   final router = GoRouter.of(context);
   final client = container.read(proofingSessionClientProvider);
@@ -580,13 +603,13 @@ Future<void> _submitProofingSession(BuildContext context, ActiveProofingSession 
       }
     },
   );
-  if (response == null || !context.mounted) return;
+  if (response == null || !context.mounted) return false;
   if (response.complete) {
     container.read(proofingSessionCoordinatorProvider).reportCompleted(session.ref);
-    return;
+    return true;
   }
   final step = response.currentStep ?? '';
-  if (!stepsIncomplete || step.isEmpty) return;
+  if (!stepsIncomplete || step.isEmpty) return false;
   _continueAtServerStep(
     context,
     container.read(activeProofingSessionProvider) ?? session,
@@ -599,6 +622,7 @@ Future<void> _submitProofingSession(BuildContext context, ActiveProofingSession 
     title: l10n.proofingNotFinishedTitle,
     message: l10n.proofingNotFinishedMessage(session.info.relyingParty),
   );
+  return false;
 }
 
 /// Sends the MRZ scan's (or manual entry's) identity to the pinned flow
@@ -746,9 +770,12 @@ Future<String?> openProofingSessionLink(
       container.read(activeProofingSessionProvider.notifier).set(null);
     }
     if (claim.info.requestedAttributes.isEmpty) return currentL10n.proofingSessionNoAttributes;
-    // The requester's look from the consent screen on.
-    await container.read(activeBrandingProvider.notifier).useSession(claim.ref, claim.info);
+    // The requester's look from the consent screen on. Popping the scanner
+    // lands home without a session, which takes it off, so it's put on again.
+    final branding = container.read(activeBrandingProvider.notifier);
+    await branding.useSession(claim.ref, claim.info);
     beforePush?.call();
+    await branding.useSession(claim.ref, claim.info);
     router.push(_proofingConsentPath, extra: {'ref': claim.ref, 'info': claim.info});
     return null;
   } on ProofingSessionAccessException catch (e) {
@@ -1084,6 +1111,18 @@ Widget _buildNfcReadingRoute(BuildContext context, GoRouterState state) {
 Widget _buildResultRoute(BuildContext context, GoRouterState state) {
   final args = state.extra as ResultRouteArgs;
   final plan = args.plan ?? _activePlan(context);
+  // Sharing submits the session that is still pinned; main.dart ends it
+  // once complete.
+  Future<bool> share() async {
+    final session = ProviderScope.containerOf(context).read(activeProofingSessionProvider);
+    if (session == null) {
+      context.go(selectDocTypePath);
+      return false;
+    }
+    return _submitProofingSession(context, session);
+  }
+
+  final onShare = args.pendingStep == PendingStep.share ? share : null;
 
   return switch (args.documentType) {
     DocumentType.passport || DocumentType.identityCard => PassportDataScreen(
@@ -1093,6 +1132,7 @@ Widget _buildResultRoute(BuildContext context, GoRouterState state) {
       submittedTo: args.submittedTo,
       pendingStep: args.pendingStep,
       onBackPressed: () => context.go(selectDocTypePath),
+      onShare: onShare,
       stepNumber: plan.resultStepNumber,
       totalSteps: plan.totalSteps,
     ),
@@ -1102,6 +1142,7 @@ Widget _buildResultRoute(BuildContext context, GoRouterState state) {
       submittedTo: args.submittedTo,
       pendingStep: args.pendingStep,
       onBackPressed: () => context.go(selectDocTypePath),
+      onShare: onShare,
       stepNumber: plan.resultStepNumber,
       totalSteps: plan.totalSteps,
     ),

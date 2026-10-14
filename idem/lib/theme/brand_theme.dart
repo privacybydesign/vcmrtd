@@ -123,6 +123,7 @@ class GuidedStyle {
     required this.error,
     required this.primaryButtonStyle,
     required this.secondaryButtonStyle,
+    required this.heroButtonStyle,
   });
 
   /// Null is the platform's default font.
@@ -172,6 +173,10 @@ class GuidedStyle {
 
   final ButtonStyle primaryButtonStyle;
   final ButtonStyle secondaryButtonStyle;
+
+  /// The main action on the dark header (the home hero's Scan QR code):
+  /// [primaryButtonStyle], unless the primary is too close to [header].
+  final ButtonStyle heroButtonStyle;
 
   TextStyle heading(double size, {FontWeight weight = FontWeight.w700, Color? color, double height = 1.2}) =>
       TextStyle(fontFamily: headingFontFamily, fontSize: size, fontWeight: weight, color: color ?? ink, height: height);

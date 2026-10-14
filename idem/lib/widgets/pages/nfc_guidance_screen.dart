@@ -137,18 +137,9 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with SingleTicker
   }
 
   Widget _buildGuided(GuidedStyle g) {
-    final (name, isBooklet) = switch (widget.documentType) {
-      DocumentType.passport => ('passport', true),
-      DocumentType.identityCard => ('ID card', false),
-      DocumentType.drivingLicence => ('driving licence', false),
-    };
-    final steps = [
-      isBooklet
-          ? 'Close the passport and lay it on a flat, non-metal surface.'
-          : 'Lay the $name on a flat, non-metal surface.',
-      'Place the top half of your phone flat on the ${isBooklet ? 'cover' : 'card'}.',
-      'Keep still until the check turns green. Remove a thick phone case if reading fails.',
-    ];
+    final l10n = context.l10n;
+    final type = widget.documentType.name;
+    final steps = [l10n.nfcGuidanceStepLay(type), l10n.nfcGuidanceStepPlace(type), l10n.nfcGuidanceStepKeepStill];
 
     return GuidedStatusBar(
       onDark: false,
@@ -159,7 +150,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with SingleTicker
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               GuidedTopBar(
-                leading: GuidedRoundButton(icon: Icons.chevron_left, tooltip: 'Back', onPressed: widget.onBack),
+                leading: GuidedRoundButton(icon: Icons.chevron_left, tooltip: l10n.docBack, onPressed: widget.onBack),
                 center: const BrandMark(size: 32),
               ),
               const GuidedStepBar(step: 2),
@@ -184,10 +175,10 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with SingleTicker
                           children: [
                             const GuidedStepLabel(step: 2),
                             const SizedBox(height: 12),
-                            Text('Hold your phone on the $name', style: g.heading(26)),
+                            Text(l10n.nfcHoldPhoneOn(type), style: g.heading(26)),
                             const SizedBox(height: 12),
                             Text(
-                              'Your $name has a chip that proves it is genuine. We read it with NFC.',
+                              l10n.nfcGuidanceIntro(type),
                               style: TextStyle(fontSize: 16, height: 1.5, color: g.bodyText),
                             ),
                             const SizedBox(height: 20),
@@ -227,13 +218,16 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with SingleTicker
                   children: [
                     if (!_isNfcAvailable) ...[
                       Text(
-                        "NFC is turned off. Turn it on in your phone's settings to continue.",
+                        l10n.nfcTurnedOff,
                         textAlign: TextAlign.center,
                         style: TextStyle(fontSize: 14, color: g.bodyText),
                       ),
                       const SizedBox(height: 12),
                     ],
-                    GuidedButton(label: 'Start reading', onPressed: _isNfcAvailable ? widget.onStartReading : null),
+                    GuidedButton(
+                      label: l10n.docNfcStepStart,
+                      onPressed: _isNfcAvailable ? widget.onStartReading : null,
+                    ),
                   ],
                 ),
               ),

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:idem/providers/wallet_provider.dart';
 import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
-import 'package:idem/widgets/pages/choose_document_screen.dart';
 import 'package:idem/widgets/pages/wallet_widgets.dart';
 
 /// Guided layout, from settings: the documents kept on this phone, each of
@@ -18,12 +18,13 @@ class SavedDocumentsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final g = context.guided!;
+    final l10n = context.l10n;
     final cards = ref.watch(walletProvider).reversed.toList();
-    final date = DateFormat('d MMM y');
+    final date = DateFormat('d MMM y', l10n.localeName);
     final now = DateTime.now();
     String added(DateTime at) => at.year == now.year && at.month == now.month && at.day == now.day
-        ? 'added today'
-        : 'added ${DateFormat('d MMM').format(at)}';
+        ? l10n.savedAddedToday
+        : l10n.savedAddedOn(DateFormat('d MMM', l10n.localeName).format(at));
 
     return GuidedStatusBar(
       onDark: false,
@@ -34,8 +35,8 @@ class SavedDocumentsScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               GuidedTopBar(
-                leading: GuidedRoundButton(icon: Icons.chevron_left, tooltip: 'Back', onPressed: onBack),
-                center: const GuidedTopBarTitle('Saved documents'),
+                leading: GuidedRoundButton(icon: Icons.chevron_left, tooltip: l10n.docBack, onPressed: onBack),
+                center: GuidedTopBarTitle(l10n.settingsSavedDocuments),
               ),
               Expanded(
                 child: ListView(
@@ -46,17 +47,10 @@ class SavedDocumentsScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(switch (cards.length) {
-                            0 => 'No documents on this phone',
-                            1 => '1 document on this phone',
-                            final n => '$n documents on this phone',
-                          }, style: g.heading(24, height: 1.25)),
+                          Text(l10n.savedCount(cards.length), style: g.heading(24, height: 1.25)),
                           const SizedBox(height: 10),
                           Text(
-                            cards.isEmpty
-                                ? 'After you share a document, you can save it here so you don’t have to scan it again.'
-                                : 'When you scan a QR code, you can pick one of these instead of scanning your ID again. '
-                                      'They are only shared when you agree.',
+                            cards.isEmpty ? l10n.savedEmptyBody : l10n.savedBody,
                             style: TextStyle(fontSize: 15, height: 1.5, color: g.bodyText),
                           ),
                         ],
@@ -100,7 +94,7 @@ class SavedDocumentsScreen extends ConsumerWidget {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          guidedDocumentTypeName(card.documentType),
+                                          card.documentType.localizedName(l10n),
                                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: g.ink),
                                         ),
                                         const SizedBox(height: 2),
@@ -113,7 +107,7 @@ class SavedDocumentsScreen extends ConsumerWidget {
                                         const SizedBox(height: 2),
                                         Text(
                                           [
-                                            if (card.validUntil != null) 'Valid until ${date.format(card.validUntil!)}',
+                                            if (card.validUntil != null) l10n.savedValidUntil(date.format(card.validUntil!)),
                                             added(card.addedAt),
                                           ].join(' · '),
                                           style: TextStyle(fontSize: 13, color: g.muted),
@@ -136,7 +130,7 @@ class SavedDocumentsScreen extends ConsumerWidget {
                                 ).textTheme.labelLarge?.copyWith(fontSize: 14, fontWeight: FontWeight.w700),
                               ),
                               icon: const Icon(Icons.delete_outline, size: 18),
-                              label: const Text('Remove from this phone'),
+                              label: Text(l10n.savedRemove),
                             ),
                           ],
                         ),
@@ -150,11 +144,11 @@ class SavedDocumentsScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    GuidedButton(label: 'Scan QR code', icon: Icons.qr_code_scanner, onPressed: onScanQr),
+                    GuidedButton(label: l10n.docScanQrTitle, icon: Icons.qr_code_scanner, onPressed: onScanQr),
                     const SizedBox(height: 14),
                     if (context.brand.showPoweredByIdem)
                       Text(
-                        'Powered by Idem',
+                        l10n.guidedPoweredByIdem,
                         textAlign: TextAlign.center,
                         style: TextStyle(fontSize: 12, color: g.muted),
                       ),

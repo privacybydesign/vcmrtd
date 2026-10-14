@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mrz_capture/mrz_capture.dart';
@@ -11,6 +9,7 @@ import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/services/regula_face_service.dart';
 import 'package:idem/services/flow_step_plan.dart';
 import 'package:idem/widgets/common/face_verification_views.dart';
+import 'package:idem/widgets/guided/guided_widgets.dart';
 
 /// Runs a Regula liveness session against the announced Face API
 /// ([faceVerification]). Only liveness runs in the app: a proofing session's
@@ -41,26 +40,17 @@ class RegulaFaceVerificationScreen extends ConsumerStatefulWidget {
   ConsumerState<RegulaFaceVerificationScreen> createState() => _RegulaFaceVerificationScreenState();
 }
 
-enum _Status { intro, launching, live, matching, matched, noMatch, notLive, cancelled, error }
+enum _Status { intro, launching, matching, continuing, noMatch, notLive, cancelled, error }
 
 class _RegulaFaceVerificationScreenState extends ConsumerState<RegulaFaceVerificationScreen> {
   _Status _status = _Status.intro;
   String? _error;
-  double? _similarity;
-  Timer? _autoContinueTimer;
 
   /// Set once [RegulaFaceVerificationScreen.matchFace] was called: from then
   /// on the issuer's session is used up.
   bool _issuerAsked = false;
 
-  @override
-  void dispose() {
-    _autoContinueTimer?.cancel();
-    super.dispose();
-  }
-
   Future<void> _run() async {
-    _autoContinueTimer?.cancel();
     setState(() {
       _status = _Status.launching;
       _error = null;
@@ -80,7 +70,6 @@ class _RegulaFaceVerificationScreenState extends ConsumerState<RegulaFaceVerific
       }
       final matchFace = widget.matchFace;
       if (matchFace == null) {
-        setState(() => _status = _Status.live);
         _continue(
           FaceVerificationOutcome(engine: 'regula', livenessPassed: true, livenessTransactionId: transactionId),
         );
@@ -111,13 +100,11 @@ class _RegulaFaceVerificationScreenState extends ConsumerState<RegulaFaceVerific
       _showError(context.l10n.faceRegulaMatchUnavailable);
       return;
     }
-    setState(() {
-      _similarity = match!.similarity;
-      _status = match.matched ? _Status.matched : _Status.noMatch;
-    });
-    if (match.matched) {
-      _continue(FaceVerificationOutcome(engine: 'regula', livenessPassed: true, matchScore: match.similarity));
+    if (!match.matched) {
+      setState(() => _status = _Status.noMatch);
+      return;
     }
+    _continue(FaceVerificationOutcome(engine: 'regula', livenessPassed: true, matchScore: match.similarity));
   }
 
   void _showError(String error) {
@@ -127,10 +114,10 @@ class _RegulaFaceVerificationScreenState extends ConsumerState<RegulaFaceVerific
     });
   }
 
+  /// Moves on right away; the spinner stays up until the next screen.
   void _continue(FaceVerificationOutcome outcome) {
-    _autoContinueTimer = Timer(const Duration(seconds: 2), () {
-      if (mounted) widget.onVerified(outcome);
-    });
+    setState(() => _status = _Status.continuing);
+    widget.onVerified(outcome);
   }
 
   /// A failure after the issuer was asked can't retry: its session is used up.
@@ -139,6 +126,23 @@ class _RegulaFaceVerificationScreenState extends ConsumerState<RegulaFaceVerific
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final guided = context.guided;
+    if (guided != null && _status == _Status.intro) {
+      return GuidedFaceIntroView(
+        style: guided,
+        title: l10n.faceSelfieIntroTitle,
+        body: l10n.faceRegulaIntroBody,
+        tips: [
+          (Icons.wb_sunny_outlined, l10n.faceTipEvenLight),
+          (Icons.face_retouching_off_outlined, l10n.faceTipRemoveAccessories),
+          (Icons.center_focus_strong_outlined, l10n.faceRegulaStep2),
+        ],
+        startLabel: l10n.faceStartSelfieCheck,
+        onStart: _run,
+        onBack: widget.onBackPressed,
+        backTooltip: l10n.faceBack,
+      );
+    }
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -160,19 +164,8 @@ class _RegulaFaceVerificationScreenState extends ConsumerState<RegulaFaceVerific
                   onStart: _run,
                 ),
                 _Status.launching => FaceBusyView(label: l10n.faceRegulaOpeningCamera),
-                _Status.live => FaceResultView(
-                  icon: Icons.check_circle,
-                  color: Colors.green,
-                  title: l10n.faceRegulaLiveTitle,
-                  subtitle: l10n.faceRegulaLiveSubtitle,
-                ),
                 _Status.matching => FaceBusyView(label: l10n.faceRegulaMatching),
-                _Status.matched => FaceResultView(
-                  icon: Icons.check_circle,
-                  color: Colors.green,
-                  title: l10n.faceIdentityVerified,
-                  subtitle: l10n.faceRegulaMatchedSubtitle(((_similarity ?? 0) * 100).toStringAsFixed(1)),
-                ),
+                _Status.continuing => FaceBusyView(label: l10n.faceContinuing),
                 _Status.noMatch => FaceResultView(
                   icon: Icons.cancel,
                   color: Colors.red,

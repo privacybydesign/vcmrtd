@@ -21,6 +21,7 @@ import 'package:mrz_capture/mrz_capture.dart';
 import 'package:idem/widgets/pages/document_photo_screen.dart';
 import 'package:idem/widgets/pages/document_selection_screen.dart';
 import 'package:idem/widgets/pages/driving_licence_data_screen.dart';
+import 'package:idem/widgets/pages/data_screen_widgets/submit_to_proofing_session.dart';
 import 'package:idem/widgets/pages/passport_data_screen.dart';
 import 'package:idem/widgets/pages/qr_scanner_screen.dart';
 import 'package:idem/widgets/pages/scanner_wrapper.dart';
@@ -508,7 +509,7 @@ void main() {
       expect(find.byType(FaceVerificationEntryScreen), findsOneWidget);
     });
 
-    testWidgets('NFC success skips face verification and submits the session straight away when the '
+    testWidgets('NFC success skips face verification and submits the session on Share when the '
         "session's steps ask for neither selfie, liveness, nor face_match", (tester) async {
       final router = createRouter(scannerBuilder: _scannerBuilder());
       addTearDown(router.dispose);
@@ -563,9 +564,16 @@ void main() {
           await _pumpStepSubmission(tester);
           await _pumpStepSubmission(tester);
 
-          // The chip read was the last step, so it also submitted the
-          // session: no face verification, no Submit button to tap.
+          // The chip read was the last step: no face verification, and the
+          // result screen waits for Share before submitting the session.
           expect(find.byType(FaceVerificationEntryScreen), findsNothing);
+          expect(submits, 0);
+          final screen = tester.widget<PassportDataScreen>(find.byType(PassportDataScreen));
+          expect(screen.pendingStep, PendingStep.share);
+
+          await tester.ensureVisible(find.text('Share with acme-tenant'));
+          await tester.tap(find.text('Share with acme-tenant'));
+          await _pumpStepSubmission(tester);
           expect(submits, 1);
           expect(events.single, isA<ProofingSessionCompleted>());
         },

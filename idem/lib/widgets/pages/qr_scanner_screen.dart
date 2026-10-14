@@ -117,24 +117,24 @@ extension on _QrScannerScreenState {
                               GuidedTopBar(
                                 leading: GuidedRoundButton(
                                   icon: Icons.close,
-                                  tooltip: 'Close',
+                                  tooltip: context.l10n.qrScanClose,
                                   onDark: true,
                                   onPressed: widget.onBack,
                                 ),
-                                center: const GuidedTopBarTitle('Scan QR code', onDark: true),
+                                center: GuidedTopBarTitle(context.l10n.docScanQrTitle, onDark: true),
                               ),
                               Padding(
                                 padding: const EdgeInsets.fromLTRB(32, 40, 32, 16),
                                 child: Column(
                                   children: [
                                     Text(
-                                      'Point your camera at the QR code',
+                                      context.l10n.qrScanPointCamera,
                                       textAlign: TextAlign.center,
                                       style: g.heading(22, color: Colors.white, height: 1.25),
                                     ),
                                     const SizedBox(height: 8),
                                     Text(
-                                      'You’ll find it on the website or app that asked you to verify.',
+                                      context.l10n.qrScanWhereToFind,
                                       textAlign: TextAlign.center,
                                       style: TextStyle(fontSize: 15, height: 1.5, color: g.heroMuted),
                                     ),
@@ -169,7 +169,7 @@ extension on _QrScannerScreenState {
                             const SizedBox(width: 6),
                             Flexible(
                               child: Text(
-                                'Nothing is shared until you agree on the next screen.',
+                                context.l10n.qrScanNothingShared,
                                 style: TextStyle(fontSize: 13, color: g.heroMuted),
                               ),
                             ),

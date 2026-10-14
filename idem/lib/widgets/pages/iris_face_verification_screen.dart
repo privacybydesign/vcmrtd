@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:iris_sdk_flutter/iris_sdk_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,7 +6,9 @@ import 'package:mrz_capture/mrz_capture.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/services/face_verification_outcome.dart';
 import 'package:idem/services/flow_step_plan.dart';
+import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/widgets/common/face_verification_views.dart';
+import 'package:idem/widgets/guided/guided_widgets.dart';
 
 /// Runs the Iris SDK's face-verification flow.
 ///
@@ -51,7 +51,7 @@ class IrisFaceVerificationScreen extends StatefulWidget {
   State<IrisFaceVerificationScreen> createState() => _IrisFaceVerificationScreenState();
 }
 
-enum _Status { intro, launching, result }
+enum _Status { intro, launching, continuing, result }
 
 class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen> {
   final IrisFaceVerifier _verifier = IrisFaceVerifier();
@@ -61,16 +61,8 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
   Uint8List? _documentPhoto;
   IrisVerificationResult? _result;
   String? _error;
-  Timer? _autoContinueTimer;
-
-  @override
-  void dispose() {
-    _autoContinueTimer?.cancel();
-    super.dispose();
-  }
 
   Future<void> _runVerification() async {
-    _autoContinueTimer?.cancel();
     setState(() {
       _status = _Status.launching;
       _launchMessage = context.l10n.facePreparingDocumentPhoto;
@@ -97,11 +89,15 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
     try {
       final result = await _verifier.verify(portrait);
       if (!mounted) return;
+      final matched = result.outcome == IrisVerificationOutcome.matched;
       setState(() {
         _result = result;
-        _status = _Status.result;
+        _status = matched ? _Status.continuing : _Status.result;
       });
-      _scheduleAutoContinueIfMatched(result);
+      // The spinner stays up until the next screen.
+      if (matched) {
+        widget.onVerified(FaceVerificationOutcome(engine: 'iris', livenessPassed: true, selfieImageBytes: result.face));
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -109,18 +105,6 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
         _status = _Status.result;
       });
     }
-  }
-
-  /// On a matched result, give the user a brief look at the outcome before
-  /// automatically moving on — only a failed/cancelled result waits for
-  /// "Try Again".
-  void _scheduleAutoContinueIfMatched(IrisVerificationResult result) {
-    if (result.outcome != IrisVerificationOutcome.matched) return;
-    _autoContinueTimer?.cancel();
-    _autoContinueTimer = Timer(const Duration(seconds: 2), () {
-      if (!mounted) return;
-      widget.onVerified(FaceVerificationOutcome(engine: 'iris', livenessPassed: true, selfieImageBytes: result.face));
-    });
   }
 
   static String _describeError(Object e) {
@@ -170,6 +154,8 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
 
   @override
   Widget build(BuildContext context) {
+    final guided = context.guided;
+    if (guided != null && _status == _Status.intro) return _buildGuidedIntro(guided);
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -179,6 +165,7 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
               child: switch (_status) {
                 _Status.intro => _buildIntro(),
                 _Status.launching => _buildLaunching(),
+                _Status.continuing => FaceBusyView(label: context.l10n.faceContinuing),
                 _Status.result => _buildResult(),
               },
             ),
@@ -207,6 +194,24 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
     );
   }
 
+  Widget _buildGuidedIntro(GuidedStyle g) {
+    final l10n = context.l10n;
+    return GuidedFaceIntroView(
+      style: g,
+      title: l10n.faceSelfieIntroTitle,
+      body: l10n.faceIrisIntroBody,
+      tips: [
+        (Icons.wb_sunny_outlined, l10n.faceTipEvenLight),
+        (Icons.face_retouching_off_outlined, l10n.faceTipRemoveAccessories),
+        (Icons.center_focus_strong_outlined, l10n.faceIrisStep2),
+      ],
+      startLabel: l10n.faceStartSelfieCheck,
+      onStart: _runVerification,
+      onBack: widget.onBackPressed,
+      backTooltip: l10n.faceBack,
+    );
+  }
+
   Widget _buildLaunching() => FaceBusyView(label: _launchMessage);
 
   Widget _buildResult() {
@@ -222,18 +227,7 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
     }
 
     return switch (_result?.outcome ?? IrisVerificationOutcome.failed) {
-      IrisVerificationOutcome.matched => FaceResultView(
-        icon: Icons.check_circle,
-        color: Colors.green,
-        title: context.l10n.faceIdentityVerified,
-        subtitle: context.l10n.faceIrisMatchedSubtitle,
-        documentPhoto: _documentPhoto,
-        liveFace: switch (_result?.face) {
-          final face? when face.isNotEmpty => face,
-          _ => null,
-        },
-      ),
-      IrisVerificationOutcome.failed => FaceResultView(
+      IrisVerificationOutcome.matched || IrisVerificationOutcome.failed => FaceResultView(
         icon: Icons.cancel,
         color: Colors.red,
         title: context.l10n.faceVerificationFailed,

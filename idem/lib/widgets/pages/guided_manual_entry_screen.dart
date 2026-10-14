@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
 
@@ -37,12 +38,6 @@ class _GuidedManualEntryScreenState extends State<GuidedManualEntryScreen> {
 
   bool get _usesMrzLine => ManualEntryRules.usesMrzLine(widget.documentType);
 
-  String get _documentName => switch (widget.documentType) {
-    DocumentType.passport => 'passport',
-    DocumentType.identityCard => 'ID card',
-    DocumentType.drivingLicence => 'driving licence',
-  };
-
   @override
   void dispose() {
     _documentNumber.dispose();
@@ -60,7 +55,7 @@ class _GuidedManualEntryScreenState extends State<GuidedManualEntryScreen> {
       try {
         widget.onManualEntryComplete(ScannedDriverLicenseMRZ.fromManualEntry(mrzString: _mrzLine.text.trim()));
       } catch (e) {
-        setState(() => _parseError = 'That code could not be read. Check it against your licence and try again.');
+        setState(() => _parseError = context.l10n.manualLicenceParseError);
       }
       return;
     }
@@ -91,16 +86,11 @@ class _GuidedManualEntryScreenState extends State<GuidedManualEntryScreen> {
   @override
   Widget build(BuildContext context) {
     final g = context.guided!;
+    final l10n = context.l10n;
+    final docType = widget.documentType.name;
     final (title, intro) = _usesMrzLine
-        ? (
-            'Type the code from your driving licence',
-            'It’s the single line of ${ManualEntryRules.mrzLineLength} characters on the back. It unlocks the chip.',
-          )
-        : (
-            'Enter your $_documentName details',
-            'Copy them from the ${widget.documentType == DocumentType.passport ? 'photo page' : 'front of the card'}. '
-                'They unlock the chip, so they need to match exactly.',
-          );
+        ? (l10n.manualLicenceTitle, l10n.manualLicenceIntro(ManualEntryRules.mrzLineLength))
+        : (l10n.manualDocumentTitle(docType), l10n.manualDocumentIntro(docType));
     return GuidedStatusBar(
       onDark: false,
       child: Scaffold(
@@ -113,8 +103,12 @@ class _GuidedManualEntryScreenState extends State<GuidedManualEntryScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 GuidedTopBar(
-                  leading: GuidedRoundButton(icon: Icons.chevron_left, tooltip: 'Back', onPressed: widget.onBack),
-                  center: const GuidedTopBarTitle('Enter details'),
+                  leading: GuidedRoundButton(
+                    icon: Icons.chevron_left,
+                    tooltip: l10n.manualBack,
+                    onPressed: widget.onBack,
+                  ),
+                  center: GuidedTopBarTitle(l10n.manualTopBarTitle),
                 ),
                 const GuidedStepBar(step: 1),
                 Expanded(
@@ -143,7 +137,7 @@ class _GuidedManualEntryScreenState extends State<GuidedManualEntryScreen> {
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
-                  child: GuidedButton(label: 'Continue', onPressed: _continue),
+                  child: GuidedButton(label: l10n.manualContinue, onPressed: _continue),
                 ),
               ],
             ),
@@ -154,17 +148,21 @@ class _GuidedManualEntryScreenState extends State<GuidedManualEntryScreen> {
   }
 
   List<Widget> _documentFields(GuidedStyle g) {
+    final l10n = context.l10n;
+    final mrzL10n = MrzCaptureLocalizations.of(context);
+    final docType = widget.documentType.name;
     final name = widget.documentType.displayName;
     return [
-      _GuidedFieldLabel('${name[0]}${name.substring(1).toLowerCase()} number', style: g),
+      _GuidedFieldLabel(l10n.manualDocumentNumber(docType), style: g),
       TextFormField(
         controller: _documentNumber,
         textCapitalization: TextCapitalization.characters,
         autocorrect: false,
         inputFormatters: ManualEntryRules.documentNumberFormatters,
         style: TextStyle(fontFamily: 'monospace', fontSize: 16, letterSpacing: 1, color: g.ink),
-        decoration: _decoration(g, hint: 'e.g. AB1234567'),
-        validator: (value) => ManualEntryRules.documentNumber(value, documentName: name),
+        decoration: _decoration(g, hint: l10n.manualDocumentNumberHint),
+        validator: (value) =>
+            ManualEntryRules.documentNumber(value, documentName: name, l10n: mrzL10n, docType: docType),
       ),
       const SizedBox(height: 18),
       Row(
@@ -172,22 +170,27 @@ class _GuidedManualEntryScreenState extends State<GuidedManualEntryScreen> {
         children: [
           Expanded(
             child: _GuidedDateField(
-              label: 'Date of birth',
+              label: l10n.manualDateOfBirth,
               value: _dateOfBirth,
               style: g,
               onTap: () => _pickDate(birth: true),
-              validator: () => ManualEntryRules.dateOfBirth(_dateOfBirth),
+              validator: () => ManualEntryRules.dateOfBirth(_dateOfBirth, l10n: mrzL10n),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: _GuidedDateField(
-              label: 'Expiry date',
+              label: l10n.manualExpiryDate,
               value: _dateOfExpiry,
               style: g,
               onTap: () => _pickDate(birth: false),
-              validator: () =>
-                  ManualEntryRules.dateOfExpiry(_dateOfExpiry, documentName: name, dateOfBirth: _dateOfBirth),
+              validator: () => ManualEntryRules.dateOfExpiry(
+                _dateOfExpiry,
+                documentName: name,
+                dateOfBirth: _dateOfBirth,
+                l10n: mrzL10n,
+                docType: docType,
+              ),
             ),
           ),
         ],
@@ -206,15 +209,10 @@ class _GuidedManualEntryScreenState extends State<GuidedManualEntryScreen> {
                 TextSpan(
                   children: [
                     TextSpan(
-                      text: 'Where to find them\n',
+                      text: '${l10n.manualWhereToFind}\n',
                       style: TextStyle(fontWeight: FontWeight.w700, color: g.ink),
                     ),
-                    TextSpan(
-                      text: widget.documentType == DocumentType.passport
-                          ? 'The passport number is at the top right of the photo page. The dates are listed as '
-                                'date of birth and date of expiry.'
-                          : 'The document number and both dates are on the card, next to your photo.',
-                    ),
+                    TextSpan(text: l10n.manualWhereToFindBody(docType)),
                   ],
                 ),
                 style: TextStyle(fontSize: 14, height: 1.45, color: g.bodyText),
@@ -235,7 +233,7 @@ class _GuidedManualEntryScreenState extends State<GuidedManualEntryScreen> {
         child: _GuidedLicenceIllustration(style: g),
       ),
       const SizedBox(height: 20),
-      _GuidedFieldLabel('Licence code', style: g),
+      _GuidedFieldLabel(context.l10n.manualLicenceCode, style: g),
       TextFormField(
         controller: _mrzLine,
         textCapitalization: TextCapitalization.characters,
@@ -245,13 +243,13 @@ class _GuidedManualEntryScreenState extends State<GuidedManualEntryScreen> {
         onChanged: (_) => setState(() {}),
         style: TextStyle(fontFamily: 'monospace', fontSize: 14, color: g.ink),
         decoration: _decoration(g, hint: 'D1NLD…'),
-        validator: ManualEntryRules.mrzLine,
+        validator: (value) => ManualEntryRules.mrzLine(value, l10n: MrzCaptureLocalizations.of(context)),
       ),
       const SizedBox(height: 6),
       Row(
         children: [
           Expanded(
-            child: Text('Starts with D1, D2 or DL', style: TextStyle(fontSize: 13, color: g.bodyText)),
+            child: Text(context.l10n.manualLicenceCodePrefix, style: TextStyle(fontSize: 13, color: g.bodyText)),
           ),
           if (complete) Icon(Icons.check, size: 14, color: g.success),
           const SizedBox(width: 4),
@@ -318,6 +316,8 @@ class _GuidedDateField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final g = style;
+    final l10n = context.l10n;
+    final formatted = value == null ? null : DateFormat('d MMM y', l10n.localeName).format(value!);
     return FormField<DateTime>(
       validator: (_) => validator(),
       builder: (field) {
@@ -329,7 +329,7 @@ class _GuidedDateField extends StatelessWidget {
             Semantics(
               button: true,
               label: label,
-              value: value == null ? 'Not set' : DateFormat('d MMM y').format(value!),
+              value: formatted ?? l10n.manualDateNotSet,
               child: Material(
                 color: Colors.white,
                 shape: RoundedRectangleBorder(
@@ -350,7 +350,7 @@ class _GuidedDateField extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              value == null ? 'Select' : DateFormat('d MMM y').format(value!),
+                              formatted ?? l10n.manualDateSelect,
                               style: TextStyle(fontSize: 16, color: value == null ? g.muted : g.ink),
                             ),
                           ),

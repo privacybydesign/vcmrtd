@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:idem/l10n/l10n.dart';
 import 'package:idem/providers/wallet_provider.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:idem/widgets/pages/wallet_widgets.dart';
@@ -42,6 +43,7 @@ class _ChooseDocumentScreenState extends State<ChooseDocumentScreen> {
   @override
   Widget build(BuildContext context) {
     final g = context.guided!;
+    final l10n = context.l10n;
     final saved = widget.savedDocuments;
     final picked = _picked;
     Widget sectionTitle(String text) => Padding(
@@ -61,8 +63,8 @@ class _ChooseDocumentScreenState extends State<ChooseDocumentScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               GuidedTopBar(
-                leading: GuidedRoundButton(icon: Icons.chevron_left, tooltip: 'Back', onPressed: widget.onBack),
-                center: const GuidedTopBarTitle('Choose document'),
+                leading: GuidedRoundButton(icon: Icons.chevron_left, tooltip: l10n.docBack, onPressed: widget.onBack),
+                center: GuidedTopBarTitle(l10n.chooseTitle),
               ),
               Expanded(
                 child: SingleChildScrollView(
@@ -75,12 +77,12 @@ class _ChooseDocumentScreenState extends State<ChooseDocumentScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Which document do you want to use?', style: g.heading(24, height: 1.25)),
+                            Text(l10n.chooseHeading, style: g.heading(24, height: 1.25)),
                             const SizedBox(height: 10),
                             Text(
                               saved.isEmpty
-                                  ? '${widget.relyingParty} asked to verify your identity. Add the document you want to use.'
-                                  : '${widget.relyingParty} asked to verify your identity. Use a saved document or add a new one.',
+                                  ? l10n.chooseIntroEmpty(widget.relyingParty)
+                                  : l10n.chooseIntroSaved(widget.relyingParty),
                               style: TextStyle(fontSize: 15, height: 1.5, color: g.bodyText),
                             ),
                           ],
@@ -88,7 +90,7 @@ class _ChooseDocumentScreenState extends State<ChooseDocumentScreen> {
                       ),
                       if (saved.isNotEmpty) ...[
                         const SizedBox(height: 20),
-                        sectionTitle('Saved on this phone'),
+                        sectionTitle(l10n.chooseSavedOnPhone),
                         for (final (i, card) in saved.indexed) ...[
                           if (i > 0) const SizedBox(height: 10),
                           _SavedDocumentOption(
@@ -107,7 +109,7 @@ class _ChooseDocumentScreenState extends State<ChooseDocumentScreen> {
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  'You’ll take a quick selfie to confirm the document is yours.',
+                                  l10n.chooseSelfieHint,
                                   style: TextStyle(fontSize: 13, height: 1.45, color: g.bodyText),
                                 ),
                               ),
@@ -116,7 +118,7 @@ class _ChooseDocumentScreenState extends State<ChooseDocumentScreen> {
                         ),
                       ],
                       const SizedBox(height: 24),
-                      sectionTitle(saved.isEmpty ? 'Add a document' : 'Or add a new document'),
+                      sectionTitle(saved.isEmpty ? l10n.chooseAddDocument : l10n.chooseAddNewDocument),
                       Container(
                         decoration: BoxDecoration(
                           color: Colors.white,
@@ -142,7 +144,7 @@ class _ChooseDocumentScreenState extends State<ChooseDocumentScreen> {
                                       const SizedBox(width: 12),
                                       Expanded(
                                         child: Text(
-                                          guidedDocumentTypeName(type),
+                                          type.localizedName(l10n),
                                           style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: g.ink),
                                         ),
                                       ),
@@ -163,7 +165,7 @@ class _ChooseDocumentScreenState extends State<ChooseDocumentScreen> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
                   child: GuidedButton(
-                    label: 'Continue with ${guidedDocumentTypeName(picked.documentType).toLowerCase()}',
+                    label: l10n.chooseContinueWith(picked.documentType.name),
                     onPressed: () => widget.onUseSaved(picked),
                   ),
                 ),
@@ -175,13 +177,6 @@ class _ChooseDocumentScreenState extends State<ChooseDocumentScreen> {
   }
 }
 
-/// "Passport", "Identity card", "Driving licence".
-String guidedDocumentTypeName(DocumentType type) => switch (type) {
-  DocumentType.passport => 'Passport',
-  DocumentType.identityCard => 'Identity card',
-  DocumentType.drivingLicence => 'Driving licence',
-};
-
 class _SavedDocumentOption extends StatelessWidget {
   const _SavedDocumentOption({required this.card, required this.selected, required this.onTap});
 
@@ -192,9 +187,10 @@ class _SavedDocumentOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final g = context.guided!;
+    final l10n = context.l10n;
     final details = [
       ?card.documentNumber,
-      if (card.validUntil != null) 'valid until ${DateFormat('d MMM y').format(card.validUntil!)}',
+      if (card.validUntil != null) l10n.chooseValidUntil(DateFormat('d MMM y', l10n.localeName).format(card.validUntil!)),
     ].join(' · ');
     return Semantics(
       selected: selected,
@@ -230,7 +226,7 @@ class _SavedDocumentOption extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        guidedDocumentTypeName(card.documentType),
+                        card.documentType.localizedName(l10n),
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: g.ink),
                       ),
                       if (details.isNotEmpty) ...[

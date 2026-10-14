@@ -26,7 +26,7 @@ void main() {
     await tester.pumpWidget(_screen(DocumentType.passport, const Locale('nl')));
     await tester.pump();
 
-    expect(find.text('1 of 4 · Paspoortgegevens invoeren'), findsOneWidget);
+    expect(find.text('1 van 4 · Paspoortgegevens invoeren'), findsOneWidget);
     expect(find.text('Geboortedatum'), findsOneWidget);
     expect(find.text('Vul je paspoortgegevens in'), findsOneWidget);
     expect(find.text('Door naar het uitlezen via NFC'), findsOneWidget);

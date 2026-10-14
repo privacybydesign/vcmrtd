@@ -311,10 +311,7 @@ class _Header extends StatelessWidget {
               height: 80,
               decoration: BoxDecoration(color: accent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(40)),
               child: brand.logo != null
-                  ? const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: BrandMark(size: 56, excludeFromSemantics: true),
-                    )
+                  ? const Padding(padding: EdgeInsets.all(12), child: BrandMark(size: 56, excludeFromSemantics: true))
                   : Icon(Icons.document_scanner, size: 40, color: accent),
             ),
             const SizedBox(height: 24),
@@ -444,7 +441,7 @@ class _PoweredByIdem extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 16),
       child: Text(
-        'Powered by Idem',
+        context.l10n.guidedPoweredByIdem,
         textAlign: TextAlign.center,
         style: TextStyle(fontSize: 12, color: context.brand.mutedText ?? Colors.grey[600]),
       ),
@@ -473,6 +470,7 @@ class _GuidedHome extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final g = context.guided!;
+    final l10n = context.l10n;
     final connected = connectedRelyingParty != null && onContinueProofingSession != null;
     return GuidedStatusBar(
       onDark: true,
@@ -497,7 +495,7 @@ class _GuidedHome extends StatelessWidget {
                         const Spacer(),
                         GuidedRoundButton(
                           icon: Icons.settings_outlined,
-                          tooltip: 'Settings',
+                          tooltip: l10n.docSettingsTitle,
                           onDark: true,
                           outlined: true,
                           onPressed: onSettingsPressed,
@@ -506,7 +504,7 @@ class _GuidedHome extends StatelessWidget {
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'IDENTITY VERIFICATION',
+                      l10n.homeEyebrow,
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -515,12 +513,10 @@ class _GuidedHome extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    Text('Verify your identity with a QR code', style: g.heading(30, color: Colors.white)),
+                    Text(l10n.homeTitle, style: g.heading(30, color: Colors.white)),
                     const SizedBox(height: 10),
                     Text(
-                      connected
-                          ? 'You accepted a request from $connectedRelyingParty. Continue where you left off.'
-                          : 'When a service asks you to verify who you are, it shows a QR code. Scan it here to start.',
+                      connected ? l10n.homeConnectedBody(connectedRelyingParty!) : l10n.homeBody,
                       style: TextStyle(fontSize: 16, height: 1.5, color: g.heroMuted),
                     ),
                     const SizedBox(height: 24),
@@ -528,14 +524,14 @@ class _GuidedHome extends StatelessWidget {
                     const SizedBox(height: 24),
                     ElevatedButton.icon(
                       onPressed: connected ? onContinueProofingSession : onScanQrPressed,
-                      style: g.primaryButtonStyle.copyWith(
+                      style: g.heroButtonStyle.copyWith(
                         minimumSize: const WidgetStatePropertyAll(Size.fromHeight(56)),
                         textStyle: WidgetStatePropertyAll(
-                          g.primaryButtonStyle.textStyle?.resolve({})?.copyWith(fontSize: 17),
+                          g.heroButtonStyle.textStyle?.resolve({})?.copyWith(fontSize: 17),
                         ),
                       ),
                       icon: Icon(connected ? Icons.arrow_forward : Icons.qr_code_scanner, size: 22),
-                      label: Text(connected ? 'Continue with $connectedRelyingParty' : 'Scan QR code'),
+                      label: Text(connected ? l10n.homeContinueWith(connectedRelyingParty!) : l10n.docScanQrTitle),
                     ),
                   ],
                 ),
@@ -551,15 +547,11 @@ class _GuidedHome extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        'How it works',
+                        l10n.homeHowItWorks,
                         style: g.heading(16, weight: FontWeight.w600, color: g.slate),
                       ),
                       const SizedBox(height: 14),
-                      for (final (i, step) in const [
-                        'Scan the QR code shown by the website or app.',
-                        'Use a document saved on this phone, or scan your ID.',
-                        'Take a quick selfie, then share only what was asked for.',
-                      ].indexed) ...[
+                      for (final (i, step) in [l10n.homeStepScan, l10n.homeStepDocument, l10n.homeStepSelfie].indexed) ...[
                         if (i > 0) const SizedBox(height: 14),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -585,7 +577,7 @@ class _GuidedHome extends StatelessWidget {
                       const SizedBox(height: 24),
                       if (context.brand.showPoweredByIdem)
                         Text(
-                          'Powered by Idem',
+                          l10n.guidedPoweredByIdem,
                           textAlign: TextAlign.center,
                           style: TextStyle(fontSize: 12, color: g.muted),
                         ),

@@ -22,6 +22,9 @@ class DrivingLicenceDataScreen extends StatelessWidget {
   final String? submittedTo;
   final PendingStep pendingStep;
 
+  /// Submits the session; set for [PendingStep.share].
+  final Future<bool> Function()? onShare;
+
   /// Step badge numbers — default to vcmrtd's fixed 4-step sequence (this
   /// screen is always the last, step 4, there) so any caller not passing
   /// these explicitly keeps today's behaviour; routing.dart passes a
@@ -37,6 +40,7 @@ class DrivingLicenceDataScreen extends StatelessWidget {
     required this.onBackPressed,
     this.submittedTo,
     this.pendingStep = PendingStep.none,
+    this.onShare,
     this.stepNumber = FlowStepPlan.defaultResultStep,
     this.totalSteps = FlowStepPlan.defaultTotalSteps,
   });
@@ -54,6 +58,7 @@ class DrivingLicenceDataScreen extends StatelessWidget {
       submittedTo: submittedTo,
       pendingStep: pendingStep,
       onBackPressed: onBackPressed,
+      onShare: onShare,
       stepNumber: stepNumber,
       totalSteps: totalSteps,
       children: [
@@ -85,6 +90,7 @@ class DrivingLicenceDataScreen extends StatelessWidget {
 
   Widget _buildGuided(BuildContext context) {
     final g = context.guided!;
+    final l10n = context.l10n;
     final licence = drivingLicence;
     final name = '${licence.holderOtherName} ${licence.holderSurname}'.trim();
     return GuidedDocumentDataView(
@@ -94,26 +100,29 @@ class DrivingLicenceDataScreen extends StatelessWidget {
       submittedTo: submittedTo,
       pendingStep: pendingStep,
       onBackPressed: onBackPressed,
-      documentName: 'driving licence',
-      readTitle: 'Driving licence read',
+      onShare: onShare,
+      readTitle: l10n.dataViewDrivingLicenceRead,
       photoImageData: licence.photoImageData,
       // Like the classic screen: anything not JPEG2000 is decoded as a plain image.
       photoImageType: licence.photoImageType ?? ImageType.jpeg,
-      holderName: name.isEmpty ? 'Driving licence' : name,
-      subtitle: 'Driving licence · ${licence.issuingMemberState}',
+      holderName: name.isEmpty ? l10n.idDocumentDrivingLicence : name,
+      subtitle: l10n.dataViewSubtitle(DocumentType.drivingLicence.name, licence.issuingMemberState),
       details: [
-        GuidedDetail('Date of birth', _formatDate(licence.dateOfBirth)),
-        GuidedDetail('Place of birth', licence.placeOfBirth),
-        GuidedDetail('Document number', licence.documentNumber, mono: true),
-        GuidedDetail('Issued by', licence.issuingAuthority),
-        GuidedDetail('Valid until', _formatDate(licence.dateOfExpiry)),
+        GuidedDetail(l10n.dataViewDateOfBirth, _formatDate(licence.dateOfBirth)),
+        GuidedDetail(l10n.dataViewPlaceOfBirth, licence.placeOfBirth),
+        GuidedDetail(l10n.dataViewDocumentNumber, licence.documentNumber, mono: true),
+        GuidedDetail(l10n.dataViewIssuedBy, licence.issuingAuthority),
+        GuidedDetail(l10n.dataViewValidUntil, _formatDate(licence.dateOfExpiry)),
       ],
       extra: [
         if (licence.categories.isNotEmpty) ...[
           const SizedBox(height: 16),
           Padding(
             padding: const EdgeInsets.only(left: 4, bottom: 8),
-            child: Text('Categories', style: g.heading(15, weight: FontWeight.w600, color: g.slate)),
+            child: Text(
+              l10n.docCategories,
+              style: g.heading(15, weight: FontWeight.w600, color: g.slate),
+            ),
           ),
           Wrap(
             spacing: 8,
@@ -133,7 +142,7 @@ class DrivingLicenceDataScreen extends StatelessWidget {
                     children: [
                       Text(category.category, style: g.heading(15)),
                       Text(
-                        'until ${_formatDate(category.dateOfExpiry)}',
+                        l10n.dataViewCategoryUntil(_formatDate(category.dateOfExpiry)),
                         style: TextStyle(fontSize: 12, color: g.bodyText),
                       ),
                     ],

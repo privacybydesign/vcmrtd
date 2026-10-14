@@ -389,23 +389,18 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
     required int? readingStep,
     required String? tip,
   }) {
-    final docName = switch (widget.params.documentType) {
-      DocumentType.passport => 'passport',
-      DocumentType.identityCard => 'ID card',
-      DocumentType.drivingLicence => 'driving licence',
-    };
+    final l10n = context.l10n;
+    final type = widget.params.documentType.name;
     final failed = nfcState == NFCReadingState.error;
     final done = nfcState == NFCReadingState.success;
     final (title, subtitle) = switch (state) {
-      DocumentReaderConnecting() => ('Hold your phone on the $docName', tip ?? context.l10n.docNfcTipFirst),
-      DocumentReaderReconnecting() => ('Connection lost', context.l10n.docNfcTipStuck),
-      DocumentReaderCancelled() || DocumentReaderCancelling() => ('Reading stopped', 'Start again when you are ready.'),
-      DocumentReaderFailed() => (
-        'Reading failed',
-        tip ?? 'Check that the $docName lies flat under your phone and try again.',
-      ),
-      DocumentReaderSuccess() => ('Chip read', 'Your $docName is genuine.'),
-      _ => ('Don’t move your phone', 'Keep it on the $docName until reading is complete.'),
+      DocumentReaderConnecting() => (l10n.nfcHoldPhoneOn(type), tip ?? l10n.docNfcTipFirst),
+      DocumentReaderReconnecting() => (l10n.nfcReadingConnectionLost, l10n.docNfcTipStuck),
+      DocumentReaderCancelled() ||
+      DocumentReaderCancelling() => (l10n.nfcReadingStoppedTitle, l10n.nfcReadingStoppedSubtitle),
+      DocumentReaderFailed() => (l10n.nfcReadingFailedTitle, tip ?? l10n.nfcReadingFailedSubtitle(type)),
+      DocumentReaderSuccess() => (l10n.nfcReadingSuccessTitle, l10n.nfcReadingSuccessSubtitle(type)),
+      _ => (l10n.nfcReadingInProgressTitle, l10n.nfcReadingInProgressSubtitle(type)),
     };
     final ringColor = failed
         ? g.error
@@ -425,7 +420,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
               GuidedTopBar(
                 leading: GuidedRoundButton(
                   icon: Icons.close,
-                  tooltip: 'Cancel reading',
+                  tooltip: l10n.nfcCancelReading,
                   onPressed: () => _handleBack(context),
                 ),
                 center: const BrandMark(size: 32),
@@ -462,7 +457,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
                                     Text('$percent%', style: g.heading(44)),
                                   const SizedBox(height: 2),
                                   Text(
-                                    failed ? 'Not read' : (done ? 'Complete' : 'Reading chip'),
+                                    failed ? l10n.nfcRingNotRead : (done ? l10n.nfcRingComplete : l10n.nfcRingReading),
                                     style: TextStyle(fontSize: 14, color: g.bodyText),
                                   ),
                                 ],
@@ -486,7 +481,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
                           currentStep: readingStep,
                           failed: failed,
                           complete: done,
-                          documentName: docName,
+                          documentType: widget.params.documentType,
                         ),
                       ],
                     ],
@@ -496,7 +491,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
               if (failed)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
-                  child: GuidedButton(label: 'Try again', icon: Icons.refresh, onPressed: retry),
+                  child: GuidedButton(label: l10n.nfcTryAgain, icon: Icons.refresh, onPressed: retry),
                 ),
             ],
           ),
@@ -704,23 +699,24 @@ class _GuidedReadingChecklist extends StatelessWidget {
     required this.currentStep,
     required this.failed,
     required this.complete,
-    required this.documentName,
+    required this.documentType,
   });
 
   final GuidedStyle style;
   final int currentStep;
   final bool failed;
   final bool complete;
-  final String documentName;
+  final DocumentType documentType;
 
   @override
   Widget build(BuildContext context) {
     final g = style;
+    final l10n = context.l10n;
     final labels = [
-      ('Secure connection set up', 'Setting up a secure connection'),
-      ('Personal details read', 'Reading personal details'),
-      ('${_capitalize(documentName)} photo read', 'Reading $documentName photo'),
-      ('Chip is genuine', 'Checking the chip is genuine'),
+      (l10n.nfcChecklistSecureDone, l10n.nfcChecklistSecureActive),
+      (l10n.nfcChecklistDetailsDone, l10n.nfcChecklistDetailsActive),
+      (l10n.nfcChecklistPhotoDone(documentType.name), l10n.nfcChecklistPhotoActive(documentType.name)),
+      (l10n.nfcChecklistGenuineDone, l10n.nfcChecklistGenuineActive),
     ];
     return Container(
       decoration: BoxDecoration(
@@ -794,8 +790,6 @@ class _GuidedReadingChecklist extends StatelessWidget {
       ),
     );
   }
-
-  static String _capitalize(String s) => s[0].toUpperCase() + s.substring(1);
 }
 
 enum _RowState { done, current, failed, pending }
