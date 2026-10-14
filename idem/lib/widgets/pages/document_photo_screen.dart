@@ -186,21 +186,7 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
       _previewRect(viewSize, controller.value.aspectRatio),
     );
     final generation = _generation;
-    if (!_reading) {
-      _reading = true;
-      unawaited(
-        (_textReader ??= DocumentTextReader())
-            .readable(image, rotation: rotation, region: region)
-            // A failed read counts as unreadable, so the other checks still run.
-            .catchError((_) => false)
-            .then((readable) {
-              if (generation == _generation) _readable = readable;
-            })
-            .whenComplete(() {
-              if (generation == _generation) _reading = false;
-            }),
-      );
-    }
+    if (!_reading) _readText(image, rotation: rotation, region: region);
 
     if (_readable == null || checker.busy) return;
     unawaited(
@@ -209,6 +195,23 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
         if (generation != _generation || _onFrameChecked != onFrameChecked || readable == null) return;
         onFrameChecked(readable ? issues : withUnreadable(issues));
       }, onError: (_) {}),
+    );
+  }
+
+  void _readText(CameraImage image, {required int rotation, required Rect region}) {
+    final generation = _generation;
+    _reading = true;
+    unawaited(
+      (_textReader ??= DocumentTextReader())
+          .readable(image, rotation: rotation, region: region)
+          // A failed read counts as unreadable, so the other checks still run.
+          .catchError((_) => false)
+          .then((readable) {
+            if (generation == _generation) _readable = readable;
+          })
+          .whenComplete(() {
+            if (generation == _generation) _reading = false;
+          }),
     );
   }
 
