@@ -137,35 +137,41 @@ DocumentSample sampleDocument(
   final step = regionWidth / width;
   final height = (regionHeight / step).round().clamp(1, 1 << 16);
   final taps = step.floor().clamp(1, 3);
-  final columns = Int32List.fromList([
-    for (var x = 0; x < width; x++)
-      for (var tx = 0; tx < taps; tx++) (left + (x + (tx + 0.5) / taps) * step).floor().clamp(0, uprightWidth - 1),
-  ]);
-  final rows = Int32List.fromList([
-    for (var y = 0; y < height; y++)
-      for (var ty = 0; ty < taps; ty++) (top + (y + (ty + 0.5) / taps) * step).floor().clamp(0, uprightHeight - 1),
-  ]);
+  final columns = _tapPositions(width, taps, left, step, uprightWidth);
+  final rows = _tapPositions(height, taps, top, step, uprightHeight);
+  final brightnessAt = _uprightBrightness(frame, rotation);
   final pixels = Uint8List(width * height);
   for (var y = 0; y < height; y++) {
     for (var x = 0; x < width; x++) {
-      var sum = 0;
-      for (var ty = 0; ty < taps; ty++) {
-        final uy = rows[y * taps + ty];
-        for (var tx = 0; tx < taps; tx++) {
-          final ux = columns[x * taps + tx];
-          sum += switch (rotation) {
-            90 => frame.brightnessAt(uy, frame.height - 1 - ux),
-            180 => frame.brightnessAt(frame.width - 1 - ux, frame.height - 1 - uy),
-            270 => frame.brightnessAt(frame.width - 1 - uy, ux),
-            _ => frame.brightnessAt(ux, uy),
-          };
-        }
-      }
-      pixels[y * width + x] = sum ~/ (taps * taps);
+      pixels[y * width + x] = _average(brightnessAt, columns, rows, x, y, taps);
     }
   }
 
   return DocumentSample(pixels, width, height);
+}
+
+Int32List _tapPositions(int count, int taps, double origin, double step, int size) => Int32List.fromList([
+  for (var i = 0; i < count; i++)
+    for (var t = 0; t < taps; t++) (origin + (i + (t + 0.5) / taps) * step).floor().clamp(0, size - 1),
+]);
+
+int Function(int x, int y) _uprightBrightness(LumaFrame frame, int rotation) => switch (rotation) {
+  90 => (x, y) => frame.brightnessAt(y, frame.height - 1 - x),
+  180 => (x, y) => frame.brightnessAt(frame.width - 1 - x, frame.height - 1 - y),
+  270 => (x, y) => frame.brightnessAt(frame.width - 1 - y, x),
+  _ => frame.brightnessAt,
+};
+
+int _average(int Function(int x, int y) brightnessAt, Int32List columns, Int32List rows, int x, int y, int taps) {
+  var sum = 0;
+  for (var ty = 0; ty < taps; ty++) {
+    final uy = rows[y * taps + ty];
+    for (var tx = 0; tx < taps; tx++) {
+      sum += brightnessAt(columns[x * taps + tx], uy);
+    }
+  }
+
+  return sum ~/ (taps * taps);
 }
 
 Set<DocumentPhotoIssue> checkFrame(LumaFrame frame, {required int rotation, required Rect region}) {
@@ -332,52 +338,21 @@ _Edge? _findEdge(DocumentSample sample, Rect frame, _Side side) {
   const reach = _edgeGap + _edgeWindow;
 
   final strip = length * _edgeSpan / _edgeProfiles;
-  int at(int from, int to, int depth) {
-    var sum = 0;
-    for (var a = from; a < to; a++) {
-      final (x, y) = switch (side) {
-        _Side.top => (a, frame.top.round() + depth),
-        _Side.bottom => (a, frame.bottom.round() - 1 - depth),
-        _Side.left => (frame.left.round() + depth, a),
-        _Side.right => (frame.right.round() - 1 - depth, a),
-      };
-      sum += sample.pixels[y.clamp(0, sample.height - 1) * sample.width + x.clamp(0, sample.width - 1)];
-    }
-    return sum ~/ (to - from);
-  }
-
   final centre = start + length * _edgeSpan / 2;
   final points = <_EdgePoint>[];
-  final profile = List.filled(outside + inside + 2 * reach + 1, 0);
-  final sums = List.filled(profile.length + 1, 0);
-  int sum(int from, int to) => sums[to] - sums[from];
   for (var p = 0; p < _edgeProfiles; p++) {
     final from = (start + strip * p).round();
     final to = math.max(from + 1, (start + strip * (p + 1)).round());
     final along = (from + to) ~/ 2;
-    for (var i = 0; i < profile.length; i++) {
-      profile[i] = at(from, to, i - outside - reach);
-      sums[i + 1] = sums[i] + profile[i];
-    }
-
-    final steps = [
-      for (var d = -outside; d <= inside; d++)
-        (sum(d + outside + reach + _edgeGap, d + outside + 2 * reach) -
-                sum(d + outside, d + outside + reach - _edgeGap)) /
-            _edgeWindow,
+    final profile = [
+      for (var depth = -outside - reach; depth <= inside + reach; depth++)
+        _stripBrightness(sample, frame, side, from, to, depth),
     ];
-
+    final steps = _steps(profile, outside, inside);
     for (var j = 0; j < steps.length; j++) {
-      final step = steps[j].abs();
-      if (step < _minEdgeStep) continue;
-      var peak = true;
-      for (var k = math.max(0, j - _edgeGap); k <= math.min(steps.length - 1, j + _edgeGap) && peak; k++) {
-        peak = k == j || steps[k].abs() < step || (steps[k].abs() == step && k > j);
+      if (_isEdge(steps, profile, j)) {
+        points.add((profile: p, along: along - centre, depth: (j - outside).toDouble(), rising: steps[j] > 0));
       }
-      if (!peak) continue;
-      final out = profile.sublist(j, j + _edgeWindow);
-      if (out.reduce(math.max) - out.reduce(math.min) > math.max(_maxFlatRange, step * _maxFlatShare)) continue;
-      points.add((profile: p, along: along - centre, depth: (j - outside).toDouble(), rising: steps[j] > 0));
     }
   }
 
@@ -385,65 +360,128 @@ _Edge? _findEdge(DocumentSample sample, Rect frame, _Side side) {
   return edge == null ? null : (slope: edge.slope, offset: edge.offset - edge.slope * centre);
 }
 
+int _stripBrightness(DocumentSample sample, Rect frame, _Side side, int from, int to, int depth) {
+  var sum = 0;
+  for (var a = from; a < to; a++) {
+    final (x, y) = switch (side) {
+      _Side.top => (a, frame.top.round() + depth),
+      _Side.bottom => (a, frame.bottom.round() - 1 - depth),
+      _Side.left => (frame.left.round() + depth, a),
+      _Side.right => (frame.right.round() - 1 - depth, a),
+    };
+    sum += sample.pixels[y.clamp(0, sample.height - 1) * sample.width + x.clamp(0, sample.width - 1)];
+  }
+
+  return sum ~/ (to - from);
+}
+
+List<double> _steps(List<int> profile, int outside, int inside) {
+  const reach = _edgeGap + _edgeWindow;
+  final sums = List.filled(profile.length + 1, 0);
+  for (var i = 0; i < profile.length; i++) {
+    sums[i + 1] = sums[i] + profile[i];
+  }
+
+  int sum(int from, int to) => sums[to] - sums[from];
+  return [
+    for (var d = -outside; d <= inside; d++)
+      (sum(d + outside + reach + _edgeGap, d + outside + 2 * reach) -
+              sum(d + outside, d + outside + reach - _edgeGap)) /
+          _edgeWindow,
+  ];
+}
+
+bool _isEdge(List<double> steps, List<int> profile, int j) {
+  final step = steps[j].abs();
+  if (step < _minEdgeStep || !_isPeak(steps, j)) return false;
+  final out = profile.sublist(j, j + _edgeWindow);
+  return out.reduce(math.max) - out.reduce(math.min) <= math.max(_maxFlatRange, step * _maxFlatShare);
+}
+
+bool _isPeak(List<double> steps, int j) {
+  final step = steps[j].abs();
+  for (var k = math.max(0, j - _edgeGap); k <= math.min(steps.length - 1, j + _edgeGap); k++) {
+    final other = steps[k].abs();
+    if (other > step || (other == step && k < j)) return false;
+  }
+
+  return true;
+}
+
 typedef _EdgePoint = ({int profile, double along, double depth, bool rising});
+
+typedef _Line = ({double slope, double offset, int support});
+
+int _support(List<_EdgePoint> points) => points.map((point) => point.profile).toSet().length;
 
 /// The outermost line most strips agree on, refitted by least squares.
 _Edge? _fitEdge(List<_EdgePoint> points) {
   final needed = (_edgeProfiles * _minEdgeInliers).ceil();
-  int support(List<_EdgePoint> on) => on.map((point) => point.profile).toSet().length;
-
-  ({double slope, double offset, int support})? best;
+  _Line? best;
   for (final rising in [true, false]) {
     final candidates = [
       for (final point in points)
         if (point.rising == rising) point,
     ];
-    if (support(candidates) < needed) continue;
+    if (_support(candidates) < needed) continue;
     for (var s = -_maxEdgeSlope; s <= _maxEdgeSlope + 1e-9; s += 0.01) {
-      final offsets = [for (final point in candidates) (point.depth - s * point.along, point.profile)]
-        ..sort((a, b) => a.$1.compareTo(b.$1));
-      var from = 0;
-      for (var to = 0; to < offsets.length; to++) {
-        while (offsets[to].$1 - offsets[from].$1 > 2 * _edgeTolerance) {
-          from++;
-        }
-        final profiles = {for (var i = from; i <= to; i++) offsets[i].$2}.length;
-        if (profiles < needed) continue;
-        final offset = (offsets[from].$1 + offsets[to].$1) / 2;
-        final current = best;
-        if (current == null ||
-            offset < current.offset - 2 * _edgeTolerance ||
-            (offset <= current.offset + 2 * _edgeTolerance && profiles > current.support)) {
-          best = (slope: s, offset: offset, support: profiles);
-        }
-      }
+      best = _outermostLine(candidates, s, needed, best);
     }
   }
 
   if (best == null) return null;
+  return _refit(points, (slope: best.slope, offset: best.offset), needed);
+}
 
-  _Edge edge = (slope: best.slope, offset: best.offset);
-  for (var pass = 0; pass < 2; pass++) {
-    final fit = edge;
-    final inliers = [
-      for (final point in points)
-        if ((point.depth - (fit.offset + fit.slope * point.along)).abs() <= _edgeTolerance) point,
-    ];
-    if (support(inliers) < needed) return pass == 0 ? null : fit;
-    final n = inliers.length;
-    final meanA = inliers.map((p) => p.along).reduce((a, b) => a + b) / n;
-    final meanD = inliers.map((p) => p.depth).reduce((a, b) => a + b) / n;
-    var covariance = 0.0;
-    var variance = 0.0;
-    for (final point in inliers) {
-      covariance += (point.along - meanA) * (point.depth - meanD);
-      variance += (point.along - meanA) * (point.along - meanA);
+_Line? _outermostLine(List<_EdgePoint> candidates, double slope, int needed, _Line? best) {
+  final offsets = [for (final point in candidates) (point.depth - slope * point.along, point.profile)]
+    ..sort((a, b) => a.$1.compareTo(b.$1));
+  var from = 0;
+  for (var to = 0; to < offsets.length; to++) {
+    while (offsets[to].$1 - offsets[from].$1 > 2 * _edgeTolerance) {
+      from++;
     }
-    final slope = variance == 0 ? 0.0 : (covariance / variance).clamp(-_maxEdgeSlope, _maxEdgeSlope);
-    edge = (slope: slope, offset: meanD - slope * meanA);
+    final profiles = {for (var i = from; i <= to; i++) offsets[i].$2}.length;
+    final offset = (offsets[from].$1 + offsets[to].$1) / 2;
+    if (profiles >= needed && _beats(offset, profiles, best)) best = (slope: slope, offset: offset, support: profiles);
   }
 
-  return edge;
+  return best;
+}
+
+bool _beats(double offset, int support, _Line? best) =>
+    best == null ||
+    offset < best.offset - 2 * _edgeTolerance ||
+    (offset <= best.offset + 2 * _edgeTolerance && support > best.support);
+
+_Edge? _refit(List<_EdgePoint> points, _Edge edge, int needed) {
+  var fit = edge;
+  for (var pass = 0; pass < 2; pass++) {
+    final line = fit;
+    final inliers = [
+      for (final point in points)
+        if ((point.depth - (line.offset + line.slope * point.along)).abs() <= _edgeTolerance) point,
+    ];
+    if (_support(inliers) < needed) return pass == 0 ? null : line;
+    fit = _leastSquares(inliers);
+  }
+
+  return fit;
+}
+
+_Edge _leastSquares(List<_EdgePoint> points) {
+  final n = points.length;
+  final meanA = points.map((p) => p.along).reduce((a, b) => a + b) / n;
+  final meanD = points.map((p) => p.depth).reduce((a, b) => a + b) / n;
+  var covariance = 0.0;
+  var variance = 0.0;
+  for (final point in points) {
+    covariance += (point.along - meanA) * (point.depth - meanD);
+    variance += (point.along - meanA) * (point.along - meanA);
+  }
+  final slope = variance == 0 ? 0.0 : (covariance / variance).clamp(-_maxEdgeSlope, _maxEdgeSlope);
+
+  return (slope: slope, offset: meanD - slope * meanA);
 }
 
 class DocumentFrameChecker {
@@ -665,43 +703,49 @@ class DocumentPhotoQuality {
   /// Returns whether [issue] or [clear] changed.
   bool update(Set<DocumentPhotoIssue> frameIssues) {
     final before = (issue, clear);
-    final absence = frameIssues.contains(DocumentPhotoIssue.tooDark)
-        ? DocumentPhotoIssue.tooDark
-        : !frameIssues.contains(DocumentPhotoIssue.noDocument)
-        ? null
-        : frameIssues.contains(DocumentPhotoIssue.glare)
-        ? DocumentPhotoIssue.glare
-        : frameIssues.contains(DocumentPhotoIssue.reflection)
-        ? DocumentPhotoIssue.reflection
-        : DocumentPhotoIssue.noDocument;
-
+    final absence = _absenceIn(frameIssues);
     _push(_presence, absence);
+    _settlePresence();
+    if (absence == null) _settleChecks(frameIssues);
+
+    return before != (issue, clear);
+  }
+
+  static DocumentPhotoIssue? _absenceIn(Set<DocumentPhotoIssue> frameIssues) {
+    if (frameIssues.contains(DocumentPhotoIssue.tooDark)) return DocumentPhotoIssue.tooDark;
+    if (!frameIssues.contains(DocumentPhotoIssue.noDocument)) return null;
+    if (frameIssues.contains(DocumentPhotoIssue.glare)) return DocumentPhotoIssue.glare;
+    if (frameIssues.contains(DocumentPhotoIssue.reflection)) return DocumentPhotoIssue.reflection;
+    return DocumentPhotoIssue.noDocument;
+  }
+
+  void _settlePresence() {
     for (final candidate in _presence.toSet()) {
       if (_presence.where((a) => a == candidate).length < framesToAgree) continue;
       final wasFound = _documentFound;
       _documentFound = candidate == null;
       _absence = candidate;
-      if (wasFound && !_documentFound) {
-        for (final results in _results.values) {
-          results.clear();
-        }
-        _failing.clear();
+      if (wasFound && !_documentFound) _clearChecks();
+    }
+  }
+
+  void _settleChecks(Set<DocumentPhotoIssue> frameIssues) {
+    for (final check in _documentChecks) {
+      final results = _push(_results[check]!, frameIssues.contains(check));
+      final failed = results.where((f) => f).length;
+      if (failed >= framesToAgree) {
+        _failing.add(check);
+      } else if (results.length - failed >= framesToAgree) {
+        _failing.remove(check);
       }
     }
+  }
 
-    if (absence == null) {
-      for (final check in _documentChecks) {
-        final results = _push(_results[check]!, frameIssues.contains(check));
-        final failed = results.where((f) => f).length;
-        if (failed >= framesToAgree) {
-          _failing.add(check);
-        } else if (results.length - failed >= framesToAgree) {
-          _failing.remove(check);
-        }
-      }
+  void _clearChecks() {
+    for (final results in _results.values) {
+      results.clear();
     }
-
-    return before != (issue, clear);
+    _failing.clear();
   }
 
   static List<T> _push<T>(List<T> window, T value) {
@@ -714,9 +758,6 @@ class DocumentPhotoQuality {
     _presence.clear();
     _documentFound = false;
     _absence = null;
-    for (final results in _results.values) {
-      results.clear();
-    }
-    _failing.clear();
+    _clearChecks();
   }
 }
