@@ -68,8 +68,8 @@ const _deviceRotations = {
 /// The clockwise degrees that turn a preview frame from [camera] upright.
 /// iOS turns stream frames to the device's orientation itself, and ML Kit
 /// there ignores the rotation it's given.
-int streamFrameRotation(CameraDescription camera, DeviceOrientation deviceOrientation, {required bool ios}) {
-  if (ios) return 0;
+int streamFrameRotation(CameraDescription camera, DeviceOrientation deviceOrientation, TargetPlatform platform) {
+  if (platform == TargetPlatform.iOS) return 0;
   final deviceRotation = _deviceRotations[deviceOrientation] ?? 0;
   return camera.lensDirection == CameraLensDirection.front
       ? (camera.sensorOrientation + deviceRotation) % 360
@@ -174,7 +174,7 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
     final rotation = streamFrameRotation(
       controller.description,
       controller.value.deviceOrientation,
-      ios: Platform.isIOS,
+      defaultTargetPlatform,
     );
     final plane = image.planes.first;
     final frame = Platform.isAndroid

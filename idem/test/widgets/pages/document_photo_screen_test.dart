@@ -563,19 +563,19 @@ void main() {
     const front = CameraDescription(name: 'front', lensDirection: CameraLensDirection.front, sensorOrientation: 270);
 
     test('turns a back camera\'s frame by its sensor orientation less the device\'s', () {
-      expect(streamFrameRotation(back, DeviceOrientation.portraitUp, ios: false), 90);
-      expect(streamFrameRotation(back, DeviceOrientation.landscapeLeft, ios: false), 0);
-      expect(streamFrameRotation(back, DeviceOrientation.portraitDown, ios: false), 270);
-      expect(streamFrameRotation(back, DeviceOrientation.landscapeRight, ios: false), 180);
+      expect(streamFrameRotation(back, DeviceOrientation.portraitUp, TargetPlatform.android), 90);
+      expect(streamFrameRotation(back, DeviceOrientation.landscapeLeft, TargetPlatform.android), 0);
+      expect(streamFrameRotation(back, DeviceOrientation.portraitDown, TargetPlatform.android), 270);
+      expect(streamFrameRotation(back, DeviceOrientation.landscapeRight, TargetPlatform.android), 180);
     });
 
     test('turns a front camera\'s frame by its sensor orientation plus the device\'s', () {
-      expect(streamFrameRotation(front, DeviceOrientation.portraitUp, ios: false), 270);
-      expect(streamFrameRotation(front, DeviceOrientation.landscapeLeft, ios: false), 0);
+      expect(streamFrameRotation(front, DeviceOrientation.portraitUp, TargetPlatform.android), 270);
+      expect(streamFrameRotation(front, DeviceOrientation.landscapeLeft, TargetPlatform.android), 0);
     });
 
     test('leaves iOS frames as they are', () {
-      expect(streamFrameRotation(back, DeviceOrientation.landscapeLeft, ios: true), 0);
+      expect(streamFrameRotation(back, DeviceOrientation.landscapeLeft, TargetPlatform.iOS), 0);
     });
   });
 }
