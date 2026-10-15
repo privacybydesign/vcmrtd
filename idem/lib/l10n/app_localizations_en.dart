@@ -489,6 +489,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get docPhotoTake => 'Take photo';
 
   @override
+  String get docPhotoHintNoDocument => 'Place the whole document inside the frame, on a plain surface.';
+
+  @override
+  String get docPhotoHintGlare => 'Reflection on the document. Tilt it slightly.';
+
+  @override
+  String get docPhotoHintTilted => 'Hold your phone straight above the document.';
+
+  @override
+  String get docPhotoHintUnreadable => 'The text on the document isn\'t readable yet. Hold it still, in good light.';
+
+  @override
+  String get docPhotoHintTooDark => 'Too dark. Move to a place with more light.';
+
+  @override
+  String get docPhotoHintBlurry => 'Not sharp yet. Hold your phone still.';
+
+  @override
   String get docPhotoReviewTitle => 'Check the photo';
 
   @override

@@ -489,6 +489,24 @@ class AppLocalizationsNl extends AppLocalizations {
   String get docPhotoTake => 'Foto maken';
 
   @override
+  String get docPhotoHintNoDocument => 'Leg het hele document binnen het kader, op een egale ondergrond.';
+
+  @override
+  String get docPhotoHintGlare => 'Reflectie op het document. Kantel het een beetje.';
+
+  @override
+  String get docPhotoHintTilted => 'Houd je telefoon recht boven het document.';
+
+  @override
+  String get docPhotoHintUnreadable => 'De tekst op het document is nog niet leesbaar. Houd het stil, in goed licht.';
+
+  @override
+  String get docPhotoHintTooDark => 'Te donker. Ga naar een plek met meer licht.';
+
+  @override
+  String get docPhotoHintBlurry => 'Nog niet scherp. Houd je telefoon stil.';
+
+  @override
   String get docPhotoReviewTitle => 'Controleer de foto';
 
   @override

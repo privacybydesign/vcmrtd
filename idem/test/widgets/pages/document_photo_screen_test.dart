@@ -1,10 +1,12 @@
 import 'dart:async';
-import 'dart:typed_data';
 
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:idem/l10n/l10n.dart';
+import 'package:idem/services/document_photo_quality.dart';
 import 'package:idem/widgets/pages/document_photo_screen.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtd/vcmrtd.dart';
@@ -22,11 +24,29 @@ class _FakeCamera implements DocumentPhotoCamera {
   /// When set, [open] waits for it: a camera that takes a while to open.
   Completer<void>? openGate;
 
+  /// What the preview frames report on opening, each for as many frames as
+  /// it takes to settle: readable by default, so the photo can be taken
+  /// straight away.
+  List<Set<DocumentPhotoIssue>> frames = const [{}];
+
+  /// Reports a checked preview frame, like the device camera does a few
+  /// times a second while it's open.
+  ValueChanged<Set<DocumentPhotoIssue>>? onFrameChecked;
+
+  /// Reports [issues] for as many frames as it takes to settle.
+  void report(Set<DocumentPhotoIssue> issues) {
+    for (var i = 0; i < DocumentPhotoQuality.framesToAgree; i++) {
+      onFrameChecked!(issues);
+    }
+  }
+
   @override
-  Future<void> open() async {
+  Future<void> open({required double frameRatio, required ValueChanged<Set<DocumentPhotoIssue>> onFrameChecked}) async {
     opens++;
+    this.onFrameChecked = onFrameChecked;
     await openGate?.future;
     if (openError != null) throw openError!;
+    frames.forEach(report);
   }
 
   @override
@@ -97,6 +117,12 @@ Future<void> _usePhoto(WidgetTester tester) async {
   await tester.pump();
   await tester.pump();
 }
+
+bool _takePhotoEnabled(WidgetTester tester) => tester
+    .widget<ElevatedButton>(
+      find.ancestor(of: find.text('Take photo'), matching: find.byWidgetPredicate((w) => w is ElevatedButton)),
+    )
+    .enabled;
 
 double _frameRatio(WidgetTester tester) => tester.widget<MRZCameraOverlay>(find.byType(MRZCameraOverlay)).frameRatio;
 
@@ -392,6 +418,86 @@ void main() {
     expect(tester.widget<ElevatedButton>(find.widgetWithText(ElevatedButton, 'Use photo')).onPressed, isNotNull);
   });
 
+  testWidgets('the photo cannot be taken while the preview shows the document unreadable; a hint says why', (
+    tester,
+  ) async {
+    final camera = _FakeCamera()
+      ..frames = const [
+        {DocumentPhotoIssue.glare},
+      ];
+    await tester.pumpWidget(_screen(camera));
+    await tester.pump();
+
+    expect(_takePhotoEnabled(tester), isFalse);
+    expect(find.text('Reflection on the document. Tilt it slightly.'), findsOneWidget);
+
+    camera.report(const {});
+    await tester.pump();
+    expect(_takePhotoEnabled(tester), isTrue);
+    expect(find.text('Reflection on the document. Tilt it slightly.'), findsNothing);
+  });
+
+  testWidgets('the hint follows the issue the preview frames agree on', (tester) async {
+    final camera = _FakeCamera()
+      ..frames = const [
+        {DocumentPhotoIssue.tooDark},
+      ];
+    await tester.pumpWidget(_screen(camera));
+    await tester.pump();
+    expect(find.text('Too dark. Move to a place with more light.'), findsOneWidget);
+
+    camera.report({DocumentPhotoIssue.blurry});
+    await tester.pump();
+    expect(find.text('Not sharp yet. Hold your phone still.'), findsOneWidget);
+    expect(_takePhotoEnabled(tester), isFalse);
+  });
+
+  testWidgets('the photo can be taken anyway once the preview showed for a while, so the session never gets stuck', (
+    tester,
+  ) async {
+    final camera = _FakeCamera()
+      ..frames = const [
+        {DocumentPhotoIssue.blurry},
+      ];
+    await tester.pumpWidget(_screen(camera));
+    await tester.pump();
+    expect(_takePhotoEnabled(tester), isFalse);
+
+    await tester.pump(documentPhotoQualityWaiveDelay);
+    expect(_takePhotoEnabled(tester), isTrue);
+    // Still says what the frames show.
+    expect(find.text('Not sharp yet. Hold your phone still.'), findsOneWidget);
+
+    await _takeAndReview(tester);
+    expect(find.text('Check the photo'), findsOneWidget);
+  });
+
+  testWidgets('the photo cannot be taken while any issue stays, until the preview showed for a while', (tester) async {
+    final camera = _FakeCamera();
+    await tester.pumpWidget(_screen(camera));
+    await tester.pump();
+    for (final issue in DocumentPhotoIssue.values) {
+      camera.report({issue});
+      await tester.pump();
+      expect(_takePhotoEnabled(tester), isFalse, reason: '$issue');
+    }
+  });
+
+  testWidgets('a reopened camera checks its frames afresh', (tester) async {
+    final camera = _FakeCamera();
+    await tester.pumpWidget(_screen(camera));
+    await tester.pump();
+    await _takeAndReview(tester);
+
+    camera.frames = const [
+      {DocumentPhotoIssue.glare},
+    ];
+    await tester.tap(find.text('Retake'));
+    await tester.pump();
+    await tester.pump();
+    expect(_takePhotoEnabled(tester), isFalse);
+  });
+
   testWidgets('a camera that cannot be opened says so and offers to try again', (tester) async {
     final camera = _FakeCamera(openError: const DocumentPhotoNoCameraException());
     await tester.pumpWidget(_screen(camera));
@@ -445,6 +551,27 @@ void main() {
       const m = DocumentPicture.frameMargin;
       expect(prepared.width, closeTo(900 * (0.8 + 2 * 0.8 * m), 2));
       expect(prepared.height, closeTo(1600 * (0.2 + 2 * 0.2 * m), 2));
+    });
+  });
+
+  group('streamFrameRotation', () {
+    const back = CameraDescription(name: 'back', lensDirection: CameraLensDirection.back, sensorOrientation: 90);
+    const front = CameraDescription(name: 'front', lensDirection: CameraLensDirection.front, sensorOrientation: 270);
+
+    test('turns a back camera\'s frame by its sensor orientation less the device\'s', () {
+      expect(streamFrameRotation(back, DeviceOrientation.portraitUp, TargetPlatform.android), 90);
+      expect(streamFrameRotation(back, DeviceOrientation.landscapeLeft, TargetPlatform.android), 0);
+      expect(streamFrameRotation(back, DeviceOrientation.portraitDown, TargetPlatform.android), 270);
+      expect(streamFrameRotation(back, DeviceOrientation.landscapeRight, TargetPlatform.android), 180);
+    });
+
+    test('turns a front camera\'s frame by its sensor orientation plus the device\'s', () {
+      expect(streamFrameRotation(front, DeviceOrientation.portraitUp, TargetPlatform.android), 270);
+      expect(streamFrameRotation(front, DeviceOrientation.landscapeLeft, TargetPlatform.android), 0);
+    });
+
+    test('leaves iOS frames as they are', () {
+      expect(streamFrameRotation(back, DeviceOrientation.landscapeLeft, TargetPlatform.iOS), 0);
     });
   });
 }
