@@ -63,6 +63,7 @@ dev_dependencies:
     sdk: flutter
   lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
+  camera_platform_interface: ^2.13.1
 
 flutter_launcher_icons:
   android: true
