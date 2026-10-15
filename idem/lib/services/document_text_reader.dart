@@ -75,5 +75,6 @@ Uint8List nv21FromLuma(Uint8List luma, {required int width, required int height,
   for (var row = 0; row < height; row++) {
     bytes.setRange(row * width, (row + 1) * width, luma, row * bytesPerRow);
   }
+
   return bytes;
 }
