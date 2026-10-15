@@ -38,6 +38,7 @@ const _edgeGap = 3;
 const _minEdgeInliers = 0.5;
 const _edgeTolerance = 3.0;
 const _maxEdgeSlope = 0.25;
+const _edgeSlopeStep = 0.01;
 const _maxShapeError = 0.1;
 const _documentInset = 0.03;
 
@@ -64,6 +65,7 @@ const _tooDarkPaperBrightness = 60;
 const _paperPercentile = 0.9;
 
 const _sampleWidth = 640;
+const _maxSampleHeight = 1 << 16;
 
 const _brightnessLevels = 256;
 
@@ -135,7 +137,7 @@ DocumentSample sampleDocument(
 
   final width = regionWidth.round().clamp(1, maxWidth);
   final step = regionWidth / width;
-  final height = (regionHeight / step).round().clamp(1, 1 << 16);
+  final height = (regionHeight / step).round().clamp(1, _maxSampleHeight);
   final taps = step.floor().clamp(1, 3);
   final columns = _tapPositions(width, taps, left, step, uprightWidth);
   final rows = _tapPositions(height, taps, top, step, uprightHeight);
@@ -424,7 +426,7 @@ _Edge? _fitEdge(List<_EdgePoint> points) {
         if (point.rising == rising) point,
     ];
     if (_support(candidates) < needed) continue;
-    for (var s = -_maxEdgeSlope; s <= _maxEdgeSlope + 1e-9; s += 0.01) {
+    for (var s = -_maxEdgeSlope; s <= _maxEdgeSlope + 1e-9; s += _edgeSlopeStep) {
       best = _outermostLine(candidates, s, needed, best);
     }
   }
@@ -479,6 +481,7 @@ _Edge _leastSquares(List<_EdgePoint> points) {
     covariance += (point.along - meanA) * (point.depth - meanD);
     variance += (point.along - meanA) * (point.along - meanA);
   }
+
   final slope = variance == 0 ? 0.0 : (covariance / variance).clamp(-_maxEdgeSlope, _maxEdgeSlope);
 
   return (slope: slope, offset: meanD - slope * meanA);
