@@ -753,7 +753,7 @@ Future<void> _pipelineWorkerLoop(SendPort mainSendPort) async {
       case 'detect_crop_encoded':
         final bytes = payload['bytes'] as Uint8List?;
         if (bytes == null || bytes.isEmpty) return <String, dynamic>{'ok': false};
-        final decoded = img.decodeImage(bytes);
+        final decoded = _tryDecodeImage(bytes);
         if (decoded == null) return <String, dynamic>{'ok': false};
         detector.resetTracking();
         final nfcCrop = detector.runDetectorStage(decoded, mode: FaceAlignmentMode.nfc);
@@ -781,6 +781,16 @@ Future<void> _pipelineWorkerLoop(SendPort mainSendPort) async {
   }
 
   await _serve(commandPort, mainSendPort, handle);
+}
+
+/// [bytes] as an image, or null when they aren't one. Older versions of the
+/// image package throw on truncated input instead of returning null.
+img.Image? _tryDecodeImage(Uint8List bytes) {
+  try {
+    return img.decodeImage(bytes);
+  } on RangeError {
+    return null;
+  }
 }
 
 Map<String, dynamic> _handleProcessFrame(
