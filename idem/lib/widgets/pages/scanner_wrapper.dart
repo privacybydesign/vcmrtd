@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:mrz_capture/mrz_capture.dart';
+import 'package:idem/theme/brand_theme.dart';
+import 'package:idem/widgets/guided/guided_widgets.dart';
 
 import '../../routing.dart';
 import 'scan_screen.dart';
@@ -91,23 +93,24 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
   @override
   void didPopNext() => _hasNavigated = false;
 
+  void _onScanned(ScannedMRZ scannedMrz, DocumentPicture? picture) {
+    if (_hasNavigated) return;
+
+    _hasNavigated = true;
+    widget.onMrzScanned(scannedMrz, picture);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final guided = context.guided;
+    if (guided != null) return _buildGuided(context, guided);
+
     final scannerBuilder = widget.scannerBuilder ?? _defaultScannerBuilder;
 
     return Scaffold(
       body: Stack(
         children: [
-          scannerBuilder(
-            documentType: widget.documentType,
-            scanPicture: widget.scanPicture,
-            onSuccess: (scannedMrz, picture) {
-              if (!_hasNavigated) {
-                _hasNavigated = true;
-                widget.onMrzScanned(scannedMrz, picture);
-              }
-            },
-          ),
+          scannerBuilder(documentType: widget.documentType, scanPicture: widget.scanPicture, onSuccess: _onScanned),
           Positioned(left: 0, right: 0, top: 0, child: _buildTopOverlay(context)),
           Positioned(left: 0, right: 0, bottom: 0, child: _buildBottomControls(context)),
         ],
@@ -187,6 +190,291 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
       ),
     );
   }
+
+  /// Guided layout: a dark scrim with a card-shaped cut-out and the
+  /// instructions in a sheet at the bottom. The scanner's own frame is off;
+  /// [guidedScanFrame] draws one in the same place as the area it reads.
+  Widget _buildGuided(BuildContext context, GuidedStyle g) {
+    final scannerBuilder = widget.scannerBuilder ?? _guidedScannerBuilder;
+    return GuidedStatusBar(
+      onDark: true,
+      bottomOnDark: false,
+      child: Scaffold(
+        backgroundColor: g.header,
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: scannerBuilder(
+                documentType: widget.documentType,
+                scanPicture: widget.scanPicture,
+                onSuccess: _onScanned,
+              ),
+            ),
+            Positioned.fill(
+              child: IgnorePointer(
+                child: LayoutBuilder(
+                  builder: (context, box) => CustomPaint(
+                    painter: _GuidedScanFramePainter(
+                      frame: guidedScanFrame(box.biggest),
+                      mrzLines: _mrzLineCount(widget.documentType),
+                      scrim: g.ink.withValues(alpha: 0.8),
+                      highlight: g.heroAccent,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned.fill(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SafeArea(
+                    bottom: false,
+                    child: Column(
+                      children: [
+                        GuidedTopBar(
+                          leading: GuidedRoundButton(
+                            icon: Icons.close,
+                            tooltip: context.l10n.scanClose,
+                            onDark: true,
+                            onPressed: widget.onBack,
+                          ),
+                          center: GuidedTopBarTitle(
+                            context.l10n.proofingScanDocument(widget.documentType.name),
+                            onDark: true,
+                          ),
+                        ),
+                        const GuidedStepBar(step: 1, onDark: true),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                  _GuidedScanSheet(documentType: widget.documentType, onManualEntry: widget.onManualEntry),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Where the guided scan screen draws the document frame for a view of [size]:
+/// the same rectangle the MRZ scanner reads text from (see
+/// `MRZCameraViewState._overlayRect` in mrz_capture), so what the user lines up
+/// with the frame is what gets read.
+@visibleForTesting
+Rect guidedScanFrame(Size size) => MRZCameraOverlay.frameRect(size, MRZCameraOverlay.passportFrameRatio);
+
+int _mrzLineCount(DocumentType type) => switch (type) {
+  DocumentType.passport => 2,
+  DocumentType.identityCard => 3,
+  DocumentType.drivingLicence => 1,
+};
+
+/// The instructions under the scan frame: a card that shows only the step
+/// and what to do, and opens (tap, or swipe up) to the tip and manual entry.
+/// Kept closed it leaves the whole frame, and the text read along its bottom,
+/// in view on smaller phones.
+class _GuidedScanSheet extends StatefulWidget {
+  const _GuidedScanSheet({required this.documentType, required this.onManualEntry});
+
+  final DocumentType documentType;
+  final VoidCallback onManualEntry;
+
+  @override
+  State<_GuidedScanSheet> createState() => _GuidedScanSheetState();
+}
+
+class _GuidedScanSheetState extends State<_GuidedScanSheet> {
+  static const _duration = Duration(milliseconds: 280);
+
+  bool _expanded = false;
+
+  void _setExpanded(bool expanded) {
+    if (expanded != _expanded) setState(() => _expanded = expanded);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final g = context.guided!;
+    final l10n = context.l10n;
+    final docType = widget.documentType.name;
+    final (title, tip) = (l10n.scanSheetTitle(docType), l10n.scanSheetTip(docType));
+    return GestureDetector(
+      onVerticalDragEnd: (details) {
+        final velocity = details.primaryVelocity ?? 0;
+        if (velocity < -100) _setExpanded(true);
+        if (velocity > 100) _setExpanded(false);
+      },
+      child: Material(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        clipBehavior: Clip.antiAlias,
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Semantics(
+                button: true,
+                expanded: _expanded,
+                hint: _expanded ? l10n.scanHideTips : l10n.scanShowTips,
+                child: InkWell(
+                  onTap: () => _setExpanded(!_expanded),
+                  // The arrow turning is the feedback; a highlight greys half the card.
+                  splashFactory: NoSplash.splashFactory,
+                  highlightColor: Colors.transparent,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 36,
+                            height: 4,
+                            decoration: BoxDecoration(color: g.border, borderRadius: BorderRadius.circular(2)),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const GuidedStepLabel(step: 1),
+                                  const SizedBox(height: 4),
+                                  Text(title, style: g.heading(18, height: 1.3)),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            AnimatedRotation(
+                              turns: _expanded ? 0.5 : 0,
+                              duration: _duration,
+                              curve: Curves.easeOutCubic,
+                              child: Icon(Icons.keyboard_arrow_up, color: g.muted),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              AnimatedSize(
+                duration: _duration,
+                curve: Curves.easeOutCubic,
+                alignment: Alignment.topCenter,
+                child: AnimatedOpacity(
+                  opacity: _expanded ? 1 : 0,
+                  duration: _duration,
+                  child: _expanded
+                      ? Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(tip, style: TextStyle(fontSize: 15, height: 1.5, color: g.bodyText)),
+                              const SizedBox(height: 16),
+                              GuidedButton(
+                                label: l10n.scanEnterDetailsManually,
+                                secondary: true,
+                                onPressed: widget.onManualEntry,
+                              ),
+                            ],
+                          ),
+                        )
+                      : const SizedBox(width: double.infinity),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GuidedScanFramePainter extends CustomPainter {
+  _GuidedScanFramePainter({required this.frame, required this.mrzLines, required this.scrim, required this.highlight});
+
+  final Rect frame;
+  final int mrzLines;
+  final Color scrim;
+  final Color highlight;
+
+  static const _radius = 16.0;
+  static const _cornerLength = 28.0;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cutout = RRect.fromRectAndRadius(frame, const Radius.circular(_radius));
+    canvas.drawPath(
+      Path()
+        ..fillType = PathFillType.evenOdd
+        ..addRect(Offset.zero & size)
+        ..addRRect(cutout),
+      Paint()..color = scrim,
+    );
+
+    final corner = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round;
+    const r = Radius.circular(_radius);
+    final l = frame.left, t = frame.top, rt = frame.right, b = frame.bottom;
+    canvas.drawPath(
+      Path()
+        ..moveTo(l, t + _cornerLength)
+        ..lineTo(l, t + _radius)
+        ..arcToPoint(Offset(l + _radius, t), radius: r)
+        ..lineTo(l + _cornerLength, t)
+        ..moveTo(rt - _cornerLength, t)
+        ..lineTo(rt - _radius, t)
+        ..arcToPoint(Offset(rt, t + _radius), radius: r)
+        ..lineTo(rt, t + _cornerLength)
+        ..moveTo(rt, b - _cornerLength)
+        ..lineTo(rt, b - _radius)
+        ..arcToPoint(Offset(rt - _radius, b), radius: r)
+        ..lineTo(rt - _cornerLength, b)
+        ..moveTo(l + _cornerLength, b)
+        ..lineTo(l + _radius, b)
+        ..arcToPoint(Offset(l, b - _radius), radius: r)
+        ..lineTo(l, b - _cornerLength),
+      corner,
+    );
+
+    // The machine-readable lines sit along the bottom of every supported document.
+    final inset = frame.width * 0.044;
+    final zoneHeight = frame.height * (0.08 + 0.08 * mrzLines);
+    final zone = RRect.fromRectAndRadius(
+      Rect.fromLTRB(
+        frame.left + inset,
+        frame.bottom - frame.height * 0.08 - zoneHeight,
+        frame.right - inset,
+        frame.bottom - frame.height * 0.08,
+      ),
+      const Radius.circular(10),
+    );
+    canvas.drawRRect(zone, Paint()..color = highlight.withValues(alpha: 0.12));
+    canvas.drawRRect(
+      zone,
+      Paint()
+        ..color = highlight
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_GuidedScanFramePainter old) =>
+      old.frame != frame || old.mrzLines != mrzLines || old.scrim != scrim || old.highlight != highlight;
 }
 
 Widget _defaultScannerBuilder({
@@ -195,4 +483,12 @@ Widget _defaultScannerBuilder({
   required MrzScannedWithPicture onSuccess,
 }) {
   return ScannerPage(documentType: documentType, scanPicture: scanPicture, onSuccess: onSuccess);
+}
+
+Widget _guidedScannerBuilder({
+  required DocumentType documentType,
+  required MrzScanPicture scanPicture,
+  required MrzScannedWithPicture onSuccess,
+}) {
+  return ScannerPage(documentType: documentType, scanPicture: scanPicture, onSuccess: onSuccess, showOverlay: false);
 }

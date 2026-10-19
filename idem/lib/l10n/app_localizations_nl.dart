@@ -650,9 +650,6 @@ class AppLocalizationsNl extends AppLocalizations {
   String get faceTryAgain => 'Opnieuw proberen';
 
   @override
-  String get faceIdentityVerified => 'Identiteit geverifieerd';
-
-  @override
   String get faceVerificationFailed => 'Verificatie mislukt';
 
   @override
@@ -751,10 +748,19 @@ class AppLocalizationsNl extends AppLocalizations {
   String get faceStartVerification => 'Verificatie starten';
 
   @override
-  String get faceSomethingWentWrong => 'Er ging iets mis';
+  String get faceSelfieIntroTitle => 'Maak even een selfie';
 
   @override
-  String get faceIrisMatchedSubtitle => 'Je gezicht komt overeen met de documentfoto.';
+  String get faceTipEvenLight => 'Zoek een plek met gelijkmatig licht';
+
+  @override
+  String get faceTipRemoveAccessories => 'Zet je zonnebril en pet af';
+
+  @override
+  String get faceStartSelfieCheck => 'Selfiecheck starten';
+
+  @override
+  String get faceSomethingWentWrong => 'Er ging iets mis';
 
   @override
   String get faceIrisFailedSubtitle =>
@@ -787,12 +793,6 @@ class AppLocalizationsNl extends AppLocalizations {
   String get faceRegulaOpeningCamera => 'Camera openen…';
 
   @override
-  String get faceRegulaLiveTitle => 'Levendheid bevestigd';
-
-  @override
-  String get faceRegulaLiveSubtitle => 'Je gezicht wordt nu vergeleken met de foto op je document.';
-
-  @override
   String get faceRegulaNotLiveSubtitle =>
       'We konden niet bevestigen dat er een levend persoon aanwezig is. Zorg voor goed licht en kijk in de camera, en probeer het opnieuw.';
 
@@ -802,11 +802,6 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get faceRegulaMatching => 'Je gezicht wordt vergeleken met de foto op je document…';
-
-  @override
-  String faceRegulaMatchedSubtitle(String similarity) {
-    return 'Je gezicht komt overeen met de foto op je document ($similarity% overeenkomst).';
-  }
 
   @override
   String get faceRegulaNoMatchSubtitle =>
@@ -831,11 +826,6 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get faceStopVerification => 'Verificatie stoppen';
-
-  @override
-  String faceSubmitSending(String what, String relyingParty) {
-    return '$what versturen naar $relyingParty...';
-  }
 
   @override
   String get faceSubmitCouldNotSend => 'Versturen mislukt';
@@ -926,6 +916,22 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get proofingDone => 'Klaar';
+
+  @override
+  String get proofingVerifiedTitle => 'Identiteit geverifieerd';
+
+  @override
+  String proofingShareBody(String relyingParty) {
+    return 'Deel het resultaat met $relyingParty om af te ronden.';
+  }
+
+  @override
+  String proofingShareWith(String relyingParty) {
+    return 'Delen met $relyingParty';
+  }
+
+  @override
+  String get proofingSharing => 'Delen…';
 
   @override
   String get proofingAddToWallet => 'Toevoegen aan wallet';
@@ -1082,4 +1088,582 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get proofingRequestSubmitVerification => 'Verificatie versturen';
+
+  @override
+  String guidedStepOf(int step, int total) {
+    return 'Stap $step van $total';
+  }
+
+  @override
+  String get guidedSaveForNextTime => 'Bewaren voor de volgende keer';
+
+  @override
+  String get guidedSaveForNextTimeSubtitle =>
+      'Bewaar dit document op deze telefoon, zodat je het niet opnieuw hoeft te scannen.';
+
+  @override
+  String get guidedPoweredByIdem => 'Mogelijk gemaakt door Idem';
+
+  @override
+  String get settingsYourDocuments => 'Je documenten';
+
+  @override
+  String get settingsSavedDocuments => 'Bewaarde documenten';
+
+  @override
+  String settingsSavedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count op deze telefoon',
+      zero: 'Geen op deze telefoon',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get settingsChipReading => 'Chip lezen';
+
+  @override
+  String get settingsChipCheck => 'Chipcontrole';
+
+  @override
+  String get settingsChipCheckSubtitle => 'Laat de chip bewijzen dat hij geen kopie is (actieve authenticatie)';
+
+  @override
+  String get settingsSelfieCheck => 'Selfiecheck';
+
+  @override
+  String get settingsFaceEngine => 'Gezichtsherkenning';
+
+  @override
+  String get settingsFaceEngineOnDevice => 'Open source, op deze telefoon';
+
+  @override
+  String get settingsLivenessCheck => 'Echtheidscontrole';
+
+  @override
+  String get settingsLivenessPassive => 'Passief: blijf gewoon stil';
+
+  @override
+  String get settingsLivenessActive => 'Actief: volg de aanwijzingen';
+
+  @override
+  String get settingsDocumentScanning => 'Documenten scannen';
+
+  @override
+  String get settingsTextRecognition => 'Tekstherkenning';
+
+  @override
+  String settingsVersion(String version) {
+    return 'Versie $version';
+  }
+
+  @override
+  String savedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count documenten op deze telefoon',
+      one: '1 document op deze telefoon',
+      zero: 'Geen documenten op deze telefoon',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get savedEmptyBody =>
+      'Nadat je een document hebt gedeeld, kun je het hier bewaren, zodat je het niet opnieuw hoeft te scannen.';
+
+  @override
+  String get savedBody =>
+      'Als je een QR-code scant, kun je een van deze kiezen in plaats van je ID opnieuw te scannen. Ze worden alleen gedeeld als je akkoord gaat.';
+
+  @override
+  String savedValidUntil(String date) {
+    return 'Geldig tot $date';
+  }
+
+  @override
+  String get savedAddedToday => 'vandaag toegevoegd';
+
+  @override
+  String savedAddedOn(String date) {
+    return 'toegevoegd op $date';
+  }
+
+  @override
+  String get savedRemove => 'Verwijderen van deze telefoon';
+
+  @override
+  String get chooseTitle => 'Document kiezen';
+
+  @override
+  String get chooseHeading => 'Welk document wil je gebruiken?';
+
+  @override
+  String chooseIntroEmpty(String relyingParty) {
+    return '$relyingParty vraagt je om je identiteit te verifiëren. Voeg het document toe dat je wilt gebruiken.';
+  }
+
+  @override
+  String chooseIntroSaved(String relyingParty) {
+    return '$relyingParty vraagt je om je identiteit te verifiëren. Gebruik een bewaard document of voeg een nieuw document toe.';
+  }
+
+  @override
+  String get chooseSavedOnPhone => 'Bewaard op deze telefoon';
+
+  @override
+  String get chooseSelfieHint => 'Je maakt even een selfie om te bevestigen dat het document van jou is.';
+
+  @override
+  String get chooseAddDocument => 'Document toevoegen';
+
+  @override
+  String get chooseAddNewDocument => 'Of voeg een nieuw document toe';
+
+  @override
+  String chooseContinueWith(String documentType) {
+    String _temp0 = intl.Intl.selectLogic(documentType, {
+      'passport': 'paspoort',
+      'identityCard': 'identiteitskaart',
+      'drivingLicence': 'rijbewijs',
+      'other': 'document',
+    });
+    return 'Doorgaan met $_temp0';
+  }
+
+  @override
+  String chooseValidUntil(String date) {
+    return 'geldig tot $date';
+  }
+
+  @override
+  String get homeEyebrow => 'IDENTITEITSVERIFICATIE';
+
+  @override
+  String get homeTitle => 'Verifieer je identiteit met een QR-code';
+
+  @override
+  String get homeBody => 'Als een dienst wil weten wie je bent, toont die een QR-code. Scan hem hier om te beginnen.';
+
+  @override
+  String homeConnectedBody(String relyingParty) {
+    return 'Je hebt een verzoek van $relyingParty geaccepteerd. Ga verder waar je gebleven was.';
+  }
+
+  @override
+  String homeContinueWith(String relyingParty) {
+    return 'Verder met $relyingParty';
+  }
+
+  @override
+  String get homeHowItWorks => 'Zo werkt het';
+
+  @override
+  String get homeStepScan => 'Scan de QR-code die de website of app toont.';
+
+  @override
+  String get homeStepDocument => 'Gebruik een document dat op deze telefoon bewaard is, of scan je ID.';
+
+  @override
+  String get homeStepSelfie => 'Maak even een selfie en deel daarna alleen wat er gevraagd is.';
+
+  @override
+  String get consentTitle => 'Verzoek';
+
+  @override
+  String consentHeading(String party) {
+    return '$party wil je identiteit verifiëren';
+  }
+
+  @override
+  String get consentTheyWillReceive => 'Zij ontvangen';
+
+  @override
+  String get qrScanClose => 'Sluiten';
+
+  @override
+  String get qrScanPointCamera => 'Richt je camera op de QR-code';
+
+  @override
+  String get qrScanWhereToFind => 'Je vindt hem op de website of in de app die je vroeg om te verifiëren.';
+
+  @override
+  String get qrScanNothingShared => 'Er wordt niets gedeeld totdat je op het volgende scherm akkoord gaat.';
+
+  @override
+  String get selfieIntroBody =>
+      'We vergelijken je gezicht met de foto op de chip van je document. Dat duurt een paar seconden.';
+
+  @override
+  String get selfieTipOnDevice => 'Verwerkt op je telefoon. Er wordt geen video opgeslagen.';
+
+  @override
+  String get selfieGettingReady => 'Even voorbereiden…';
+
+  @override
+  String get selfieStarting => 'Starten…';
+
+  @override
+  String get selfieCameraGettingReady => 'Camera wordt klaargezet…';
+
+  @override
+  String selfieHoldStillCountdown(int seconds) {
+    return 'Niet bewegen · ${seconds}s';
+  }
+
+  @override
+  String get selfieStoppedTitle => 'Selfiecheck gestopt';
+
+  @override
+  String get selfieTryAgain => 'Opnieuw proberen';
+
+  @override
+  String get selfieGoBack => 'Terug';
+
+  @override
+  String get selfieNoMatchTitle => 'Je gezicht kwam niet overeen';
+
+  @override
+  String get selfieNoMatchMessage => 'Zorg dat je gezicht goed verlicht is en het ovaal vult, en probeer het opnieuw.';
+
+  @override
+  String get selfieCheckingTitle => 'Je selfie wordt gecontroleerd';
+
+  @override
+  String get selfieSettingUpTitle => 'Selfiecheck wordt voorbereid';
+
+  @override
+  String get selfieComparing => 'We vergelijken je gezicht met de foto op de chip van je document.';
+
+  @override
+  String get selfieLoadingModels => 'Gezichtsmodellen laden…';
+
+  @override
+  String get selfieOpeningCamera => 'Camera openen…';
+
+  @override
+  String get dataViewDocumentRead => 'Document gelezen';
+
+  @override
+  String get dataViewDrivingLicenceRead => 'Rijbewijs gelezen';
+
+  @override
+  String dataViewChipRead(String documentType) {
+    String _temp0 = intl.Intl.selectLogic(documentType, {
+      'passport': 'paspoort',
+      'identityCard': 'identiteitskaart',
+      'drivingLicence': 'rijbewijs',
+      'other': 'document',
+    });
+    return 'We hebben de chip van je $_temp0 gelezen.';
+  }
+
+  @override
+  String dataViewSubtitle(String documentType, String country) {
+    String _temp0 = intl.Intl.selectLogic(documentType, {
+      'passport': 'Paspoort',
+      'identityCard': 'Identiteitskaart',
+      'drivingLicence': 'Rijbewijs',
+      'other': 'Document',
+    });
+    return '$_temp0 · $country';
+  }
+
+  @override
+  String get dataViewAddToWallet => 'Toevoegen aan wallet';
+
+  @override
+  String get dataViewDateOfBirth => 'Geboortedatum';
+
+  @override
+  String get dataViewPlaceOfBirth => 'Geboorteplaats';
+
+  @override
+  String get dataViewDocumentNumber => 'Documentnummer';
+
+  @override
+  String get dataViewIssuedBy => 'Afgegeven door';
+
+  @override
+  String get dataViewValidUntil => 'Geldig tot';
+
+  @override
+  String dataViewCategoryUntil(String date) {
+    return 'tot $date';
+  }
+
+  @override
+  String nfcHoldPhoneOn(String documentType) {
+    String _temp0 = intl.Intl.selectLogic(documentType, {
+      'passport': 'het paspoort',
+      'identityCard': 'de identiteitskaart',
+      'drivingLicence': 'het rijbewijs',
+      'other': 'het document',
+    });
+    return 'Houd je telefoon op $_temp0';
+  }
+
+  @override
+  String nfcGuidanceIntro(String documentType) {
+    String _temp0 = intl.Intl.selectLogic(documentType, {
+      'passport': 'je paspoort',
+      'identityCard': 'je identiteitskaart',
+      'drivingLicence': 'je rijbewijs',
+      'other': 'je document',
+    });
+    return 'In $_temp0 zit een chip die bewijst dat het document echt is. Die lezen we uit met NFC.';
+  }
+
+  @override
+  String nfcGuidanceStepLay(String documentType) {
+    String _temp0 = intl.Intl.selectLogic(documentType, {
+      'passport': 'Sluit het paspoort en leg het op een vlakke, niet-metalen ondergrond.',
+      'identityCard': 'Leg de identiteitskaart op een vlakke, niet-metalen ondergrond.',
+      'drivingLicence': 'Leg het rijbewijs op een vlakke, niet-metalen ondergrond.',
+      'other': 'Leg het document op een vlakke, niet-metalen ondergrond.',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String nfcGuidanceStepPlace(String documentType) {
+    String _temp0 = intl.Intl.selectLogic(documentType, {'passport': 'de kaft', 'other': 'de kaart'});
+    return 'Leg de bovenkant van je telefoon plat op $_temp0.';
+  }
+
+  @override
+  String get nfcGuidanceStepKeepStill =>
+      'Houd alles stil tot het vinkje groen wordt. Haal een dik telefoonhoesje eraf als het lezen niet lukt.';
+
+  @override
+  String get nfcTurnedOff => 'NFC staat uit. Zet het aan in de instellingen van je telefoon om verder te gaan.';
+
+  @override
+  String get nfcCancelReading => 'Lezen annuleren';
+
+  @override
+  String get nfcReadingConnectionLost => 'Verbinding verbroken';
+
+  @override
+  String get nfcReadingStoppedTitle => 'Lezen gestopt';
+
+  @override
+  String get nfcReadingStoppedSubtitle => 'Begin opnieuw wanneer je er klaar voor bent.';
+
+  @override
+  String get nfcReadingFailedTitle => 'Lezen mislukt';
+
+  @override
+  String nfcReadingFailedSubtitle(String documentType) {
+    String _temp0 = intl.Intl.selectLogic(documentType, {
+      'passport': 'het paspoort',
+      'identityCard': 'de identiteitskaart',
+      'drivingLicence': 'het rijbewijs',
+      'other': 'het document',
+    });
+    return 'Controleer of $_temp0 plat onder je telefoon ligt en probeer het opnieuw.';
+  }
+
+  @override
+  String get nfcReadingSuccessTitle => 'Chip gelezen';
+
+  @override
+  String nfcReadingSuccessSubtitle(String documentType) {
+    String _temp0 = intl.Intl.selectLogic(documentType, {
+      'passport': 'Je paspoort',
+      'identityCard': 'Je identiteitskaart',
+      'drivingLicence': 'Je rijbewijs',
+      'other': 'Je document',
+    });
+    return '$_temp0 is echt.';
+  }
+
+  @override
+  String get nfcReadingInProgressTitle => 'Beweeg je telefoon niet';
+
+  @override
+  String nfcReadingInProgressSubtitle(String documentType) {
+    String _temp0 = intl.Intl.selectLogic(documentType, {
+      'passport': 'het paspoort',
+      'identityCard': 'de identiteitskaart',
+      'drivingLicence': 'het rijbewijs',
+      'other': 'het document',
+    });
+    return 'Houd hem op $_temp0 tot het lezen klaar is.';
+  }
+
+  @override
+  String get nfcRingNotRead => 'Niet gelezen';
+
+  @override
+  String get nfcRingComplete => 'Klaar';
+
+  @override
+  String get nfcRingReading => 'Chip lezen';
+
+  @override
+  String get nfcTryAgain => 'Opnieuw proberen';
+
+  @override
+  String get nfcChecklistSecureDone => 'Beveiligde verbinding opgezet';
+
+  @override
+  String get nfcChecklistSecureActive => 'Beveiligde verbinding opzetten';
+
+  @override
+  String get nfcChecklistDetailsDone => 'Persoonsgegevens gelezen';
+
+  @override
+  String get nfcChecklistDetailsActive => 'Persoonsgegevens lezen';
+
+  @override
+  String nfcChecklistPhotoDone(String documentType) {
+    String _temp0 = intl.Intl.selectLogic(documentType, {
+      'passport': 'het paspoort',
+      'identityCard': 'de identiteitskaart',
+      'drivingLicence': 'het rijbewijs',
+      'other': 'het document',
+    });
+    return 'Pasfoto van $_temp0 gelezen';
+  }
+
+  @override
+  String nfcChecklistPhotoActive(String documentType) {
+    String _temp0 = intl.Intl.selectLogic(documentType, {
+      'passport': 'het paspoort',
+      'identityCard': 'de identiteitskaart',
+      'drivingLicence': 'het rijbewijs',
+      'other': 'het document',
+    });
+    return 'Pasfoto van $_temp0 lezen';
+  }
+
+  @override
+  String get nfcChecklistGenuineDone => 'Chip is echt';
+
+  @override
+  String get nfcChecklistGenuineActive => 'Controleren of de chip echt is';
+
+  @override
+  String get scanClose => 'Sluiten';
+
+  @override
+  String scanSheetTitle(String docType) {
+    String _temp0 = intl.Intl.selectLogic(docType, {
+      'passport': 'Leg de fotopagina in het kader',
+      'identityCard': 'Leg de achterkant van je identiteitskaart in het kader',
+      'drivingLicence': 'Leg de achterkant van je rijbewijs in het kader',
+      'other': 'Leg je document in het kader',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String scanSheetTip(String docType) {
+    String _temp0 = intl.Intl.selectLogic(docType, {
+      'passport':
+          'Zorg dat de twee regels tekst onderaan scherp zijn en niet bedekt worden door je vingers of schittering.',
+      'identityCard':
+          'Zorg dat de drie regels tekst onderaan scherp zijn en niet bedekt worden door je vingers of schittering.',
+      'drivingLicence':
+          'Zorg dat de regel tekst onderaan scherp is en niet bedekt wordt door je vingers of schittering.',
+      'other': 'Zorg dat de tekst onderaan scherp is en niet bedekt wordt door je vingers of schittering.',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get scanHideTips => 'Tips verbergen';
+
+  @override
+  String get scanShowTips => 'Tips en handmatig invoeren tonen';
+
+  @override
+  String get scanEnterDetailsManually => 'Gegevens handmatig invoeren';
+
+  @override
+  String get manualBack => 'Terug';
+
+  @override
+  String get manualTopBarTitle => 'Gegevens invoeren';
+
+  @override
+  String get manualContinue => 'Doorgaan';
+
+  @override
+  String get manualLicenceTitle => 'Typ de code van je rijbewijs over';
+
+  @override
+  String manualLicenceIntro(int length) {
+    return 'Het is de enkele regel van $length tekens op de achterkant. Daarmee wordt de chip ontgrendeld.';
+  }
+
+  @override
+  String manualDocumentTitle(String docType) {
+    String _temp0 = intl.Intl.selectLogic(docType, {
+      'passport': 'paspoort',
+      'identityCard': 'identiteitskaart',
+      'drivingLicence': 'rijbewijs',
+      'other': 'document',
+    });
+    return 'Vul de gegevens van je $_temp0 in';
+  }
+
+  @override
+  String manualDocumentIntro(String docType) {
+    String _temp0 = intl.Intl.selectLogic(docType, {'passport': 'de fotopagina', 'other': 'de voorkant van de kaart'});
+    return 'Neem ze over van $_temp0. Ze ontgrendelen de chip, dus ze moeten precies kloppen.';
+  }
+
+  @override
+  String get manualLicenceParseError =>
+      'Die code kon niet worden gelezen. Controleer hem met je rijbewijs en probeer het opnieuw.';
+
+  @override
+  String manualDocumentNumber(String docType) {
+    String _temp0 = intl.Intl.selectLogic(docType, {
+      'passport': 'Paspoortnummer',
+      'identityCard': 'Identiteitskaartnummer',
+      'drivingLicence': 'Rijbewijsnummer',
+      'other': 'Documentnummer',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get manualDocumentNumberHint => 'bijv. AB1234567';
+
+  @override
+  String get manualDateOfBirth => 'Geboortedatum';
+
+  @override
+  String get manualExpiryDate => 'Vervaldatum';
+
+  @override
+  String get manualWhereToFind => 'Waar vind je ze';
+
+  @override
+  String manualWhereToFindBody(String docType) {
+    String _temp0 = intl.Intl.selectLogic(docType, {
+      'passport':
+          'Het paspoortnummer staat rechtsboven op de fotopagina. De datums staan vermeld als geboortedatum en vervaldatum.',
+      'other': 'Het documentnummer en beide datums staan op de kaart, naast je foto.',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get manualLicenceCode => 'Rijbewijscode';
+
+  @override
+  String get manualLicenceCodePrefix => 'Begint met D1, D2 of DL';
+
+  @override
+  String get manualDateNotSet => 'Niet ingesteld';
+
+  @override
+  String get manualDateSelect => 'Kiezen';
 }

@@ -4,6 +4,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
@@ -15,10 +17,12 @@ import 'package:idem/providers/session_settings.dart';
 import 'package:idem/routing.dart';
 import 'package:idem/services/proofing_deeplink_channel.dart';
 import 'package:idem/services/proofing_session_client.dart';
+import 'package:idem/theme/app_theme.dart';
 import 'package:idem/services/proofing_session_coordinator.dart';
 import 'package:idem/services/proofing_session_watcher.dart';
 import 'package:idem/widgets/common/issuance_result_dialogs.dart';
 import 'package:idem/widgets/common/proofing_session_check_overlay.dart';
+import 'package:idem/widgets/guided/guided_widgets.dart';
 
 void main() async {
   Logger.root.level = Level.ALL;
@@ -28,7 +32,22 @@ void main() async {
   });
 
   WidgetsFlutterBinding.ensureInitialized();
+  await enableGuidedEdgeToEdge();
+  _registerFontLicenses();
   runApp(ProviderScope(child: VcMrtdApp()));
+}
+
+/// The white-label fonts are OFL-licensed, which asks for the licence to
+/// ship with them; this puts it on the platform licence page.
+void _registerFontLicenses() {
+  LicenseRegistry.addLicense(() async* {
+    for (final (family, path) in const [
+      ('Montserrat', 'assets/fonts/OFL-Montserrat.txt'),
+      ('Nunito', 'assets/fonts/OFL-Nunito.txt'),
+    ]) {
+      yield LicenseEntryWithLineBreaks([family], await rootBundle.loadString(path));
+    }
+  });
 }
 
 class VcMrtdApp extends ConsumerStatefulWidget {
@@ -195,12 +214,7 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
       localizationsDelegates: const [...AppLocalizations.localizationsDelegates, MrzCaptureLocalizations.delegate],
       supportedLocales: AppLocalizations.supportedLocales,
       locale: ref.watch(appLocaleProvider),
-      theme: ThemeData(
-        primarySwatch: Colors.indigo,
-        brightness: Brightness.light,
-        textTheme: TextTheme(bodyLarge: TextStyle(fontSize: 16.0, color: Colors.black87)),
-        appBarTheme: AppBarTheme(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
-      ),
+      theme: appTheme(),
     );
   }
 }

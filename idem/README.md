@@ -20,6 +20,11 @@ flutter run
 ```
 `pubspec.lock` was resolved with Flutter 3.38.4, the version `ci_scripts/install_flutter.sh` pins for CI. Running `flutter pub get` on a newer Flutter rewrites the SDK-pinned test packages in it, so check those changes back out if they are not part of your work.
 
+## Layout
+The app uses the guided layout: a dark hero on the home screen, a three-step progress bar, and camera screens with a scrim and cut-out frame. The shared pieces live in `lib/widgets/guided/`.
+
+It's drawn in Idem's own look, `AppBranding.idem` in `lib/theme/app_theme.dart`, which `appTheme` turns into the theme and the guided layout's colours.
+
 ## Backend Integration
 The app connects to the go-passport-issuer backend service, which provides:
 - Document verification using the [gmrtd](https://github.com/gmrtd/gmrtd) library

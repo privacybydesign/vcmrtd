@@ -31,5 +31,6 @@
   "mrzHeaderTitle": "{docType, select, passport{Vul je paspoortgegevens in} identityCard{Vul de gegevens van je identiteitskaart in} drivingLicence{Vul je rijbewijsgegevens in} other{Vul je documentgegevens in}}",
   "mrzHeaderTitleMrz": "Vul de MRZ-regel in",
   "mrzHeaderSubtitle": "Vul de gegevens precies zo in als ze op je {docType, select, passport{paspoort} identityCard{identiteitskaart} drivingLicence{rijbewijs} other{document}} staan",
-  "mrzHeaderSubtitleMrz": "Typ de machineleesbare zone (MRZ) precies zoals die op het document staat"
+  "mrzHeaderSubtitleMrz": "Typ de machineleesbare zone (MRZ) precies zoals die op het document staat",
+  "mrzStepBadge": "{current} van {total} · {label}"
 }

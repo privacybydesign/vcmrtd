@@ -72,6 +72,37 @@ void main() {
     });
   });
 
+  group('ManualEntryScreen — identity card', () {
+    testWidgets('asks for document number and dates, like a passport', (tester) async {
+      _setLargeViewport(tester);
+      await tester.pumpWidget(_screen(documentType: DocumentType.identityCard));
+      await tester.pump();
+
+      expect(find.text('Identity Card Number'), findsOneWidget);
+      expect(find.text('Date of Birth'), findsOneWidget);
+      expect(find.text('Expiry Date'), findsOneWidget);
+      expect(find.text('Enter MRZ String'), findsNothing);
+    });
+  });
+
+  group('ManualEntryRules', () {
+    test('only driving licences are unlocked with the MRZ line', () {
+      expect(ManualEntryRules.usesMrzLine(DocumentType.drivingLicence), isTrue);
+      expect(ManualEntryRules.usesMrzLine(DocumentType.identityCard), isFalse);
+      expect(ManualEntryRules.usesMrzLine(DocumentType.passport), isFalse);
+    });
+
+    test('expiry must be in the future and after the date of birth', () {
+      final now = DateTime(2026, 9, 28);
+      expect(ManualEntryRules.dateOfExpiry(DateTime(2030), documentName: 'Passport', now: now), isNull);
+      expect(ManualEntryRules.dateOfExpiry(DateTime(2020), documentName: 'Passport', now: now), 'Passport has expired');
+      expect(
+        ManualEntryRules.dateOfExpiry(DateTime(2027), documentName: 'Passport', dateOfBirth: DateTime(2028), now: now),
+        'Expiry date cannot be before date of birth',
+      );
+    });
+  });
+
   group('ManualEntryScreen — driving licence', () {
     testWidgets('renders MRZ field and character counter', (tester) async {
       _setLargeViewport(tester);

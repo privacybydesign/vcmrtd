@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/widgets/common/button_styles.dart';
+import 'package:idem/theme/brand_theme.dart';
 
 /// What the session still waits for once this app sent every step it
 /// performs.
@@ -10,33 +11,65 @@ enum PendingStep {
 
   /// The face step, which the browser runs.
   browserFace,
+
+  /// The user's go-ahead: every step is in, the session is submitted when
+  /// they tap Share.
+  share,
 }
 
 /// Shown on the document data screen when every step was already sent to
 /// the session as it completed, so there's nothing left to submit - just a
 /// confirmation.
-class SubmittedToProofingSessionSection extends StatelessWidget {
+class SubmittedToProofingSessionSection extends StatefulWidget {
   final String relyingParty;
   final PendingStep pendingStep;
   final VoidCallback onDone;
+
+  /// Submits the session; set for [PendingStep.share].
+  final Future<bool> Function()? onShare;
 
   const SubmittedToProofingSessionSection({
     super.key,
     required this.relyingParty,
     required this.pendingStep,
     required this.onDone,
+    this.onShare,
   });
 
   @override
+  State<SubmittedToProofingSessionSection> createState() => _SubmittedToProofingSessionSectionState();
+}
+
+class _SubmittedToProofingSessionSectionState extends State<SubmittedToProofingSessionSection> {
+  bool _sharing = false;
+
+  Future<void> _share() async {
+    setState(() => _sharing = true);
+    await widget.onShare!();
+    if (mounted) setState(() => _sharing = false);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final relyingParty = widget.relyingParty;
+    final style = context.brand.primaryButtonStyle ?? actionButtonStyle;
+    final share = widget.pendingStep == PendingStep.share && widget.onShare != null;
     return _ProofingCard(
       icon: Icons.check_circle,
-      title: context.l10n.proofingSentTo(relyingParty),
-      body: switch (pendingStep) {
-        PendingStep.browserFace => context.l10n.proofingSentBrowserFace(relyingParty),
-        PendingStep.none => context.l10n.proofingSentEverything(relyingParty),
+      title: share ? l10n.proofingVerifiedTitle : l10n.proofingSentTo(relyingParty),
+      body: switch (widget.pendingStep) {
+        PendingStep.browserFace => l10n.proofingSentBrowserFace(relyingParty),
+        PendingStep.share => l10n.proofingShareBody(relyingParty),
+        PendingStep.none => l10n.proofingSentEverything(relyingParty),
       },
-      action: ElevatedButton(onPressed: onDone, style: actionButtonStyle, child: Text(context.l10n.proofingDone)),
+      action: share
+          ? ElevatedButton(
+              onPressed: _sharing ? null : _share,
+              style: style,
+              child: Text(_sharing ? l10n.proofingSharing : l10n.proofingShareWith(relyingParty)),
+            )
+          : ElevatedButton(onPressed: widget.onDone, style: style, child: Text(l10n.proofingDone)),
     );
   }
 }
@@ -63,7 +96,7 @@ class _ProofingCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(icon, color: Colors.green, size: 28),
+                Icon(icon, color: context.brand.success ?? Colors.green, size: 28),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(

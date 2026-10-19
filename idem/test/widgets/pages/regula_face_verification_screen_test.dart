@@ -6,6 +6,7 @@ import 'package:idem/providers/face_api_provider.dart';
 import 'package:idem/services/face_verification_outcome.dart';
 import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/services/regula_face_service.dart';
+import 'package:idem/theme/app_theme.dart';
 import 'package:idem/widgets/pages/regula_face_verification_screen.dart';
 import 'package:vcmrtd/vcmrtd.dart' show FaceMatch;
 
@@ -43,6 +44,7 @@ Future<List<FaceVerificationOutcome>> _pump(
   _FakeRegula regula, {
   Future<FaceMatch?> Function(String)? matchFace,
   VoidCallback? onBack,
+  ThemeData? theme,
 }) async {
   final verified = <FaceVerificationOutcome>[];
   await tester.pumpWidget(
@@ -51,6 +53,7 @@ Future<List<FaceVerificationOutcome>> _pump(
       child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
+        theme: theme,
         home: RegulaFaceVerificationScreen(
           faceVerification: matchFace == null ? _announcement : _issuerAnnouncement,
           onBackPressed: onBack ?? () {},
@@ -70,9 +73,7 @@ void main() {
 
     await tester.tap(find.text('Start Verification'));
     await tester.pump();
-    expect(find.text('Liveness Confirmed'), findsOneWidget);
-
-    await tester.pump(const Duration(seconds: 2));
+    expect(find.text('Continuing…'), findsOneWidget);
     expect(regula.lastTag, 'ips-tref_s1');
     expect(regula.lastServiceUrl, 'https://faceapi.test');
     expect(verified.single.engine, 'regula');
@@ -93,7 +94,6 @@ void main() {
 
     await tester.tap(find.text('Try Again'));
     await tester.pump();
-    await tester.pump(const Duration(seconds: 2));
     expect(verified.single.livenessTransactionId, 'tx-2');
   });
 
@@ -105,6 +105,21 @@ void main() {
 
     expect(find.text('Cancelled'), findsOneWidget);
     expect(verified, isEmpty);
+  });
+
+  testWidgets('the guided layout opens on the selfie intro, whose button starts the scan', (tester) async {
+    tester.view.physicalSize = const Size(390, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final regula = _FakeRegula([const RegulaLivenessResult(isLive: true, transactionId: 'tx-1')]);
+    final verified = await _pump(tester, regula, theme: appTheme());
+
+    expect(find.text('Take a quick selfie'), findsOneWidget);
+    expect(find.text('Start Verification'), findsNothing);
+
+    await tester.tap(find.text('Start selfie check'));
+    await tester.pump();
+    expect(verified.single.livenessTransactionId, 'tx-1');
   });
 
   group('standalone (passport issuer matches)', () {
@@ -123,9 +138,7 @@ void main() {
       await tester.tap(find.text('Start Verification'));
       await tester.pump();
       await tester.pump();
-      expect(find.text('Identity Verified'), findsOneWidget);
-
-      await tester.pump(const Duration(seconds: 2));
+      expect(find.text('Continuing…'), findsOneWidget);
       expect(asked, ['tx-1']);
       expect(regula.lastTag, isNull);
       expect(verified.single.matchScore, 0.91);
@@ -175,7 +188,6 @@ void main() {
       await tester.tap(find.text('Try Again'));
       await tester.pump();
       await tester.pump();
-      await tester.pump(const Duration(seconds: 2));
       expect(backs, 0);
       expect(asked, ['tx-2']);
       expect(verified.single.matchScore, 0.9);

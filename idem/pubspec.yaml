@@ -86,6 +86,27 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  # The design's fonts and their licences (see lib/theme/app_theme.dart).
+  assets:
+    - assets/fonts/OFL-Montserrat.txt
+    - assets/fonts/OFL-Nunito.txt
+
+  fonts:
+    - family: Montserrat
+      fonts:
+        - asset: assets/fonts/Montserrat-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Montserrat-Bold.ttf
+          weight: 700
+    - family: Nunito
+      fonts:
+        - asset: assets/fonts/Nunito-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Nunito-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Nunito-Bold.ttf
+          weight: 700
+
   # To add assets to your application, add an assets section, like this:
 
   # An image asset can refer to one or more resolution-specific "variants", see

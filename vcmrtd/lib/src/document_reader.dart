@@ -589,7 +589,7 @@ double progressForState(DocumentReaderState state) {
     DocumentReaderCancelled() => 0.0,
     DocumentReaderCancelling() => 0.0,
     DocumentReaderFailed() => 0.0,
-    DocumentReaderConnecting() => 0.1,
+    DocumentReaderConnecting() => 0.0,
     DocumentReaderReadingCardAccess() => 0.2,
     DocumentReaderAuthenticating() => 0.3,
     DocumentReaderReadingCOM() => 0.4,

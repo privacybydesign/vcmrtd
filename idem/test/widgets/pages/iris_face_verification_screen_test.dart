@@ -60,36 +60,11 @@ void main() {
 
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
-    completer.complete({'outcome': 'matched', 'face': Uint8List(0)});
+    completer.complete({'outcome': 'failed', 'face': null});
     await tester.pumpAndSettle();
   });
 
-  testWidgets('renders a success result when the SDK reports a match', (tester) async {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async {
-      return {'outcome': 'matched', 'face': _fakePortraitPng()};
-    });
-
-    await tester.pumpWidget(
-      MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: IrisFaceVerificationScreen(nfcImageBytes: _fakePortraitPng(), onBackPressed: () {}, onVerified: (_) {}),
-      ),
-    );
-    await tester.pump();
-    await _startVerification(tester);
-    await tester.pumpAndSettle();
-
-    expect(find.text('Identity Verified'), findsOneWidget);
-    expect(find.text('Document photo'), findsOneWidget);
-    expect(find.text('Live capture'), findsOneWidget);
-    // A matched result auto-continues, so there's no retry button — just a
-    // brief "Continuing…" hint before onVerified fires.
-    expect(find.text('Try Again'), findsNothing);
-    expect(find.text('Continuing…'), findsOneWidget);
-  });
-
-  testWidgets('a matched result auto-continues to onVerified after a short delay, not onBackPressed', (tester) async {
+  testWidgets('a match continues straight away under a spinner, no result screen', (tester) async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async {
       return {'outcome': 'matched', 'face': _fakePortraitPng()};
     });
@@ -109,12 +84,14 @@ void main() {
     );
     await tester.pump();
     await _startVerification(tester);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump();
 
-    expect(verifiedCount, 0);
-    await tester.pump(const Duration(seconds: 2));
     expect(verifiedCount, 1);
     expect(backCount, 0);
+    expect(find.text('Continuing…'), findsOneWidget);
+    expect(find.text('Live capture'), findsNothing);
+    expect(find.text('Try Again'), findsNothing);
   });
 
   testWidgets('renders a failure result when the SDK reports no match', (tester) async {
@@ -231,9 +208,10 @@ void main() {
     );
     await tester.pump();
     await _startVerification(tester);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump();
 
-    expect(find.text('Identity Verified'), findsOneWidget);
+    expect(find.text('Continuing…'), findsOneWidget);
     expect(verifiedPortrait, isNotNull);
   });
 

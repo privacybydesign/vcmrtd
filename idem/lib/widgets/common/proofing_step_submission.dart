@@ -24,18 +24,7 @@ Future<ProofingStepResponse?> submitProofingStep(
     showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => PopScope(
-        canPop: false,
-        child: AlertDialog(
-          content: Row(
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(width: 20),
-              Expanded(child: Text(context.l10n.faceSubmitSending(what, session.info.relyingParty))),
-            ],
-          ),
-        ),
-      ),
+      builder: (_) => PopScope(canPop: false, child: const Center(child: CircularProgressIndicator())),
     );
     try {
       final response = await submit();

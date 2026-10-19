@@ -1,13 +1,16 @@
 import 'dart:typed_data';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart' show Colors;
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/services/flow_step_plan.dart';
 import 'package:idem/widgets/pages/data_screen_widgets/submit_to_proofing_session.dart';
 import 'package:idem/widgets/displays/passport_image_widget.dart';
+import 'package:idem/widgets/guided/guided_widgets.dart';
 
 import '../../widgets/pages/data_screen_widgets/document_data_view.dart';
+import '../../widgets/pages/data_screen_widgets/guided_document_data_view.dart';
 
 class DrivingLicenceDataScreen extends StatelessWidget {
   final DrivingLicenceData drivingLicence;
@@ -18,6 +21,9 @@ class DrivingLicenceDataScreen extends StatelessWidget {
   /// see [DocumentDataView.submittedTo].
   final String? submittedTo;
   final PendingStep pendingStep;
+
+  /// Submits the session; set for [PendingStep.share].
+  final Future<bool> Function()? onShare;
 
   /// Step badge numbers — default to vcmrtd's fixed 4-step sequence (this
   /// screen is always the last, step 4, there) so any caller not passing
@@ -34,12 +40,14 @@ class DrivingLicenceDataScreen extends StatelessWidget {
     required this.onBackPressed,
     this.submittedTo,
     this.pendingStep = PendingStep.none,
+    this.onShare,
     this.stepNumber = FlowStepPlan.defaultResultStep,
     this.totalSteps = FlowStepPlan.defaultTotalSteps,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (context.guided != null) return _buildGuided(context);
     final l10n = context.l10n;
     final licence = drivingLicence;
     return DocumentDataView(
@@ -50,6 +58,7 @@ class DrivingLicenceDataScreen extends StatelessWidget {
       submittedTo: submittedTo,
       pendingStep: pendingStep,
       onBackPressed: onBackPressed,
+      onShare: onShare,
       stepNumber: stepNumber,
       totalSteps: totalSteps,
       children: [
@@ -74,6 +83,73 @@ class DrivingLicenceDataScreen extends StatelessWidget {
           _buildSection(l10n.docCategories, [
             for (final category in licence.categories) _buildCategoryCard(context, category),
           ]),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildGuided(BuildContext context) {
+    final g = context.guided!;
+    final l10n = context.l10n;
+    final licence = drivingLicence;
+    final name = '${licence.holderOtherName} ${licence.holderSurname}'.trim();
+    return GuidedDocumentDataView(
+      document: licence,
+      rawDocument: drivingLicenceDataResult,
+      documentType: DocumentType.drivingLicence,
+      submittedTo: submittedTo,
+      pendingStep: pendingStep,
+      onBackPressed: onBackPressed,
+      onShare: onShare,
+      readTitle: l10n.dataViewDrivingLicenceRead,
+      photoImageData: licence.photoImageData,
+      // Like the classic screen: anything not JPEG2000 is decoded as a plain image.
+      photoImageType: licence.photoImageType ?? ImageType.jpeg,
+      holderName: name.isEmpty ? l10n.idDocumentDrivingLicence : name,
+      subtitle: l10n.dataViewSubtitle(DocumentType.drivingLicence.name, licence.issuingMemberState),
+      details: [
+        GuidedDetail(l10n.dataViewDateOfBirth, _formatDate(licence.dateOfBirth)),
+        GuidedDetail(l10n.dataViewPlaceOfBirth, licence.placeOfBirth),
+        GuidedDetail(l10n.dataViewDocumentNumber, licence.documentNumber, mono: true),
+        GuidedDetail(l10n.dataViewIssuedBy, licence.issuingAuthority),
+        GuidedDetail(l10n.dataViewValidUntil, _formatDate(licence.dateOfExpiry)),
+      ],
+      extra: [
+        if (licence.categories.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 8),
+            child: Text(
+              l10n.docCategories,
+              style: g.heading(15, weight: FontWeight.w600, color: g.slate),
+            ),
+          ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final category in licence.categories)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: g.border),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(category.category, style: g.heading(15)),
+                      Text(
+                        l10n.dataViewCategoryUntil(_formatDate(category.dateOfExpiry)),
+                        style: TextStyle(fontSize: 12, color: g.bodyText),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ],
       ],
     );
