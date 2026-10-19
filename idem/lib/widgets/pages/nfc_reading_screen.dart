@@ -333,7 +333,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
                   child: Container(
                     width: 2,
                     margin: const EdgeInsets.symmetric(vertical: 4),
-                    color: isDone ? brand.success ?? const Color(0xFF4CAF50) : Colors.grey[300],
+                    color: isDone ? nfcStateColor(NFCReadingState.success, brand) : Colors.grey[300],
                   ),
                 ),
             ],
@@ -362,7 +362,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
 
   Widget _buildStepStatusIcon({required bool isDone, required bool isCurrent, required NFCReadingState nfcState}) {
     if (isDone) {
-      return Icon(Icons.check_circle, color: context.brand.success ?? const Color(0xFF4CAF50), size: 22);
+      return Icon(Icons.check_circle, color: nfcStateColor(NFCReadingState.success, context.brand), size: 22);
     }
     if (isCurrent) {
       if (nfcState == NFCReadingState.error) {
@@ -425,7 +425,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
                 ),
                 center: const BrandMark(size: 32),
               ),
-              const GuidedStepBar(step: 2),
+              GuidedStepBar(step: widget.stepNumber, total: widget.totalSteps),
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(20, 56, 20, 20),
@@ -490,7 +490,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
               ),
               if (failed)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                  padding: guidedBottomButtonPadding,
                   child: GuidedButton(label: l10n.nfcTryAgain, icon: Icons.refresh, onPressed: retry),
                 ),
             ],

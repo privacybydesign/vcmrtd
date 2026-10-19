@@ -244,12 +244,17 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
                             onDark: true,
                           ),
                         ),
-                        const GuidedStepBar(step: 1, onDark: true),
+                        GuidedStepBar(step: widget.stepNumber, total: widget.totalSteps, onDark: true),
                       ],
                     ),
                   ),
                   const Spacer(),
-                  _GuidedScanSheet(documentType: widget.documentType, onManualEntry: widget.onManualEntry),
+                  _GuidedScanSheet(
+                    documentType: widget.documentType,
+                    onManualEntry: widget.onManualEntry,
+                    stepNumber: widget.stepNumber,
+                    totalSteps: widget.totalSteps,
+                  ),
                 ],
               ),
             ),
@@ -278,10 +283,17 @@ int _mrzLineCount(DocumentType type) => switch (type) {
 /// Kept closed it leaves the whole frame, and the text read along its bottom,
 /// in view on smaller phones.
 class _GuidedScanSheet extends StatefulWidget {
-  const _GuidedScanSheet({required this.documentType, required this.onManualEntry});
+  const _GuidedScanSheet({
+    required this.documentType,
+    required this.onManualEntry,
+    required this.stepNumber,
+    required this.totalSteps,
+  });
 
   final DocumentType documentType;
   final VoidCallback onManualEntry;
+  final int stepNumber;
+  final int totalSteps;
 
   @override
   State<_GuidedScanSheet> createState() => _GuidedScanSheetState();
@@ -346,7 +358,7 @@ class _GuidedScanSheetState extends State<_GuidedScanSheet> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const GuidedStepLabel(step: 1),
+                                  GuidedStepLabel(step: widget.stepNumber, total: widget.totalSteps),
                                   const SizedBox(height: 4),
                                   Text(title, style: g.heading(18, height: 1.3)),
                                 ],

@@ -7,6 +7,9 @@ import 'package:idem/theme/brand_theme.dart';
 
 /// Building blocks shared by the guided layout's screens (see [GuidedStyle]).
 
+/// Around the button(s) at the bottom of a guided screen.
+const guidedBottomButtonPadding = EdgeInsets.fromLTRB(20, 0, 20, 28);
+
 extension GuidedContext on BuildContext {
   /// The active brand's guided style, or null for the classic layout.
   GuidedStyle? get guided => brand.guided;
@@ -103,15 +106,14 @@ class GuidedTopBarTitle extends StatelessWidget {
   }
 }
 
-/// Three-segment progress bar: scan document, read chip, selfie check.
+/// Progress bar with a segment per step of the flow ([FlowStepPlan]).
 class GuidedStepBar extends StatelessWidget {
-  const GuidedStepBar({super.key, required this.step, this.onDark = false});
+  const GuidedStepBar({super.key, required this.step, required this.total, this.onDark = false});
 
   /// 1-based step that's current; that many segments are filled.
   final int step;
+  final int total;
   final bool onDark;
-
-  static const stepCount = 3;
 
   @override
   Widget build(BuildContext context) {
@@ -119,12 +121,12 @@ class GuidedStepBar extends StatelessWidget {
     final filled = onDark ? g.heroAccent : g.action;
     final empty = onDark ? Colors.white.withValues(alpha: 0.2) : g.border;
     return Semantics(
-      label: context.l10n.guidedStepOf(step, stepCount),
+      label: context.l10n.guidedStepOf(step, total),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
         child: Row(
           children: [
-            for (var i = 1; i <= stepCount; i++) ...[
+            for (var i = 1; i <= total; i++) ...[
               if (i > 1) const SizedBox(width: 6),
               Expanded(
                 child: Container(
@@ -140,18 +142,19 @@ class GuidedStepBar extends StatelessWidget {
   }
 }
 
-/// "Step N of 3" over a guided heading.
+/// "Step N of M" over a guided heading.
 class GuidedStepLabel extends StatelessWidget {
-  const GuidedStepLabel({super.key, required this.step, this.onDark = false});
+  const GuidedStepLabel({super.key, required this.step, required this.total, this.onDark = false});
 
   final int step;
+  final int total;
   final bool onDark;
 
   @override
   Widget build(BuildContext context) {
     final g = context.guided!;
     return Text(
-      context.l10n.guidedStepOf(step, GuidedStepBar.stepCount),
+      context.l10n.guidedStepOf(step, total),
       style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: onDark ? g.stepLabelOnDark : g.stepLabel),
     );
   }

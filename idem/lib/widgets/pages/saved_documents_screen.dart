@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/providers/wallet_provider.dart';
-import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:idem/widgets/pages/wallet_widgets.dart';
 
@@ -141,18 +140,12 @@ class SavedDocumentsScreen extends ConsumerWidget {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                padding: guidedBottomButtonPadding,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     GuidedButton(label: l10n.docScanQrTitle, icon: Icons.qr_code_scanner, onPressed: onScanQr),
                     const SizedBox(height: 14),
-                    if (context.brand.showPoweredByIdem)
-                      Text(
-                        l10n.guidedPoweredByIdem,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 12, color: g.muted),
-                      ),
                   ],
                 ),
               ),

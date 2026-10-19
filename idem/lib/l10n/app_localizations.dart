@@ -1655,25 +1655,25 @@ abstract class AppLocalizations {
   /// No description provided for @proofingVerifiedTitle.
   ///
   /// In en, this message translates to:
-  /// **'Identity verified'**
+  /// **'Document read'**
   String get proofingVerifiedTitle;
 
   /// No description provided for @proofingShareBody.
   ///
   /// In en, this message translates to:
-  /// **'Share the result with {relyingParty} to finish.'**
+  /// **'Your document details were sent to {relyingParty}. Finish to complete the verification.'**
   String proofingShareBody(String relyingParty);
 
   /// No description provided for @proofingShareWith.
   ///
   /// In en, this message translates to:
-  /// **'Share with {relyingParty}'**
+  /// **'Finish with {relyingParty}'**
   String proofingShareWith(String relyingParty);
 
   /// No description provided for @proofingSharing.
   ///
   /// In en, this message translates to:
-  /// **'Sharing…'**
+  /// **'Finishing…'**
   String get proofingSharing;
 
   /// No description provided for @proofingAddToWallet.
@@ -1919,14 +1919,8 @@ abstract class AppLocalizations {
   /// No description provided for @guidedSaveForNextTimeSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Keep this document on this phone so you don’t have to scan it again.'**
+  /// **'Keep this document on this phone until the app is closed, so you don’t have to scan it again.'**
   String get guidedSaveForNextTimeSubtitle;
-
-  /// No description provided for @guidedPoweredByIdem.
-  ///
-  /// In en, this message translates to:
-  /// **'Powered by Idem'**
-  String get guidedPoweredByIdem;
 
   /// No description provided for @settingsYourDocuments.
   ///
@@ -2330,6 +2324,12 @@ abstract class AppLocalizations {
   /// **'We read your {documentType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} chip.'**
   String dataViewChipRead(String documentType);
 
+  /// No description provided for @dataViewNotAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Not available'**
+  String get dataViewNotAvailable;
+
   /// No description provided for @dataViewSubtitle.
   ///
   /// In en, this message translates to:
@@ -2459,7 +2459,7 @@ abstract class AppLocalizations {
   /// No description provided for @nfcReadingSuccessSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Your {documentType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} is genuine.'**
+  /// **'Your {documentType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} chip was read.'**
   String nfcReadingSuccessSubtitle(String documentType);
 
   /// No description provided for @nfcReadingInProgressTitle.
@@ -2537,13 +2537,13 @@ abstract class AppLocalizations {
   /// No description provided for @nfcChecklistGenuineDone.
   ///
   /// In en, this message translates to:
-  /// **'Chip is genuine'**
+  /// **'Chip read securely'**
   String get nfcChecklistGenuineDone;
 
   /// No description provided for @nfcChecklistGenuineActive.
   ///
   /// In en, this message translates to:
-  /// **'Checking the chip is genuine'**
+  /// **'Reading the chip securely'**
   String get nfcChecklistGenuineActive;
 
   /// No description provided for @scanClose.

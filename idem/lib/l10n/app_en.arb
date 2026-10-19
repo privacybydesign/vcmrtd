@@ -506,8 +506,8 @@
     }
   },
   "proofingDone": "Done",
-  "proofingVerifiedTitle": "Identity verified",
-  "proofingShareBody": "Share the result with {relyingParty} to finish.",
+  "proofingVerifiedTitle": "Document read",
+  "proofingShareBody": "Your document details were sent to {relyingParty}. Finish to complete the verification.",
   "@proofingShareBody": {
     "placeholders": {
       "relyingParty": {
@@ -515,7 +515,7 @@
       }
     }
   },
-  "proofingShareWith": "Share with {relyingParty}",
+  "proofingShareWith": "Finish with {relyingParty}",
   "@proofingShareWith": {
     "placeholders": {
       "relyingParty": {
@@ -523,7 +523,7 @@
       }
     }
   },
-  "proofingSharing": "Sharing…",
+  "proofingSharing": "Finishing…",
   "proofingAddToWallet": "Add to Wallet",
   "proofingDialogOk": "OK",
   "proofingScanDocument": "Scan {docType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}}",
@@ -640,8 +640,7 @@
     }
   },
   "guidedSaveForNextTime": "Save for next time",
-  "guidedSaveForNextTimeSubtitle": "Keep this document on this phone so you don’t have to scan it again.",
-  "guidedPoweredByIdem": "Powered by Idem",
+  "guidedSaveForNextTimeSubtitle": "Keep this document on this phone until the app is closed, so you don’t have to scan it again.",
   "settingsYourDocuments": "Your documents",
   "settingsSavedDocuments": "Saved documents",
   "settingsSavedCount": "{count, plural, =0{None on this phone} other{{count} on this phone}}",
@@ -807,6 +806,7 @@
       }
     }
   },
+  "dataViewNotAvailable": "Not available",
   "dataViewSubtitle": "{documentType, select, passport{Passport} identityCard{ID card} drivingLicence{Driving licence} other{Document}} · {country}",
   "@dataViewSubtitle": {
     "placeholders": {
@@ -880,7 +880,7 @@
     }
   },
   "nfcReadingSuccessTitle": "Chip read",
-  "nfcReadingSuccessSubtitle": "Your {documentType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} is genuine.",
+  "nfcReadingSuccessSubtitle": "Your {documentType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} chip was read.",
   "@nfcReadingSuccessSubtitle": {
     "placeholders": {
       "documentType": {
@@ -921,8 +921,8 @@
       }
     }
   },
-  "nfcChecklistGenuineDone": "Chip is genuine",
-  "nfcChecklistGenuineActive": "Checking the chip is genuine",
+  "nfcChecklistGenuineDone": "Chip read securely",
+  "nfcChecklistGenuineActive": "Reading the chip securely",
   "scanClose": "Close",
   "scanSheetTitle": "{docType, select, passport{Place the photo page in the frame} identityCard{Place the back of your ID card in the frame} drivingLicence{Place the back of your driving licence in the frame} other{Place your document in the frame}}",
   "@scanSheetTitle": {

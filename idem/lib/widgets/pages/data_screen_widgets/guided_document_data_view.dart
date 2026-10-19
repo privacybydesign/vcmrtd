@@ -21,7 +21,7 @@ class GuidedDetail {
 }
 
 /// Guided layout of the document data screen: a success header and the key
-/// details in one card. Below it: "Share with ..." while the session waits
+/// details in one card. Below it: "Finish with ..." while the session waits
 /// for the user's go-ahead, "Done" once every step was sent (both with a
 /// "save for next time" checkbox), "add to wallet" otherwise.
 ///
@@ -109,7 +109,7 @@ class _GuidedDocumentDataViewState extends ConsumerState<GuidedDocumentDataView>
           const SizedBox(width: 16),
           Expanded(
             child: Text(
-              d.value ?? '—',
+              d.value ?? context.l10n.dataViewNotAvailable,
               textAlign: TextAlign.end,
               style: TextStyle(
                 fontSize: d.mono ? 14 : 15,

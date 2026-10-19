@@ -197,6 +197,8 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
   Widget _buildGuidedIntro(GuidedStyle g) {
     final l10n = context.l10n;
     return GuidedFaceIntroView(
+      stepNumber: widget.stepNumber,
+      totalSteps: widget.totalSteps,
       style: g,
       title: l10n.faceSelfieIntroTitle,
       body: l10n.faceIrisIntroBody,

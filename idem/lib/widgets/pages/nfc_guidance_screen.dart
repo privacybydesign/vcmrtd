@@ -1,4 +1,4 @@
-// Created for UX improvement - NFC positioning guidance screen
+﻿// Created for UX improvement - NFC positioning guidance screen
 // Implementation based on hive design specifications
 
 import 'dart:async';
@@ -153,7 +153,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with SingleTicker
                 leading: GuidedRoundButton(icon: Icons.chevron_left, tooltip: l10n.docBack, onPressed: widget.onBack),
                 center: const BrandMark(size: 32),
               ),
-              const GuidedStepBar(step: 2),
+              GuidedStepBar(step: widget.stepNumber, total: widget.totalSteps),
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(20, 32, 20, 20),
@@ -161,7 +161,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with SingleTicker
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       AspectRatio(
-                        aspectRatio: 350 / 260,
+                        aspectRatio: _GuidedNfcIllustration.size.aspectRatio,
                         child: AnimatedBuilder(
                           animation: _animationController,
                           builder: (context, _) => _GuidedNfcIllustration(style: g, pulse: _animationController.value),
@@ -173,7 +173,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with SingleTicker
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const GuidedStepLabel(step: 2),
+                            GuidedStepLabel(step: widget.stepNumber, total: widget.totalSteps),
                             const SizedBox(height: 12),
                             Text(l10n.nfcHoldPhoneOn(type), style: g.heading(26)),
                             const SizedBox(height: 12),
@@ -212,7 +212,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with SingleTicker
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                padding: guidedBottomButtonPadding,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -326,10 +326,12 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with SingleTicker
   }
 }
 
-/// A phone lying on a document with NFC waves, drawn in a 350×260 box and
+/// A phone lying on a document with NFC waves, drawn in a [size] box and
 /// scaled to fit. [pulse] (0–1) breathes the waves.
 class _GuidedNfcIllustration extends StatelessWidget {
   const _GuidedNfcIllustration({required this.style, required this.pulse});
+
+  static const size = Size(350, 260);
 
   final GuidedStyle style;
   final double pulse;
@@ -358,9 +360,8 @@ class _GuidedNfcIllustration extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
         child: FittedBox(
-          child: SizedBox(
-            width: 350,
-            height: 260,
+          child: SizedBox.fromSize(
+            size: size,
             child: Stack(
               children: [
                 Positioned(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:idem/services/flow_step_plan.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
@@ -15,11 +16,15 @@ class GuidedManualEntryScreen extends StatefulWidget {
     required this.documentType,
     required this.onBack,
     required this.onManualEntryComplete,
+    this.stepNumber = FlowStepPlan.defaultDocumentCaptureStep,
+    this.totalSteps = FlowStepPlan.defaultTotalSteps,
   });
 
   final DocumentType documentType;
   final VoidCallback onBack;
   final ValueChanged<ScannedMRZ> onManualEntryComplete;
+  final int stepNumber;
+  final int totalSteps;
 
   @override
   State<GuidedManualEntryScreen> createState() => _GuidedManualEntryScreenState();
@@ -110,14 +115,14 @@ class _GuidedManualEntryScreenState extends State<GuidedManualEntryScreen> {
                   ),
                   center: GuidedTopBarTitle(l10n.manualTopBarTitle),
                 ),
-                const GuidedStepBar(step: 1),
+                GuidedStepBar(step: widget.stepNumber, total: widget.totalSteps),
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const GuidedStepLabel(step: 1),
+                        GuidedStepLabel(step: widget.stepNumber, total: widget.totalSteps),
                         const SizedBox(height: 12),
                         Text(title, style: g.heading(26)),
                         const SizedBox(height: 12),
@@ -136,7 +141,7 @@ class _GuidedManualEntryScreenState extends State<GuidedManualEntryScreen> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                  padding: guidedBottomButtonPadding,
                   child: GuidedButton(label: l10n.manualContinue, onPressed: _continue),
                 ),
               ],
@@ -229,7 +234,7 @@ class _GuidedManualEntryScreenState extends State<GuidedManualEntryScreen> {
     final complete = length == ManualEntryRules.mrzLineLength;
     return [
       AspectRatio(
-        aspectRatio: 342 / 96,
+        aspectRatio: _GuidedLicenceIllustration.size.aspectRatio,
         child: _GuidedLicenceIllustration(style: g),
       ),
       const SizedBox(height: 20),
@@ -377,9 +382,11 @@ class _GuidedDateField extends StatelessWidget {
   }
 }
 
-/// The back of a driving licence with its code line highlighted, in a 342×96 box.
+/// The back of a driving licence with its code line highlighted, in a [size] box.
 class _GuidedLicenceIllustration extends StatelessWidget {
   const _GuidedLicenceIllustration({required this.style});
+
+  static const size = Size(342, 96);
 
   final GuidedStyle style;
 
@@ -400,9 +407,8 @@ class _GuidedLicenceIllustration extends StatelessWidget {
       child: ColoredBox(
         color: g.illustrationDocument,
         child: FittedBox(
-          child: SizedBox(
-            width: 342,
-            height: 96,
+          child: SizedBox.fromSize(
+            size: size,
             child: Stack(
               children: [
                 bar(16, 120),

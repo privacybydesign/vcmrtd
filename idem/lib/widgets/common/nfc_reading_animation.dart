@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/widgets/common/document_illustrations.dart';
 import 'package:idem/theme/brand_theme.dart';
+import 'package:idem/widgets/common/animated_nfc_status_widget.dart';
 
 class NfcReadingAnimation extends StatefulWidget {
   const NfcReadingAnimation({super.key, required this.documentType});
@@ -56,7 +57,7 @@ class _NfcReadingAnimationState extends State<NfcReadingAnimation> with SingleTi
               alignment: Alignment.center,
               children: [
                 buildPhoneIllustration(),
-                Icon(Icons.wifi, color: context.brand.accent ?? const Color(0xFF2196F3), size: 28),
+                Icon(Icons.wifi, color: nfcStateColor(NFCReadingState.waiting, context.brand), size: 28),
               ],
             ),
           ),
@@ -81,7 +82,7 @@ class _NfcReadingAnimationState extends State<NfcReadingAnimation> with SingleTi
             height: 96,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: context.brand.accent ?? const Color(0xFF2196F3), width: 2),
+              border: Border.all(color: nfcStateColor(NFCReadingState.waiting, context.brand), width: 2),
             ),
           ),
         ),

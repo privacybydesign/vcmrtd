@@ -1030,6 +1030,8 @@ GoRouter createRouter({
                     documentType: params.documentType,
                     onBack: context.pop,
                     onManualEntryComplete: onComplete,
+                    stepNumber: plan.documentCaptureStepNumber ?? FlowStepPlan.defaultDocumentCaptureStep,
+                    totalSteps: plan.totalSteps,
                   )
                 : ManualEntryScreen(
                     documentType: params.documentType,

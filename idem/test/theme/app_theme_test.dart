@@ -104,11 +104,10 @@ void main() {
   });
 
   group('home screen branding', () {
-    testWidgets('without a logo shows the name as a wordmark and no attribution', (tester) async {
+    testWidgets('without a logo shows the name as a wordmark', (tester) async {
       await tester.pumpWidget(_home(appTheme()));
       await tester.pump();
       expect(find.text('Idem'), findsOneWidget);
-      expect(find.text('Powered by Idem'), findsNothing);
     });
 
     testWidgets('with a logo shows the logo instead of the name', (tester) async {

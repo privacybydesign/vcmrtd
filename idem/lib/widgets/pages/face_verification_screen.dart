@@ -1375,7 +1375,7 @@ extension on FlutterFaceVerificationScreenState {
           onPressed: _handleBack,
         ),
       ),
-      const GuidedStepBar(step: 3, onDark: true),
+      GuidedStepBar(step: widget.stepNumber, total: widget.totalSteps, onDark: true),
       const SizedBox(height: 8),
     ],
   );
@@ -1387,6 +1387,8 @@ extension on FlutterFaceVerificationScreenState {
     final ready = _debugReadyOverride || (_cameraController?.value.isInitialized == true && _engineReady);
     final l10n = context.l10n;
     return GuidedFaceIntroView(
+      stepNumber: widget.stepNumber,
+      totalSteps: widget.totalSteps,
       style: g,
       title: l10n.faceSelfieIntroTitle,
       body: l10n.selfieIntroBody,

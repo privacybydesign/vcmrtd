@@ -129,6 +129,8 @@ class _RegulaFaceVerificationScreenState extends ConsumerState<RegulaFaceVerific
     final guided = context.guided;
     if (guided != null && _status == _Status.intro) {
       return GuidedFaceIntroView(
+        stepNumber: widget.stepNumber,
+        totalSteps: widget.totalSteps,
         style: guided,
         title: l10n.faceSelfieIntroTitle,
         body: l10n.faceRegulaIntroBody,

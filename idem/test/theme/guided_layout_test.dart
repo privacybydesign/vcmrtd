@@ -27,6 +27,7 @@ import 'package:face_verification/face_verification.dart';
 import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:idem/widgets/pages/driving_licence_data_screen.dart';
+import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:idem/widgets/pages/guided_manual_entry_screen.dart';
 import 'package:idem/widgets/pages/settings_screen.dart';
 import 'package:idem/widgets/pages/nfc_reading_screen.dart';
@@ -107,6 +108,22 @@ void main() {
     expect(BrandTheme.idem.guided, isNull);
   });
 
+  testWidgets('the guided manual entry counts the flow\'s steps, not a fixed three', (tester) async {
+    await tester.pumpWidget(
+      _app(
+        GuidedManualEntryScreen(
+          documentType: DocumentType.passport,
+          onBack: () {},
+          onManualEntryComplete: (_) {},
+          stepNumber: 1,
+          totalSteps: 2,
+        ),
+      ),
+    );
+    expect(find.text('Step 1 of 2'), findsOneWidget);
+    expect(find.descendant(of: find.byType(GuidedStepBar), matching: find.byType(Expanded)), findsNWidgets(2));
+  });
+
   testWidgets('guided scan frame sits where the MRZ scanner reads', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -176,7 +193,7 @@ void main() {
 
     expect(find.text('Personal details read'), findsOneWidget);
     expect(find.text('Reading passport photo'), findsOneWidget);
-    expect(find.text('Checking the chip is genuine'), findsOneWidget);
+    expect(find.text('Reading the chip securely'), findsOneWidget);
   });
 
   group('guided result', () {
@@ -218,7 +235,7 @@ void main() {
     });
 
     for (final shared in [true, false]) {
-      testWidgets('a verified session is shared from here, and saved for next time only once shared: $shared', (
+      testWidgets('a read document finishes the session from here, and saved for next time only once shared: $shared', (
         tester,
       ) async {
         var shares = 0;
@@ -231,12 +248,12 @@ void main() {
             return shared;
           },
         );
-        expect(find.text('Identity verified'), findsOneWidget);
+        expect(find.text('Document read'), findsOneWidget);
         expect(find.text('Done'), findsNothing);
 
         await tester.tap(find.text('Save for next time'));
         await tester.pump();
-        await tester.tap(find.text('Share with Acme Bank'));
+        await tester.tap(find.text('Finish with Acme Bank'));
         await tester.pump();
 
         expect(shares, 1);

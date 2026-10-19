@@ -17,6 +17,12 @@ abstract final class ManualEntryRules {
 
   static const mrzLineLength = 30;
 
+  /// How a driving licence's MRZ line starts.
+  static const drivingLicenceMrzPrefixes = ['D1', 'D2', 'DL'];
+
+  /// The `docType` of the messages when the caller names none.
+  static const _otherDocType = 'other';
+
   static final documentNumberFormatters = <TextInputFormatter>[
     FilteringTextInputFormatter.allow(RegExp(r'[A-Z0-9]')),
     LengthLimitingTextInputFormatter(15),
@@ -31,7 +37,7 @@ abstract final class ManualEntryRules {
     String? value, {
     required String documentName,
     MrzCaptureLocalizations? l10n,
-    String docType = 'other',
+    String docType = _otherDocType,
   }) {
     if (value == null || value.trim().isEmpty) {
       return l10n?.mrzDocNumberRequired(docType) ?? '$documentName number is required';
@@ -54,7 +60,7 @@ abstract final class ManualEntryRules {
     DateTime? dateOfBirth,
     DateTime? now,
     MrzCaptureLocalizations? l10n,
-    String docType = 'other',
+    String docType = _otherDocType,
   }) {
     if (value == null) return l10n?.mrzExpiryRequired ?? 'Expiry date is required';
     if (value.isBefore(now ?? DateTime.now())) return l10n?.mrzDocumentExpired(docType) ?? '$documentName has expired';
@@ -69,7 +75,7 @@ abstract final class ManualEntryRules {
     if (value.trim().length != mrzLineLength) {
       return l10n?.mrzStringLength ?? 'MRZ must be exactly $mrzLineLength characters';
     }
-    if (!value.startsWith('D1') && !value.startsWith('D2') && !value.startsWith('DL')) {
+    if (!drivingLicenceMrzPrefixes.any(value.startsWith)) {
       return l10n?.mrzStringPrefix ?? 'MRZ must start with D1, D2, or DL';
     }
     return null;

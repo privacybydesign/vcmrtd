@@ -571,8 +571,8 @@ void main() {
           final screen = tester.widget<PassportDataScreen>(find.byType(PassportDataScreen));
           expect(screen.pendingStep, PendingStep.share);
 
-          await tester.ensureVisible(find.text('Share with acme-tenant'));
-          await tester.tap(find.text('Share with acme-tenant'));
+          await tester.ensureVisible(find.text('Finish with acme-tenant'));
+          await tester.tap(find.text('Finish with acme-tenant'));
           await _pumpStepSubmission(tester);
           expect(submits, 1);
           expect(events.single, isA<ProofingSessionCompleted>());

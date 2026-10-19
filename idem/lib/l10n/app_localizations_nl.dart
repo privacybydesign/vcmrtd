@@ -918,20 +918,20 @@ class AppLocalizationsNl extends AppLocalizations {
   String get proofingDone => 'Klaar';
 
   @override
-  String get proofingVerifiedTitle => 'Identiteit geverifieerd';
+  String get proofingVerifiedTitle => 'Document uitgelezen';
 
   @override
   String proofingShareBody(String relyingParty) {
-    return 'Deel het resultaat met $relyingParty om af te ronden.';
+    return 'Je documentgegevens zijn naar $relyingParty gestuurd. Rond af om de verificatie te voltooien.';
   }
 
   @override
   String proofingShareWith(String relyingParty) {
-    return 'Delen met $relyingParty';
+    return 'Afronden met $relyingParty';
   }
 
   @override
-  String get proofingSharing => 'Delen…';
+  String get proofingSharing => 'Afronden…';
 
   @override
   String get proofingAddToWallet => 'Toevoegen aan wallet';
@@ -1099,10 +1099,7 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get guidedSaveForNextTimeSubtitle =>
-      'Bewaar dit document op deze telefoon, zodat je het niet opnieuw hoeft te scannen.';
-
-  @override
-  String get guidedPoweredByIdem => 'Mogelijk gemaakt door Idem';
+      'Bewaar dit document op deze telefoon tot de app sluit, zodat je het niet opnieuw hoeft te scannen.';
 
   @override
   String get settingsYourDocuments => 'Je documenten';
@@ -1362,6 +1359,9 @@ class AppLocalizationsNl extends AppLocalizations {
   }
 
   @override
+  String get dataViewNotAvailable => 'Niet beschikbaar';
+
+  @override
   String dataViewSubtitle(String documentType, String country) {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'Paspoort',
@@ -1473,12 +1473,12 @@ class AppLocalizationsNl extends AppLocalizations {
   @override
   String nfcReadingSuccessSubtitle(String documentType) {
     String _temp0 = intl.Intl.selectLogic(documentType, {
-      'passport': 'Je paspoort',
-      'identityCard': 'Je identiteitskaart',
-      'drivingLicence': 'Je rijbewijs',
-      'other': 'Je document',
+      'passport': 'je paspoort',
+      'identityCard': 'je identiteitskaart',
+      'drivingLicence': 'je rijbewijs',
+      'other': 'je document',
     });
-    return '$_temp0 is echt.';
+    return 'De chip van $_temp0 is uitgelezen.';
   }
 
   @override
@@ -1542,10 +1542,10 @@ class AppLocalizationsNl extends AppLocalizations {
   }
 
   @override
-  String get nfcChecklistGenuineDone => 'Chip is echt';
+  String get nfcChecklistGenuineDone => 'Chip veilig uitgelezen';
 
   @override
-  String get nfcChecklistGenuineActive => 'Controleren of de chip echt is';
+  String get nfcChecklistGenuineActive => 'Chip veilig uitlezen';
 
   @override
   String get scanClose => 'Sluiten';

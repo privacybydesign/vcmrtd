@@ -914,20 +914,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get proofingDone => 'Done';
 
   @override
-  String get proofingVerifiedTitle => 'Identity verified';
+  String get proofingVerifiedTitle => 'Document read';
 
   @override
   String proofingShareBody(String relyingParty) {
-    return 'Share the result with $relyingParty to finish.';
+    return 'Your document details were sent to $relyingParty. Finish to complete the verification.';
   }
 
   @override
   String proofingShareWith(String relyingParty) {
-    return 'Share with $relyingParty';
+    return 'Finish with $relyingParty';
   }
 
   @override
-  String get proofingSharing => 'Sharing…';
+  String get proofingSharing => 'Finishing…';
 
   @override
   String get proofingAddToWallet => 'Add to Wallet';
@@ -1092,10 +1092,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get guidedSaveForNextTime => 'Save for next time';
 
   @override
-  String get guidedSaveForNextTimeSubtitle => 'Keep this document on this phone so you don’t have to scan it again.';
-
-  @override
-  String get guidedPoweredByIdem => 'Powered by Idem';
+  String get guidedSaveForNextTimeSubtitle =>
+      'Keep this document on this phone until the app is closed, so you don’t have to scan it again.';
 
   @override
   String get settingsYourDocuments => 'Your documents';
@@ -1353,6 +1351,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get dataViewNotAvailable => 'Not available';
+
+  @override
   String dataViewSubtitle(String documentType, String country) {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'Passport',
@@ -1469,7 +1470,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'drivingLicence': 'driving licence',
       'other': 'document',
     });
-    return 'Your $_temp0 is genuine.';
+    return 'Your $_temp0 chip was read.';
   }
 
   @override
@@ -1533,10 +1534,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get nfcChecklistGenuineDone => 'Chip is genuine';
+  String get nfcChecklistGenuineDone => 'Chip read securely';
 
   @override
-  String get nfcChecklistGenuineActive => 'Checking the chip is genuine';
+  String get nfcChecklistGenuineActive => 'Reading the chip securely';
 
   @override
   String get scanClose => 'Close';

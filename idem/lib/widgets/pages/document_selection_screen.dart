@@ -142,7 +142,6 @@ class _ScanOptionsHome extends StatelessWidget {
             if (showQrScanOption) ...[const SizedBox(height: 16), _qrScanOption(context, onScanQrPressed)],
             const SizedBox(height: 16),
             _advancedSettingsOption(context, onSettingsPressed),
-            if (context.brand.showPoweredByIdem) const _PoweredByIdem(),
           ],
         ),
       ),
@@ -177,7 +176,6 @@ class _WalletHome extends StatelessWidget {
             children: [
               if (showQrScanOption) ...[_qrScanOption(context, onScanQrPressed), const SizedBox(height: 16)],
               _advancedSettingsOption(context, onSettingsPressed),
-              if (context.brand.showPoweredByIdem) const _PoweredByIdem(),
             ],
           ),
         ),
@@ -432,23 +430,6 @@ class _OptionCard extends StatelessWidget {
   }
 }
 
-/// Attribution line on white-label builds, under the settings entry.
-class _PoweredByIdem extends StatelessWidget {
-  const _PoweredByIdem();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 16),
-      child: Text(
-        context.l10n.guidedPoweredByIdem,
-        textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 12, color: context.brand.mutedText ?? Colors.grey[600]),
-      ),
-    );
-  }
-}
-
 /// Home in the guided layout, where every verification starts from a QR
 /// code: the hero leads with "Scan QR code", followed by how it works. Saved
 /// documents live under settings, not here.
@@ -579,12 +560,6 @@ class _GuidedHome extends StatelessWidget {
                       ],
                       const Spacer(),
                       const SizedBox(height: 24),
-                      if (context.brand.showPoweredByIdem)
-                        Text(
-                          l10n.guidedPoweredByIdem,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 12, color: g.muted),
-                        ),
                     ],
                   ),
                 ),

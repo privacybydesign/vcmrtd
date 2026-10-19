@@ -163,7 +163,7 @@ class _ChooseDocumentScreenState extends State<ChooseDocumentScreen> {
               ),
               if (picked != null)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                  padding: guidedBottomButtonPadding,
                   child: GuidedButton(
                     label: l10n.chooseContinueWith(picked.documentType.name),
                     onPressed: () => widget.onUseSaved(picked),

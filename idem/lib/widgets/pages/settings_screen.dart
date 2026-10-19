@@ -269,12 +269,6 @@ class SettingsScreen extends ConsumerWidget {
                         ),
                       ]),
                     const SizedBox(height: 32),
-                    if (context.brand.showPoweredByIdem)
-                      Text(
-                        l10n.guidedPoweredByIdem,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 12, color: g.muted),
-                      ),
                     FutureBuilder<PackageInfo>(
                       future: PackageInfo.fromPlatform(),
                       builder: (context, snapshot) => snapshot.hasData

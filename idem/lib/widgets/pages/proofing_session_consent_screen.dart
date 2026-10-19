@@ -226,7 +226,7 @@ extension on ProofingSessionConsentScreen {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                padding: guidedBottomButtonPadding,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [

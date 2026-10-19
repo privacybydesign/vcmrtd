@@ -84,6 +84,8 @@ class GuidedFaceIntroView extends StatelessWidget {
   final VoidCallback? onStart;
   final VoidCallback onBack;
   final String backTooltip;
+  final int stepNumber;
+  final int totalSteps;
 
   const GuidedFaceIntroView({
     super.key,
@@ -95,6 +97,8 @@ class GuidedFaceIntroView extends StatelessWidget {
     required this.onStart,
     required this.onBack,
     required this.backTooltip,
+    required this.stepNumber,
+    required this.totalSteps,
   });
 
   @override
@@ -112,7 +116,7 @@ class GuidedFaceIntroView extends StatelessWidget {
                 leading: GuidedRoundButton(icon: Icons.chevron_left, tooltip: backTooltip, onPressed: onBack),
                 center: const BrandMark(size: 32, excludeFromSemantics: true),
               ),
-              const GuidedStepBar(step: 3),
+              GuidedStepBar(step: stepNumber, total: totalSteps),
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(24, 36, 24, 20),
@@ -125,16 +129,15 @@ class GuidedFaceIntroView extends StatelessWidget {
                           height: 160,
                           decoration: BoxDecoration(color: g.actionTint, shape: BoxShape.circle),
                           child: Center(
-                            child: SizedBox(
-                              width: 96,
-                              height: 120,
+                            child: SizedBox.fromSize(
+                              size: _SelfieIllustrationPainter.size,
                               child: CustomPaint(painter: _SelfieIllustrationPainter(color: g.action)),
                             ),
                           ),
                         ),
                       ),
                       const SizedBox(height: 28),
-                      const GuidedStepLabel(step: 3),
+                      GuidedStepLabel(step: stepNumber, total: totalSteps),
                       const SizedBox(height: 12),
                       Text(title, style: g.heading(26)),
                       const SizedBox(height: 12),
@@ -148,7 +151,7 @@ class GuidedFaceIntroView extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                padding: guidedBottomButtonPadding,
                 child: GuidedButton(label: startLabel, onPressed: onStart),
               ),
             ],
@@ -184,15 +187,17 @@ class _GuidedTipRow extends StatelessWidget {
   }
 }
 
-/// A face in an oval: drawn in a 96×120 box.
+/// A face in an oval: drawn in a [size] box.
 class _SelfieIllustrationPainter extends CustomPainter {
   const _SelfieIllustrationPainter({required this.color});
+
+  static const size = Size(96, 120);
 
   final Color color;
 
   @override
-  void paint(Canvas canvas, Size size) {
-    canvas.scale(size.width / 96, size.height / 120);
+  void paint(Canvas canvas, Size canvasSize) {
+    canvas.scale(canvasSize.width / size.width, canvasSize.height / size.height);
     canvas.drawOval(
       const Rect.fromLTWH(4, 4, 88, 112),
       Paint()

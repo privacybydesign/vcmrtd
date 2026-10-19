@@ -13,7 +13,6 @@ class BrandTheme extends ThemeExtension<BrandTheme> {
   const BrandTheme({
     required this.name,
     this.logo,
-    this.showPoweredByIdem = false,
     this.accent,
     this.success,
     this.ink,
@@ -37,9 +36,6 @@ class BrandTheme extends ThemeExtension<BrandTheme> {
 
   /// Square brand mark; see [BrandMark].
   final ImageProvider? logo;
-
-  /// Adds a "Powered by Idem" line to the home screen.
-  final bool showPoweredByIdem;
 
   /// Highlight colour for interactive and in-progress states (NFC waiting, links).
   final Color? accent;
