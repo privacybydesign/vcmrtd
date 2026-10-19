@@ -1476,13 +1476,16 @@ extension on FlutterFaceVerificationScreenState {
 
   (IconData, String, Color) _guidedHint(GuidedStyle g, {required bool ready}) {
     if (!ready) return (Icons.hourglass_empty, context.l10n.selfieCameraGettingReady, g.action);
+
     final action = _currentAction;
     if (action != null && _selectedMode == LivenessMode.active && _guidedFaceAligned) {
       return (faceActionIcon(action), faceActionLabel(action), g.action);
     }
+
     final tip = _alignTip;
     final tipMessage = tip == null || tip == _holdStillTip ? null : _alignTipMessage(tip);
     if (tipMessage != null) return (Icons.open_in_full, tipMessage, g.action);
+
     final p = _passive;
     if (_selectedMode == LivenessMode.passive && p != null && p.started) {
       var elapsedMs = p.elapsedMs;
@@ -1490,6 +1493,7 @@ extension on FlutterFaceVerificationScreenState {
       final secondsLeft = ((p.targetMs - elapsedMs.clamp(0, p.targetMs)) / 1000).ceil();
       if (secondsLeft > 0) return (Icons.check, context.l10n.selfieHoldStillCountdown(secondsLeft), g.success);
     }
+
     return (Icons.check, context.l10n.faceHoldStill, g.success);
   }
 

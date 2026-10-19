@@ -42,8 +42,8 @@ void main() async {
 void _registerFontLicenses() {
   LicenseRegistry.addLicense(() async* {
     for (final (family, path) in const [
-      ('Montserrat', 'assets/fonts/OFL-Montserrat.txt'),
-      ('Nunito', 'assets/fonts/OFL-Nunito.txt'),
+      (AppFonts.heading, 'assets/fonts/OFL-Montserrat.txt'),
+      (AppFonts.body, 'assets/fonts/OFL-Nunito.txt'),
     ]) {
       yield LicenseEntryWithLineBreaks([family], await rootBundle.loadString(path));
     }

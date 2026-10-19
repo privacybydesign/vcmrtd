@@ -17,6 +17,10 @@ double _contrast(Color a, Color b) {
   return (hi + 0.05) / (lo + 0.05);
 }
 
+/// WCAG AA contrast for normal text, and for large text and highlights.
+const _aaNormalText = 4.5;
+const _aaLargeText = 3.0;
+
 Widget _home(ThemeData theme) {
   return ProviderScope(
     child: MaterialApp(
@@ -47,7 +51,7 @@ void main() {
       for (final branding in [AppBranding.idem, dark]) {
         final guided = appTheme(branding).extension<BrandTheme>()!.guided!;
         for (final color in [guided.heroAccent, guided.heroEyebrow, guided.stepLabelOnDark]) {
-          expect(_contrast(color, guided.header), greaterThanOrEqualTo(3), reason: branding.name);
+          expect(_contrast(color, guided.header), greaterThanOrEqualTo(_aaLargeText), reason: branding.name);
         }
       }
     });
@@ -96,10 +100,10 @@ void main() {
 
     test('the default colours meet WCAG AA contrast on their backgrounds', () {
       final guided = appTheme().extension<BrandTheme>()!.guided!;
-      expect(_contrast(guided.action, Colors.white), greaterThanOrEqualTo(4.5));
-      expect(_contrast(guided.stepLabel, guided.badgeBackground), greaterThanOrEqualTo(4.5));
-      expect(_contrast(AppColors.ink, AppColors.surface), greaterThanOrEqualTo(4.5));
-      expect(_contrast(AppColors.bodyText, Colors.white), greaterThanOrEqualTo(4.5));
+      expect(_contrast(guided.action, Colors.white), greaterThanOrEqualTo(_aaNormalText));
+      expect(_contrast(guided.stepLabel, guided.badgeBackground), greaterThanOrEqualTo(_aaNormalText));
+      expect(_contrast(AppColors.ink, AppColors.surface), greaterThanOrEqualTo(_aaNormalText));
+      expect(_contrast(AppColors.bodyText, Colors.white), greaterThanOrEqualTo(_aaNormalText));
     });
   });
 

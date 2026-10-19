@@ -617,6 +617,7 @@ void main() {
         final bottomBand = tester.getRect(
           find.ancestor(of: find.textContaining('Nothing is shared'), matching: find.byType(ColoredBox)).first,
         );
+
         expect(frameArea.top, instructions.bottom);
         expect(frameArea.bottom, bottomBand.top);
         expect(bottomBand.bottom, screen.height, reason: 'the scrim must reach the bottom edge');

@@ -10,6 +10,9 @@ import 'package:idem/theme/text_styles.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:idem/widgets/pages/wallet_widgets.dart';
 
+/// Accent and gradient start when the brand sets none.
+const _fallbackGrey = Color(0xFF6b6868);
+
 /// Home screen: shows the scanning options when the wallet is empty, or just
 /// the wallet when it holds at least one card — a new scan is then started
 /// via the "+" button in the app bar. The QR scan and advanced settings
@@ -76,7 +79,7 @@ class DocumentTypeSelectionScreen extends ConsumerWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: brand.homeBackgroundGradient ?? const [Color(0xFF6b6868), Colors.white],
+            colors: brand.homeBackgroundGradient ?? const [_fallbackGrey, Colors.white],
             stops: const [0.0, 0.3],
           ),
         ),
@@ -246,7 +249,7 @@ List<Widget> _documentTypeOptions(BuildContext context, Function(DocumentType) o
       title: context.l10n.docPassport,
       subtitle: context.l10n.docPassportSubtitle,
       icon: Icons.book,
-      accentColor: context.brand.documentOptionAccent ?? const Color(0xFF6b6868),
+      accentColor: context.brand.documentOptionAccent ?? _fallbackGrey,
       onTap: () => onDocumentTypeSelected(DocumentType.passport),
       badgeText: context.l10n.docMostCommon,
     ),
@@ -295,7 +298,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final brand = context.brand;
-    final accent = brand.accent ?? const Color(0xFF6b6868);
+    final accent = brand.accent ?? _fallbackGrey;
     return Card(
       elevation: 8,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

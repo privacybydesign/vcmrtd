@@ -15,6 +15,8 @@ extension GuidedContext on BuildContext {
   GuidedStyle? get guided => brand.guided;
 }
 
+const _roundButtonSize = 44.0;
+
 /// 44×44 round icon button used in the guided top bars.
 class GuidedRoundButton extends StatelessWidget {
   const GuidedRoundButton({
@@ -56,7 +58,10 @@ class GuidedRoundButton extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: onPressed,
-            child: SizedBox(width: 44, height: 44, child: Icon(icon, size: 20, color: foreground)),
+            child: SizedBox.square(
+              dimension: _roundButtonSize,
+              child: Icon(icon, size: 20, color: foreground),
+            ),
           ),
         ),
       ),
@@ -88,7 +93,7 @@ class GuidedTopBar extends StatelessWidget {
         children: [
           leading,
           Expanded(child: Center(child: center)),
-          trailing ?? const SizedBox(width: 44, height: 44),
+          trailing ?? const SizedBox.square(dimension: _roundButtonSize),
         ],
       ),
     );

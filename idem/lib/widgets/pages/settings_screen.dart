@@ -264,10 +264,7 @@ class SettingsScreen extends ConsumerWidget {
                             context: context,
                             title: l10n.settingsTextRecognition,
                             current: ref.read(ocrEngineProvider),
-                            options: const [
-                              (OcrEngine.googleMlKit, 'Google ML Kit'),
-                              (OcrEngine.tesseract4android, 'Tesseract4Android'),
-                            ],
+                            options: [for (final engine in OcrEngine.values) (engine, _ocrEngineLabel(engine))],
                             onSelected: (engine) => ref.read(ocrEngineProvider.notifier).set(engine),
                           ),
                         ),

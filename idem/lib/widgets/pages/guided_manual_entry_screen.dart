@@ -270,7 +270,7 @@ class _GuidedManualEntryScreenState extends State<GuidedManualEntryScreen> {
           const SizedBox(width: 4),
           Text(
             '$length / ${ManualEntryRules.mrzLineLength}',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: complete ? g.success : g.muted),
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: complete ? g.successText : g.muted),
           ),
         ],
       ),

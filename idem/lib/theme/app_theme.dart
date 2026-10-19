@@ -21,17 +21,19 @@ class AppBranding {
     this.logo,
   });
 
-  /// Idem's own look: Yivi's palette (irmamobile's IrmaThemeData):
-  /// raspberry primary, warm dark grey for text and the header, Yivi's link,
-  /// success and error colours, the platform's font and Yivi's 8px rounded
-  /// (not pill) buttons, so it reads as Yivi and not as any tenant's design. The raspberry stays apart from
-  /// the grey header and ink, so buttons and highlights read as such.
+  static const _warmGrey = Color(0xFF484747);
+
+  /// Idem's own look: Yivi's palette (irmamobile's IrmaThemeData): raspberry
+  /// primary, warm dark grey for text and the header, Yivi's link, success and
+  /// error colours, the platform's font and Yivi's 8px rounded (not pill)
+  /// buttons. The raspberry stays apart from the grey header and ink, so
+  /// buttons and highlights read as such.
   static const idem = AppBranding(
     name: 'Idem',
     primary: Color(0xFFBA3354),
-    secondary: Color(0xFF484747),
-    text: Color(0xFF484747),
-    header: Color(0xFF484747),
+    secondary: _warmGrey,
+    text: _warmGrey,
+    header: _warmGrey,
     surface: Color(0xFFFAFAFA),
     border: Color(0xFFEAE5E2),
     link: Color(0xFF1D4E89),
@@ -76,6 +78,8 @@ const _minHeaderContrast = 3.0;
 /// Below this a filled button's edge is lost against the header behind it.
 const _minButtonOnHeaderContrast = 1.5;
 
+const _minButtonSize = Size(64, 52);
+
 /// The fonts the app draws with: the design's own pair, or the platform's.
 @immutable
 class AppFont {
@@ -91,11 +95,14 @@ class AppFont {
   final String? body;
 }
 
+/// The flare term WCAG adds to both luminances in a contrast ratio.
+const _wcagLuminanceFlare = 0.05;
+
 /// WCAG contrast ratio between [a] and [b], from 1 to 21.
 double contrastRatio(Color a, Color b) {
-  final la = a.computeLuminance();
-  final lb = b.computeLuminance();
-  return (la > lb ? la + 0.05 : lb + 0.05) / (la > lb ? lb + 0.05 : la + 0.05);
+  final la = a.computeLuminance() + _wcagLuminanceFlare;
+  final lb = b.computeLuminance() + _wcagLuminanceFlare;
+  return la > lb ? la / lb : lb / la;
 }
 
 /// The design's own neutrals; a theme replaces each it sets.
@@ -172,7 +179,7 @@ BrandTheme brandThemeFor(AppBranding branding) {
     disabledBackgroundColor: border,
     disabledForegroundColor: muted,
     elevation: 0,
-    minimumSize: const Size(64, 52),
+    minimumSize: _minButtonSize,
     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
     shape: _buttonShape(branding),
     textStyle: buttonText,
@@ -182,7 +189,7 @@ BrandTheme brandThemeFor(AppBranding branding) {
     backgroundColor: Colors.white,
     foregroundColor: ink,
     elevation: 0,
-    minimumSize: const Size(64, 52),
+    minimumSize: _minButtonSize,
     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
     shape: _buttonShape(branding),
     side: BorderSide(color: ink, width: 2),
@@ -296,7 +303,7 @@ ThemeData appTheme([AppBranding branding = AppBranding.idem]) {
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: guided.ink,
-        minimumSize: const Size(64, 52),
+        minimumSize: _minButtonSize,
         shape: _buttonShape(branding),
         side: BorderSide(color: guided.ink, width: 2),
         textStyle: buttonText,
