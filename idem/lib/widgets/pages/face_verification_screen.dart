@@ -1463,10 +1463,7 @@ extension on FlutterFaceVerificationScreenState {
                     width: 8,
                     height: 8,
                     margin: const EdgeInsets.symmetric(horizontal: 4),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _actionDotColor(g, action),
-                    ),
+                    decoration: BoxDecoration(shape: BoxShape.circle, color: _actionDotColor(g, action)),
                   ),
               ],
             ),
