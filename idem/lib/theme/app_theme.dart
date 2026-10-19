@@ -137,18 +137,21 @@ class AppFont {
   /// System fonts a theme may name, as (iOS, Android) draw them: iOS has the
   /// families themselves, Android its generic serif and monospace ones.
   static const _system = {
-    'helvetica neue': ('Helvetica Neue', 'sans-serif'),
-    'helvetica': ('Helvetica', 'sans-serif'),
-    'arial': ('Arial', 'sans-serif'),
+    'helvetica neue': ('Helvetica Neue', _androidSans),
+    'helvetica': ('Helvetica', _androidSans),
+    'arial': ('Arial', _androidSans),
     'georgia': ('Georgia', 'serif'),
-    'times new roman': ('Times New Roman', 'serif'),
-    'serif': ('Times New Roman', 'serif'),
-    'ui-monospace': ('Menlo', 'monospace'),
-    'sfmono-regular': ('Menlo', 'monospace'),
-    'menlo': ('Menlo', 'monospace'),
-    'consolas': ('Menlo', 'monospace'),
-    'monospace': ('Menlo', 'monospace'),
+    'times new roman': _serif,
+    'serif': _serif,
+    'ui-monospace': _monospace,
+    'sfmono-regular': _monospace,
+    'menlo': _monospace,
+    'consolas': _monospace,
+    'monospace': _monospace,
   };
+  static const _androidSans = 'sans-serif';
+  static const _serif = ('Times New Roman', 'serif');
+  static const _monospace = ('Menlo', 'monospace');
 
   /// A theme's CSS font-family list as the app can draw it: its first family
   /// the app bundles or the phone has, else the platform's font; an empty
