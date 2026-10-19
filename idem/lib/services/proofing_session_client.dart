@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show listEquals;
 
 import 'package:http/http.dart' as http;
 import 'package:mrz_capture/mrz_capture.dart';
@@ -264,6 +265,11 @@ class ProofingSessionInfo {
   /// when the server matches a selfie with its own engine.
   final ProofingFaceVerification? faceVerification;
 
+  /// The look of whoever requested the session, so the app looks like their
+  /// own; null keeps the app's own look. [relyingParty] stays the org's own
+  /// name next to it.
+  final ProofingBranding? branding;
+
   ProofingSessionInfo({
     required this.id,
     required this.relyingParty,
@@ -286,6 +292,7 @@ class ProofingSessionInfo {
     this.faceReference,
     this.language,
     this.faceVerification,
+    this.branding,
   });
 
   /// Whether the chip read must run Active Authentication: exactly when the
@@ -338,7 +345,72 @@ class ProofingSessionInfo {
     faceVerification: json['faceVerification'] is Map<String, dynamic>
         ? ProofingFaceVerification.fromJson(json['faceVerification'] as Map<String, dynamic>)
         : null,
+    branding: json['branding'] is Map<String, dynamic>
+        ? ProofingBranding.fromJson(json['branding'] as Map<String, dynamic>)
+        : null,
   );
+}
+
+/// A session's branding: the requester's name, its theme's `#rrggbb` colours
+/// and CSS font-family list (null keeps the app's own), and whether
+/// [ProofingSessionClient.fetchBrandingLogo] has a logo.
+class ProofingBranding {
+  final String name;
+  final String? primaryColor;
+  final String? secondaryColor;
+  final String? textColor;
+  final String? surfaceColor;
+  final String? borderColor;
+  final String? linkColor;
+  final String? successColor;
+  final String? warningColor;
+  final String? errorColor;
+  final String? headerColor;
+  final String? fontFamily;
+  final bool hasLogo;
+
+  const ProofingBranding({
+    required this.name,
+    this.primaryColor,
+    this.secondaryColor,
+    this.textColor,
+    this.surfaceColor,
+    this.borderColor,
+    this.linkColor,
+    this.successColor,
+    this.warningColor,
+    this.errorColor,
+    this.headerColor,
+    this.fontFamily,
+    this.hasLogo = false,
+  });
+
+  factory ProofingBranding.fromJson(Map<String, dynamic> json) => ProofingBranding(
+    name: json['name'] as String,
+    primaryColor: json['primaryColor'] as String?,
+    secondaryColor: json['secondaryColor'] as String?,
+    textColor: json['textColor'] as String?,
+    surfaceColor: json['surfaceColor'] as String?,
+    borderColor: json['borderColor'] as String?,
+    linkColor: json['linkColor'] as String?,
+    successColor: json['successColor'] as String?,
+    warningColor: json['warningColor'] as String?,
+    errorColor: json['errorColor'] as String?,
+    headerColor: json['headerColor'] as String?,
+    fontFamily: json['fontFamily'] as String?,
+    hasLogo: json['hasLogo'] as bool? ?? false,
+  );
+
+  List<Object?> get _fields => [
+    name, primaryColor, secondaryColor, textColor, surfaceColor, borderColor, //
+    linkColor, successColor, warningColor, errorColor, headerColor, fontFamily, hasLogo,
+  ];
+
+  @override
+  bool operator ==(Object other) => other is ProofingBranding && listEquals(other._fields, _fields);
+
+  @override
+  int get hashCode => Object.hashAll(_fields);
 }
 
 /// api.appSessionView.faceVerification: run liveness against [faceApiUrl]
@@ -583,7 +655,11 @@ enum ProofingAccessDenial {
   claimTokenRequired,
 
   /// The browser's own handover QR, scanned in this app.
-  browserHandover;
+  browserHandover,
+
+  /// A QR code or link naming a server this app does not run sessions with
+  /// (see TrustedServers); it is never contacted.
+  untrustedServer;
 
   /// Whether this ends the local verification for good: the app must drop
   /// the session, not retry. The rest only refuse one claim attempt.
@@ -594,7 +670,8 @@ enum ProofingAccessDenial {
     handoverExpired ||
     handoverUsed ||
     claimTokenRequired ||
-    browserHandover => false,
+    browserHandover ||
+    untrustedServer => false,
   };
 
   /// What to tell the user, in the UI's current language.
@@ -613,6 +690,7 @@ enum ProofingAccessDenial {
       handoverUsed => l10n.accessHandoverUsed,
       claimTokenRequired => l10n.accessClaimTokenRequired,
       browserHandover => l10n.accessBrowserHandover,
+      untrustedServer => l10n.accessUntrustedServer,
     };
   }
 }
@@ -1210,6 +1288,15 @@ class ProofingSessionClient {
     final response = await _get(_appUri(ref), headers: _headers(ref));
     _check(response, (l) => l.proofingRequestFetch);
     return ProofingSessionInfo.fromJson(json.decode(response.body));
+  }
+
+  /// The session's branding logo (`GET /api/v1/app/{token}/branding/logo`),
+  /// or null when it has none.
+  Future<Uint8List?> fetchBrandingLogo(ProofingSessionRef ref) async {
+    final response = await _get(_appUri(ref, '/branding/logo'), headers: _headers(ref));
+    if (response.statusCode == 404) return null;
+    _check(response, (l) => l.proofingRequestFetch);
+    return response.bodyBytes;
   }
 
   /// Long-polls `GET /api/v1/app/{token}/events` until the session's view

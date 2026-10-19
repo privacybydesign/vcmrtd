@@ -1,8 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/theme/brand_theme.dart';
 
-/// Whose app this looks like: a name, a logo and a theme. Every colour or
-/// font left null keeps the design's own.
+/// Whose app this looks like: a name, a logo and a theme. Idem's own until a
+/// session brings the branding of the org (or the org's customer) that asked
+/// for it ([AppBranding.fromSession]), so the app looks like theirs. Every
+/// colour or font left null keeps the design's own.
 @immutable
 class AppBranding {
   const AppBranding({
@@ -23,11 +27,12 @@ class AppBranding {
 
   static const _warmGrey = Color(0xFF484747);
 
-  /// Idem's own look: Yivi's palette (irmamobile's IrmaThemeData): raspberry
-  /// primary, warm dark grey for text and the header, Yivi's link, success and
-  /// error colours, the platform's font and Yivi's 8px rounded (not pill)
-  /// buttons. The raspberry stays apart from the grey header and ink, so
-  /// buttons and highlights read as such.
+  /// Idem's own look, used until a session supplies another one: Yivi's
+  /// palette (irmamobile's IrmaThemeData): raspberry primary, warm dark grey
+  /// for text and the header, Yivi's link, success and error colours, the
+  /// platform's font and Yivi's 8px rounded (not pill) buttons, so it reads
+  /// as Yivi and not as any tenant's design. The raspberry stays apart from
+  /// the grey header and ink, so buttons and highlights read as such.
   static const idem = AppBranding(
     name: 'Idem',
     primary: Color(0xFFBA3354),
@@ -42,6 +47,26 @@ class AppBranding {
     font: AppFont.platform,
     buttonRadius: 8,
   );
+
+  /// [branding] as the app shows it, with [logo] its logo's bytes.
+  factory AppBranding.fromSession(ProofingBranding branding, {Uint8List? logo}) {
+    final header = parseHexColor(branding.headerColor);
+    return AppBranding(
+      name: branding.name,
+      primary: parseHexColor(branding.primaryColor) ?? idem.primary,
+      secondary: parseHexColor(branding.secondaryColor) ?? idem.secondary,
+      text: parseHexColor(branding.textColor),
+      surface: parseHexColor(branding.surfaceColor),
+      border: parseHexColor(branding.borderColor),
+      link: parseHexColor(branding.linkColor),
+      success: parseHexColor(branding.successColor),
+      error: parseHexColor(branding.errorColor),
+      // The header carries white text: one too light for it keeps the design's.
+      header: header != null && contrastRatio(header, Colors.white) >= _minHeaderContrast ? header : null,
+      font: AppFont.fromCss(branding.fontFamily),
+      logo: logo == null ? null : MemoryImage(logo),
+    );
+  }
 
   /// Shown as a wordmark when there is no [logo].
   final String name;
@@ -80,7 +105,8 @@ const _minButtonOnHeaderContrast = 1.5;
 
 const _minButtonSize = Size(64, 52);
 
-/// The fonts the app draws with: the design's own pair, or the platform's.
+/// The fonts the app draws with: the design's own pair, one the app bundles,
+/// a system font the theme names, or the platform's own.
 @immutable
 class AppFont {
   const AppFont._(this.heading, this.body);
@@ -90,9 +116,59 @@ class AppFont {
   /// The platform's default font for everything.
   static const platform = AppFont._(null, null);
 
+  /// The families the app bundles that a theme may name: the businesswallet's
+  /// own (frontend/src/index.css).
+  static const _bundled = {
+    'alexandria': 'Alexandria',
+    'montserrat': 'Montserrat',
+    'nunito': 'Nunito',
+    'open sans': 'Open Sans',
+  };
+
+  /// System fonts a theme may name, as (iOS, Android) draw them: iOS has the
+  /// families themselves, Android its generic serif and monospace ones.
+  static const _system = {
+    'helvetica neue': ('Helvetica Neue', 'sans-serif'),
+    'helvetica': ('Helvetica', 'sans-serif'),
+    'arial': ('Arial', 'sans-serif'),
+    'georgia': ('Georgia', 'serif'),
+    'times new roman': ('Times New Roman', 'serif'),
+    'serif': ('Times New Roman', 'serif'),
+    'ui-monospace': ('Menlo', 'monospace'),
+    'sfmono-regular': ('Menlo', 'monospace'),
+    'menlo': ('Menlo', 'monospace'),
+    'consolas': ('Menlo', 'monospace'),
+    'monospace': ('Menlo', 'monospace'),
+  };
+
+  /// A theme's CSS font-family list as the app can draw it: its first family
+  /// the app bundles or the phone has, else the platform's font; an empty
+  /// list keeps the design's.
+  factory AppFont.fromCss(String? css) {
+    if (css == null || css.trim().isEmpty) return design;
+    final ios = defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS;
+    for (final family in css.split(',')) {
+      final name = family.trim().replaceAll(RegExp('["\']'), '').toLowerCase();
+      final bundled = _bundled[name];
+      if (bundled != null) return AppFont._(bundled, bundled);
+      final system = _system[name];
+      if (system != null) {
+        final font = ios ? system.$1 : system.$2;
+        return AppFont._(font, font);
+      }
+    }
+    return platform;
+  }
+
   /// Null means the platform's default.
   final String? heading;
   final String? body;
+}
+
+/// `#rrggbb` as a colour; null for null or anything else.
+Color? parseHexColor(String? hex) {
+  if (hex == null || !RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(hex)) return null;
+  return Color(0xFF000000 | int.parse(hex.substring(1), radix: 16));
 }
 
 /// The flare term WCAG adds to both luminances in a contrast ratio.

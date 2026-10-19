@@ -12,6 +12,7 @@ import 'package:logging/logging.dart';
 import 'package:mrz_capture/mrz_capture.dart' show MrzCaptureLocalizations;
 import 'package:vcmrtd/extensions.dart';
 import 'package:idem/l10n/l10n.dart';
+import 'package:idem/providers/branding_provider.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/providers/session_settings.dart';
 import 'package:idem/routing.dart';
@@ -44,6 +45,7 @@ void _registerFontLicenses() {
     for (final (family, path) in const [
       (AppFonts.heading, 'assets/fonts/OFL-Montserrat.txt'),
       (AppFonts.body, 'assets/fonts/OFL-Nunito.txt'),
+      ('Alexandria', 'assets/fonts/OFL-Alexandria.txt'),
     ]) {
       yield LicenseEntryWithLineBreaks([family], await rootBundle.loadString(path));
     }
@@ -72,11 +74,14 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
     ref.listenManual(activeProofingSessionProvider, (previous, next) {
       final container = ProviderScope.containerOf(context);
       if (next == null) {
-        // The session ended: the user's own settings apply again.
+        // The session ended: the user's own settings and look apply again.
         _userSettings?.restore(container);
         _userSettings = null;
+        if (previous != null) ref.read(activeBrandingProvider.notifier).reset();
         return;
       }
+      // The requester's look, kept current as the session's view changes.
+      ref.read(activeBrandingProvider.notifier).useSession(next.ref, next.info);
       _sessions.track(next.ref, next.info);
       // The session's language (see lib/l10n/l10n.dart) decides the UI's.
       ref.read(appLocaleProvider.notifier).useSessionLanguage(next.info.language);
@@ -86,6 +91,7 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
       applyProofingSessionSettings(container, next.info);
     });
     _sessionEvents = _sessions.events.listen(_onProofingSessionEvent);
+    _router.routerDelegate.addListener(_resetBrandingOutsideSession);
     // Tell the server when this device stops/resumes working on the
     // session, and re-check with it before continuing after a resume.
     _lifecycle = AppLifecycleListener(onStateChange: _sessions.appLifecycleChanged);
@@ -98,6 +104,19 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
   }
 
   BuildContext? get _navigatorContext => _router.routerDelegate.navigatorKey.currentContext;
+
+  /// Back home or at the scanner without a session (a consent screen left
+  /// with Back, say), the app wears its own look again.
+  void _resetBrandingOutsideSession() {
+    // The screen on top: a pushed one (the consent screen) leaves the uri
+    // at the screen it was pushed from.
+    final routes = _router.routerDelegate.currentConfiguration;
+    if (routes.isEmpty) return;
+    final path = routes.last.matchedLocation;
+    if (sessionlessPaths.contains(path) && ref.read(activeProofingSessionProvider) == null) {
+      ref.read(activeBrandingProvider.notifier).reset();
+    }
+  }
 
   /// Claims the session a vcmrtd:// deep link points at (a session link or a
   /// handover link) and pushes the consent screen — the deep-link
@@ -151,13 +170,32 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
     return pinned;
   }
 
+  /// Leaves the consent screen when it is on top and shows [sessionRef]:
+  /// that session ended before the user accepted it (expired while the
+  /// phone was away, say). Returns whether it did.
+  bool _leaveConsentFor(ProofingSessionRef sessionRef) {
+    final top = _router.routerDelegate.currentConfiguration.last;
+    if (top is! ImperativeRouteMatch || top.matchedLocation != proofingConsentPath) return false;
+    final extra = top.matches.extra;
+    final shown = extra is Map<String, dynamic> ? extra['ref'] : null;
+    if (shown is! ProofingSessionRef || !shown.sameAccess(sessionRef)) return false;
+    _router.go(selectDocTypePath);
+    return true;
+  }
+
   /// The session was submitted and has its outcome - from this app's Submit
   /// button or on the other device, whichever came first: nothing is left
   /// to do here. A session the app already finished its part of (unpinned,
   /// e.g. face verification handed off to the browser) ends quietly.
   void _onProofingSessionCompleted(ProofingSessionRef sessionRef) {
+    ref.read(activeBrandingProvider.notifier).endSession(sessionRef);
     final pinned = _endPinnedSession(sessionRef);
-    if (pinned == null) return;
+    if (pinned == null) {
+      if (_leaveConsentFor(sessionRef)) {
+        _showInfoAfterNavigation((l10n) => (l10n.sessionStoppedTitle, ProofingAccessDenial.complete.message));
+      }
+      return;
+    }
     _showInfoAfterNavigation(
       (l10n) => (l10n.sessionCompleteTitle, l10n.sessionCompleteMessage(pinned.info.relyingParty)),
     );
@@ -181,8 +219,8 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
   /// say why. A session the app already finished its part of (unpinned,
   /// e.g. face verification handed off to the browser) just ends quietly.
   void _onProofingSessionAccessLost(ProofingSessionRef sessionRef, ProofingAccessDenial reason) {
-    final pinned = _endPinnedSession(sessionRef);
-    if (pinned == null) return;
+    ref.read(activeBrandingProvider.notifier).endSession(sessionRef);
+    if (_endPinnedSession(sessionRef) == null && !_leaveConsentFor(sessionRef)) return;
     _showInfoAfterNavigation((l10n) => (l10n.sessionStoppedTitle, reason.message));
   }
 
@@ -214,7 +252,7 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
       localizationsDelegates: const [...AppLocalizations.localizationsDelegates, MrzCaptureLocalizations.delegate],
       supportedLocales: AppLocalizations.supportedLocales,
       locale: ref.watch(appLocaleProvider),
-      theme: appTheme(),
+      theme: appTheme(ref.watch(activeBrandingProvider)),
     );
   }
 }

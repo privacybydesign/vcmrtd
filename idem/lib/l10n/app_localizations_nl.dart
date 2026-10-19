@@ -48,6 +48,10 @@ class AppLocalizationsNl extends AppLocalizations {
       'Met deze QR-code verplaats je het browserdeel van de verificatie naar een andere browser. Open hem met de camera van je telefoon, of scan de QR-code die de browser voor de IDEM-app toont.';
 
   @override
+  String get accessUntrustedServer =>
+      'Deze QR-code komt niet van een verificatiedienst waarmee deze app werkt, dus hij is niet geopend.';
+
+  @override
   String get sessionOpenFailedTitle => 'Verificatie openen mislukt';
 
   @override
@@ -1278,6 +1282,11 @@ class AppLocalizationsNl extends AppLocalizations {
   @override
   String consentHeading(String party) {
     return '$party wil je identiteit verifiëren';
+  }
+
+  @override
+  String consentRequestedBy(String org) {
+    return 'Aangevraagd door $org';
   }
 
   @override

@@ -84,11 +84,12 @@ WalletCard _walletCard(String id, DocumentType type) => WalletCard(
   addedAt: DateTime(2026, 9, 12),
 );
 
-ProofingSessionInfo _session(String relyingParty) => ProofingSessionInfo(
+ProofingSessionInfo _session(String relyingParty, {ProofingBranding? branding}) => ProofingSessionInfo(
   id: 'session-1',
   relyingParty: relyingParty,
   requestedAttributes: const ['dg1', 'dg2'],
   expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+  branding: branding,
 );
 
 Widget _app(Widget home, {List overrides = const []}) => ProviderScope(
@@ -300,24 +301,44 @@ void main() {
   });
 
   group('guided consent', () {
-    testWidgets('shows the requester\'s initial and name', (tester) async {
+    testWidgets('a branded session shows its mark and name, and the org that really asks', (tester) async {
       _tallViewport(tester);
       var consented = 0;
       var declined = 0;
       await tester.pumpWidget(
         _app(
           ProofingSessionConsentScreen(
-            info: _session('Acme Bank'),
+            info: _session('CM.com B.V.', branding: const ProofingBranding(name: 'CM Tickets')),
             onConsent: () => consented++,
             onDecline: () => declined++,
           ),
         ),
       );
-      expect(find.text('Acme Bank wants to verify your identity'), findsOneWidget);
-      expect(find.text('A'), findsOneWidget);
+      expect(find.text('CM Tickets wants to verify your identity'), findsOneWidget);
+      expect(find.text('Requested by CM.com B.V.'), findsOneWidget);
+      expect(find.text('Idem'), findsOneWidget, reason: "the app theme's wordmark, as no logo was given");
       await tester.tap(find.text('Continue'));
       await tester.tap(find.text('Decline'));
       expect((consented, declined), (1, 1));
+
+      // The org's own branding: no second name needed.
+      await tester.pumpWidget(
+        _app(
+          ProofingSessionConsentScreen(
+            info: _session('CM.com B.V.', branding: const ProofingBranding(name: 'CM.com B.V.')),
+            onConsent: () {},
+            onDecline: () {},
+          ),
+        ),
+      );
+      expect(find.textContaining('Requested by'), findsNothing);
+
+      // No branding: the requester's initial.
+      await tester.pumpWidget(
+        _app(ProofingSessionConsentScreen(info: _session('Acme Bank'), onConsent: () {}, onDecline: () {})),
+      );
+      expect(find.text('Idem'), findsNothing);
+      expect(find.text('A'), findsOneWidget);
     });
 
     testWidgets('a theme without a brand keeps the classic consent screen', (tester) async {

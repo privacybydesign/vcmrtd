@@ -164,6 +164,12 @@ abstract class AppLocalizations {
   /// **'This QR code moves the browser part of the verification to another browser. Open it with your phone\'s camera instead, or scan the QR code the browser shows for the IDEM app.'**
   String get accessBrowserHandover;
 
+  /// No description provided for @accessUntrustedServer.
+  ///
+  /// In en, this message translates to:
+  /// **'This QR code isn\'t from a verification service this app works with, so it wasn\'t opened.'**
+  String get accessUntrustedServer;
+
   /// No description provided for @sessionOpenFailedTitle.
   ///
   /// In en, this message translates to:
@@ -2185,6 +2191,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{party} wants to verify your identity'**
   String consentHeading(String party);
+
+  /// No description provided for @consentRequestedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Requested by {org}'**
+  String consentRequestedBy(String org);
 
   /// No description provided for @consentTheyWillReceive.
   ///

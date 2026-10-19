@@ -1,10 +1,12 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:idem/l10n/l10n.dart';
+import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/theme/app_theme.dart';
 import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/widgets/pages/document_selection_screen.dart';
@@ -86,6 +88,67 @@ void main() {
       final guided = appTheme(branding).extension<BrandTheme>()!.guided!;
       expect(guided.action, branding.primary);
       expect(guided.stepLabel, branding.secondary);
+    });
+
+    test('a session\'s branding dresses the whole app, keeping the design\'s own for what it leaves out', () {
+      final branding = AppBranding.fromSession(
+        const ProofingBranding(
+          name: 'CM.com',
+          primaryColor: '#036BD2',
+          secondaryColor: '#5412C7',
+          textColor: '#101E1E',
+          surfaceColor: '#FBFBFC',
+          headerColor: '#13156A',
+          errorColor: '#B00020',
+          fontFamily: '"Alexandria", system-ui, sans-serif',
+        ),
+      );
+      final theme = appTheme(branding);
+      final brand = theme.extension<BrandTheme>()!;
+      final guided = brand.guided!;
+      expect(brand.name, 'CM.com');
+      expect(theme.colorScheme.primary, const Color(0xFF036BD2));
+      expect(guided.stepLabel, const Color(0xFF5412C7));
+      expect(guided.ink, const Color(0xFF101E1E));
+      expect(guided.surface, const Color(0xFFFBFBFC));
+      expect(guided.header, const Color(0xFF13156A));
+      expect(guided.error, const Color(0xFFB00020));
+      expect(guided.success, AppColors.success);
+      expect(guided.headingFontFamily, 'Alexandria');
+      expect(theme.textTheme.bodyMedium!.fontFamily, 'Alexandria');
+    });
+
+    test('a header too light for white text keeps the design\'s dark one', () {
+      final branding = AppBranding.fromSession(const ProofingBranding(name: 'Acme', headerColor: '#F5F5F5'));
+      expect(appTheme(branding).extension<BrandTheme>()!.guided!.header, AppColors.ink);
+    });
+
+    test('a light primary colour gets dark text on its buttons', () {
+      final theme = appTheme(AppBranding.fromSession(const ProofingBranding(name: 'Acme', primaryColor: '#FFD500')));
+      expect(theme.colorScheme.onPrimary, AppColors.ink);
+    });
+
+    test('every font the businesswallet offers is drawn as that font', () {
+      // Its theme font options (frontend/src/lib/theme.ts's FONT_OPTIONS).
+      expect(AppFont.fromCss('"Montserrat", system-ui, sans-serif').heading, 'Montserrat');
+      expect(AppFont.fromCss('"Nunito", system-ui, sans-serif').heading, 'Nunito');
+      expect(AppFont.fromCss('"Open Sans", system-ui, sans-serif').heading, 'Open Sans');
+      expect(AppFont.fromCss('"Alexandria", system-ui, sans-serif').heading, 'Alexandria');
+      expect(AppFont.fromCss('system-ui, -apple-system, "Segoe UI", Roboto, sans-serif'), AppFont.platform);
+      expect(AppFont.fromCss('Georgia, "Times New Roman", serif').body, 'serif');
+      expect(AppFont.fromCss('ui-monospace, SFMono-Regular, Menlo, Consolas, monospace').body, 'monospace');
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      expect(AppFont.fromCss('Georgia, "Times New Roman", serif').body, 'Georgia');
+      expect(AppFont.fromCss('"Helvetica Neue", Arial, sans-serif').body, 'Helvetica Neue');
+      expect(AppFont.fromCss('ui-monospace, SFMono-Regular, Menlo, Consolas, monospace').body, 'Menlo');
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    test('a theme naming no font the app knows gets the platform\'s; none keeps the design\'s', () {
+      expect(AppFont.fromCss('"Comic Neue", cursive'), AppFont.platform);
+      expect(AppFont.fromCss(''), AppFont.design);
+      expect(AppFont.fromCss(null), AppFont.design);
+      expect(AppFont.fromCss("'Alexandria', sans-serif").heading, 'Alexandria');
     });
 
     test('every font declared in pubspec.yaml is in the repo', () {

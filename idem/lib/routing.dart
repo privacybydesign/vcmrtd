@@ -21,6 +21,7 @@ import 'package:idem/widgets/pages/driving_licence_data_screen.dart';
 import 'package:idem/widgets/pages/manual_entry_route_params.dart';
 import 'package:idem/widgets/pages/nfc_reading_screen.dart';
 import 'package:idem/widgets/pages/passport_data_screen.dart';
+import 'package:idem/providers/branding_provider.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/services/face_verification_outcome.dart';
 import 'package:idem/widgets/pages/proofing_session_consent_screen.dart';
@@ -79,10 +80,15 @@ const _faceVerificationPath = '/face_verification';
 const _documentPhotoPath = '/document_photo';
 const _settingsPath = '/settings';
 const _qrScannerPath = '/qr_scanner';
+
+/// The screens that belong to no session: back on one of them without a
+/// session, the app wears its own look again.
+const sessionlessPaths = {selectDocTypePath, _qrScannerPath};
 const _proofingConsentPath = '/proofing_consent';
 
 /// Where a claimed QR or deep link shows the session for consent (see
-/// [openProofingSessionLink]); tests open it directly.
+/// [openProofingSessionLink]); main.dart leaves it when that session ends,
+/// and tests open it directly.
 const proofingConsentPath = _proofingConsentPath;
 const _chooseDocumentPath = '/choose_document';
 const _savedDocumentsPath = '/saved_documents';
@@ -764,7 +770,12 @@ Future<String?> openProofingSessionLink(
       container.read(activeProofingSessionProvider.notifier).set(null);
     }
     if (claim.info.requestedAttributes.isEmpty) return currentL10n.proofingSessionNoAttributes;
+    // The requester's look from the consent screen on. Popping the scanner
+    // lands home without a session, which takes it off, so it's put on again.
+    final branding = container.read(activeBrandingProvider.notifier);
+    await branding.useSession(claim.ref, claim.info);
     beforePush?.call();
+    await branding.useSession(claim.ref, claim.info);
     router.push(_proofingConsentPath, extra: {'ref': claim.ref, 'info': claim.info});
     return null;
   } on ProofingSessionAccessException catch (e) {
@@ -936,7 +947,9 @@ GoRouter createRouter({
               _afterConsent(context, session);
             },
             onDecline: () {
-              ProviderScope.containerOf(context).read(proofingSessionCoordinatorProvider).decline(sessionRef);
+              final container = ProviderScope.containerOf(context);
+              container.read(proofingSessionCoordinatorProvider).decline(sessionRef);
+              container.read(activeBrandingProvider.notifier).reset();
               context.go(selectDocTypePath);
             },
           );

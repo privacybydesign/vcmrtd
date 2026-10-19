@@ -48,6 +48,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'This QR code moves the browser part of the verification to another browser. Open it with your phone\'s camera instead, or scan the QR code the browser shows for the IDEM app.';
 
   @override
+  String get accessUntrustedServer =>
+      'This QR code isn\'t from a verification service this app works with, so it wasn\'t opened.';
+
+  @override
   String get sessionOpenFailedTitle => 'Could not open verification';
 
   @override
@@ -1272,6 +1276,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String consentHeading(String party) {
     return '$party wants to verify your identity';
+  }
+
+  @override
+  String consentRequestedBy(String org) {
+    return 'Requested by $org';
   }
 
   @override

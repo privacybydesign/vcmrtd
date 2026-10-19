@@ -12,6 +12,7 @@
   "accessHandoverUsed": "This handover QR code was already used. Ask for a new one in the browser.",
   "accessClaimTokenRequired": "This QR code is from an older version of the verification service and can no longer be used. Ask for a new one in the browser.",
   "accessBrowserHandover": "This QR code moves the browser part of the verification to another browser. Open it with your phone's camera instead, or scan the QR code the browser shows for the IDEM app.",
+  "accessUntrustedServer": "This QR code isn't from a verification service this app works with, so it wasn't opened.",
   "sessionOpenFailedTitle": "Could not open verification",
   "sessionCompleteTitle": "Verification complete",
   "sessionCompleteMessage": "You're done. Your verification was sent to {relyingParty}.",
@@ -772,6 +773,14 @@
   "@consentHeading": {
     "placeholders": {
       "party": {
+        "type": "String"
+      }
+    }
+  },
+  "consentRequestedBy": "Requested by {org}",
+  "@consentRequestedBy": {
+    "placeholders": {
+      "org": {
         "type": "String"
       }
     }

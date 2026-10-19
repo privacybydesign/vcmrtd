@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/services/proofing_session_client.dart';
+import 'package:idem/widgets/common/brand_mark.dart';
 import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:idem/widgets/common/button_styles.dart';
@@ -131,10 +132,14 @@ class _ProofingSessionConsentScreenState extends State<ProofingSessionConsentScr
 
 extension on ProofingSessionConsentScreen {
   /// Guided layout: who is asking, a list of what they'll receive, and the
-  /// two choices.
+  /// two choices. A session with branding shows its mark and name; when that
+  /// name isn't the org's own, the org's is shown under it, so the subject
+  /// always sees who really asks.
   Widget _buildGuided(BuildContext context, GuidedStyle g, {required Duration expiresIn, required bool expired}) {
     final l10n = context.l10n;
-    final party = info.relyingParty;
+    final org = info.relyingParty;
+    final branded = info.branding != null;
+    final party = info.branding?.name ?? org;
     return GuidedStatusBar(
       backdrop: Backdrop.light,
       child: Scaffold(
@@ -163,14 +168,24 @@ extension on ProofingSessionConsentScreen {
                             border: Border.all(color: g.actionTintStrong),
                             borderRadius: BorderRadius.circular(24),
                           ),
-                          child: Text(
-                            party.isEmpty ? '?' : party[0].toUpperCase(),
-                            style: g.heading(36, color: g.action),
-                          ),
+                          child: branded
+                              ? const BrandMark(size: 56, excludeFromSemantics: true)
+                              : Text(
+                                  party.isEmpty ? '?' : party[0].toUpperCase(),
+                                  style: g.heading(36, color: g.action),
+                                ),
                         ),
                       ),
                       const SizedBox(height: 14),
                       Text(l10n.consentHeading(party), textAlign: TextAlign.center, style: g.heading(24, height: 1.25)),
+                      if (party != org) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          l10n.consentRequestedBy(org),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 14, color: g.bodyText),
+                        ),
+                      ],
                       const SizedBox(height: 14),
                       Text(
                         expired
