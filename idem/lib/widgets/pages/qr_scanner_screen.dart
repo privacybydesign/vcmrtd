@@ -89,7 +89,7 @@ extension on _QrScannerScreenState {
     // bands; the frame is centred in the space left between them, so text
     // can never cover it, whatever the screen height or font size.
     return GuidedStatusBar(
-      onDark: true,
+      backdrop: Backdrop.dark,
       child: Scaffold(
         backgroundColor: g.header,
         body: Stack(
@@ -118,10 +118,10 @@ extension on _QrScannerScreenState {
                                 leading: GuidedRoundButton(
                                   icon: Icons.close,
                                   tooltip: context.l10n.qrScanClose,
-                                  onDark: true,
+                                  backdrop: Backdrop.dark,
                                   onPressed: widget.onBack,
                                 ),
-                                center: GuidedTopBarTitle(context.l10n.docScanQrTitle, onDark: true),
+                                center: GuidedTopBarTitle(context.l10n.docScanQrTitle, backdrop: Backdrop.dark),
                               ),
                               Padding(
                                 padding: const EdgeInsets.fromLTRB(32, 40, 32, 16),

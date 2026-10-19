@@ -176,7 +176,7 @@ class SettingsScreen extends ConsumerWidget {
     final l10n = context.l10n;
     final faceEngine = ref.watch(faceEngineProvider);
     return GuidedStatusBar(
-      onDark: false,
+      backdrop: Backdrop.light,
       child: Scaffold(
         backgroundColor: g.surface,
         body: SafeArea(

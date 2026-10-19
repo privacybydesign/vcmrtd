@@ -105,7 +105,7 @@ class GuidedFaceIntroView extends StatelessWidget {
   Widget build(BuildContext context) {
     final g = style;
     return GuidedStatusBar(
-      onDark: false,
+      backdrop: Backdrop.light,
       child: Scaffold(
         backgroundColor: Colors.white,
         body: SafeArea(

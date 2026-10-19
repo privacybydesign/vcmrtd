@@ -4,12 +4,12 @@ import 'package:idem/theme/brand_theme.dart';
 /// The brand's logo in a [size] square, or its name as a wordmark when it
 /// has none.
 class BrandMark extends StatelessWidget {
-  const BrandMark({super.key, required this.size, this.onDark = false, this.excludeFromSemantics = false});
+  const BrandMark({super.key, required this.size, this.backdrop = Backdrop.light, this.excludeFromSemantics = false});
 
   final double size;
 
-  /// Whether it sits on a dark background, which the wordmark is then light on.
-  final bool onDark;
+  /// A dark one makes the wordmark light.
+  final Backdrop backdrop;
   final bool excludeFromSemantics;
 
   @override
@@ -39,7 +39,7 @@ class BrandMark extends StatelessWidget {
         fontFamily: brand.headingFontFamily,
         fontSize: size * 0.5,
         fontWeight: FontWeight.w700,
-        color: onDark ? Colors.white : (brand.ink ?? Colors.black87),
+        color: backdrop == Backdrop.dark ? Colors.white : (brand.ink ?? Colors.black87),
       ),
     );
     return SizedBox(

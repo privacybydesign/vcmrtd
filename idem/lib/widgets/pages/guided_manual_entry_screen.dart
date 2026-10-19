@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:idem/utils/document_dates.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/services/flow_step_plan.dart';
@@ -29,6 +30,8 @@ class GuidedManualEntryScreen extends StatefulWidget {
   @override
   State<GuidedManualEntryScreen> createState() => _GuidedManualEntryScreenState();
 }
+
+enum _DateField { birth, expiry }
 
 class _GuidedManualEntryScreenState extends State<GuidedManualEntryScreen> {
   final _formKey = GlobalKey<FormState>();
@@ -74,7 +77,8 @@ class _GuidedManualEntryScreenState extends State<GuidedManualEntryScreen> {
     );
   }
 
-  Future<void> _pickDate({required bool birth}) async {
+  Future<void> _pickDate(_DateField field) async {
+    final birth = field == _DateField.birth;
     // Otherwise the number field regains focus, and the keyboard, when the picker closes.
     FocusScope.of(context).unfocus();
     final now = DateTime.now();
@@ -97,7 +101,7 @@ class _GuidedManualEntryScreenState extends State<GuidedManualEntryScreen> {
         ? (l10n.manualLicenceTitle, l10n.manualLicenceIntro(ManualEntryRules.mrzLineLength))
         : (l10n.manualDocumentTitle(docType), l10n.manualDocumentIntro(docType));
     return GuidedStatusBar(
-      onDark: false,
+      backdrop: Backdrop.light,
       child: Scaffold(
         backgroundColor: Colors.white,
         body: SafeArea(
@@ -159,15 +163,18 @@ class _GuidedManualEntryScreenState extends State<GuidedManualEntryScreen> {
     final name = widget.documentType.displayName;
     return [
       _GuidedFieldLabel(l10n.manualDocumentNumber(docType), style: g),
-      TextFormField(
-        controller: _documentNumber,
-        textCapitalization: TextCapitalization.characters,
-        autocorrect: false,
-        inputFormatters: ManualEntryRules.documentNumberFormatters,
-        style: TextStyle(fontFamily: 'monospace', fontSize: 16, letterSpacing: 1, color: g.ink),
-        decoration: _decoration(g, hint: l10n.manualDocumentNumberHint),
-        validator: (value) =>
-            ManualEntryRules.documentNumber(value, documentName: name, l10n: mrzL10n, docType: docType),
+      Semantics(
+        label: l10n.manualDocumentNumber(docType),
+        child: TextFormField(
+          controller: _documentNumber,
+          textCapitalization: TextCapitalization.characters,
+          autocorrect: false,
+          inputFormatters: ManualEntryRules.documentNumberFormatters,
+          style: TextStyle(fontFamily: 'monospace', fontSize: 16, letterSpacing: 1, color: g.ink),
+          decoration: _decoration(g, hint: l10n.manualDocumentNumberHint),
+          validator: (value) =>
+              ManualEntryRules.documentNumber(value, documentName: name, l10n: mrzL10n, docType: docType),
+        ),
       ),
       const SizedBox(height: 18),
       Row(
@@ -178,7 +185,7 @@ class _GuidedManualEntryScreenState extends State<GuidedManualEntryScreen> {
               label: l10n.manualDateOfBirth,
               value: _dateOfBirth,
               style: g,
-              onTap: () => _pickDate(birth: true),
+              onTap: () => _pickDate(_DateField.birth),
               validator: () => ManualEntryRules.dateOfBirth(_dateOfBirth, l10n: mrzL10n),
             ),
           ),
@@ -188,7 +195,7 @@ class _GuidedManualEntryScreenState extends State<GuidedManualEntryScreen> {
               label: l10n.manualExpiryDate,
               value: _dateOfExpiry,
               style: g,
-              onTap: () => _pickDate(birth: false),
+              onTap: () => _pickDate(_DateField.expiry),
               validator: () => ManualEntryRules.dateOfExpiry(
                 _dateOfExpiry,
                 documentName: name,
@@ -239,16 +246,19 @@ class _GuidedManualEntryScreenState extends State<GuidedManualEntryScreen> {
       ),
       const SizedBox(height: 20),
       _GuidedFieldLabel(context.l10n.manualLicenceCode, style: g),
-      TextFormField(
-        controller: _mrzLine,
-        textCapitalization: TextCapitalization.characters,
-        autocorrect: false,
-        enableSuggestions: false,
-        inputFormatters: ManualEntryRules.mrzLineFormatters,
-        onChanged: (_) => setState(() {}),
-        style: TextStyle(fontFamily: 'monospace', fontSize: 14, color: g.ink),
-        decoration: _decoration(g, hint: 'D1NLD…'),
-        validator: (value) => ManualEntryRules.mrzLine(value, l10n: MrzCaptureLocalizations.of(context)),
+      Semantics(
+        label: context.l10n.manualLicenceCode,
+        child: TextFormField(
+          controller: _mrzLine,
+          textCapitalization: TextCapitalization.characters,
+          autocorrect: false,
+          enableSuggestions: false,
+          inputFormatters: ManualEntryRules.mrzLineFormatters,
+          onChanged: (_) => setState(() {}),
+          style: TextStyle(fontFamily: 'monospace', fontSize: 14, color: g.ink),
+          decoration: _decoration(g, hint: 'D1NLD…'),
+          validator: (value) => ManualEntryRules.mrzLine(value, l10n: MrzCaptureLocalizations.of(context)),
+        ),
       ),
       const SizedBox(height: 6),
       Row(
@@ -322,7 +332,7 @@ class _GuidedDateField extends StatelessWidget {
   Widget build(BuildContext context) {
     final g = style;
     final l10n = context.l10n;
-    final formatted = value == null ? null : DateFormat('d MMM y', l10n.localeName).format(value!);
+    final formatted = value == null ? null : DateFormat(documentDatePattern, l10n.localeName).format(value!);
     return FormField<DateTime>(
       validator: (_) => validator(),
       builder: (field) {

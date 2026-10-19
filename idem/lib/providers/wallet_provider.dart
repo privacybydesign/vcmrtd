@@ -27,7 +27,15 @@ class WalletCard {
   final DocumentData? document;
   final RawDocumentData? rawData;
 
-  bool get canBeReused => document != null && rawData != null;
+  bool get canBeReused => canBeReusedOn(DateTime.now());
+
+  /// Whether the card can be shared again on [day]: it holds the chip read
+  /// and the document is valid through [validUntil].
+  bool canBeReusedOn(DateTime day) {
+    final expiry = validUntil;
+    final expired = expiry != null && DateTime(day.year, day.month, day.day).isAfter(expiry);
+    return document != null && rawData != null && !expired;
+  }
 
   static int _idCounter = 0;
 

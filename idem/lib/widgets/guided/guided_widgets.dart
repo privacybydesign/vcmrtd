@@ -22,21 +22,21 @@ class GuidedRoundButton extends StatelessWidget {
     required this.icon,
     required this.tooltip,
     required this.onPressed,
-    this.onDark = false,
-    this.outlined = false,
+    this.backdrop = Backdrop.light,
+    this.fill = GuidedRoundButtonFill.filled,
   });
 
   final IconData icon;
   final String tooltip;
   final VoidCallback? onPressed;
-  final bool onDark;
-
-  /// A thin ring instead of a filled background (the home hero's settings button).
-  final bool outlined;
+  final Backdrop backdrop;
+  final GuidedRoundButtonFill fill;
 
   @override
   Widget build(BuildContext context) {
     final g = context.guided!;
+    final onDark = backdrop == Backdrop.dark;
+    final outlined = fill == GuidedRoundButtonFill.outlined;
     final foreground = onDark ? Colors.white : g.ink;
     final background = outlined
         ? Colors.transparent
@@ -62,6 +62,13 @@ class GuidedRoundButton extends StatelessWidget {
       ),
     );
   }
+}
+
+enum GuidedRoundButtonFill {
+  filled,
+
+  /// A thin ring instead of a filled background (the home hero's settings button).
+  outlined,
 }
 
 /// Top bar of a guided flow screen: a button on the left, a title or mark in
@@ -90,17 +97,17 @@ class GuidedTopBar extends StatelessWidget {
 
 /// Title in a guided top bar.
 class GuidedTopBarTitle extends StatelessWidget {
-  const GuidedTopBarTitle(this.text, {super.key, this.onDark = false});
+  const GuidedTopBarTitle(this.text, {super.key, this.backdrop = Backdrop.light});
 
   final String text;
-  final bool onDark;
+  final Backdrop backdrop;
 
   @override
   Widget build(BuildContext context) {
     final g = context.guided!;
     return Text(
       text,
-      style: g.heading(16, weight: FontWeight.w600, color: onDark ? Colors.white : g.ink),
+      style: g.heading(16, weight: FontWeight.w600, color: backdrop == Backdrop.dark ? Colors.white : g.ink),
       overflow: TextOverflow.ellipsis,
     );
   }
@@ -108,16 +115,17 @@ class GuidedTopBarTitle extends StatelessWidget {
 
 /// Progress bar with a segment per step of the flow ([FlowStepPlan]).
 class GuidedStepBar extends StatelessWidget {
-  const GuidedStepBar({super.key, required this.step, required this.total, this.onDark = false});
+  const GuidedStepBar({super.key, required this.step, required this.total, this.backdrop = Backdrop.light});
 
   /// 1-based step that's current; that many segments are filled.
   final int step;
   final int total;
-  final bool onDark;
+  final Backdrop backdrop;
 
   @override
   Widget build(BuildContext context) {
     final g = context.guided!;
+    final onDark = backdrop == Backdrop.dark;
     final filled = onDark ? g.heroAccent : g.action;
     final empty = onDark ? Colors.white.withValues(alpha: 0.2) : g.border;
     return Semantics(
@@ -144,37 +152,48 @@ class GuidedStepBar extends StatelessWidget {
 
 /// "Step N of M" over a guided heading.
 class GuidedStepLabel extends StatelessWidget {
-  const GuidedStepLabel({super.key, required this.step, required this.total, this.onDark = false});
+  const GuidedStepLabel({super.key, required this.step, required this.total, this.backdrop = Backdrop.light});
 
   final int step;
   final int total;
-  final bool onDark;
+  final Backdrop backdrop;
 
   @override
   Widget build(BuildContext context) {
     final g = context.guided!;
     return Text(
       context.l10n.guidedStepOf(step, total),
-      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: onDark ? g.stepLabelOnDark : g.stepLabel),
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w700,
+        color: backdrop == Backdrop.dark ? g.stepLabelOnDark : g.stepLabel,
+      ),
     );
   }
 }
 
 /// Full-width pill button in the guided primary (filled) or secondary (outlined) style.
 class GuidedButton extends StatelessWidget {
-  const GuidedButton({super.key, required this.label, required this.onPressed, this.icon, this.secondary = false});
+  const GuidedButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.icon,
+    this.kind = GuidedButtonKind.primary,
+  });
 
   final String label;
   final VoidCallback? onPressed;
   final IconData? icon;
-  final bool secondary;
+  final GuidedButtonKind kind;
 
   @override
   Widget build(BuildContext context) {
     final g = context.guided!;
-    final style = (secondary ? g.secondaryButtonStyle : g.primaryButtonStyle).copyWith(
-      minimumSize: const WidgetStatePropertyAll(Size.fromHeight(52)),
-    );
+    final style = switch (kind) {
+      GuidedButtonKind.primary => g.primaryButtonStyle,
+      GuidedButtonKind.secondary => g.secondaryButtonStyle,
+    }.copyWith(minimumSize: const WidgetStatePropertyAll(Size.fromHeight(52)));
     final child = Text(label);
     return icon == null
         ? ElevatedButton(onPressed: onPressed, style: style, child: child)
@@ -182,21 +201,25 @@ class GuidedButton extends StatelessWidget {
   }
 }
 
+enum GuidedButtonKind { primary, secondary }
+
 /// System bar styling for a guided screen. Guided brands run edge-to-edge
 /// (see [enableGuidedEdgeToEdge]), so both bars are transparent and the
 /// screen draws behind them; this only picks light or dark icons to suit
-/// what is underneath: [onDark] for the status bar at the top, [bottomOnDark]
-/// (defaults to [onDark]) for the navigation bar at the bottom.
+/// what is underneath: [backdrop] for the status bar at the top,
+/// [bottomBackdrop] (defaults to [backdrop]) for the navigation bar at the
+/// bottom.
 class GuidedStatusBar extends StatelessWidget {
-  const GuidedStatusBar({super.key, required this.onDark, this.bottomOnDark, required this.child});
+  const GuidedStatusBar({super.key, required this.backdrop, this.bottomBackdrop, required this.child});
 
-  final bool onDark;
-  final bool? bottomOnDark;
+  final Backdrop backdrop;
+  final Backdrop? bottomBackdrop;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    final bottomDark = bottomOnDark ?? onDark;
+    final onDark = backdrop == Backdrop.dark;
+    final bottomDark = (bottomBackdrop ?? backdrop) == Backdrop.dark;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,

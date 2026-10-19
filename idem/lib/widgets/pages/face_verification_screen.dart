@@ -126,6 +126,9 @@ class FlutterFaceVerificationScreen extends StatefulWidget {
 
 // ── State ──────────────────────────────────────────────────────────────────
 
+/// The engine's tip once the face is in position.
+const _holdStillTip = 'holdStill';
+
 class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationScreen> with WidgetsBindingObserver {
   static const Map<DeviceOrientation, int> _orientations = <DeviceOrientation, int>{
     DeviceOrientation.portraitUp: 0,
@@ -224,7 +227,7 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
     _actionFlash = true;
     _passive = const _PassiveProgress(started: true, elapsedMs: 1200, targetMs: 5000);
     _passiveAt = DateTime.now();
-    _alignTip = 'holdStill';
+    _alignTip = _holdStillTip;
   });
 
   @visibleForTesting
@@ -1088,7 +1091,7 @@ class FlutterFaceVerificationScreenState extends State<FlutterFaceVerificationSc
         return context.l10n.faceTipCloseMouth;
       case 'relaxFace':
         return context.l10n.faceTipRelaxFace;
-      case 'holdStill':
+      case _holdStillTip:
         return _selectedMode == LivenessMode.passive ? context.l10n.faceTipHoldStill : context.l10n.faceTipGetReady;
       default:
         return null;
@@ -1333,7 +1336,7 @@ extension on FlutterFaceVerificationScreenState {
     if (_errorMessage == null && _state == VerificationState.idle) return _buildGuidedIntro(g);
     final showCamera = _errorMessage == null && _state == VerificationState.activeLiveness;
     return GuidedStatusBar(
-      onDark: true,
+      backdrop: Backdrop.dark,
       child: Scaffold(
         backgroundColor: g.header,
         body: Stack(
@@ -1371,11 +1374,11 @@ extension on FlutterFaceVerificationScreenState {
         leading: GuidedRoundButton(
           icon: Icons.chevron_left,
           tooltip: context.l10n.faceBack,
-          onDark: true,
+          backdrop: Backdrop.dark,
           onPressed: _handleBack,
         ),
       ),
-      GuidedStepBar(step: widget.stepNumber, total: widget.totalSteps, onDark: true),
+      GuidedStepBar(step: widget.stepNumber, total: widget.totalSteps, backdrop: Backdrop.dark),
       const SizedBox(height: 8),
     ],
   );
@@ -1410,7 +1413,7 @@ extension on FlutterFaceVerificationScreenState {
 
   /// Green once the engine reports a face in position and nothing left to fix.
   bool get _guidedFaceAligned =>
-      _state == VerificationState.activeLiveness && (_alignTip == null || _alignTip == 'holdStill');
+      _state == VerificationState.activeLiveness && (_alignTip == null || _alignTip == _holdStillTip);
 
   Widget _buildGuidedOval(GuidedStyle g) => CustomPaint(
     painter: _GuidedFaceOvalPainter(
@@ -1484,7 +1487,7 @@ extension on FlutterFaceVerificationScreenState {
       return (faceActionIcon(action), faceActionLabel(action), g.action);
     }
     final tip = _alignTip;
-    final tipMessage = tip == null || tip == 'holdStill' ? null : _alignTipMessage(tip);
+    final tipMessage = tip == null || tip == _holdStillTip ? null : _alignTipMessage(tip);
     if (tipMessage != null) return (Icons.open_in_full, tipMessage, g.action);
     final p = _passive;
     if (_selectedMode == LivenessMode.passive && p != null && p.started) {

@@ -177,3 +177,6 @@ class GuidedStyle {
   TextStyle heading(double size, {FontWeight weight = FontWeight.w700, Color? color, double height = 1.2}) =>
       TextStyle(fontFamily: headingFontFamily, fontSize: size, fontWeight: weight, color: color ?? ink, height: height);
 }
+
+/// What a widget is drawn on, so its text and icons read on it.
+enum Backdrop { light, dark }

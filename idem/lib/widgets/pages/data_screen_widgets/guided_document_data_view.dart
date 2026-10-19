@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/providers/wallet_provider.dart';
+import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
 
 import 'profile_picture.dart';
@@ -124,7 +125,7 @@ class _GuidedDocumentDataViewState extends ConsumerState<GuidedDocumentDataView>
     );
 
     return GuidedStatusBar(
-      onDark: false,
+      backdrop: Backdrop.light,
       child: Scaffold(
         backgroundColor: g.surface,
         body: SafeArea(
@@ -260,7 +261,7 @@ class _GuidedDocumentDataViewState extends ConsumerState<GuidedDocumentDataView>
                         const SizedBox(height: 12),
                         GuidedButton(
                           label: context.l10n.proofingDone,
-                          secondary: true,
+                          kind: GuidedButtonKind.secondary,
                           onPressed: widget.onBackPressed,
                         ),
                       ],

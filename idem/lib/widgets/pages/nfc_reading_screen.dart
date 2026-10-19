@@ -410,7 +410,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
     final percent = (progressForState(state) * 100).round().clamp(0, 100);
 
     return GuidedStatusBar(
-      onDark: false,
+      backdrop: Backdrop.light,
       child: Scaffold(
         backgroundColor: Colors.white,
         body: SafeArea(

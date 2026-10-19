@@ -934,6 +934,11 @@ class AppLocalizationsNl extends AppLocalizations {
   String get proofingSharing => 'Afronden…';
 
   @override
+  String proofingStepSending(String relyingParty) {
+    return 'Versturen naar $relyingParty…';
+  }
+
+  @override
   String get proofingAddToWallet => 'Toevoegen aan wallet';
 
   @override
@@ -1170,11 +1175,11 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get savedEmptyBody =>
-      'Nadat je een document hebt gedeeld, kun je het hier bewaren, zodat je het niet opnieuw hoeft te scannen.';
+      'Nadat je een document hebt gedeeld, kun je het hier bewaren tot de app sluit, zodat je het niet opnieuw hoeft te scannen.';
 
   @override
   String get savedBody =>
-      'Als je een QR-code scant, kun je een van deze kiezen in plaats van je ID opnieuw te scannen. Ze worden alleen gedeeld als je akkoord gaat.';
+      'Als je een QR-code scant, kun je een van deze kiezen in plaats van je ID opnieuw te scannen. Ze worden alleen gedeeld als je akkoord gaat, en verwijderd als de app sluit.';
 
   @override
   String savedValidUntil(String date) {

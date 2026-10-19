@@ -54,7 +54,7 @@ class DocumentTypeSelectionScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: brand.logo != null
-            ? const BrandMark(size: 32, onDark: true)
+            ? const BrandMark(size: 32, backdrop: Backdrop.dark)
             : Text(
                 brand.name,
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22),
@@ -454,8 +454,8 @@ class _GuidedHome extends StatelessWidget {
     final l10n = context.l10n;
     final connected = connectedRelyingParty != null && onContinueProofingSession != null;
     return GuidedStatusBar(
-      onDark: true,
-      bottomOnDark: false,
+      backdrop: Backdrop.dark,
+      bottomBackdrop: Backdrop.light,
       child: Scaffold(
         backgroundColor: g.surface,
         body: CustomScrollView(
@@ -472,13 +472,13 @@ class _GuidedHome extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        const BrandMark(size: 40, onDark: true),
+                        const BrandMark(size: 40, backdrop: Backdrop.dark),
                         const Spacer(),
                         GuidedRoundButton(
                           icon: Icons.settings_outlined,
                           tooltip: l10n.docSettingsTitle,
-                          onDark: true,
-                          outlined: true,
+                          backdrop: Backdrop.dark,
+                          fill: GuidedRoundButtonFill.outlined,
                           onPressed: onSettingsPressed,
                         ),
                       ],

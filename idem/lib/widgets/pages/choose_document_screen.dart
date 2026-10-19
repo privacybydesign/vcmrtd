@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:idem/utils/document_dates.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/providers/wallet_provider.dart';
+import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:idem/widgets/pages/wallet_widgets.dart';
 
@@ -55,7 +57,7 @@ class _ChooseDocumentScreenState extends State<ChooseDocumentScreen> {
     );
 
     return GuidedStatusBar(
-      onDark: false,
+      backdrop: Backdrop.light,
       child: Scaffold(
         backgroundColor: g.surface,
         body: SafeArea(
@@ -191,7 +193,7 @@ class _SavedDocumentOption extends StatelessWidget {
     final details = [
       ?card.documentNumber,
       if (card.validUntil != null)
-        l10n.chooseValidUntil(DateFormat('d MMM y', l10n.localeName).format(card.validUntil!)),
+        l10n.chooseValidUntil(DateFormat(documentDatePattern, l10n.localeName).format(card.validUntil!)),
     ].join(' · ');
     return Semantics(
       selected: selected,
@@ -245,9 +247,7 @@ class _SavedDocumentOption extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: Colors.white,
-                    border: selected
-                        ? Border.all(color: g.action, width: 7)
-                        : Border.all(color: g.placeholder, width: 2),
+                    border: selected ? Border.all(color: g.action, width: 7) : Border.all(color: g.muted, width: 2),
                   ),
                 ),
               ],

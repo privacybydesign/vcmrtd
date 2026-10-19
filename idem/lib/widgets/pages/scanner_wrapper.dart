@@ -197,8 +197,8 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
   Widget _buildGuided(BuildContext context, GuidedStyle g) {
     final scannerBuilder = widget.scannerBuilder ?? _guidedScannerBuilder;
     return GuidedStatusBar(
-      onDark: true,
-      bottomOnDark: false,
+      backdrop: Backdrop.dark,
+      bottomBackdrop: Backdrop.light,
       child: Scaffold(
         backgroundColor: g.header,
         body: Stack(
@@ -215,7 +215,7 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
                 child: LayoutBuilder(
                   builder: (context, box) => CustomPaint(
                     painter: _GuidedScanFramePainter(
-                      frame: guidedScanFrame(box.biggest),
+                      frame: guidedScanFrame(box.biggest, widget.documentType),
                       mrzLines: _mrzLineCount(widget.documentType),
                       scrim: g.ink.withValues(alpha: 0.8),
                       highlight: g.heroAccent,
@@ -236,15 +236,15 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
                           leading: GuidedRoundButton(
                             icon: Icons.close,
                             tooltip: context.l10n.scanClose,
-                            onDark: true,
+                            backdrop: Backdrop.dark,
                             onPressed: widget.onBack,
                           ),
                           center: GuidedTopBarTitle(
                             context.l10n.proofingScanDocument(widget.documentType.name),
-                            onDark: true,
+                            backdrop: Backdrop.dark,
                           ),
                         ),
-                        GuidedStepBar(step: widget.stepNumber, total: widget.totalSteps, onDark: true),
+                        GuidedStepBar(step: widget.stepNumber, total: widget.totalSteps, backdrop: Backdrop.dark),
                       ],
                     ),
                   ),
@@ -270,7 +270,10 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
 /// `MRZCameraViewState._overlayRect` in mrz_capture), so what the user lines up
 /// with the frame is what gets read.
 @visibleForTesting
-Rect guidedScanFrame(Size size) => MRZCameraOverlay.frameRect(size, MRZCameraOverlay.passportFrameRatio);
+Rect guidedScanFrame(Size size, DocumentType type) => MRZCameraOverlay.frameRect(
+  size,
+  type == DocumentType.passport ? MRZCameraOverlay.passportFrameRatio : MRZCameraOverlay.cardFrameRatio,
+);
 
 int _mrzLineCount(DocumentType type) => switch (type) {
   DocumentType.passport => 2,
@@ -304,8 +307,12 @@ class _GuidedScanSheetState extends State<_GuidedScanSheet> {
 
   bool _expanded = false;
 
-  void _setExpanded(bool expanded) {
-    if (expanded != _expanded) setState(() => _expanded = expanded);
+  void _expand() {
+    if (!_expanded) setState(() => _expanded = true);
+  }
+
+  void _collapse() {
+    if (_expanded) setState(() => _expanded = false);
   }
 
   @override
@@ -317,8 +324,8 @@ class _GuidedScanSheetState extends State<_GuidedScanSheet> {
     return GestureDetector(
       onVerticalDragEnd: (details) {
         final velocity = details.primaryVelocity ?? 0;
-        if (velocity < -100) _setExpanded(true);
-        if (velocity > 100) _setExpanded(false);
+        if (velocity < -100) _expand();
+        if (velocity > 100) _collapse();
       },
       child: Material(
         color: Colors.white,
@@ -335,7 +342,7 @@ class _GuidedScanSheetState extends State<_GuidedScanSheet> {
                 expanded: _expanded,
                 hint: _expanded ? l10n.scanHideTips : l10n.scanShowTips,
                 child: InkWell(
-                  onTap: () => _setExpanded(!_expanded),
+                  onTap: _expanded ? _collapse : _expand,
                   // The arrow turning is the feedback; a highlight greys half the card.
                   splashFactory: NoSplash.splashFactory,
                   highlightColor: Colors.transparent,
@@ -395,7 +402,7 @@ class _GuidedScanSheetState extends State<_GuidedScanSheet> {
                               const SizedBox(height: 16),
                               GuidedButton(
                                 label: l10n.scanEnterDetailsManually,
-                                secondary: true,
+                                kind: GuidedButtonKind.secondary,
                                 onPressed: widget.onManualEntry,
                               ),
                             ],

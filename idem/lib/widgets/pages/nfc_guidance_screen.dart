@@ -142,7 +142,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with SingleTicker
     final steps = [l10n.nfcGuidanceStepLay(type), l10n.nfcGuidanceStepPlace(type), l10n.nfcGuidanceStepKeepStill];
 
     return GuidedStatusBar(
-      onDark: false,
+      backdrop: Backdrop.light,
       child: Scaffold(
         backgroundColor: Colors.white,
         body: SafeArea(

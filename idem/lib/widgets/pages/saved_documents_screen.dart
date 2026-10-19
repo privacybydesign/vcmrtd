@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:idem/utils/document_dates.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/providers/wallet_provider.dart';
+import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:idem/widgets/pages/wallet_widgets.dart';
 
@@ -19,14 +21,14 @@ class SavedDocumentsScreen extends ConsumerWidget {
     final g = context.guided!;
     final l10n = context.l10n;
     final cards = ref.watch(walletProvider).reversed.toList();
-    final date = DateFormat('d MMM y', l10n.localeName);
+    final date = DateFormat(documentDatePattern, l10n.localeName);
     final now = DateTime.now();
     String added(DateTime at) => at.year == now.year && at.month == now.month && at.day == now.day
         ? l10n.savedAddedToday
         : l10n.savedAddedOn(DateFormat('d MMM', l10n.localeName).format(at));
 
     return GuidedStatusBar(
-      onDark: false,
+      backdrop: Backdrop.light,
       child: Scaffold(
         backgroundColor: g.surface,
         body: SafeArea(

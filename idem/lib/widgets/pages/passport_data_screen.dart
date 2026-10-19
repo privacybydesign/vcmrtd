@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:idem/utils/document_dates.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/services/flow_step_plan.dart';
@@ -71,7 +72,7 @@ class PassportDataScreen extends StatelessWidget {
   Widget _buildGuided(BuildContext context) {
     final l10n = context.l10n;
     final mrz = document.mrz;
-    final date = DateFormat('d MMM y', l10n.localeName);
+    final date = DateFormat(documentDatePattern, l10n.localeName);
     return GuidedDocumentDataView(
       document: document,
       rawDocument: passportDataResult,

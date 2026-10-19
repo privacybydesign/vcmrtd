@@ -136,7 +136,7 @@ extension on ProofingSessionConsentScreen {
     final l10n = context.l10n;
     final party = info.relyingParty;
     return GuidedStatusBar(
-      onDark: false,
+      backdrop: Backdrop.light,
       child: Scaffold(
         backgroundColor: Colors.white,
         body: SafeArea(
@@ -232,7 +232,7 @@ extension on ProofingSessionConsentScreen {
                   children: [
                     GuidedButton(label: l10n.proofingContinue, onPressed: expired ? null : onConsent),
                     const SizedBox(height: 12),
-                    GuidedButton(label: l10n.proofingDecline, secondary: true, onPressed: onDecline),
+                    GuidedButton(label: l10n.proofingDecline, kind: GuidedButtonKind.secondary, onPressed: onDecline),
                   ],
                 ),
               ),

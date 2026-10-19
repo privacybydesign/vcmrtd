@@ -1676,6 +1676,12 @@ abstract class AppLocalizations {
   /// **'Finishing…'**
   String get proofingSharing;
 
+  /// No description provided for @proofingStepSending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending to {relyingParty}…'**
+  String proofingStepSending(String relyingParty);
+
   /// No description provided for @proofingAddToWallet.
   ///
   /// In en, this message translates to:
@@ -2021,13 +2027,13 @@ abstract class AppLocalizations {
   /// No description provided for @savedEmptyBody.
   ///
   /// In en, this message translates to:
-  /// **'After you share a document, you can save it here so you don’t have to scan it again.'**
+  /// **'After you share a document, you can save it here until the app is closed, so you don’t have to scan it again.'**
   String get savedEmptyBody;
 
   /// No description provided for @savedBody.
   ///
   /// In en, this message translates to:
-  /// **'When you scan a QR code, you can pick one of these instead of scanning your ID again. They are only shared when you agree.'**
+  /// **'When you scan a QR code, you can pick one of these instead of scanning your ID again. They are only shared when you agree, and are removed when the app is closed.'**
   String get savedBody;
 
   /// No description provided for @savedValidUntil.

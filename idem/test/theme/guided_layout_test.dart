@@ -53,10 +53,11 @@ class _FakeReader extends DocumentReader<PassportData> {
   Future<void> checkNfcAvailability() async {}
 }
 
+/// The ICAO specimen, expiring in 2034 so it can be reused.
 PassportData _passport() => PassportData(
   mrz: PassportMRZ(
     Uint8List.fromList(
-      'P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<L898902C36UTO7408122F1204159ZE184226B<<<<<10'.codeUnits,
+      'P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<L898902C36UTO7408122F3404159ZE184226B<<<<<16'.codeUnits,
     ),
   ),
   photoImageData: Uint8List.fromList(img.encodeJpg(img.Image(width: 2, height: 2))),
@@ -124,18 +125,40 @@ void main() {
     expect(find.descendant(of: find.byType(GuidedStepBar), matching: find.byType(Expanded)), findsNWidgets(2));
   });
 
-  testWidgets('guided scan frame sits where the MRZ scanner reads', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        home: MRZCameraView(showOverlay: false, initializeCamera: false, onImage: (_) {}),
-      ),
-    );
-    final state = tester.state<MRZCameraViewState>(find.byType(MRZCameraView));
-    for (final size in const [Size(360, 740), Size(390, 844), Size(844, 390)]) {
-      expect(guidedScanFrame(size), state.overlayRectForTesting(size), reason: '$size');
+  testWidgets('the guided manual entry fields are named by their labels, not their hints', (tester) async {
+    final semantics = tester.ensureSemantics();
+    for (final (type, label) in [
+      (DocumentType.passport, 'Passport number'),
+      (DocumentType.drivingLicence, 'Licence code'),
+    ]) {
+      await tester.pumpWidget(
+        _app(GuidedManualEntryScreen(documentType: type, onBack: () {}, onManualEntryComplete: (_) {})),
+      );
+      expect(tester.getSemantics(find.byType(TextField).first).label, contains(label), reason: type.name);
     }
+    semantics.dispose();
   });
+
+  for (final type in DocumentType.values) {
+    testWidgets('guided scan frame sits where the MRZ scanner reads a ${type.name}', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          home: MRZScanner(
+            documentType: type,
+            engine: OcrEngine.googleMlKit,
+            showOverlay: false,
+            initializeCamera: false,
+            onSuccess: (_, _, _) {},
+          ),
+        ),
+      );
+      final state = tester.state<MRZCameraViewState>(find.byType(MRZCameraView));
+      for (final size in const [Size(360, 740), Size(390, 844), Size(844, 390)]) {
+        expect(guidedScanFrame(size, type), state.overlayRectForTesting(size), reason: '$size');
+      }
+    });
+  }
 
   testWidgets('guided scan card opens to the tip and manual entry, and closes again', (tester) async {
     var manualEntries = 0;
@@ -553,6 +576,13 @@ void main() {
     expect(card.canBeReused, isTrue);
     expect(card.validUntil, _passport().mrz.dateOfExpiry);
     expect(WalletCard.fromDocument(_passport(), DocumentType.passport).canBeReused, isFalse);
+  });
+
+  test('an expired saved document is not offered again', () {
+    final raw = RawDocumentData(dataGroups: const {}, efSod: '00');
+    final card = WalletCard.fromDocument(_passport(), DocumentType.passport, rawData: raw);
+    expect(card.canBeReusedOn(DateTime(2034, 4, 15)), isTrue, reason: 'valid through its expiry date');
+    expect(card.canBeReusedOn(DateTime(2034, 4, 16)), isFalse);
   });
 
   test('the QR frame always fits in the area left between the instructions and the bottom line', () {
