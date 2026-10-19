@@ -17,13 +17,13 @@ import UIKit
     private static let universalLinkPath = "/verify"
 
     /// A vcmrtd:// link, or the https Universal Link on idem.yivi.app/verify.
-    static func isProofingLink(_ url: URL) -> Bool {
+    private static func isProofingLink(_ url: URL) -> Bool {
         if url.scheme == "vcmrtd" { return true }
         return url.scheme == "https" && url.host == universalLinkHost && url.path == universalLinkPath
     }
 
     /// The https link a Universal Link activity carries, when it is a proofing link.
-    static func proofingLink(in activity: NSUserActivity) -> URL? {
+    private static func proofingLink(in activity: NSUserActivity) -> URL? {
         guard activity.activityType == NSUserActivityTypeBrowsingWeb,
               let url = activity.webpageURL, isProofingLink(url) else { return nil }
         return url
