@@ -375,7 +375,6 @@
   "dataViewChipRead": "We hebben de chip van je {documentType, select, passport{paspoort} identityCard{identiteitskaart} drivingLicence{rijbewijs} other{document}} gelezen.",
   "dataViewNotAvailable": "Niet beschikbaar",
   "dataViewSubtitle": "{documentType, select, passport{Paspoort} identityCard{Identiteitskaart} drivingLicence{Rijbewijs} other{Document}} · {country}",
-  "dataViewAddToWallet": "Toevoegen aan wallet",
   "dataViewDateOfBirth": "Geboortedatum",
   "dataViewPlaceOfBirth": "Geboorteplaats",
   "dataViewDocumentNumber": "Documentnummer",

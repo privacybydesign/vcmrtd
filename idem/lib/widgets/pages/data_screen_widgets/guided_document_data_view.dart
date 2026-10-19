@@ -22,9 +22,10 @@ class GuidedDetail {
 }
 
 /// Guided layout of the document data screen: a success header and the key
-/// details in one card. Below it: "Finish with ..." while the session waits
-/// for the user's go-ahead, "Done" once every step was sent (both with a
-/// "save for next time" checkbox), "add to wallet" otherwise.
+/// details in one card. Below it the "save for next time" switch, on unless
+/// the user turns it off, and "Finish with ..." while the session waits for
+/// the user's go-ahead, "Done" otherwise. A read without a session looks the
+/// same as one whose steps were all sent.
 ///
 /// Says the chip was read rather than that it's genuine: authenticity is
 /// checked by the backend, not on the phone.
@@ -73,7 +74,7 @@ class GuidedDocumentDataView extends ConsumerStatefulWidget {
 }
 
 class _GuidedDocumentDataViewState extends ConsumerState<GuidedDocumentDataView> {
-  bool _saveForNextTime = false;
+  bool _saveForNextTime = true;
   bool _sharing = false;
 
   void _addToWallet() => _addTo(ref.read(walletProvider.notifier));
@@ -240,43 +241,22 @@ class _GuidedDocumentDataViewState extends ConsumerState<GuidedDocumentDataView>
     ),
   );
 
-  /// Finish with the session, done after it got everything, or add to the
-  /// wallet without one.
-  List<Widget> _actions({required bool share}) {
-    final submittedTo = widget.submittedTo;
-    if (share) {
-      return [
-        GuidedSaveForNextTime(value: _saveForNextTime, onChanged: (value) => setState(() => _saveForNextTime = value)),
-        const SizedBox(height: 16),
-        GuidedButton(
-          label: _sharing ? context.l10n.proofingSharing : context.l10n.proofingShareWith(submittedTo ?? ''),
-          onPressed: _sharing ? null : _share,
-        ),
-      ];
-    }
-    if (submittedTo != null) {
-      return [
-        GuidedSaveForNextTime(value: _saveForNextTime, onChanged: (value) => setState(() => _saveForNextTime = value)),
-        const SizedBox(height: 16),
-        GuidedButton(
-          label: context.l10n.proofingDone,
-          onPressed: () {
-            if (_saveForNextTime) _addToWallet();
-            widget.onBackPressed();
-          },
-        ),
-      ];
-    }
-    return [
+  /// The save switch, then finish with the session or done.
+  List<Widget> _actions({required bool share}) => [
+    GuidedSaveForNextTime(value: _saveForNextTime, onChanged: (value) => setState(() => _saveForNextTime = value)),
+    const SizedBox(height: 16),
+    if (share)
       GuidedButton(
-        label: context.l10n.dataViewAddToWallet,
+        label: _sharing ? context.l10n.proofingSharing : context.l10n.proofingShareWith(widget.submittedTo ?? ''),
+        onPressed: _sharing ? null : _share,
+      )
+    else
+      GuidedButton(
+        label: context.l10n.proofingDone,
         onPressed: () {
-          _addToWallet();
+          if (_saveForNextTime) _addToWallet();
           widget.onBackPressed();
         },
       ),
-      const SizedBox(height: 12),
-      GuidedButton(label: context.l10n.proofingDone, kind: GuidedButtonKind.secondary, onPressed: widget.onBackPressed),
-    ];
-  }
+  ];
 }

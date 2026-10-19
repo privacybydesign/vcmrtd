@@ -1371,9 +1371,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get dataViewAddToWallet => 'Add to wallet';
-
-  @override
   String get dataViewDateOfBirth => 'Date of birth';
 
   @override

@@ -2342,12 +2342,6 @@ abstract class AppLocalizations {
   /// **'{documentType, select, passport{Passport} identityCard{ID card} drivingLicence{Driving licence} other{Document}} · {country}'**
   String dataViewSubtitle(String documentType, String country);
 
-  /// No description provided for @dataViewAddToWallet.
-  ///
-  /// In en, this message translates to:
-  /// **'Add to wallet'**
-  String get dataViewAddToWallet;
-
   /// No description provided for @dataViewDateOfBirth.
   ///
   /// In en, this message translates to:

@@ -246,7 +246,7 @@ void main() {
       await pump(tester);
       expect(find.text('Document read'), findsOneWidget);
       expect(find.text('Anna Maria Eriksson'), findsOneWidget);
-      expect(find.text('Add to wallet'), findsOneWidget);
+      expect(find.text('Done'), findsOneWidget);
       expect(find.textContaining('genuine'), findsNothing);
     });
 
@@ -254,8 +254,23 @@ void main() {
       await pump(tester, submittedTo: 'Acme Bank');
       expect(find.text('Sent to Acme Bank'), findsOneWidget);
       expect(find.text('Save for next time'), findsOneWidget);
-      expect(find.text('Add to wallet'), findsNothing);
     });
+
+    for (final submittedTo in [null, 'Acme Bank']) {
+      testWidgets('keeps the document for next time unless switched off, sent to: $submittedTo', (tester) async {
+        for (final keep in [true, false]) {
+          await pump(tester, submittedTo: submittedTo);
+          expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
+          if (!keep) await tester.tap(find.byType(Switch));
+          await tester.pump();
+          await tester.tap(find.text('Done'));
+          final container = ProviderScope.containerOf(tester.element(find.byType(PassportDataScreen)));
+          expect(container.read(walletProvider), hasLength(keep ? 1 : 0), reason: 'keep: $keep');
+          // A fresh scope for the next round.
+          await tester.pumpWidget(const SizedBox());
+        }
+      });
+    }
 
     for (final shared in [true, false]) {
       testWidgets('a read document finishes the session from here, and saved for next time only once shared: $shared', (
@@ -274,8 +289,6 @@ void main() {
         expect(find.text('Document read'), findsOneWidget);
         expect(find.text('Done'), findsNothing);
 
-        await tester.tap(find.text('Save for next time'));
-        await tester.pump();
         await tester.tap(find.text('Finish with Acme Bank'));
         await tester.pump();
 
@@ -406,7 +419,8 @@ void main() {
     await tester.pump();
     expect(find.text('Driving licence read'), findsOneWidget);
     expect(find.text('Anna Maria Eriksson'), findsOneWidget);
-    expect(find.text('until 01/02/2034'), findsOneWidget);
+    expect(find.text('until 1 Feb 2034'), findsOneWidget);
+    expect(find.text('12 Aug 1974'), findsOneWidget);
     expect(find.textContaining('genuine'), findsNothing);
   });
 

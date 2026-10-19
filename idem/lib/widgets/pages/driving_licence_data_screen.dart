@@ -2,6 +2,8 @@ import 'dart:typed_data';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Colors;
+import 'package:intl/intl.dart';
+import 'package:idem/utils/document_dates.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/services/flow_step_plan.dart';
@@ -93,6 +95,13 @@ class DrivingLicenceDataScreen extends StatelessWidget {
     final l10n = context.l10n;
     final licence = drivingLicence;
     final name = '${licence.holderOtherName} ${licence.holderSurname}'.trim();
+    // The same "15 Apr 2034" as the passport and ID card results.
+    final format = DateFormat(documentDatePattern, l10n.localeName);
+    String date(String value) {
+      final parsed = parseDrivingLicenceDate(value);
+      return parsed == null ? value : format.format(parsed);
+    }
+
     return GuidedDocumentDataView(
       document: licence,
       rawDocument: drivingLicenceDataResult,
@@ -108,11 +117,11 @@ class DrivingLicenceDataScreen extends StatelessWidget {
       holderName: name.isEmpty ? l10n.idDocumentDrivingLicence : name,
       subtitle: l10n.dataViewSubtitle(DocumentType.drivingLicence.name, licence.issuingMemberState),
       details: [
-        GuidedDetail(l10n.dataViewDateOfBirth, _formatDate(licence.dateOfBirth)),
+        GuidedDetail(l10n.dataViewDateOfBirth, date(licence.dateOfBirth)),
         GuidedDetail(l10n.dataViewPlaceOfBirth, licence.placeOfBirth),
         GuidedDetail(l10n.dataViewDocumentNumber, licence.documentNumber, mono: true),
         GuidedDetail(l10n.dataViewIssuedBy, licence.issuingAuthority),
-        GuidedDetail(l10n.dataViewValidUntil, _formatDate(licence.dateOfExpiry)),
+        GuidedDetail(l10n.dataViewValidUntil, date(licence.dateOfExpiry)),
       ],
       extra: [
         if (licence.categories.isNotEmpty) ...[
@@ -142,7 +151,7 @@ class DrivingLicenceDataScreen extends StatelessWidget {
                     children: [
                       Text(category.category, style: g.heading(15)),
                       Text(
-                        l10n.dataViewCategoryUntil(_formatDate(category.dateOfExpiry)),
+                        l10n.dataViewCategoryUntil(date(category.dateOfExpiry)),
                         style: TextStyle(fontSize: 12, color: g.bodyText),
                       ),
                     ],
