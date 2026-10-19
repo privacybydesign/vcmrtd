@@ -349,6 +349,14 @@ void main() {
       expect(find.text('A'), findsOneWidget);
     });
 
+    testWidgets('uses the whole first character of the requester as the initial', (tester) async {
+      _tallViewport(tester);
+      await tester.pumpWidget(
+        _app(ProofingSessionConsentScreen(info: _session('🏦 Acme Bank'), onConsent: () {}, onDecline: () {})),
+      );
+      expect(find.text('🏦'), findsOneWidget);
+    });
+
     testWidgets('a theme without a brand keeps the classic consent screen', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
