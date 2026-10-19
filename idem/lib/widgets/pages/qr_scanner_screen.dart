@@ -217,6 +217,7 @@ class _GuidedQrFramePainter extends CustomPainter {
         ..addRRect(RRect.fromRectAndRadius(frame, radius)),
       Paint()..color = scrim,
     );
+
     const len = 32.0, r = 20.0;
     final l = frame.left, t = frame.top, rt = frame.right, b = frame.bottom;
     canvas.drawPath(

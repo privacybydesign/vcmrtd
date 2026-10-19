@@ -20,10 +20,11 @@ class GuidedDetail {
   const GuidedDetail(this.label, this.value, {this.mono = false});
 }
 
-/// Guided layout of the document data screen: a success header, the key
-/// details in one card, and either "add to wallet" or, when every step was
-/// already sent to a session, "save for next time" with a confirmation or,
-/// still to be shared, "Share with ...".
+/// Guided layout of the document data screen: a success header and the key
+/// details in one card. Below it: "Share with ..." while the session waits
+/// for the user's go-ahead, "Done" once every step was sent (both with a
+/// "save for next time" checkbox), "add to wallet" otherwise.
+///
 /// Says the chip was read rather than that it's genuine: authenticity is
 /// checked by the backend, not on the phone.
 class GuidedDocumentDataView extends ConsumerStatefulWidget {
