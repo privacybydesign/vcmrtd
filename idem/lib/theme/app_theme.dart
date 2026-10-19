@@ -140,7 +140,7 @@ class AppFont {
     'helvetica neue': ('Helvetica Neue', _androidSans),
     'helvetica': ('Helvetica', _androidSans),
     'arial': ('Arial', _androidSans),
-    'georgia': ('Georgia', 'serif'),
+    'georgia': ('Georgia', _androidSerif),
     'times new roman': _serif,
     'serif': _serif,
     'ui-monospace': _monospace,
@@ -150,7 +150,8 @@ class AppFont {
     'monospace': _monospace,
   };
   static const _androidSans = 'sans-serif';
-  static const _serif = ('Times New Roman', 'serif');
+  static const _androidSerif = 'serif';
+  static const _serif = ('Times New Roman', _androidSerif);
   static const _monospace = ('Menlo', 'monospace');
 
   /// A theme's CSS font-family list as the app can draw it: its first family

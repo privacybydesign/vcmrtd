@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io' show HttpStatus;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -65,7 +66,7 @@ void main() {
       },
       () => MockClient((request) async {
         requests++;
-        return http.Response(json.encode({}), 200);
+        return http.Response(json.encode({}), HttpStatus.ok);
       }),
     );
     expect(requests, 0);

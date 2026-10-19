@@ -23,6 +23,8 @@ import 'package:idem/widgets/pages/proofing_session_consent_screen.dart';
 const _api = 'https://proof.example.com';
 const _link = 'vcmrtd://verify?handover=h-1&api=$_api';
 final _l10n = AppLocalizationsEn();
+const _brandName = 'Acme Bank';
+const _deepLinkChannel = MethodChannel('proofing_deeplink');
 
 /// A proofing server holding one branded session, whose state a test moves
 /// on: [update] is what the app's next request (or open long-poll) sees.
@@ -61,7 +63,7 @@ class _FakeServer extends ProofingSessionClient {
     'currentStep': 'document_capture',
     'completedSteps': <String>[],
     'device': {'authorized': true, 'role': 'native', 'state': 'active'},
-    'branding': {'name': 'Acme Bank', 'primaryColor': '#C2410C', 'secondaryColor': '#7C3AED'},
+    'branding': {'name': _brandName, 'primaryColor': '#C2410C', 'secondaryColor': '#7C3AED'},
   };
 
   @override
@@ -99,16 +101,18 @@ enum _Launch { deepLink, home }
 /// consent screen; with [_Launch.home], just the app, on its home screen.
 Future<_FakeServer> _openSession(WidgetTester tester, {_Launch launch = _Launch.deepLink}) async {
   final server = _FakeServer();
+
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
-    const MethodChannel('proofing_deeplink'),
+    _deepLinkChannel,
     (call) async => call.method == 'getInitialLink' && launch == _Launch.deepLink ? _link : null,
   );
   addTearDown(
     () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
-      const MethodChannel('proofing_deeplink'),
+      _deepLinkChannel,
       null,
     ),
   );
+
   final coordinator = ProofingSessionCoordinator(
     client: server,
     retryDelay: const Duration(milliseconds: 10),
@@ -124,9 +128,10 @@ Future<_FakeServer> _openSession(WidgetTester tester, {_Launch launch = _Launch.
     ),
   );
   await tester.pumpAndSettle();
+
   if (launch == _Launch.home) return server;
   expect(find.byType(ProofingSessionConsentScreen), findsOneWidget);
-  _expectBranding(tester, 'Acme Bank');
+  _expectBranding(tester, _brandName);
   return server;
 }
 
@@ -134,7 +139,7 @@ Future<void> _accept(WidgetTester tester) async {
   await tester.tap(find.text(_l10n.proofingContinue));
   await tester.pumpAndSettle();
   expect(find.byType(ChooseDocumentScreen), findsOneWidget);
-  _expectBranding(tester, 'Acme Bank');
+  _expectBranding(tester, _brandName);
 }
 
 /// The phone is put away, then picked up again.
@@ -184,7 +189,7 @@ void main() {
     await openProofingSessionLink(router, _container(tester), _link, beforePush: router.pop);
     await tester.pumpAndSettle();
     expect(find.byType(ProofingSessionConsentScreen), findsOneWidget);
-    _expectBranding(tester, 'Acme Bank');
+    _expectBranding(tester, _brandName);
   });
 
   group('the white-label comes off when the session ends', () {

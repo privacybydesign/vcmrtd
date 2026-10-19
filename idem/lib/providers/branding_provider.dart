@@ -42,9 +42,11 @@ class ActiveBrandingNotifier extends Notifier<AppBranding> {
       reset();
       return;
     }
+
     final source = (sessionRef.token, branding);
     final generation = ++_generation;
     if (_source == source) return;
+
     _sessionToken = sessionRef.token;
     final built = _built;
     if (built != null && built.$1 == source) {
@@ -52,6 +54,7 @@ class ActiveBrandingNotifier extends Notifier<AppBranding> {
       state = built.$2;
       return;
     }
+
     Uint8List? logo;
     if (branding.hasLogo) {
       try {
@@ -60,6 +63,7 @@ class ActiveBrandingNotifier extends Notifier<AppBranding> {
         _log.warning('branding logo unavailable: $e');
       }
     }
+
     if (generation != _generation) return;
     _source = source;
     state = AppBranding.fromSession(branding, logo: logo);
