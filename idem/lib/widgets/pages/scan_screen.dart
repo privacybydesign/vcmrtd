@@ -6,6 +6,9 @@ import 'package:vcmrtd/vcmrtd.dart';
 import '../../providers/ocr_engine_provider.dart';
 import '../../routing.dart';
 
+/// Who draws the document frame over the camera.
+enum ScanFrame { scanner, caller }
+
 /// Wires the mrz_capture scanner into this application: the OCR engine comes
 /// from the settings provider, the route observer from the router.
 class ScannerPage extends ConsumerStatefulWidget {
@@ -16,15 +19,14 @@ class ScannerPage extends ConsumerStatefulWidget {
   final MrzScanPicture scanPicture;
   final void Function(ScannedMRZ mrz, DocumentPicture? picture) onSuccess;
 
-  /// Whether the scanner draws its own document frame; off when the caller draws one.
-  final bool showOverlay;
+  final ScanFrame frame;
 
   const ScannerPage({
     super.key,
     this.documentType = DocumentType.passport,
     this.scanPicture = MrzScanPicture.none,
     required this.onSuccess,
-    this.showOverlay = true,
+    this.frame = ScanFrame.scanner,
   });
 
   @override
@@ -42,7 +44,7 @@ class _ScannerPageState extends ConsumerState<ScannerPage> {
       scanPicture: widget.scanPicture,
       engine: ref.watch(ocrEngineProvider),
       routeObserver: routeObserver,
-      showOverlay: widget.showOverlay,
+      showOverlay: widget.frame == ScanFrame.scanner,
       onSuccess: (scannedMRZ, lines, picture) => widget.onSuccess(scannedMRZ, picture),
     );
   }

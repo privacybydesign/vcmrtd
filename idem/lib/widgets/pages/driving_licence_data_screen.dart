@@ -128,7 +128,7 @@ class DrivingLicenceDataScreen extends StatelessWidget {
           const SizedBox(height: 16),
           Padding(
             padding: const EdgeInsets.only(left: 4, bottom: 8),
-            child: Text(
+            child: GuidedHeading(
               l10n.docCategories,
               style: g.heading(15, weight: FontWeight.w600, color: g.slate),
             ),

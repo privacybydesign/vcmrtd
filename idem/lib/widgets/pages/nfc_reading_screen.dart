@@ -467,7 +467,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
                         ),
                       ),
                       const SizedBox(height: 24),
-                      Text(title, textAlign: TextAlign.center, style: g.heading(24, height: 1.25)),
+                      GuidedHeading(title, textAlign: TextAlign.center, style: g.heading(24, height: 1.25)),
                       const SizedBox(height: 8),
                       Text(
                         subtitle,
@@ -479,8 +479,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
                         _GuidedReadingChecklist(
                           style: g,
                           currentStep: readingStep,
-                          failed: failed,
-                          complete: done,
+                          nfcState: nfcState,
                           documentType: widget.params.documentType,
                         ),
                       ],
@@ -697,21 +696,20 @@ class _GuidedReadingChecklist extends StatelessWidget {
   const _GuidedReadingChecklist({
     required this.style,
     required this.currentStep,
-    required this.failed,
-    required this.complete,
+    required this.nfcState,
     required this.documentType,
   });
 
   final GuidedStyle style;
   final int currentStep;
-  final bool failed;
-  final bool complete;
+  final NFCReadingState nfcState;
   final DocumentType documentType;
 
   @override
   Widget build(BuildContext context) {
     final g = style;
     final l10n = context.l10n;
+    final complete = nfcState == NFCReadingState.success;
     final labels = [
       (l10n.nfcChecklistSecureDone, l10n.nfcChecklistSecureActive),
       (l10n.nfcChecklistDetailsDone, l10n.nfcChecklistDetailsActive),
@@ -733,7 +731,7 @@ class _GuidedReadingChecklist extends StatelessWidget {
               state: i < currentStep || complete
                   ? _RowState.done
                   : i == currentStep
-                  ? (failed ? _RowState.failed : _RowState.current)
+                  ? (nfcState == NFCReadingState.error ? _RowState.failed : _RowState.current)
                   : _RowState.pending,
               divider: i < labels.length - 1,
             ),

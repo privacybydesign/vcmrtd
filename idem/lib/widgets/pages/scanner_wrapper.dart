@@ -307,8 +307,16 @@ class _GuidedScanSheetState extends State<_GuidedScanSheet> {
 
   bool _expanded = false;
 
+  /// Stays true while the tip collapses, so it shrinks with its content.
+  bool _tipMounted = false;
+
   void _expand() {
-    if (!_expanded) setState(() => _expanded = true);
+    if (!_expanded) {
+      setState(() {
+        _expanded = true;
+        _tipMounted = true;
+      });
+    }
   }
 
   void _collapse() {
@@ -367,7 +375,7 @@ class _GuidedScanSheetState extends State<_GuidedScanSheet> {
                                 children: [
                                   GuidedStepLabel(step: widget.stepNumber, total: widget.totalSteps),
                                   const SizedBox(height: 4),
-                                  Text(title, style: g.heading(18, height: 1.3)),
+                                  GuidedHeading(title, style: g.heading(18, height: 1.3)),
                                 ],
                               ),
                             ),
@@ -385,30 +393,36 @@ class _GuidedScanSheetState extends State<_GuidedScanSheet> {
                   ),
                 ),
               ),
-              AnimatedSize(
-                duration: _duration,
-                curve: Curves.easeOutCubic,
-                alignment: Alignment.topCenter,
-                child: AnimatedOpacity(
-                  opacity: _expanded ? 1 : 0,
+              ClipRect(
+                child: AnimatedAlign(
                   duration: _duration,
-                  child: _expanded
-                      ? Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Text(tip, style: TextStyle(fontSize: 15, height: 1.5, color: g.bodyText)),
-                              const SizedBox(height: 16),
-                              GuidedButton(
-                                label: l10n.scanEnterDetailsManually,
-                                kind: GuidedButtonKind.secondary,
-                                onPressed: widget.onManualEntry,
-                              ),
-                            ],
-                          ),
-                        )
-                      : const SizedBox(width: double.infinity),
+                  curve: Curves.easeOutCubic,
+                  alignment: Alignment.topCenter,
+                  heightFactor: _expanded ? 1 : 0,
+                  onEnd: () {
+                    if (!_expanded && _tipMounted) setState(() => _tipMounted = false);
+                  },
+                  child: AnimatedOpacity(
+                    opacity: _expanded ? 1 : 0,
+                    duration: _duration,
+                    child: _tipMounted
+                        ? Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text(tip, style: TextStyle(fontSize: 15, height: 1.5, color: g.bodyText)),
+                                const SizedBox(height: 16),
+                                GuidedButton(
+                                  label: l10n.scanEnterDetailsManually,
+                                  kind: GuidedButtonKind.secondary,
+                                  onPressed: widget.onManualEntry,
+                                ),
+                              ],
+                            ),
+                          )
+                        : const SizedBox(width: double.infinity),
+                  ),
                 ),
               ),
             ],
@@ -509,5 +523,10 @@ Widget _guidedScannerBuilder({
   required MrzScanPicture scanPicture,
   required MrzScannedWithPicture onSuccess,
 }) {
-  return ScannerPage(documentType: documentType, scanPicture: scanPicture, onSuccess: onSuccess, showOverlay: false);
+  return ScannerPage(
+    documentType: documentType,
+    scanPicture: scanPicture,
+    onSuccess: onSuccess,
+    frame: ScanFrame.caller,
+  );
 }

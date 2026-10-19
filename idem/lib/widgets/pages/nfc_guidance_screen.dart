@@ -175,7 +175,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with SingleTicker
                           children: [
                             GuidedStepLabel(step: widget.stepNumber, total: widget.totalSteps),
                             const SizedBox(height: 12),
-                            Text(l10n.nfcHoldPhoneOn(type), style: g.heading(26)),
+                            GuidedHeading(l10n.nfcHoldPhoneOn(type), style: g.heading(26)),
                             const SizedBox(height: 12),
                             Text(
                               l10n.nfcGuidanceIntro(type),

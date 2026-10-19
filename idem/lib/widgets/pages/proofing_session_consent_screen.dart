@@ -171,13 +171,17 @@ extension on ProofingSessionConsentScreen {
                           child: branded
                               ? const BrandMark(size: 56, excludeFromSemantics: true)
                               : Text(
-                                  party.isEmpty ? '?' : party[0].toUpperCase(),
+                                  party.isEmpty ? '?' : party.characters.first.toUpperCase(),
                                   style: g.heading(36, color: g.action),
                                 ),
                         ),
                       ),
                       const SizedBox(height: 14),
-                      Text(l10n.consentHeading(party), textAlign: TextAlign.center, style: g.heading(24, height: 1.25)),
+                      GuidedHeading(
+                        l10n.consentHeading(party),
+                        textAlign: TextAlign.center,
+                        style: g.heading(24, height: 1.25),
+                      ),
                       if (party != org) ...[
                         const SizedBox(height: 8),
                         Text(
@@ -199,7 +203,7 @@ extension on ProofingSessionConsentScreen {
                         ),
                       ),
                       const SizedBox(height: 28),
-                      Text(
+                      GuidedHeading(
                         l10n.consentTheyWillReceive,
                         style: g.heading(16, weight: FontWeight.w600, color: g.slate),
                       ),

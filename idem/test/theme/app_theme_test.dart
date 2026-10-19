@@ -196,6 +196,7 @@ void main() {
       expect(_contrast(guided.stepLabel, guided.badgeBackground), greaterThanOrEqualTo(_aaNormalText));
       expect(_contrast(AppColors.ink, AppColors.surface), greaterThanOrEqualTo(_aaNormalText));
       expect(_contrast(AppColors.bodyText, Colors.white), greaterThanOrEqualTo(_aaNormalText));
+      expect(_contrast(guided.muted, Colors.white), greaterThanOrEqualTo(_aaNormalText));
     });
   });
 

@@ -128,7 +128,7 @@ class _GuidedManualEntryScreenState extends State<GuidedManualEntryScreen> {
                       children: [
                         GuidedStepLabel(step: widget.stepNumber, total: widget.totalSteps),
                         const SizedBox(height: 12),
-                        Text(title, style: g.heading(26)),
+                        GuidedHeading(title, style: g.heading(26)),
                         const SizedBox(height: 12),
                         Text(intro, style: TextStyle(fontSize: 16, height: 1.5, color: g.bodyText)),
                         const SizedBox(height: 24),

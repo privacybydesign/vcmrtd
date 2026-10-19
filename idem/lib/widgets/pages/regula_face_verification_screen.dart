@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtd/vcmrtd.dart' show FaceMatch;
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/providers/face_api_provider.dart';
@@ -145,64 +144,51 @@ class _RegulaFaceVerificationScreenState extends ConsumerState<RegulaFaceVerific
         backTooltip: l10n.faceBack,
       );
     }
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            StepBadgeTopBar(
-              icon: Icons.arrow_back,
-              tooltip: l10n.faceBack,
-              onBack: widget.onBackPressed,
-              current: widget.stepNumber,
-              total: widget.totalSteps,
-              label: l10n.faceStepLabel,
-            ),
-            Expanded(
-              child: switch (_status) {
-                _Status.intro => FaceIntroView(
-                  title: l10n.faceRegulaIntroTitle,
-                  body: l10n.faceRegulaIntroBody,
-                  steps: [l10n.faceRegulaStep1, l10n.faceRegulaStep2, l10n.faceRegulaStep3],
-                  onStart: _run,
-                ),
-                _Status.launching => FaceBusyView(label: l10n.faceRegulaOpeningCamera),
-                _Status.matching => FaceBusyView(label: l10n.faceRegulaMatching),
-                _Status.continuing => FaceBusyView(label: l10n.faceContinuing),
-                _Status.noMatch => FaceResultView(
-                  icon: Icons.cancel,
-                  color: Colors.red,
-                  title: l10n.faceVerificationFailed,
-                  subtitle: l10n.faceRegulaNoMatchSubtitle,
-                  onRetry: _retry,
-                  retryLabel: l10n.faceRegulaScanAgain,
-                ),
-                _Status.notLive => FaceResultView(
-                  icon: Icons.cancel,
-                  color: Colors.red,
-                  title: l10n.faceVerificationFailed,
-                  subtitle: l10n.faceRegulaNotLiveSubtitle,
-                  onRetry: _run,
-                ),
-                _Status.cancelled => FaceResultView(
-                  icon: Icons.info_outline,
-                  color: Colors.orange,
-                  title: l10n.faceCancelled,
-                  subtitle: l10n.faceRegulaCancelledSubtitle,
-                  onRetry: _run,
-                ),
-                _Status.error => FaceResultView(
-                  icon: Icons.error_outline,
-                  color: Colors.red,
-                  title: l10n.faceSomethingWentWrong,
-                  subtitle: _error ?? '',
-                  onRetry: _retry,
-                  retryLabel: _issuerAsked ? l10n.faceRegulaScanAgain : null,
-                ),
-              },
-            ),
-          ],
+    return FaceStepScaffold(
+      stepNumber: widget.stepNumber,
+      totalSteps: widget.totalSteps,
+      onBack: widget.onBackPressed,
+      child: switch (_status) {
+        _Status.intro => FaceIntroView(
+          title: l10n.faceRegulaIntroTitle,
+          body: l10n.faceRegulaIntroBody,
+          steps: [l10n.faceRegulaStep1, l10n.faceRegulaStep2, l10n.faceRegulaStep3],
+          onStart: _run,
         ),
-      ),
+        _Status.launching => FaceBusyView(label: l10n.faceRegulaOpeningCamera),
+        _Status.matching => FaceBusyView(label: l10n.faceRegulaMatching),
+        _Status.continuing => FaceBusyView(label: l10n.faceContinuing),
+        _Status.noMatch => FaceResultView(
+          icon: Icons.cancel,
+          tone: FaceResultTone.failure,
+          title: l10n.faceVerificationFailed,
+          subtitle: l10n.faceRegulaNoMatchSubtitle,
+          onRetry: _retry,
+          retryLabel: l10n.faceRegulaScanAgain,
+        ),
+        _Status.notLive => FaceResultView(
+          icon: Icons.cancel,
+          tone: FaceResultTone.failure,
+          title: l10n.faceVerificationFailed,
+          subtitle: l10n.faceRegulaNotLiveSubtitle,
+          onRetry: _run,
+        ),
+        _Status.cancelled => FaceResultView(
+          icon: Icons.info_outline,
+          tone: FaceResultTone.notice,
+          title: l10n.faceCancelled,
+          subtitle: l10n.faceRegulaCancelledSubtitle,
+          onRetry: _run,
+        ),
+        _Status.error => FaceResultView(
+          icon: Icons.error_outline,
+          tone: FaceResultTone.failure,
+          title: l10n.faceSomethingWentWrong,
+          subtitle: _error ?? '',
+          onRetry: _retry,
+          retryLabel: _issuerAsked ? l10n.faceRegulaScanAgain : null,
+        ),
+      },
     );
   }
 }

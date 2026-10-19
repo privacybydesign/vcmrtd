@@ -262,7 +262,7 @@ BrandTheme brandThemeFor(AppBranding branding) {
   final buttonText = _buttonText(branding.font);
   // Secondary text and greys follow the text colour, so a themed one still matches.
   final bodyText = branding.text == null ? AppColors.bodyText : Color.lerp(ink, Colors.white, 0.15)!;
-  final muted = branding.text == null ? AppColors.muted : Color.lerp(ink, Colors.white, 0.4)!;
+  final muted = branding.text == null ? AppColors.muted : Color.lerp(ink, Colors.white, 0.2)!;
 
   final primaryButtonStyle = ElevatedButton.styleFrom(
     backgroundColor: primary,

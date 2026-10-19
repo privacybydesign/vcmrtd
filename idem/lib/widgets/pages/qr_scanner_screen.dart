@@ -127,7 +127,7 @@ extension on _QrScannerScreenState {
                                 padding: const EdgeInsets.fromLTRB(32, 40, 32, 16),
                                 child: Column(
                                   children: [
-                                    Text(
+                                    GuidedHeading(
                                       context.l10n.qrScanPointCamera,
                                       textAlign: TextAlign.center,
                                       style: g.heading(22, color: Colors.white, height: 1.25),

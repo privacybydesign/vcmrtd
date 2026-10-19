@@ -96,6 +96,8 @@ class PassportDataScreen extends StatelessWidget {
   }
 }
 
-/// "ANNA MARIA ERIKSSON" → "Anna Maria Eriksson"; chips store names in capitals.
-String _titleCase(String name) =>
-    name.toLowerCase().split(' ').map((w) => w.isEmpty ? w : w[0].toUpperCase() + w.substring(1)).join(' ');
+/// "JEAN-LUC O'BRIEN" → "Jean-Luc O'Brien"; chips store names in capitals.
+String _titleCase(String name) => name.toLowerCase().replaceAllMapped(
+  RegExp(r"(^|[\s'\-])(\p{L})", unicode: true),
+  (m) => '${m[1]}${m[2]!.toUpperCase()}',
+);

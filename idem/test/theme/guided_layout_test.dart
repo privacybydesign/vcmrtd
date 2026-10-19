@@ -54,7 +54,7 @@ class _FakeReader extends DocumentReader<PassportData> {
 }
 
 /// The ICAO specimen, expiring in 2034 so it can be reused.
-PassportData _passport() => PassportData(
+PassportData _passport({String name = 'ANNA MARIA ERIKSSON'}) => PassportData(
   mrz: PassportMRZ(
     Uint8List.fromList(
       'P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<L898902C36UTO7408122F3404159ZE184226B<<<<<16'.codeUnits,
@@ -64,7 +64,7 @@ PassportData _passport() => PassportData(
   photoImageType: ImageType.jpeg,
   photoImageWidth: 2,
   photoImageHeight: 2,
-  nameOfHolder: 'ANNA MARIA ERIKSSON',
+  nameOfHolder: name,
 );
 
 class _SeededWallet extends WalletNotifier {
@@ -184,6 +184,8 @@ void main() {
     expect(manualEntries, 1);
 
     await tester.fling(find.text(title), const Offset(0, 200), 1000);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('Enter details manually'), findsOneWidget);
     await tester.pumpAndSettle();
     expect(find.text('Enter details manually'), findsNothing);
 
@@ -224,6 +226,7 @@ void main() {
     Future<void> pump(
       WidgetTester tester, {
       String? submittedTo,
+      String? name,
       PendingStep pendingStep = PendingStep.none,
       Future<bool> Function()? onShare,
     }) async {
@@ -231,7 +234,7 @@ void main() {
       await tester.pumpWidget(
         _app(
           PassportDataScreen(
-            document: _passport(),
+            document: name == null ? _passport() : _passport(name: name),
             passportDataResult: RawDocumentData(dataGroups: const {}, efSod: '00'),
             onBackPressed: () {},
             submittedTo: submittedTo,
@@ -249,6 +252,11 @@ void main() {
       expect(find.text('Anna Maria Eriksson'), findsOneWidget);
       expect(find.text('Done'), findsOneWidget);
       expect(find.textContaining('genuine'), findsNothing);
+    });
+
+    testWidgets('capitalises each part of a hyphenated or apostrophised name', (tester) async {
+      await pump(tester, name: "JEAN-LUC O'BRIEN");
+      expect(find.text("Jean-Luc O'Brien"), findsOneWidget);
     });
 
     testWidgets('a session that already got every step offers to keep the document', (tester) async {
@@ -465,6 +473,18 @@ void main() {
       expect(find.text('Passport'), findsNothing);
       await tester.tap(find.text('Scan QR code'));
       expect(scans, 1);
+    });
+
+    testWidgets('announces its title as a heading', (tester) async {
+      _tallViewport(tester);
+      final semantics = tester.ensureSemantics();
+      await tester.pumpWidget(
+        _app(
+          DocumentTypeSelectionScreen(onDocumentTypeSelected: (_) {}, onSettingsPressed: () {}, onScanQrPressed: () {}),
+        ),
+      );
+      expect(tester.getSemantics(find.text('Verify your identity with a QR code')), isSemantics(isHeader: true));
+      semantics.dispose();
     });
 
     testWidgets('offers to continue an accepted request instead of a new scan', (tester) async {

@@ -48,7 +48,7 @@ class SavedDocumentsScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(l10n.savedCount(cards.length), style: g.heading(24, height: 1.25)),
+                          GuidedHeading(l10n.savedCount(cards.length), style: g.heading(24, height: 1.25)),
                           const SizedBox(height: 10),
                           Text(
                             cards.isEmpty ? l10n.savedEmptyBody : l10n.savedBody,

@@ -110,10 +110,28 @@ class GuidedTopBarTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final g = context.guided!;
-    return Text(
+    return GuidedHeading(
       text,
       style: g.heading(16, weight: FontWeight.w600, color: backdrop == Backdrop.dark ? Colors.white : g.ink),
       overflow: TextOverflow.ellipsis,
+    );
+  }
+}
+
+/// A title screen readers can jump to as a heading.
+class GuidedHeading extends StatelessWidget {
+  const GuidedHeading(this.text, {super.key, required this.style, this.textAlign, this.overflow});
+
+  final String text;
+  final TextStyle style;
+  final TextAlign? textAlign;
+  final TextOverflow? overflow;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      header: true,
+      child: Text(text, style: style, textAlign: textAlign, overflow: overflow),
     );
   }
 }

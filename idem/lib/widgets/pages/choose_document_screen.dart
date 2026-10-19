@@ -79,7 +79,7 @@ class _ChooseDocumentScreenState extends State<ChooseDocumentScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(l10n.chooseHeading, style: g.heading(24, height: 1.25)),
+                            GuidedHeading(l10n.chooseHeading, style: g.heading(24, height: 1.25)),
                             const SizedBox(height: 10),
                             Text(
                               saved.isEmpty

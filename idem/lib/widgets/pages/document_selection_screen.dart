@@ -497,7 +497,7 @@ class _GuidedHome extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    Text(l10n.homeTitle, style: g.heading(30, color: Colors.white)),
+                    GuidedHeading(l10n.homeTitle, style: g.heading(30, color: Colors.white)),
                     const SizedBox(height: 10),
                     Text(
                       connected ? l10n.homeConnectedBody(connectedRelyingParty!) : l10n.homeBody,
@@ -530,7 +530,7 @@ class _GuidedHome extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(
+                      GuidedHeading(
                         l10n.homeHowItWorks,
                         style: g.heading(16, weight: FontWeight.w600, color: g.slate),
                       ),

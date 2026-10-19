@@ -128,7 +128,7 @@ class _GuidedDocumentDataViewState extends ConsumerState<GuidedDocumentDataView>
                         ),
                       ),
                       const SizedBox(height: 20),
-                      Text(
+                      GuidedHeading(
                         _title(share: share),
                         textAlign: TextAlign.center,
                         style: g.heading(26),

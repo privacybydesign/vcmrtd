@@ -12,7 +12,7 @@ import 'package:idem/providers/ocr_engine_provider.dart';
 import 'package:idem/providers/wallet_provider.dart';
 import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
-import 'package:package_info_plus/package_info_plus.dart';
+import 'package:idem/providers/app_version_provider.dart';
 
 /// Product names, the same in every language.
 const _regulaLabel = 'Regula';
@@ -270,19 +270,15 @@ class SettingsScreen extends ConsumerWidget {
                         ),
                       ]),
                     const SizedBox(height: 32),
-                    FutureBuilder<PackageInfo>(
-                      future: PackageInfo.fromPlatform(),
-                      builder: (context, snapshot) => snapshot.hasData
-                          ? Padding(
-                              padding: const EdgeInsets.only(top: 4),
-                              child: Text(
-                                l10n.settingsVersion(snapshot.data!.version),
-                                textAlign: TextAlign.center,
-                                style: TextStyle(fontSize: 12, color: g.muted),
-                              ),
-                            )
-                          : const SizedBox.shrink(),
-                    ),
+                    if (ref.watch(appVersionProvider).value case final version?)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          l10n.settingsVersion(version),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 12, color: g.muted),
+                        ),
+                      ),
                     const SizedBox(height: 28),
                   ],
                 ),

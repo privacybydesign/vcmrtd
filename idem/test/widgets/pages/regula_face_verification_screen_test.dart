@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mrz_capture/mrz_capture.dart' show StepBadgeTopBar;
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/providers/face_api_provider.dart';
 import 'package:idem/services/face_verification_outcome.dart';
 import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/services/regula_face_service.dart';
 import 'package:idem/theme/app_theme.dart';
+import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:idem/widgets/pages/regula_face_verification_screen.dart';
 import 'package:vcmrtd/vcmrtd.dart' show FaceMatch;
 
@@ -120,6 +122,27 @@ void main() {
     await tester.tap(find.text('Start selfie check'));
     await tester.pump();
     expect(verified.single.livenessTransactionId, 'tx-1');
+  });
+
+  testWidgets('the guided layout keeps its own look after the intro', (tester) async {
+    tester.view.physicalSize = const Size(390, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final regula = _FakeRegula([
+      const RegulaLivenessResult(isLive: false, transactionId: 'tx-1'),
+      const RegulaLivenessResult(isLive: true, transactionId: 'tx-2'),
+    ]);
+    final verified = await _pump(tester, regula, theme: appTheme());
+
+    await tester.tap(find.text('Start selfie check'));
+    await tester.pump();
+    expect(find.text('Verification Failed'), findsOneWidget);
+    expect(find.byType(StepBadgeTopBar), findsNothing);
+    expect(find.byType(GuidedStepBar), findsOneWidget);
+
+    await tester.tap(find.text('Try Again'));
+    await tester.pump();
+    expect(verified.single.livenessTransactionId, 'tx-2');
   });
 
   group('standalone (passport issuer matches)', () {

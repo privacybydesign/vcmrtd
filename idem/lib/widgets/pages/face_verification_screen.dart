@@ -1577,7 +1577,7 @@ extension on FlutterFaceVerificationScreenState {
           const Spacer(),
           Center(child: icon),
           const SizedBox(height: 28),
-          Text(
+          GuidedHeading(
             title,
             textAlign: TextAlign.center,
             style: g.heading(24, color: Colors.white, height: 1.25),
