@@ -22,8 +22,9 @@ class ActiveBrandingNotifier extends Notifier<AppBranding> {
   /// (once the QR scanner is popped, say) doesn't fetch its logo twice.
   ((String, ProofingBranding), AppBranding)? _built;
 
-  /// Bumped by every [reset], so a [useSession] still fetching its logo
-  /// when the session ends doesn't dress the app again afterwards.
+  /// Bumped by every [useSession] and [reset], so a logo fetch that is
+  /// overtaken (by a newer view, or the session ending) doesn't dress the
+  /// app afterwards.
   int _generation = 0;
 
   /// The session whose branding the app wears, or is loading.
@@ -42,6 +43,7 @@ class ActiveBrandingNotifier extends Notifier<AppBranding> {
       return;
     }
     final source = (sessionRef.token, branding);
+    final generation = ++_generation;
     if (_source == source) return;
     _sessionToken = sessionRef.token;
     final built = _built;
@@ -50,7 +52,6 @@ class ActiveBrandingNotifier extends Notifier<AppBranding> {
       state = built.$2;
       return;
     }
-    final generation = _generation;
     Uint8List? logo;
     if (branding.hasLogo) {
       try {

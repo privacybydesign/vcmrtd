@@ -124,8 +124,33 @@ void main() {
     });
 
     test('a light primary colour gets dark text on its buttons', () {
-      final theme = appTheme(AppBranding.fromSession(const ProofingBranding(name: 'Acme', primaryColor: '#FFD500')));
-      expect(theme.colorScheme.onPrimary, AppColors.ink);
+      const branding = AppBranding(name: 'Acme', primary: Color(0xFFFFD500), secondary: Color(0xFF52525B));
+      expect(appTheme(branding).colorScheme.onPrimary, AppColors.ink);
+    });
+
+    test('a session colour that doesn\'t read on its background keeps the design\'s', () {
+      final branding = AppBranding.fromSession(
+        const ProofingBranding(
+          name: 'Acme',
+          primaryColor: '#7FB2FF',
+          textColor: '#999999',
+          linkColor: '#99BBFF',
+          surfaceColor: '#1A1A1A',
+        ),
+      );
+      expect(branding.primary, AppBranding.idem.primary);
+      expect(branding.text, isNull);
+      expect(branding.link, isNull);
+      expect(branding.surface, isNull);
+    });
+
+    test('a session\'s colours stay when they read on each other', () {
+      final branding = AppBranding.fromSession(
+        const ProofingBranding(name: 'Acme', textColor: '#101E1E', surfaceColor: '#F0F4F8', linkColor: '#0A58CA'),
+      );
+      expect(branding.text, const Color(0xFF101E1E));
+      expect(branding.surface, const Color(0xFFF0F4F8));
+      expect(branding.link, const Color(0xFF0A58CA));
     });
 
     test('every font the businesswallet offers is drawn as that font', () {

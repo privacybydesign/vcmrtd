@@ -50,19 +50,21 @@ class AppBranding {
 
   /// [branding] as the app shows it, with [logo] its logo's bytes.
   factory AppBranding.fromSession(ProofingBranding branding, {Uint8List? logo}) {
-    final header = parseHexColor(branding.headerColor);
+    // Each colour that doesn't read on what it's drawn on keeps the design's.
+    final text = _readable(_parseHexColor(branding.textColor), on: const [Colors.white]);
+    final surface = _readable(_parseHexColor(branding.surfaceColor), on: [text ?? AppColors.ink]);
     return AppBranding(
       name: branding.name,
-      primary: parseHexColor(branding.primaryColor) ?? idem.primary,
-      secondary: parseHexColor(branding.secondaryColor) ?? idem.secondary,
-      text: parseHexColor(branding.textColor),
-      surface: parseHexColor(branding.surfaceColor),
-      border: parseHexColor(branding.borderColor),
-      link: parseHexColor(branding.linkColor),
-      success: parseHexColor(branding.successColor),
-      error: parseHexColor(branding.errorColor),
-      // The header carries white text: one too light for it keeps the design's.
-      header: header != null && contrastRatio(header, Colors.white) >= _minHeaderContrast ? header : null,
+      // Text and icons on white, and the background of white-text buttons.
+      primary: _readable(_parseHexColor(branding.primaryColor), on: const [Colors.white]) ?? idem.primary,
+      secondary: _parseHexColor(branding.secondaryColor) ?? idem.secondary,
+      text: text,
+      surface: surface,
+      border: _parseHexColor(branding.borderColor),
+      link: _readable(_parseHexColor(branding.linkColor), on: [Colors.white, surface ?? AppColors.surface]),
+      success: _parseHexColor(branding.successColor),
+      error: _parseHexColor(branding.errorColor),
+      header: _readable(_parseHexColor(branding.headerColor), on: const [Colors.white], min: _minHeaderContrast),
       font: AppFont.fromCss(branding.fontFamily),
       logo: logo == null ? null : MemoryImage(logo),
     );
@@ -99,6 +101,13 @@ class AppBranding {
 
 /// Large text on the header needs 3:1 (WCAG AA for large text).
 const _minHeaderContrast = 3.0;
+
+/// WCAG AA for normal text.
+const _minTextContrast = 4.5;
+
+/// [color] when it reads at [min] on every colour in [on]; null otherwise.
+Color? _readable(Color? color, {required List<Color> on, double min = _minTextContrast}) =>
+    color != null && on.every((background) => _contrastRatio(color, background) >= min) ? color : null;
 
 /// Below this a filled button's edge is lost against the header behind it.
 const _minButtonOnHeaderContrast = 1.5;
@@ -166,7 +175,7 @@ class AppFont {
 }
 
 /// `#rrggbb` as a colour; null for null or anything else.
-Color? parseHexColor(String? hex) {
+Color? _parseHexColor(String? hex) {
   if (hex == null || !RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(hex)) return null;
   return Color(0xFF000000 | int.parse(hex.substring(1), radix: 16));
 }
@@ -175,7 +184,7 @@ Color? parseHexColor(String? hex) {
 const _wcagLuminanceFlare = 0.05;
 
 /// WCAG contrast ratio between [a] and [b], from 1 to 21.
-double contrastRatio(Color a, Color b) {
+double _contrastRatio(Color a, Color b) {
   final la = a.computeLuminance() + _wcagLuminanceFlare;
   final lb = b.computeLuminance() + _wcagLuminanceFlare;
   return la > lb ? la / lb : lb / la;
@@ -218,7 +227,7 @@ Color _darken(Color color, double amount) => Color.lerp(color, Colors.black, amo
 /// primary still shows on the dark header.
 Color _onHeader(Color color, Color header, double amount) {
   var result = _lighten(color, amount);
-  while (contrastRatio(result, header) < _minHeaderContrast && amount < 1) {
+  while (_contrastRatio(result, header) < _minHeaderContrast && amount < 1) {
     amount = (amount + 0.1).clamp(0, 1);
     result = _lighten(color, amount);
   }
@@ -227,7 +236,9 @@ Color _onHeader(Color color, Color header, double amount) {
 
 /// White or ink, whichever reads better on [background].
 Color _readableOn(Color background) =>
-    contrastRatio(background, Colors.white) >= contrastRatio(background, AppColors.ink) ? Colors.white : AppColors.ink;
+    _contrastRatio(background, Colors.white) >= _contrastRatio(background, AppColors.ink)
+    ? Colors.white
+    : AppColors.ink;
 
 OutlinedBorder _buttonShape(AppBranding branding) {
   final radius = branding.buttonRadius;
@@ -274,7 +285,7 @@ BrandTheme brandThemeFor(AppBranding branding) {
 
   // A primary close to the header would leave the hero's button (Scan QR
   // code) as bare text on it: a white one stands out on any header.
-  final heroButtonStyle = contrastRatio(primary, header) >= _minButtonOnHeaderContrast
+  final heroButtonStyle = _contrastRatio(primary, header) >= _minButtonOnHeaderContrast
       ? primaryButtonStyle
       : primaryButtonStyle.copyWith(
           backgroundColor: const WidgetStatePropertyAll(Colors.white),

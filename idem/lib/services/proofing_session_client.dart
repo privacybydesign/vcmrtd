@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io' show HttpStatus;
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show listEquals;
 
@@ -723,8 +724,8 @@ ProofingSessionAccessException? proofingAccessDenialFor(http.Response response) 
     'handover_used' => ProofingAccessDenial.handoverUsed,
     'claim_token_required' => ProofingAccessDenial.claimTokenRequired,
     _ => switch (response.statusCode) {
-      401 || 403 => ProofingAccessDenial.unauthorized,
-      404 || 410 => ProofingAccessDenial.gone,
+      HttpStatus.unauthorized || HttpStatus.forbidden => ProofingAccessDenial.unauthorized,
+      HttpStatus.notFound || HttpStatus.gone => ProofingAccessDenial.gone,
       _ => null,
     },
   };
@@ -1251,10 +1252,12 @@ class ProofingSessionClient {
   /// Throws for anything but a 200: a [ProofingSessionAccessException] when
   /// the server refused this device access, a plain [Exception] otherwise.
   static void _check(http.Response response, String Function(AppLocalizations l10n) what) {
-    if (response.statusCode == 200) return;
+    if (response.statusCode == HttpStatus.ok) return;
     final denial = proofingAccessDenialFor(response);
     if (denial != null) throw denial;
-    if (response.statusCode == 429) throw Exception(currentL10n.proofingRequestTooManyAttempts(what(currentL10n)));
+    if (response.statusCode == HttpStatus.tooManyRequests) {
+      throw Exception(currentL10n.proofingRequestTooManyAttempts(what(currentL10n)));
+    }
     throw Exception(currentL10n.proofingRequestFailed(what(currentL10n), '${response.statusCode} ${response.body}'));
   }
 
@@ -1294,7 +1297,7 @@ class ProofingSessionClient {
   /// or null when it has none.
   Future<Uint8List?> fetchBrandingLogo(ProofingSessionRef ref) async {
     final response = await _get(_appUri(ref, '/branding/logo'), headers: _headers(ref));
-    if (response.statusCode == 404) return null;
+    if (response.statusCode == HttpStatus.notFound) return null;
     _check(response, (l) => l.proofingRequestFetch);
     return response.bodyBytes;
   }
@@ -1445,7 +1448,7 @@ class ProofingSessionClient {
   /// when a step still lacks a result.
   Future<ProofingStepResponse> submitSession(ProofingSessionRef ref) async {
     final response = await _post(_appUri(ref, '/submit'), headers: _headers(ref), timeout: uploadTimeout);
-    if (response.statusCode == 409 && _errorCodeOf(response) == 'steps_incomplete') {
+    if (response.statusCode == HttpStatus.conflict && _errorCodeOf(response) == 'steps_incomplete') {
       throw const ProofingStepsIncompleteException();
     }
     _check(response, (l) => l.proofingRequestSubmitVerification);

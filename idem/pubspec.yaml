@@ -91,6 +91,7 @@ flutter:
     - assets/fonts/OFL-Montserrat.txt
     - assets/fonts/OFL-Nunito.txt
     - assets/fonts/OFL-Alexandria.txt
+    - assets/fonts/OFL-OpenSans.txt
 
   fonts:
     - family: Montserrat

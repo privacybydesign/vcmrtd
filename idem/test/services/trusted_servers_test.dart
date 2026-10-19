@@ -11,7 +11,7 @@ void main() {
   group('TrustedServers', () {
     final servers = TrustedServers.parse(
       'https://wallet.example, http://192.168.1.20:8080,not a url',
-      trustAllWhenEmpty: true,
+      whenEmpty: EmptyListPolicy.trustAll,
     );
 
     test('trusts exactly the listed origins', () {
@@ -31,9 +31,15 @@ void main() {
     });
 
     test('without a list, a debug build trusts every server and a release build none', () {
-      expect(TrustedServers.parse('', trustAllWhenEmpty: true).isTrusted('https://anything.test'), isTrue);
-      expect(TrustedServers.parse('', trustAllWhenEmpty: false).isTrusted('https://anything.test'), isFalse);
-      expect(TrustedServers.parse(' , ', trustAllWhenEmpty: false).isTrusted('https://anything.test'), isFalse);
+      expect(TrustedServers.parse('', whenEmpty: EmptyListPolicy.trustAll).isTrusted('https://anything.test'), isTrue);
+      expect(
+        TrustedServers.parse('', whenEmpty: EmptyListPolicy.trustNone).isTrusted('https://anything.test'),
+        isFalse,
+      );
+      expect(
+        TrustedServers.parse(' , ', whenEmpty: EmptyListPolicy.trustNone).isTrusted('https://anything.test'),
+        isFalse,
+      );
     });
   });
 
@@ -43,7 +49,7 @@ void main() {
       () async {
         final coordinator = ProofingSessionCoordinator(
           client: const ProofingSessionClient(),
-          trustedServers: TrustedServers.parse('https://wallet.example', trustAllWhenEmpty: false),
+          trustedServers: TrustedServers.parse('https://wallet.example', whenEmpty: EmptyListPolicy.trustNone),
         );
         final link = ProofingSessionLink.parse('vcmrtd://verify?handover=h-1&api=https://evil.test')!;
         await expectLater(

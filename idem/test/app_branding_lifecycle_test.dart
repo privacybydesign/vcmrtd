@@ -93,13 +93,15 @@ class _FakeServer extends ProofingSessionClient {
   Future<void> markStepStarted(ProofingSessionRef ref, String step) async {}
 }
 
+enum _Launch { deepLink, home }
+
 /// Starts the app the way a tapped handover link does, on the branded
-/// consent screen; with [deepLink] false, just the app, on its home screen.
-Future<_FakeServer> _openSession(WidgetTester tester, {bool deepLink = true}) async {
+/// consent screen; with [_Launch.home], just the app, on its home screen.
+Future<_FakeServer> _openSession(WidgetTester tester, {_Launch launch = _Launch.deepLink}) async {
   final server = _FakeServer();
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
     const MethodChannel('proofing_deeplink'),
-    (call) async => call.method == 'getInitialLink' && deepLink ? _link : null,
+    (call) async => call.method == 'getInitialLink' && launch == _Launch.deepLink ? _link : null,
   );
   addTearDown(
     () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
@@ -110,7 +112,7 @@ Future<_FakeServer> _openSession(WidgetTester tester, {bool deepLink = true}) as
   final coordinator = ProofingSessionCoordinator(
     client: server,
     retryDelay: const Duration(milliseconds: 10),
-    trustedServers: const TrustedServers({}, trustAll: true),
+    trustedServers: const TrustedServers.all(),
   );
   await tester.pumpWidget(
     ProviderScope(
@@ -122,7 +124,7 @@ Future<_FakeServer> _openSession(WidgetTester tester, {bool deepLink = true}) as
     ),
   );
   await tester.pumpAndSettle();
-  if (!deepLink) return server;
+  if (launch == _Launch.home) return server;
   expect(find.byType(ProofingSessionConsentScreen), findsOneWidget);
   _expectBranding(tester, 'Acme Bank');
   return server;
@@ -143,12 +145,14 @@ Future<void> _background(WidgetTester tester) async {
   await tester.pump();
 }
 
-Future<void> _foreground(WidgetTester tester, {bool settle = true}) async {
+enum _Wait { settle, briefly }
+
+Future<void> _foreground(WidgetTester tester, {_Wait wait = _Wait.settle}) async {
   for (final state in [AppLifecycleState.hidden, AppLifecycleState.inactive, AppLifecycleState.resumed]) {
     tester.binding.handleAppLifecycleStateChanged(state);
   }
   // An unreachable server is retried until the user gives up: never settles.
-  settle ? await tester.pumpAndSettle() : await tester.pump(const Duration(milliseconds: 100));
+  wait == _Wait.settle ? await tester.pumpAndSettle() : await tester.pump(const Duration(milliseconds: 100));
 }
 
 ProviderContainer _container(WidgetTester tester) => ProviderScope.containerOf(tester.element(find.byType(VcMrtdApp)));
@@ -171,7 +175,7 @@ void _expectEndedInIdemLook(WidgetTester tester, {String? message}) {
 
 void main() {
   testWidgets('a scanned QR shows the consent screen in the requester\'s look', (tester) async {
-    await _openSession(tester, deepLink: false);
+    await _openSession(tester, launch: _Launch.home);
     final router = GoRouter.of(tester.element(find.byType(DocumentTypeSelectionScreen)));
     // A screen over home, popped right before the consent screen is pushed,
     // as the QR scanner is.
@@ -239,7 +243,7 @@ void main() {
       await _accept(tester);
       await _background(tester);
       server.reachable = false;
-      await _foreground(tester, settle: false);
+      await _foreground(tester, wait: _Wait.briefly);
       await tester.tap(find.text(_l10n.faceStopVerification));
       await tester.pumpAndSettle();
       _expectEndedInIdemLook(tester);

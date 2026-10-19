@@ -46,6 +46,7 @@ void _registerFontLicenses() {
       (AppFonts.heading, 'assets/fonts/OFL-Montserrat.txt'),
       (AppFonts.body, 'assets/fonts/OFL-Nunito.txt'),
       ('Alexandria', 'assets/fonts/OFL-Alexandria.txt'),
+      ('Open Sans', 'assets/fonts/OFL-OpenSans.txt'),
     ]) {
       yield LicenseEntryWithLineBreaks([family], await rootBundle.loadString(path));
     }

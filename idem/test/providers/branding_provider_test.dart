@@ -37,6 +37,18 @@ class _LogoClient extends ProofingSessionClient {
   }
 }
 
+/// Holds every logo fetch until a test releases it, in any order.
+class _HeldLogoClient extends ProofingSessionClient {
+  final fetches = <Completer<Uint8List?>>[];
+
+  @override
+  Future<Uint8List?> fetchBrandingLogo(ProofingSessionRef ref) {
+    final fetch = Completer<Uint8List?>();
+    fetches.add(fetch);
+    return fetch.future;
+  }
+}
+
 void main() {
   test('a session dresses the app in its branding until it is reset', () async {
     final client = _LogoClient(Uint8List.fromList([1, 2, 3]));
@@ -104,5 +116,41 @@ void main() {
 
     notifier.endSession(_ref);
     expect(container.read(activeBrandingProvider).name, AppBranding.idem.name);
+  });
+
+  group('a logo that arrives after the view changed doesn\'t win', () {
+    const a = ProofingBranding(name: 'A', hasLogo: true);
+    const b = ProofingBranding(name: 'B', hasLogo: true);
+
+    test('a newer view', () async {
+      final client = _HeldLogoClient();
+      final container = ProviderContainer(overrides: [proofingSessionClientProvider.overrideWithValue(client)]);
+      addTearDown(container.dispose);
+      final notifier = container.read(activeBrandingProvider.notifier);
+
+      final loadingA = notifier.useSession(_ref, _info(branding: a));
+      final loadingB = notifier.useSession(_ref, _info(branding: b));
+      client.fetches[1].complete(null);
+      await loadingB;
+      client.fetches[0].complete(null);
+      await loadingA;
+      expect(container.read(activeBrandingProvider).name, 'B');
+    });
+
+    test('back to the view already shown', () async {
+      final client = _HeldLogoClient();
+      final container = ProviderContainer(overrides: [proofingSessionClientProvider.overrideWithValue(client)]);
+      addTearDown(container.dispose);
+      final notifier = container.read(activeBrandingProvider.notifier);
+
+      final loadingB = notifier.useSession(_ref, _info(branding: b));
+      client.fetches[0].complete(null);
+      await loadingB;
+      final loadingA = notifier.useSession(_ref, _info(branding: a));
+      await notifier.useSession(_ref, _info(branding: b));
+      client.fetches[1].complete(null);
+      await loadingA;
+      expect(container.read(activeBrandingProvider).name, 'B');
+    });
   });
 }

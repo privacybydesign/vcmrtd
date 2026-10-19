@@ -9,23 +9,28 @@ import 'package:flutter/foundation.dart';
 /// A debug build without the define trusts every server, so a dev backend on a
 /// LAN address works; a release build without it trusts none.
 class TrustedServers {
-  const TrustedServers(this._origins, {required this.trustAll});
+  const TrustedServers(this._origins) : _trustAll = false;
+
+  /// Every server, as a debug build without the define has it.
+  const TrustedServers.all() : _origins = const {}, _trustAll = true;
 
   static final current = TrustedServers.parse(
     const String.fromEnvironment('PROOFING_TRUSTED_SERVERS'),
-    trustAllWhenEmpty: kDebugMode,
+    whenEmpty: kDebugMode ? EmptyListPolicy.trustAll : EmptyListPolicy.trustNone,
   );
 
-  factory TrustedServers.parse(String define, {required bool trustAllWhenEmpty}) {
+  factory TrustedServers.parse(String define, {required EmptyListPolicy whenEmpty}) {
     final origins = define.split(',').map((s) => _origin(s.trim())).whereType<String>().toSet();
-    return TrustedServers(origins, trustAll: origins.isEmpty && trustAllWhenEmpty);
+    return origins.isEmpty && whenEmpty == EmptyListPolicy.trustAll
+        ? const TrustedServers.all()
+        : TrustedServers(origins);
   }
 
   final Set<String> _origins;
-  final bool trustAll;
+  final bool _trustAll;
 
   bool isTrusted(String apiBase) {
-    if (trustAll) return true;
+    if (_trustAll) return true;
     final origin = _origin(apiBase);
     return origin != null && _origins.contains(origin);
   }
@@ -37,3 +42,6 @@ class TrustedServers {
     return uri.hasPort ? '${uri.scheme}://${uri.host}:${uri.port}' : '${uri.scheme}://${uri.host}';
   }
 }
+
+/// What [TrustedServers.parse] makes of a define that names no server.
+enum EmptyListPolicy { trustAll, trustNone }
