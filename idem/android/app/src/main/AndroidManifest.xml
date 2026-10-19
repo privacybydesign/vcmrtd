@@ -42,6 +42,17 @@
                       android:host="passport-issuer.yivi.app"
                       android:pathPrefix="/start-app" />
             </intent-filter>
+            <!-- App Link for identity-proofing sessions:
+                 https://idem.yivi.app/verify?handover=...&api=..., the https form
+                 of the vcmrtd:// link below, see ProofingDeepLinkPlugin. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https"
+                      android:host="idem.yivi.app"
+                      android:path="/verify" />
+            </intent-filter>
             <!-- Custom-scheme deep link for identity-proofing-service sessions
                  (vcmrtd://verify?token=...&api=...), see ProofingDeepLinkPlugin. -->
             <intent-filter>

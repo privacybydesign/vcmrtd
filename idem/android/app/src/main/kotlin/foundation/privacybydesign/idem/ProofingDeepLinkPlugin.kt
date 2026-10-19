@@ -12,7 +12,8 @@ import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 
 /**
- * Forwards a tapped vcmrtd:// identity-proofing deep link to Dart. Kept
+ * Forwards a tapped vcmrtd:// identity-proofing deep link, or its https App
+ * Link form (https://idem.yivi.app/verify?handover=...&api=...), to Dart. Kept
  * separate from DeepLinkPlugin, which only accepts an https URL carrying
  * sessionId/nonce for the unrelated passport-issuer.yivi.app flow and would
  * reject this shape outright (see identity-proofing-service's deepLink() in
@@ -21,6 +22,10 @@ import io.flutter.plugin.common.MethodChannel.Result
 class ProofingDeepLinkPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     companion object {
         private const val CHANNEL = "proofing_deeplink"
+
+        // The https App Link form of the vcmrtd:// link (AndroidManifest.xml).
+        private const val APP_LINK_HOST = "idem.yivi.app"
+        private const val APP_LINK_PATH = "/verify"
     }
 
     private lateinit var channel: MethodChannel
@@ -84,7 +89,8 @@ class ProofingDeepLinkPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private fun extractUrl(intent: Intent?): String? {
         if (intent?.action != Intent.ACTION_VIEW) return null
         val uri = intent.data ?: return null
-        if (uri.scheme != "vcmrtd") return null
+        val appLink = uri.scheme == "https" && uri.host == APP_LINK_HOST && uri.path == APP_LINK_PATH
+        if (uri.scheme != "vcmrtd" && !appLink) return null
         return uri.toString()
     }
 }
