@@ -95,34 +95,9 @@ class _GuidedDocumentDataViewState extends ConsumerState<GuidedDocumentDataView>
   @override
   Widget build(BuildContext context) {
     final g = context.guided!;
-    final submittedTo = widget.submittedTo;
     final share = widget.pendingStep == PendingStep.share && widget.onShare != null;
     final sessionId = widget.rawDocument.sessionId;
-
-    Widget detail(GuidedDetail d, {bool last = false}) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        border: last ? null : Border(bottom: BorderSide(color: g.subtleBorder)),
-      ),
-      child: Row(
-        children: [
-          Text(d.label, style: TextStyle(fontSize: 15, color: g.bodyText)),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(
-              d.value ?? context.l10n.dataViewNotAvailable,
-              textAlign: TextAlign.end,
-              style: TextStyle(
-                fontSize: d.mono ? 14 : 15,
-                fontWeight: FontWeight.w700,
-                color: g.ink,
-                fontFamily: d.mono ? 'monospace' : null,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    final divider = Border(bottom: BorderSide(color: g.subtleBorder));
 
     return GuidedStatusBar(
       backdrop: Backdrop.light,
@@ -153,22 +128,13 @@ class _GuidedDocumentDataViewState extends ConsumerState<GuidedDocumentDataView>
                       ),
                       const SizedBox(height: 20),
                       Text(
-                        share
-                            ? context.l10n.proofingVerifiedTitle
-                            : submittedTo != null
-                            ? context.l10n.proofingSentTo(submittedTo)
-                            : widget.readTitle,
+                        _title(share: share),
                         textAlign: TextAlign.center,
                         style: g.heading(26),
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        switch ((submittedTo, widget.pendingStep)) {
-                          (null, _) => context.l10n.dataViewChipRead(widget.documentType.name),
-                          (final rp?, PendingStep.browserFace) => context.l10n.proofingSentBrowserFace(rp),
-                          (final rp?, PendingStep.share) => context.l10n.proofingShareBody(rp),
-                          (final rp?, PendingStep.none) => context.l10n.proofingSentEverything(rp),
-                        },
+                        _body(),
                         textAlign: TextAlign.center,
                         style: TextStyle(fontSize: 15, height: 1.5, color: g.bodyText),
                       ),
@@ -218,53 +184,14 @@ class _GuidedDocumentDataViewState extends ConsumerState<GuidedDocumentDataView>
                               ),
                             ),
                             for (final (i, d) in widget.details.indexed)
-                              detail(d, last: i == widget.details.length - 1),
+                              _detail(g, d, border: i == widget.details.length - 1 ? null : divider),
                           ],
                         ),
                       ),
                       ...widget.extra,
                       const Spacer(),
                       const SizedBox(height: 24),
-                      if (share) ...[
-                        GuidedSaveForNextTime(
-                          value: _saveForNextTime,
-                          onChanged: (value) => setState(() => _saveForNextTime = value),
-                        ),
-                        const SizedBox(height: 16),
-                        GuidedButton(
-                          label: _sharing
-                              ? context.l10n.proofingSharing
-                              : context.l10n.proofingShareWith(submittedTo ?? ''),
-                          onPressed: _sharing ? null : _share,
-                        ),
-                      ] else if (submittedTo != null) ...[
-                        GuidedSaveForNextTime(
-                          value: _saveForNextTime,
-                          onChanged: (value) => setState(() => _saveForNextTime = value),
-                        ),
-                        const SizedBox(height: 16),
-                        GuidedButton(
-                          label: context.l10n.proofingDone,
-                          onPressed: () {
-                            if (_saveForNextTime) _addToWallet();
-                            widget.onBackPressed();
-                          },
-                        ),
-                      ] else ...[
-                        GuidedButton(
-                          label: context.l10n.dataViewAddToWallet,
-                          onPressed: () {
-                            _addToWallet();
-                            widget.onBackPressed();
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        GuidedButton(
-                          label: context.l10n.proofingDone,
-                          kind: GuidedButtonKind.secondary,
-                          onPressed: widget.onBackPressed,
-                        ),
-                      ],
+                      ..._actions(share: share),
                     ],
                   ),
                 ),
@@ -274,5 +201,82 @@ class _GuidedDocumentDataViewState extends ConsumerState<GuidedDocumentDataView>
         ),
       ),
     );
+  }
+
+  String _title({required bool share}) {
+    final submittedTo = widget.submittedTo;
+    if (share) return context.l10n.proofingVerifiedTitle;
+    if (submittedTo != null) return context.l10n.proofingSentTo(submittedTo);
+    return widget.readTitle;
+  }
+
+  String _body() => switch ((widget.submittedTo, widget.pendingStep)) {
+    (null, _) => context.l10n.dataViewChipRead(widget.documentType.name),
+    (final rp?, PendingStep.browserFace) => context.l10n.proofingSentBrowserFace(rp),
+    (final rp?, PendingStep.share) => context.l10n.proofingShareBody(rp),
+    (final rp?, PendingStep.none) => context.l10n.proofingSentEverything(rp),
+  };
+
+  Widget _detail(GuidedStyle g, GuidedDetail d, {Border? border}) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    decoration: BoxDecoration(border: border),
+    child: Row(
+      children: [
+        Text(d.label, style: TextStyle(fontSize: 15, color: g.bodyText)),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Text(
+            d.value ?? context.l10n.dataViewNotAvailable,
+            textAlign: TextAlign.end,
+            style: TextStyle(
+              fontSize: d.mono ? 14 : 15,
+              fontWeight: FontWeight.w700,
+              color: g.ink,
+              fontFamily: d.mono ? 'monospace' : null,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  /// Finish with the session, done after it got everything, or add to the
+  /// wallet without one.
+  List<Widget> _actions({required bool share}) {
+    final submittedTo = widget.submittedTo;
+    if (share) {
+      return [
+        GuidedSaveForNextTime(value: _saveForNextTime, onChanged: (value) => setState(() => _saveForNextTime = value)),
+        const SizedBox(height: 16),
+        GuidedButton(
+          label: _sharing ? context.l10n.proofingSharing : context.l10n.proofingShareWith(submittedTo ?? ''),
+          onPressed: _sharing ? null : _share,
+        ),
+      ];
+    }
+    if (submittedTo != null) {
+      return [
+        GuidedSaveForNextTime(value: _saveForNextTime, onChanged: (value) => setState(() => _saveForNextTime = value)),
+        const SizedBox(height: 16),
+        GuidedButton(
+          label: context.l10n.proofingDone,
+          onPressed: () {
+            if (_saveForNextTime) _addToWallet();
+            widget.onBackPressed();
+          },
+        ),
+      ];
+    }
+    return [
+      GuidedButton(
+        label: context.l10n.dataViewAddToWallet,
+        onPressed: () {
+          _addToWallet();
+          widget.onBackPressed();
+        },
+      ),
+      const SizedBox(height: 12),
+      GuidedButton(label: context.l10n.proofingDone, kind: GuidedButtonKind.secondary, onPressed: widget.onBackPressed),
+    ];
   }
 }

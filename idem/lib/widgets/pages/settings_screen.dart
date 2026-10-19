@@ -14,10 +14,14 @@ import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+/// Product names, the same in every language.
+const _regulaLabel = 'Regula';
+const _irisLabel = 'Iris SDK';
+
 String _faceEngineLabel(AppLocalizations l10n, FaceEngineChoice choice) => switch (choice) {
-  FaceEngineChoice.regula => 'Regula',
+  FaceEngineChoice.regula => _regulaLabel,
   FaceEngineChoice.onDevice => l10n.docFaceEngineOpenSource,
-  FaceEngineChoice.iris => 'Iris SDK',
+  FaceEngineChoice.iris => _irisLabel,
 };
 
 String _livenessModeLabel(AppLocalizations l10n, LivenessMode mode) => switch (mode) {
@@ -215,18 +219,18 @@ class SettingsScreen extends ConsumerWidget {
                       row(
                         title: l10n.settingsFaceEngine,
                         subtitle: switch (faceEngine) {
-                          FaceEngineChoice.regula => 'Regula',
+                          FaceEngineChoice.regula => _regulaLabel,
                           FaceEngineChoice.onDevice => l10n.settingsFaceEngineOnDevice,
-                          FaceEngineChoice.iris => 'Iris SDK',
+                          FaceEngineChoice.iris => _irisLabel,
                         },
                         onTap: () => _pickOption<FaceEngineChoice>(
                           context: context,
                           title: l10n.settingsFaceEngine,
                           current: ref.read(faceEngineProvider),
                           options: [
-                            (FaceEngineChoice.regula, 'Regula'),
+                            (FaceEngineChoice.regula, _regulaLabel),
                             (FaceEngineChoice.onDevice, l10n.docFaceEngineOpenSource),
-                            (FaceEngineChoice.iris, 'Iris SDK'),
+                            (FaceEngineChoice.iris, _irisLabel),
                           ],
                           onSelected: (choice) => ref.read(faceEngineProvider.notifier).set(choice),
                         ),

@@ -1536,6 +1536,10 @@ void main() {
       expect(result['ok'], isFalse);
     });
 
+    test('bytes the image package throws on decode as no image', () {
+      expect(tryDecodeImage(Uint8List(3), decode: (_) => throw RangeError('truncated')), isNull);
+    });
+
     test('pipeline worker returns error for unknown command', () async {
       final harness = await _DebugWorkerHarness.spawn(FaceVerificationWorker.debugPipelineWorkerEntry);
       addTearDown(harness.dispose);

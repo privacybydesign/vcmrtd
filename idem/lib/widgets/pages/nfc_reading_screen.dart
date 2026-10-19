@@ -782,7 +782,11 @@ class _GuidedReadingChecklist extends StatelessWidget {
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: current ? FontWeight.w700 : FontWeight.w600,
-                color: current ? g.action : (state == _RowState.pending ? g.muted : g.ink),
+                color: switch (state) {
+                  _ when current => g.action,
+                  _RowState.pending => g.muted,
+                  _ => g.ink,
+                },
               ),
             ),
           ),

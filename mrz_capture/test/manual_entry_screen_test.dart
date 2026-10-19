@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:mrz_capture/l10n/mrz_capture_localizations.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 
 void _setLargeViewport(WidgetTester tester) {
@@ -99,6 +100,16 @@ void main() {
       expect(
         ManualEntryRules.dateOfExpiry(DateTime(2027), documentName: 'Passport', dateOfBirth: DateTime(2028), now: now),
         'Expiry date cannot be before date of birth',
+      );
+      expect(
+        ManualEntryRules.dateOfExpiry(
+          DateTime(2027),
+          documentName: 'Paspoort',
+          dateOfBirth: DateTime(2028),
+          now: now,
+          l10n: lookupMrzCaptureLocalizations(const Locale('nl')),
+        ),
+        'Vervaldatum kan niet vóór de geboortedatum liggen',
       );
     });
   });

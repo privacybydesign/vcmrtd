@@ -1389,6 +1389,11 @@ extension on FlutterFaceVerificationScreenState {
   Widget _buildGuidedIntro(GuidedStyle g) {
     final ready = _debugReadyOverride || (_cameraController?.value.isInitialized == true && _engineReady);
     final l10n = context.l10n;
+    final startLabel = switch ((ready, _startingLiveness)) {
+      (false, _) => l10n.selfieGettingReady,
+      (true, true) => l10n.selfieStarting,
+      (true, false) => l10n.faceStartSelfieCheck,
+    };
     return GuidedFaceIntroView(
       stepNumber: widget.stepNumber,
       totalSteps: widget.totalSteps,
@@ -1400,11 +1405,7 @@ extension on FlutterFaceVerificationScreenState {
         (Icons.face_retouching_off_outlined, l10n.faceTipRemoveAccessories),
         (Icons.lock_outline, l10n.selfieTipOnDevice),
       ],
-      startLabel: !ready
-          ? l10n.selfieGettingReady
-          : _startingLiveness
-          ? l10n.selfieStarting
-          : l10n.faceStartSelfieCheck,
+      startLabel: startLabel,
       onStart: ready && !_startingLiveness ? () => _startLiveness(widget.mode) : null,
       onBack: _handleBack,
       backTooltip: l10n.faceBack,
@@ -1464,11 +1465,7 @@ extension on FlutterFaceVerificationScreenState {
                     margin: const EdgeInsets.symmetric(horizontal: 4),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: _completedActions.contains(action)
-                          ? g.successBright
-                          : action == _currentAction
-                          ? Colors.white
-                          : Colors.white.withValues(alpha: 0.3),
+                      color: _actionDotColor(g, action),
                     ),
                   ),
               ],
@@ -1540,6 +1537,11 @@ extension on FlutterFaceVerificationScreenState {
     }
     final cameraReady = _cameraController?.value.isInitialized == true;
     final checking = _state == VerificationState.processing;
+    final message = switch ((checking, cameraReady)) {
+      (true, _) => context.l10n.selfieComparing,
+      (false, true) => context.l10n.selfieLoadingModels,
+      (false, false) => context.l10n.selfieOpeningCamera,
+    };
     return _guidedStatusPanel(
       g,
       icon: const SizedBox(
@@ -1548,12 +1550,14 @@ extension on FlutterFaceVerificationScreenState {
         child: CircularProgressIndicator(strokeWidth: 5, color: Colors.white),
       ),
       title: checking ? context.l10n.selfieCheckingTitle : context.l10n.selfieSettingUpTitle,
-      message: checking
-          ? context.l10n.selfieComparing
-          : cameraReady
-          ? context.l10n.selfieLoadingModels
-          : context.l10n.selfieOpeningCamera,
+      message: message,
     );
+  }
+
+  Color _actionDotColor(GuidedStyle g, String action) {
+    if (_completedActions.contains(action)) return g.successBright;
+    if (action == _currentAction) return Colors.white;
+    return Colors.white.withValues(alpha: 0.3);
   }
 
   Widget _guidedStatusPanel(
