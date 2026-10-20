@@ -91,7 +91,8 @@ flutter {
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.3.10"
-    // Gemalto JP2 Decoder
-    // https://mvnrepository.com/artifact/com.gemalto.jp2/jp2-android
-    implementation 'com.gemalto.jp2:jp2-android:1.0.3'
+    // Gemalto JP2 Decoder (OpenJPEG 2.5.4, 16 KB aligned), on Maven Central since 1.0.4.
+    // 1.1.0 requires compileSdk 37.
+    // https://github.com/ThalesGroup/JP2ForAndroid
+    implementation 'io.github.michaldvorak-gemalto:jp2-android:1.0.5'
 }
