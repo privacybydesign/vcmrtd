@@ -23,8 +23,9 @@ class ProofingDeepLinkPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     companion object {
         private const val CHANNEL = "proofing_deeplink"
 
-        // The https App Link form of the vcmrtd:// link (AndroidManifest.xml).
-        private const val APP_LINK_HOST = "idem.yivi.app"
+        // The https App Link form of the vcmrtd:// link (AndroidManifest.xml):
+        // prod, and staging for the alpha build (src/alpha/AndroidManifest.xml).
+        private val APP_LINK_HOSTS = setOf("idem.yivi.app", "idem.staging.yivi.app")
         private const val APP_LINK_PATH = "/verify"
     }
 
@@ -89,7 +90,7 @@ class ProofingDeepLinkPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private fun extractUrl(intent: Intent?): String? {
         if (intent?.action != Intent.ACTION_VIEW) return null
         val uri = intent.data ?: return null
-        val appLink = uri.scheme == "https" && uri.host == APP_LINK_HOST && uri.path == APP_LINK_PATH
+        val appLink = uri.scheme == "https" && uri.host in APP_LINK_HOSTS && uri.path == APP_LINK_PATH
         if (uri.scheme != "vcmrtd" && !appLink) return null
         return uri.toString()
     }

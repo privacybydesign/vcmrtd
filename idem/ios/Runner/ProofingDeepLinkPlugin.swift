@@ -12,14 +12,16 @@ import UIKit
 @objc class ProofingDeepLinkPlugin: NSObject, FlutterPlugin {
     private static let channelName = "proofing_deeplink"
 
-    // The https Universal Link form of the vcmrtd:// link (Runner.entitlements).
-    private static let universalLinkHost = "idem.yivi.app"
+    // The https Universal Link form of the vcmrtd:// link (Runner.entitlements):
+    // prod, and staging, whose AASA names only the alpha app.
+    private static let universalLinkHosts: Set<String> = ["idem.yivi.app", "idem.staging.yivi.app"]
     private static let universalLinkPath = "/verify"
 
     /// A vcmrtd:// link, or the https Universal Link on idem.yivi.app/verify.
     private static func isProofingLink(_ url: URL) -> Bool {
         if url.scheme == "vcmrtd" { return true }
-        return url.scheme == "https" && url.host == universalLinkHost && url.path == universalLinkPath
+        guard url.scheme == "https", let host = url.host else { return false }
+        return universalLinkHosts.contains(host) && url.path == universalLinkPath
     }
 
     /// The https link a Universal Link activity carries, when it is a proofing link.

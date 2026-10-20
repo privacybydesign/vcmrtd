@@ -66,9 +66,10 @@ sealed class ProofingSessionLink {
   /// The https App Link / Universal Link that opens this app on a session:
   /// `https://idem.yivi.app/verify?handover=...&api=...`, the same claim as the
   /// vcmrtd:// deep link, but one that mail clients and in-app browsers keep
-  /// tappable and that a phone camera opens. Only this host and path count:
-  /// any other https link carrying a handover is the Web App's own.
-  static const _appLinkHost = 'idem.yivi.app';
+  /// tappable and that a phone camera opens. Only these hosts (prod, and
+  /// staging for the alpha app) and this path count: any other https link
+  /// carrying a handover is the Web App's own.
+  static const _appLinkHosts = {'idem.yivi.app', 'idem.staging.yivi.app'};
   static const _appLinkPath = '/verify';
 
   /// Accepts `vcmrtd://verify?handover=...&api=...` (the claim/handover QR's
@@ -93,7 +94,8 @@ sealed class ProofingSessionLink {
     return ref == null ? null : ProofingSessionTokenLink(ref);
   }
 
-  static bool _isAppLink(Uri uri) => uri.scheme == 'https' && uri.host == _appLinkHost && uri.path == _appLinkPath;
+  static bool _isAppLink(Uri uri) =>
+      uri.scheme == 'https' && _appLinkHosts.contains(uri.host) && uri.path == _appLinkPath;
 }
 
 /// A handover QR for the Web App's browser slot: recognised only to tell the
