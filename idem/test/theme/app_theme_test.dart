@@ -101,7 +101,7 @@ void main() {
       );
       final theme = appTheme(branding);
       final brand = theme.extension<BrandTheme>()!;
-      final guided = brand.guided!;
+      final guided = brand.guided;
       expect(brand.name, 'CM.com');
       expect(theme.colorScheme.primary, const Color(0xFF036BD2));
       expect(guided.stepLabel, const Color(0xFF5412C7));
@@ -116,7 +116,7 @@ void main() {
 
     test('a header too light for white text keeps the design\'s dark one', () {
       final branding = AppBranding.fromSession(const ProofingBranding(name: 'Acme', headerColor: '#F5F5F5'));
-      expect(appTheme(branding).extension<BrandTheme>()!.guided!.header, AppColors.ink);
+      expect(appTheme(branding).extension<BrandTheme>()!.guided.header, AppColors.ink);
     });
 
     test('a light primary colour gets dark text on its buttons', () {
