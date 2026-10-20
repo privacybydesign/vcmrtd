@@ -16,6 +16,9 @@ on:
 
 concurrency: ${{ github.ref }}
 
+env:
+  PROOFING_TRUSTED_SERVERS: ${{ vars.PROOFING_TRUSTED_SERVERS }}
+
 jobs:
   build-app-ios-alpha:
     runs-on: macos-15 # MacOS version is pinned, because it determines which XCode version is used.

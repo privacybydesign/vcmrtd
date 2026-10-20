@@ -36,6 +36,46 @@ void main() {
     });
   });
 
+  group('ProofingBranding', () {
+    Map<String, dynamic> view(Object? branding) => {
+      'id': 'sess-1',
+      'relyingParty': 'CM.com B.V.',
+      'expiresAt': '2030-01-01T00:00:00Z',
+      'branding': ?branding,
+    };
+
+    test('parses the requester\'s theme, leaving out what it does not set', () {
+      final info = ProofingSessionInfo.fromJson(
+        view({
+          'name': 'CM Tickets',
+          'primaryColor': '#036BD2',
+          'fontFamily': '"Alexandria", sans-serif',
+          'hasLogo': true,
+        }),
+      );
+      expect(info.relyingParty, 'CM.com B.V.');
+      expect(
+        info.branding,
+        const ProofingBranding(
+          name: 'CM Tickets',
+          primaryColor: '#036BD2',
+          fontFamily: '"Alexandria", sans-serif',
+          hasLogo: true,
+        ),
+      );
+    });
+
+    test('is absent from a session without one', () {
+      expect(ProofingSessionInfo.fromJson(view(null)).branding, isNull);
+    });
+
+    test('without a name is left out instead of failing the session', () {
+      final info = ProofingSessionInfo.fromJson(view({'primaryColor': '#036BD2'}));
+      expect(info.relyingParty, 'CM.com B.V.');
+      expect(info.branding, isNull);
+    });
+  });
+
   group('ProofingFaceVerification', () {
     Map<String, dynamic> view([Object? faceVerification]) => {
       'id': 's1',
@@ -106,6 +146,43 @@ void main() {
       expect(ProofingSessionRef.parse('https://example.com/some/other/path'), isNull);
       expect(ProofingSessionRef.parse('not a url at all'), isNull);
       expect(ProofingSessionRef.parse('vcmrtd://verify?token=onlytoken'), isNull);
+    });
+  });
+
+  group('ProofingSessionLink.parse', () {
+    test('parses the https App Link as a handover claim', () {
+      final link = ProofingSessionLink.parse(
+        'https://idem.yivi.app/verify?handover=h-1&api=${Uri.encodeQueryComponent('https://proof.example.com')}',
+      );
+      expect(
+        link,
+        isA<ProofingHandoverLink>()
+            .having((l) => l.handoverToken, 'handoverToken', 'h-1')
+            .having((l) => l.apiBase, 'apiBase', 'https://proof.example.com'),
+      );
+    });
+
+    test('parses the staging https App Link as a handover claim', () {
+      final link = ProofingSessionLink.parse(
+        'https://idem.staging.yivi.app/verify?handover=h-1&api=${Uri.encodeQueryComponent('https://proof.example.com')}',
+      );
+      expect(
+        link,
+        isA<ProofingHandoverLink>()
+            .having((l) => l.handoverToken, 'handoverToken', 'h-1')
+            .having((l) => l.apiBase, 'apiBase', 'https://proof.example.com'),
+      );
+    });
+
+    test('rejects the https App Link without an api', () {
+      expect(ProofingSessionLink.parse('https://idem.yivi.app/verify?handover=h-1'), isNull);
+    });
+
+    test('keeps another host\'s https handover link a browser handover', () {
+      expect(
+        ProofingSessionLink.parse('https://proof.example.com/verify?handover=h-1&api=https://proof.example.com'),
+        isA<ProofingBrowserHandoverLink>(),
+      );
     });
   });
 

@@ -180,4 +180,9 @@ class MrzCaptureLocalizationsNl extends MrzCaptureLocalizations {
 
   @override
   String get mrzHeaderSubtitleMrz => 'Typ de machineleesbare zone (MRZ) precies zoals die op het document staat';
+
+  @override
+  String mrzStepBadge(int current, int total, String label) {
+    return '$current van $total · $label';
+  }
 }

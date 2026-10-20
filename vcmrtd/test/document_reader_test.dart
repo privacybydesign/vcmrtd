@@ -388,7 +388,7 @@ void main() {
         progressForState(DocumentReaderFailed(error: DocumentReadingError.unknown, logs: '', sensitiveLogs: '')),
         0.0,
       );
-      expect(progressForState(DocumentReaderConnecting()), 0.05);
+      expect(progressForState(DocumentReaderConnecting()), 0.0);
       expect(progressForState(DocumentReaderReadingCardAccess()), 0.1);
       expect(progressForState(DocumentReaderAuthenticating()), 0.15);
       expect(progressForState(DocumentReaderReadingCOM()), 0.2);

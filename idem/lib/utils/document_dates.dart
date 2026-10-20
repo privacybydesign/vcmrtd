@@ -1,3 +1,6 @@
+/// How the app shows a document's dates, e.g. "15 Apr 2034".
+const documentDatePattern = 'd MMM y';
+
 /// Driving licence dates are stored as ddMMyyyy strings; parses one into a
 /// [DateTime], or null if it isn't a valid date in that format.
 DateTime? parseDrivingLicenceDate(String date) {

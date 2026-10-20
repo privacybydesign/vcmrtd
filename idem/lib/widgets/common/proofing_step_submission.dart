@@ -26,13 +26,21 @@ Future<ProofingStepResponse?> submitProofingStep(
       barrierDismissible: false,
       builder: (_) => PopScope(
         canPop: false,
-        child: AlertDialog(
-          content: Row(
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(width: 20),
-              Expanded(child: Text(context.l10n.faceSubmitSending(what, session.info.relyingParty))),
-            ],
+        child: Material(
+          type: MaterialType.transparency,
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(color: Colors.white),
+                const SizedBox(height: 16),
+                Text(
+                  context.l10n.proofingStepSending(session.info.relyingParty),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ],
+            ),
           ),
         ),
       ),

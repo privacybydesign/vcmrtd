@@ -101,5 +101,19 @@
       }
     }
   },
-  "mrzHeaderSubtitleMrz": "Type the Machine Readable Zone text exactly as it appears"
+  "mrzHeaderSubtitleMrz": "Type the Machine Readable Zone text exactly as it appears",
+  "mrzStepBadge": "{current} of {total} · {label}",
+  "@mrzStepBadge": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "label": {
+        "type": "String"
+      }
+    }
+  }
 }

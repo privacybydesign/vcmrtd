@@ -283,6 +283,12 @@ abstract class MrzCaptureLocalizations {
   /// In en, this message translates to:
   /// **'Type the Machine Readable Zone text exactly as it appears'**
   String get mrzHeaderSubtitleMrz;
+
+  /// No description provided for @mrzStepBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'{current} of {total} · {label}'**
+  String mrzStepBadge(int current, int total, String label);
 }
 
 class _MrzCaptureLocalizationsDelegate extends LocalizationsDelegate<MrzCaptureLocalizations> {

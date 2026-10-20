@@ -11,6 +11,9 @@ on:
   # Make it possible to trigger the checks manually.
   workflow_dispatch:
 
+env:
+  PROOFING_TRUSTED_SERVERS: ${{ vars.PROOFING_TRUSTED_SERVERS }}
+
 jobs:
   lint:
     runs-on: ubuntu-latest
