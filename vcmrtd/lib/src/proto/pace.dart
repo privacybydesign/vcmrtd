@@ -712,7 +712,11 @@ class PACE {
           "${ECDHPace.ecPointToList(point: ephemeralSharedSecretKey).toBytes().hex()}",
         );
 
-        Uint8List seed = ECDHPace.ecPointToList(point: ephemeralSharedSecretKey).toRelavantBytes();
+        // The KDF seed is the x-coordinate at full field size (FE2OS, BSI TR-03111).
+        Uint8List seed = ECDHPace.ecPointToList(
+          point: ephemeralSharedSecretKey,
+          coordLen: domainParameter.coordLen,
+        ).toRelavantBytes();
         _log.sdVerbose("Seed: ${seed.hex()}");
 
         Uint8List encKey = PACE.cacluateEncKey(paceProtocol: paceProtocol, seed: seed);
