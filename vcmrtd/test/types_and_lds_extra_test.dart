@@ -46,6 +46,29 @@ void main() {
       expect(DocumentType.identityCard.displayName, 'Identity Card');
       expect(DocumentType.residencePermit.displayName, 'Residence Permit');
     });
+
+    group('td1DocumentType', () {
+      DocumentType? of(String code, String issuer, String nationality) =>
+          td1DocumentType(documentCode: code, issuingState: issuer, nationality: nationality);
+
+      test('a card for a national of its issuer is an identity card, whatever its code', () {
+        expect(of('I<', 'NLD', 'NLD'), DocumentType.identityCard);
+        expect(of('ID', 'D', 'D'), DocumentType.identityCard);
+        expect(of('IR', 'NLD', 'NLD'), DocumentType.identityCard);
+      });
+
+      test('a permit code on a foreigner\'s card is a residence permit', () {
+        expect(of('IR', 'NLD', 'SYR'), DocumentType.residencePermit);
+        expect(of('AR', 'D', 'TUR'), DocumentType.residencePermit);
+        expect(of('CR', 'ITA', 'USA'), DocumentType.residencePermit);
+      });
+
+      test('an ID code on a foreigner\'s card could be either', () {
+        expect(of('ID', 'BEL', 'MAR'), isNull);
+        expect(of('I<', 'EST', 'FIN'), isNull);
+        expect(of('I', 'EST', 'FIN'), isNull);
+      });
+    });
   });
 
   group('Exceptions', () {

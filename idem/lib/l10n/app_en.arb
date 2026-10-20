@@ -888,6 +888,22 @@
   "nfcReadingStoppedTitle": "Reading stopped",
   "nfcReadingStoppedSubtitle": "Start again when you are ready.",
   "nfcReadingFailedTitle": "Reading failed",
+  "wrongDocumentTitle": "{documentType, select, identityCard{This is an ID card} residencePermit{This is a residence permit} other{This is another document}}",
+  "@wrongDocumentTitle": {
+    "placeholders": {
+      "documentType": {
+        "type": "String"
+      }
+    }
+  },
+  "wrongDocumentHint": "{documentType, select, identityCard{Go back and choose ID card.} residencePermit{Go back and choose residence permit.} other{Go back and choose the right document.}}",
+  "@wrongDocumentHint": {
+    "placeholders": {
+      "documentType": {
+        "type": "String"
+      }
+    }
+  },
   "nfcReadingFailedSubtitle": "Check that the {documentType, select, passport{passport} identityCard{ID card} residencePermit{residence permit} drivingLicence{driving licence} other{document}} lies flat under your phone and try again.",
   "@nfcReadingFailedSubtitle": {
     "placeholders": {

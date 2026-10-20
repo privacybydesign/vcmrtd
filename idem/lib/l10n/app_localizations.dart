@@ -2462,6 +2462,18 @@ abstract class AppLocalizations {
   /// **'Reading failed'**
   String get nfcReadingFailedTitle;
 
+  /// No description provided for @wrongDocumentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{documentType, select, identityCard{This is an ID card} residencePermit{This is a residence permit} other{This is another document}}'**
+  String wrongDocumentTitle(String documentType);
+
+  /// No description provided for @wrongDocumentHint.
+  ///
+  /// In en, this message translates to:
+  /// **'{documentType, select, identityCard{Go back and choose ID card.} residencePermit{Go back and choose residence permit.} other{Go back and choose the right document.}}'**
+  String wrongDocumentHint(String documentType);
+
   /// No description provided for @nfcReadingFailedSubtitle.
   ///
   /// In en, this message translates to:

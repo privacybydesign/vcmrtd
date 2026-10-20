@@ -515,6 +515,7 @@ class ProofingChipAccess {
     final type = switch (json['documentType']) {
       'passport' => DocumentType.passport,
       'identity_card' => DocumentType.identityCard,
+      'residence_permit' => DocumentType.residencePermit,
       'drivers_license' => DocumentType.drivingLicence,
       _ => null,
     };
@@ -535,9 +536,8 @@ class ProofingChipAccess {
   Map<String, dynamic> toJson() => {
     'documentType': switch (documentType) {
       DocumentType.passport => 'passport',
-      // The server has no residence permit key yet; its chip opens like an
-      // identity card's (TD1 MRZ), so it travels as one.
-      DocumentType.identityCard || DocumentType.residencePermit => 'identity_card',
+      DocumentType.identityCard => 'identity_card',
+      DocumentType.residencePermit => 'residence_permit',
       DocumentType.drivingLicence => 'drivers_license',
     },
     'documentNumber': documentNumber,

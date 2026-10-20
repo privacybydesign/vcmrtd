@@ -7,6 +7,7 @@
 // touches hardware.
 
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -51,6 +52,9 @@ class _FakeReader extends DocumentReader<PassportData> {
   /// When set, a read waits for it: a document not yet held to the phone.
   static Completer<void>? readGate;
 
+  /// What a read returns; null reads nothing.
+  static (PassportData, RawDocumentData)? readResult;
+
   @override
   DocumentReaderState build() => initialState;
 
@@ -86,7 +90,8 @@ class _FakeReader extends DocumentReader<PassportData> {
     iosNfcMessages(DocumentReaderConnecting());
     iosNfcMessages(DocumentReaderReadingDataGroup(dataGroup: 'DG1', progress: 0.2));
     iosNfcMessages(DocumentReaderSuccess());
-    return null;
+    if (readResult != null) state = DocumentReaderSuccess();
+    return readResult;
   }
 }
 
@@ -102,7 +107,7 @@ ScannedPassportMRZ _passportMrz() {
 
 /// Builds the screen wrapped in a GoRouter so context.pop works (used by the
 /// pending/guidance branch).
-Widget _app(DocumentType documentType) {
+Widget _app(DocumentType documentType, {void Function(DocumentData, RawDocumentData)? onSuccess}) {
   final params = NfcReadingRouteParams(scannedMRZ: _passportMrz(), documentType: documentType);
   final router = GoRouter(
     initialLocation: '/',
@@ -113,7 +118,7 @@ Widget _app(DocumentType documentType) {
       ),
       GoRoute(
         path: '/',
-        builder: (_, _) => NfcReadingScreen(params: params, onSuccess: (_, _) {}),
+        builder: (_, _) => NfcReadingScreen(params: params, onSuccess: onSuccess ?? (_, _) {}),
       ),
     ],
   );
@@ -131,6 +136,20 @@ Widget _app(DocumentType documentType) {
   );
 }
 
+PassportData _td1Card({required String code, required String nationality}) {
+  final mrz =
+      '${code}UTOD231458907<<<<<<<<<<<<<<<'
+      '7408122F1204159$nationality<<<<<<<<<<<6'
+      'ERIKSSON<<ANNA<MARIA<<<<<<<<<<';
+  return PassportData(
+    mrz: PassportMRZ(Uint8List.fromList(mrz.codeUnits)),
+    photoImageData: Uint8List(0),
+    photoImageType: ImageType.jpeg,
+    photoImageWidth: 0,
+    photoImageHeight: 0,
+  );
+}
+
 void _setLargeViewport(WidgetTester tester) {
   tester.view.physicalSize = const Size(1200, 2200);
   tester.view.devicePixelRatio = 1.0;
@@ -143,6 +162,60 @@ void main() {
     _FakeReader.initialState = DocumentReaderPending();
     _FakeReader.totalReads = 0;
     _FakeReader.readGate = null;
+    _FakeReader.readResult = null;
+  });
+
+  group('wrongDocumentType', () {
+    test('an identity card read as a residence permit is the wrong document', () {
+      final card = _td1Card(code: 'I<', nationality: 'UTO');
+      expect(wrongDocumentType(card, DocumentType.residencePermit), DocumentType.identityCard);
+      expect(wrongDocumentType(card, DocumentType.identityCard), isNull);
+    });
+
+    test('a residence permit read as an identity card is the wrong document', () {
+      final card = _td1Card(code: 'IR', nationality: 'SYR');
+      expect(wrongDocumentType(card, DocumentType.identityCard), DocumentType.residencePermit);
+      expect(wrongDocumentType(card, DocumentType.residencePermit), isNull);
+    });
+
+    test('a foreigner\'s card with an ID code is either', () {
+      final card = _td1Card(code: 'ID', nationality: 'MAR');
+      expect(wrongDocumentType(card, DocumentType.identityCard), isNull);
+      expect(wrongDocumentType(card, DocumentType.residencePermit), isNull);
+    });
+
+    test('a passport is never checked', () {
+      expect(wrongDocumentType(_td1Card(code: 'IR', nationality: 'SYR'), DocumentType.passport), isNull);
+    });
+  });
+
+  group('NfcReadingScreen — the other card type', () {
+    Future<int> read(WidgetTester tester, DocumentType picked, PassportData card) async {
+      _setLargeViewport(tester);
+      _FakeReader.readResult = (card, RawDocumentData(dataGroups: {}, efSod: ''));
+      var passedOn = 0;
+      await tester.pumpWidget(_app(picked, onSuccess: (_, _) => passedOn++));
+      await tester.pump();
+      tester.widget<NfcGuidanceScreen>(find.byType(NfcGuidanceScreen)).onStartReading();
+      await tester.pump(const Duration(milliseconds: 100));
+      return passedOn;
+    }
+
+    testWidgets('an identity card read as a residence permit stops and says what it is', (tester) async {
+      final passedOn = await read(tester, DocumentType.residencePermit, _td1Card(code: 'I<', nationality: 'UTO'));
+
+      expect(passedOn, 0);
+      expect(find.text('This is an ID card'), findsOneWidget);
+      expect(find.text('Go back and choose ID card.'), findsOneWidget);
+      expect(find.text('Try again'), findsNothing);
+    });
+
+    testWidgets('a residence permit read as one is passed on', (tester) async {
+      final passedOn = await read(tester, DocumentType.residencePermit, _td1Card(code: 'IR', nationality: 'SYR'));
+
+      expect(passedOn, 1);
+      expect(find.text('This is an ID card'), findsNothing);
+    });
   });
 
   group('NfcReadingScreen — pending/guidance state', () {

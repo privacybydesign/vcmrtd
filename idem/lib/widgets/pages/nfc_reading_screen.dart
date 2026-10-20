@@ -117,8 +117,27 @@ class NfcReadingScreen extends ConsumerStatefulWidget {
   ConsumerState<NfcReadingScreen> createState() => _NfcReadingScreenState();
 }
 
+/// What [document]'s DG1 shows when it is the other card than [picked]: an
+/// identity card read as a residence permit, or the other way round. Also
+/// after a manual entry, which has no MRZ to tell.
+@visibleForTesting
+DocumentType? wrongDocumentType(DocumentData document, DocumentType picked) {
+  if (picked != DocumentType.identityCard && picked != DocumentType.residencePermit) return null;
+  final mrz = (document as PassportData).mrz;
+  final found = td1DocumentType(
+    documentCode: mrz.documentCode,
+    issuingState: mrz.country,
+    nationality: mrz.nationality,
+  );
+  return found != null && found != picked ? found : null;
+}
+
 class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteAware {
   late ScannedMRZ scannedMRZ;
+
+  /// Set when the chip turned out to be the other card type; the read is
+  /// then not passed on.
+  DocumentType? _wrongDocument;
 
   @override
   void didChangeDependencies() {
@@ -236,9 +255,14 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
   }) {
     final l10n = context.l10n;
     final type = widget.params.documentType.name;
-    final failed = nfcState == NFCReadingState.error;
-    final done = nfcState == NFCReadingState.success;
+    final wrongDocument = _wrongDocument;
+    final failed = nfcState == NFCReadingState.error || wrongDocument != null;
+    final done = nfcState == NFCReadingState.success && wrongDocument == null;
     final (title, subtitle) = switch (state) {
+      _ when wrongDocument != null => (
+        l10n.wrongDocumentTitle(wrongDocument.name),
+        l10n.wrongDocumentHint(wrongDocument.name),
+      ),
       DocumentReaderConnecting() => (l10n.nfcHoldPhoneOn(type), tip ?? l10n.docNfcTipFirst),
       DocumentReaderReconnecting() => (l10n.nfcReadingConnectionLost, l10n.docNfcTipStuck),
       DocumentReaderCancelled() ||
@@ -319,7 +343,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
                         textAlign: TextAlign.center,
                         style: TextStyle(fontSize: 16, height: 1.5, color: g.bodyText),
                       ),
-                      if (readingStep != null) ...[
+                      if (readingStep != null && wrongDocument == null) ...[
                         const SizedBox(height: 32),
                         _GuidedReadingChecklist(
                           style: g,
@@ -332,7 +356,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
                   ),
                 ),
               ),
-              if (failed)
+              if (failed && wrongDocument == null)
                 Padding(
                   padding: guidedBottomButtonPadding,
                   child: GuidedButton(label: l10n.nfcTryAgain, icon: Icons.refresh, onPressed: retry),
@@ -428,6 +452,11 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
           .readDocument(iosNfcMessages: _createIosNfcMessageMapper(), activeAuthenticationParams: nonceAndSessionId);
       if (result != null && mounted) {
         final (document, passportDataResult) = result;
+        final wrong = wrongDocumentType(document, widget.params.documentType);
+        if (wrong != null) {
+          setState(() => _wrongDocument = wrong);
+          return;
+        }
         widget.onSuccess(document, passportDataResult);
       }
     } catch (e) {

@@ -395,6 +395,8 @@
   "nfcReadingStoppedTitle": "Lezen gestopt",
   "nfcReadingStoppedSubtitle": "Begin opnieuw wanneer je er klaar voor bent.",
   "nfcReadingFailedTitle": "Lezen mislukt",
+  "wrongDocumentTitle": "{documentType, select, identityCard{Dit is een identiteitskaart} residencePermit{Dit is een verblijfsvergunning} other{Dit is een ander document}}",
+  "wrongDocumentHint": "{documentType, select, identityCard{Ga terug en kies identiteitskaart.} residencePermit{Ga terug en kies verblijfsvergunning.} other{Ga terug en kies het juiste document.}}",
   "nfcReadingFailedSubtitle": "Controleer of {documentType, select, passport{het paspoort} identityCard{de identiteitskaart} residencePermit{de verblijfsvergunning} drivingLicence{het rijbewijs} other{het document}} plat onder je telefoon ligt en probeer het opnieuw.",
   "nfcReadingSuccessTitle": "Chip gelezen",
   "nfcReadingSuccessSubtitle": "De chip van {documentType, select, passport{je paspoort} identityCard{je identiteitskaart} residencePermit{je verblijfsvergunning} drivingLicence{je rijbewijs} other{je document}} is uitgelezen.",

@@ -34,6 +34,7 @@ class MRZScanner extends StatefulWidget {
     Key? controller,
     required this.onSuccess,
     required this.engine,
+    this.onWrongDocument,
     this.routeObserver,
     this.initialDirection = CameraLensDirection.back,
     this.showOverlay = true,
@@ -44,6 +45,11 @@ class MRZScanner extends StatefulWidget {
   }) : super(key: controller);
 
   final MrzScannedCallback onSuccess;
+
+  /// Called with what the MRZ shows when it is the other card than
+  /// [documentType]: an identity card where a residence permit was asked for,
+  /// or the other way round. Scanning goes on.
+  final ValueChanged<DocumentType>? onWrongDocument;
 
   /// The OCR engine to read frames with. It is read per frame, so a caller can
   /// hand the scanner a value it rebuilds on and the change takes effect on the
@@ -242,21 +248,23 @@ class MRZScannerState extends State<MRZScanner> with RouteAware {
 
   bool _tryParseAndNotify(List<String> lines) {
     final parsedRaw = _parseScannedText(lines);
-    if (parsedRaw != null) {
-      _canProcess = false;
-      _notify(parsedRaw, lines);
-      return true;
-    }
+    if (parsedRaw != null) return _accept(parsedRaw, lines);
     final correctedStrict = MRZHelper.fixForDocType(widget.documentType, lines);
     if (correctedStrict != null) {
       final parsedStrict = _parseScannedText(correctedStrict);
-      if (parsedStrict != null) {
-        _canProcess = false;
-        _notify(parsedStrict, correctedStrict);
-        return true;
-      }
+      if (parsedStrict != null) return _accept(parsedStrict, correctedStrict);
     }
     return false;
+  }
+
+  bool _accept(ScannedMRZ mrz, List<String> lines) {
+    if (mrz.documentType != widget.documentType) {
+      widget.onWrongDocument?.call(mrz.documentType);
+      return false;
+    }
+    _canProcess = false;
+    _notify(mrz, lines);
+    return true;
   }
 
   void _notify(ScannedMRZ mrz, List<String> lines) {

@@ -21,6 +21,7 @@ typedef ScannerWidgetBuilder =
       required DocumentType documentType,
       required MrzScanPicture scanPicture,
       required MrzScannedWithPicture onSuccess,
+      required ValueChanged<DocumentType> onWrongDocument,
     });
 
 class MrzReaderRouteParams {
@@ -76,6 +77,9 @@ class ScannerWrapper extends StatefulWidget {
 class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
   bool _hasNavigated = false;
 
+  /// What the last MRZ read showed when it was the other card type.
+  DocumentType? _wrongDocument;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -97,6 +101,10 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
 
     _hasNavigated = true;
     widget.onMrzScanned(scannedMrz, picture);
+  }
+
+  void _onWrongDocument(DocumentType found) {
+    if (_wrongDocument != found) setState(() => _wrongDocument = found);
   }
 
   @override
@@ -121,6 +129,7 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
                 documentType: widget.documentType,
                 scanPicture: widget.scanPicture,
                 onSuccess: _onScanned,
+                onWrongDocument: _onWrongDocument,
               ),
             ),
             Positioned.fill(
@@ -164,6 +173,7 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
                   const Spacer(),
                   _GuidedScanSheet(
                     documentType: widget.documentType,
+                    wrongDocument: _wrongDocument,
                     onManualEntry: widget.onManualEntry,
                     stepNumber: widget.stepNumber,
                     totalSteps: widget.totalSteps,
@@ -201,12 +211,14 @@ int _mrzLineCount(DocumentType type) => switch (type) {
 class _GuidedScanSheet extends StatefulWidget {
   const _GuidedScanSheet({
     required this.documentType,
+    required this.wrongDocument,
     required this.onManualEntry,
     required this.stepNumber,
     required this.totalSteps,
   });
 
   final DocumentType documentType;
+  final DocumentType? wrongDocument;
   final VoidCallback onManualEntry;
   final int stepNumber;
   final int totalSteps;
@@ -288,6 +300,13 @@ class _GuidedScanSheetState extends State<_GuidedScanSheet> {
                                   GuidedStepLabel(step: widget.stepNumber, total: widget.totalSteps),
                                   const SizedBox(height: 4),
                                   GuidedHeading(title, style: g.heading(18, height: 1.3)),
+                                  if (widget.wrongDocument case final found?) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${l10n.wrongDocumentTitle(found.name)}. ${l10n.wrongDocumentHint(found.name)}',
+                                      style: TextStyle(fontSize: 15, height: 1.4, color: g.error),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
@@ -426,11 +445,13 @@ Widget _guidedScannerBuilder({
   required DocumentType documentType,
   required MrzScanPicture scanPicture,
   required MrzScannedWithPicture onSuccess,
+  required ValueChanged<DocumentType> onWrongDocument,
 }) {
   return ScannerPage(
     documentType: documentType,
     scanPicture: scanPicture,
     onSuccess: onSuccess,
+    onWrongDocument: onWrongDocument,
     frame: ScanFrame.caller,
   );
 }

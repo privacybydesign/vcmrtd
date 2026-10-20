@@ -1487,6 +1487,26 @@ class AppLocalizationsNl extends AppLocalizations {
   String get nfcReadingFailedTitle => 'Lezen mislukt';
 
   @override
+  String wrongDocumentTitle(String documentType) {
+    String _temp0 = intl.Intl.selectLogic(documentType, {
+      'identityCard': 'Dit is een identiteitskaart',
+      'residencePermit': 'Dit is een verblijfsvergunning',
+      'other': 'Dit is een ander document',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String wrongDocumentHint(String documentType) {
+    String _temp0 = intl.Intl.selectLogic(documentType, {
+      'identityCard': 'Ga terug en kies identiteitskaart.',
+      'residencePermit': 'Ga terug en kies verblijfsvergunning.',
+      'other': 'Ga terug en kies het juiste document.',
+    });
+    return '$_temp0';
+  }
+
+  @override
   String nfcReadingFailedSubtitle(String documentType) {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'het paspoort',

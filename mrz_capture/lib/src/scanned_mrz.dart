@@ -32,13 +32,24 @@ class ScannedPassportMRZ extends ScannedMRZ {
     super.documentType = DocumentType.passport,
   });
 
+  /// An identity card or residence permit takes the type its MRZ shows over
+  /// [documentType], the one the user picked.
   factory ScannedPassportMRZ.fromMRZResult(PassportMrzResult mrz, {DocumentType documentType = DocumentType.passport}) {
     return ScannedPassportMRZ(
       documentNumber: mrz.documentNumber,
       countryCode: mrz.countryCode,
       dateOfBirth: mrz.birthDate,
       dateOfExpiry: mrz.expiryDate,
-      documentType: documentType,
+      documentType: switch (documentType) {
+        DocumentType.identityCard || DocumentType.residencePermit =>
+          td1DocumentType(
+                documentCode: mrz.documentType,
+                issuingState: mrz.countryCode,
+                nationality: mrz.nationalityCountryCode,
+              ) ??
+              documentType,
+        _ => documentType,
+      },
     );
   }
 

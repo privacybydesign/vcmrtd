@@ -31,7 +31,7 @@ void main() {
       expect([mrz.documentNumber, mrz.version, mrz.randomData, mrz.configuration], ['DL123', '1', 'RND', 'CFG']);
     });
 
-    test('a residence permit key travels as an identity card key', () {
+    test('round-trips a residence permit key as a residence permit', () {
       final key = ProofingChipAccess.fromScannedMrz(
         ScannedPassportMRZ(
           documentNumber: 'D23145890',
@@ -43,14 +43,15 @@ void main() {
         DocumentType.residencePermit,
       );
       final json = key.toJson();
-      expect(json['documentType'], 'identity_card');
+      expect(json['documentType'], 'residence_permit');
       final mrz = ProofingChipAccess.fromJson(json)!.toScannedMrz() as ScannedPassportMRZ;
+      expect(mrz.documentType, DocumentType.residencePermit);
       expect(mrz.documentNumber, 'D23145890');
       expect(mrz.dateOfExpiry, DateTime(2032, 4, 15));
     });
 
     test('a key of a type this app does not know opens nothing', () {
-      expect(ProofingChipAccess.fromJson({'documentType': 'residence_permit', 'documentNumber': 'X1'}), isNull);
+      expect(ProofingChipAccess.fromJson({'documentType': 'visa', 'documentNumber': 'X1'}), isNull);
     });
 
     test('an incomplete key opens nothing', () {
