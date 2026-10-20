@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show AppLifecycleState;
+import 'package:idem/services/trusted_servers.dart';
 import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/services/proofing_session_watcher.dart';
 
@@ -45,7 +46,14 @@ class ProofingSessionCoordinator {
   final ProofingSessionClient client;
   final Duration retryDelay;
 
-  ProofingSessionCoordinator({required this.client, this.retryDelay = const Duration(seconds: 3)});
+  ProofingSessionCoordinator({
+    required this.client,
+    this.retryDelay = const Duration(seconds: 3),
+    TrustedServers? trustedServers,
+  }) : trustedServers = trustedServers ?? TrustedServers.current;
+
+  /// The servers a link may name; any other is refused before it is contacted.
+  final TrustedServers trustedServers;
 
   final _events = StreamController<ProofingSessionEvent>.broadcast();
   final ValueNotifier<ProofingSessionCheck> check = ValueNotifier(ProofingSessionCheck.idle);
@@ -95,6 +103,9 @@ class ProofingSessionCoordinator {
   final Map<String, Future<ProofingSessionClaim>> _connecting = {};
 
   Future<ProofingSessionClaim> _connect(ProofingSessionLink link) async {
+    if (!trustedServers.isTrusted(link.apiBase)) {
+      throw const ProofingSessionAccessException(ProofingAccessDenial.untrustedServer, 0);
+    }
     final claim = switch (link) {
       ProofingHandoverLink() => await _claimOrReuse(link),
       ProofingSessionTokenLink() => throw const ProofingSessionAccessException(

@@ -412,8 +412,9 @@ void main() {
       expect(rect.width, 360);
       expect(rect.height, closeTo(360 / 1.42, 0.001));
       expect(rect.left, 20);
-      // Centred like the frame drawn over the preview.
-      expect(rect.top, closeTo((800 - (360 / 1.42)) / 2, 0.001));
+      // Like the frame drawn over the preview: lifted above the centre,
+      // clear of the controls along the bottom.
+      expect(rect.top, closeTo((800 - (360 / 1.42)) / 2 - MRZCameraOverlay.frameLift, 0.001));
     });
 
     testWidgets('overlayRect uses landscape sizing', (tester) async {
@@ -432,7 +433,8 @@ void main() {
       expect(rect.height, expectedHeight);
       expect(rect.width, closeTo(expectedWidth, 0.001));
       expect(rect.left, closeTo((800 - expectedWidth) / 2, 0.001));
-      expect(rect.top, closeTo((400 - expectedHeight) / 2, 0.001));
+      // Lifted, but never above the view.
+      expect(rect.top, 0);
     });
 
     testWidgets('previewRect centers scaled preview for portrait screen', (tester) async {

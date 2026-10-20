@@ -21,6 +21,7 @@ import 'package:idem/widgets/pages/driving_licence_data_screen.dart';
 import 'package:idem/widgets/pages/manual_entry_route_params.dart';
 import 'package:idem/widgets/pages/nfc_reading_screen.dart';
 import 'package:idem/widgets/pages/passport_data_screen.dart';
+import 'package:idem/providers/branding_provider.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/services/face_verification_outcome.dart';
 import 'package:idem/widgets/pages/proofing_session_consent_screen.dart';
@@ -31,6 +32,12 @@ import 'package:idem/widgets/common/proofing_step_submission.dart';
 import 'package:idem/widgets/pages/qr_scanner_screen.dart';
 import 'package:idem/widgets/pages/scanner_wrapper.dart';
 import 'package:idem/widgets/pages/settings_screen.dart';
+import 'package:idem/widgets/guided/guided_widgets.dart';
+import 'package:idem/widgets/pages/guided_manual_entry_screen.dart';
+import 'package:idem/providers/wallet_provider.dart';
+import 'package:idem/theme/brand_theme.dart';
+import 'package:idem/widgets/pages/choose_document_screen.dart';
+import 'package:idem/widgets/pages/saved_documents_screen.dart';
 
 /// The photo + issue date to seed face verification with, straight off the
 /// just-read [document] — used to jump into face verification immediately
@@ -73,7 +80,18 @@ const _faceVerificationPath = '/face_verification';
 const _documentPhotoPath = '/document_photo';
 const _settingsPath = '/settings';
 const _qrScannerPath = '/qr_scanner';
+
+/// The screens that belong to no session: back on one of them without a
+/// session, the app wears its own look again.
+const sessionlessPaths = {selectDocTypePath, _qrScannerPath};
 const _proofingConsentPath = '/proofing_consent';
+
+/// Where a claimed QR or deep link shows the session for consent (see
+/// [openProofingSessionLink]); main.dart leaves it when that session ends,
+/// and tests open it directly.
+const proofingConsentPath = _proofingConsentPath;
+const _chooseDocumentPath = '/choose_document';
+const _savedDocumentsPath = '/saved_documents';
 
 /// The step badges [session]'s flow gets; vcmrtd's own default sequence
 /// without a pinned session (or one created without a flow).
@@ -288,10 +306,11 @@ String _localStepAfter(List<String> steps, String step) {
 /// [readyToSubmit] and [currentStep] from the step response (or the session
 /// view) that just arrived, never this app's own idea of what comes next.
 /// After the last step the session isn't finished yet: it waits to be
-/// submitted ([readyToSubmit]), which this app then does right away - the
-/// last step is also the submit. What the screen the user came from
-/// already has ([collected]: the MRZ scan, the chip read, a face outcome)
-/// only fills in what the next screen needs. [resume] is a fresh start on
+/// submitted ([readyToSubmit]), which the user does with Share on the result
+/// screen when this device read the chip, or this app right away otherwise.
+/// What the screen the user came from already has ([collected]: the MRZ
+/// scan, the chip read, a face outcome) only fills in what the next screen
+/// needs. [resume] is a fresh start on
 /// this device (after connecting or a handover): screens are gone to instead
 /// of pushed.
 void _continueAtServerStep(
@@ -309,15 +328,16 @@ void _continueAtServerStep(
     return;
   }
 
-  // Every step has a result: submit it now. An empty currentStep means the
-  // server has nothing left to collect either; submitting lets it decide.
+  // Every step has a result: share it from the result screen, or submit it
+  // now. An empty currentStep means the server has nothing left to collect
+  // either; submitting lets it decide.
   if (readyToSubmit || currentStep.isEmpty) {
-    _submitProofingSession(context, session);
+    if (!_goShareScreen(context, session, collected)) _submitProofingSession(context, session);
     return;
   }
 
   if (currentStep == stepDocumentCapture) {
-    context.go(selectDocTypePath);
+    context.go(context.guided != null ? _chooseDocumentPath : selectDocTypePath);
     return;
   }
 
@@ -349,6 +369,27 @@ void _continueAtServerStep(
     title: context.l10n.proofingContinueInBrowserTitle,
     message: context.l10n.proofingContinueInBrowserNextStep,
   );
+}
+
+/// Shows the chip read in [collected] as verified, for the user to share
+/// with [session]'s relying party (see [_buildResultRoute]); false without a
+/// chip read on this device. The session stays pinned until it's shared.
+bool _goShareScreen(BuildContext context, ActiveProofingSession session, CollectedStepData collected) {
+  final document = collected.document;
+  final rawDocument = collected.rawDocument;
+  final documentType = collected.documentType;
+  if (document == null || rawDocument == null || documentType == null) return false;
+  context.goResultScreen(
+    ResultRouteArgs(
+      document: document,
+      rawDocument: rawDocument,
+      documentType: documentType,
+      plan: collected.plan ?? _planFor(session),
+      submittedTo: session.info.relyingParty,
+      pendingStep: PendingStep.share,
+    ),
+  );
+  return true;
 }
 
 /// The nfc_read step of [_continueAtServerStep].
@@ -454,7 +495,8 @@ void _afterConsent(BuildContext context, ActiveProofingSession session) {
   if (_resumeAtServerStep(context, session)) return;
   final steps = session.info.steps;
   if (steps == null || steps.contains(stepDocumentCapture)) {
-    context.go(selectDocTypePath);
+    // The guided flow is QR-first: pick which document to use next.
+    context.go(context.guided != null ? _chooseDocumentPath : selectDocTypePath);
     return;
   }
 
@@ -539,8 +581,8 @@ void _showInfoAfterNavigation(GoRouter router, {required String title, required 
 /// the other device takes; an expired session is refused by the server and
 /// ends with that message instead. When a step still lacks a result after
 /// all (e.g. a reset landed in between), the user continues at the server's
-/// current step.
-Future<void> _submitProofingSession(BuildContext context, ActiveProofingSession session) async {
+/// current step. Returns whether the session is complete.
+Future<bool> _submitProofingSession(BuildContext context, ActiveProofingSession session) async {
   final container = ProviderScope.containerOf(context);
   final router = GoRouter.of(context);
   final client = container.read(proofingSessionClientProvider);
@@ -561,13 +603,13 @@ Future<void> _submitProofingSession(BuildContext context, ActiveProofingSession 
       }
     },
   );
-  if (response == null || !context.mounted) return;
+  if (response == null || !context.mounted) return false;
   if (response.complete) {
     container.read(proofingSessionCoordinatorProvider).reportCompleted(session.ref);
-    return;
+    return true;
   }
   final step = response.currentStep ?? '';
-  if (!stepsIncomplete || step.isEmpty) return;
+  if (!stepsIncomplete || step.isEmpty) return false;
   _continueAtServerStep(
     context,
     container.read(activeProofingSessionProvider) ?? session,
@@ -580,6 +622,7 @@ Future<void> _submitProofingSession(BuildContext context, ActiveProofingSession 
     title: l10n.proofingNotFinishedTitle,
     message: l10n.proofingNotFinishedMessage(session.info.relyingParty),
   );
+  return false;
 }
 
 /// Sends the MRZ scan's (or manual entry's) identity to the pinned flow
@@ -727,7 +770,12 @@ Future<String?> openProofingSessionLink(
       container.read(activeProofingSessionProvider.notifier).set(null);
     }
     if (claim.info.requestedAttributes.isEmpty) return currentL10n.proofingSessionNoAttributes;
+    // The requester's look from the consent screen on. Popping the scanner
+    // lands home without a session, which takes it off, so it's put on again.
+    final branding = container.read(activeBrandingProvider.notifier);
+    await branding.useSession(claim.ref, claim.info);
     beforePush?.call();
+    await branding.useSession(claim.ref, claim.info);
     router.push(_proofingConsentPath, extra: {'ref': claim.ref, 'info': claim.info});
     return null;
   } on ProofingSessionAccessException catch (e) {
@@ -861,12 +909,20 @@ GoRouter createRouter({
             },
             onSettingsPressed: context.pushSettingsScreen,
             onScanQrPressed: context.pushQrScannerScreen,
+            onContinueProofingSession: () => context.push(_chooseDocumentPath),
           );
         },
       ),
       GoRoute(
         path: _settingsPath,
-        builder: (context, state) => SettingsScreen(onBackPressed: context.pop),
+        builder: (context, state) => SettingsScreen(
+          onBackPressed: context.pop,
+          onSavedDocumentsPressed: context.guided != null ? () => context.push(_savedDocumentsPath) : null,
+        ),
+      ),
+      GoRoute(
+        path: _savedDocumentsPath,
+        builder: (context, state) => SavedDocumentsScreen(onBack: context.pop, onScanQr: context.pushQrScannerScreen),
       ),
       GoRoute(
         path: _qrScannerPath,
@@ -891,11 +947,55 @@ GoRouter createRouter({
               _afterConsent(context, session);
             },
             onDecline: () {
-              ProviderScope.containerOf(context).read(proofingSessionCoordinatorProvider).decline(sessionRef);
+              final container = ProviderScope.containerOf(context);
+              container.read(proofingSessionCoordinatorProvider).decline(sessionRef);
+              container.read(activeBrandingProvider.notifier).reset();
               context.go(selectDocTypePath);
             },
           );
         },
+      ),
+      GoRoute(
+        path: _chooseDocumentPath,
+        builder: (context, state) => Consumer(
+          builder: (context, ref, _) {
+            final session = ref.watch(activeProofingSessionProvider);
+            final saved = ref.watch(walletProvider).where((c) => c.canBeReused).toList().reversed.toList();
+            return ChooseDocumentScreen(
+              relyingParty: session?.info.relyingParty ?? context.brand.name,
+              savedDocuments: saved,
+              onBack: () => context.go(selectDocTypePath),
+              onAddNew: (type) => context.pushMrzReaderScreen(MrzReaderRouteParams(documentType: type)),
+              onUseSaved: (card) async {
+                // A session gets the saved chip read as its NFC step, exactly
+                // as a fresh read would, and continues where the server says.
+                if (session == null) {
+                  _pushFaceVerificationAfterChipRead(context, card.document!, card.rawData!, card.documentType);
+                  return;
+                }
+                final response = await _submitNfcStep(
+                  context,
+                  session,
+                  card.document!,
+                  card.rawData!,
+                  card.documentType,
+                );
+                if (!context.mounted) return;
+                _continueAfterStep(
+                  context,
+                  session,
+                  response,
+                  completedStep: stepNfcRead,
+                  collected: CollectedStepData(
+                    documentType: card.documentType,
+                    document: card.document,
+                    rawDocument: card.rawData,
+                  ),
+                );
+              },
+            );
+          },
+        ),
       ),
       GoRoute(
         path: _mrzReaderPath,
@@ -935,15 +1035,24 @@ GoRouter createRouter({
         builder: (context, state) {
           final params = ManualEntryRouteParams.fromQueryParams(state.uri.queryParameters);
           final plan = _activePlan(context);
+          void onComplete(ScannedMRZ scannedMrz) => _afterDocumentCaptured(context, scannedMrz, params.documentType);
           return _ReportsStepStarted(
             step: stepDocumentCapture,
-            child: ManualEntryScreen(
-              documentType: params.documentType,
-              onBack: context.pop,
-              onManualEntryComplete: (scannedMrz) => _afterDocumentCaptured(context, scannedMrz, params.documentType),
-              stepNumber: plan.documentCaptureStepNumber ?? FlowStepPlan.defaultDocumentCaptureStep,
-              totalSteps: plan.totalSteps,
-            ),
+            child: context.guided != null
+                ? GuidedManualEntryScreen(
+                    documentType: params.documentType,
+                    onBack: context.pop,
+                    onManualEntryComplete: onComplete,
+                    stepNumber: plan.documentCaptureStepNumber ?? FlowStepPlan.defaultDocumentCaptureStep,
+                    totalSteps: plan.totalSteps,
+                  )
+                : ManualEntryScreen(
+                    documentType: params.documentType,
+                    onBack: context.pop,
+                    onManualEntryComplete: onComplete,
+                    stepNumber: plan.documentCaptureStepNumber ?? FlowStepPlan.defaultDocumentCaptureStep,
+                    totalSteps: plan.totalSteps,
+                  ),
           );
         },
       ),
@@ -1004,6 +1113,18 @@ Widget _buildNfcReadingRoute(BuildContext context, GoRouterState state) {
 Widget _buildResultRoute(BuildContext context, GoRouterState state) {
   final args = state.extra as ResultRouteArgs;
   final plan = args.plan ?? _activePlan(context);
+  // Sharing submits the session that is still pinned; main.dart ends it
+  // once complete.
+  Future<bool> share() async {
+    final session = ProviderScope.containerOf(context).read(activeProofingSessionProvider);
+    if (session == null) {
+      context.go(selectDocTypePath);
+      return false;
+    }
+    return _submitProofingSession(context, session);
+  }
+
+  final onShare = args.pendingStep == PendingStep.share ? share : null;
 
   return switch (args.documentType) {
     DocumentType.passport || DocumentType.identityCard => PassportDataScreen(
@@ -1013,6 +1134,7 @@ Widget _buildResultRoute(BuildContext context, GoRouterState state) {
       submittedTo: args.submittedTo,
       pendingStep: args.pendingStep,
       onBackPressed: () => context.go(selectDocTypePath),
+      onShare: onShare,
       stepNumber: plan.resultStepNumber,
       totalSteps: plan.totalSteps,
     ),
@@ -1022,6 +1144,7 @@ Widget _buildResultRoute(BuildContext context, GoRouterState state) {
       submittedTo: args.submittedTo,
       pendingStep: args.pendingStep,
       onBackPressed: () => context.go(selectDocTypePath),
+      onShare: onShare,
       stepNumber: plan.resultStepNumber,
       totalSteps: plan.totalSteps,
     ),

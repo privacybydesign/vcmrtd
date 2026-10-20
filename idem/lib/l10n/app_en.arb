@@ -12,6 +12,7 @@
   "accessHandoverUsed": "This handover QR code was already used. Ask for a new one in the browser.",
   "accessClaimTokenRequired": "This QR code is from an older version of the verification service and can no longer be used. Ask for a new one in the browser.",
   "accessBrowserHandover": "This QR code moves the browser part of the verification to another browser. Open it with your phone's camera instead, or scan the QR code the browser shows for the IDEM app.",
+  "accessUntrustedServer": "This QR code isn't from a verification service this app works with, so it wasn't opened.",
   "sessionOpenFailedTitle": "Could not open verification",
   "sessionCompleteTitle": "Verification complete",
   "sessionCompleteMessage": "You're done. Your verification was sent to {relyingParty}.",
@@ -332,7 +333,6 @@
   "faceVerifyingIdentity": "Verifying identity...",
   "faceGoBack": "Go Back",
   "faceTryAgain": "Try Again",
-  "faceIdentityVerified": "Identity Verified",
   "faceVerificationFailed": "Verification Failed",
   "faceScoreMatch": "Match (≥{threshold}%)",
   "@faceScoreMatch": {
@@ -397,8 +397,11 @@
   "faceIrisStep2": "Look directly at the camera and follow any prompts",
   "faceIrisStep3": "Hold still until it finishes — this only takes a moment",
   "faceStartVerification": "Start Verification",
+  "faceSelfieIntroTitle": "Take a quick selfie",
+  "faceTipEvenLight": "Find a spot with even light",
+  "faceTipRemoveAccessories": "Take off sunglasses and hats",
+  "faceStartSelfieCheck": "Start selfie check",
   "faceSomethingWentWrong": "Something Went Wrong",
-  "faceIrisMatchedSubtitle": "The live face matched the document photo.",
   "faceIrisFailedSubtitle": "The live face did not match the document photo. Make sure you're well lit and looking at the camera, then try again.",
   "faceCancelled": "Cancelled",
   "faceIrisCancelledSubtitle": "You cancelled the verification. Tap below to try again.",
@@ -408,19 +411,9 @@
   "faceRegulaStep2": "Look straight at the camera and follow the prompts",
   "faceRegulaStep3": "Hold still until it finishes — this only takes a moment",
   "faceRegulaOpeningCamera": "Opening the camera…",
-  "faceRegulaLiveTitle": "Liveness Confirmed",
-  "faceRegulaLiveSubtitle": "Your face is now compared with the photo on your document.",
   "faceRegulaNotLiveSubtitle": "We couldn't confirm that a live person is present. Make sure you're well lit and looking at the camera, then try again.",
   "faceRegulaCancelledSubtitle": "You cancelled the verification. Tap below to try again.",
   "faceRegulaMatching": "Comparing your face with your document photo…",
-  "faceRegulaMatchedSubtitle": "Your face matches the photo on your document ({similarity}% similarity).",
-  "@faceRegulaMatchedSubtitle": {
-    "placeholders": {
-      "similarity": {
-        "type": "String"
-      }
-    }
-  },
   "faceRegulaNoMatchSubtitle": "Your face didn't match the photo on your document. Scan your document again to retry.",
   "faceRegulaMatchUnavailable": "Your face could not be compared with your document photo right now.",
   "faceRegulaScanAgain": "Scan document again",
@@ -435,17 +428,6 @@
   "faceSessionUnreachable": "Can't reach the verification service. Retrying...",
   "faceSessionChecking": "Checking your verification session...",
   "faceStopVerification": "Stop verification",
-  "faceSubmitSending": "Sending {what} to {relyingParty}...",
-  "@faceSubmitSending": {
-    "placeholders": {
-      "what": {
-        "type": "String"
-      },
-      "relyingParty": {
-        "type": "String"
-      }
-    }
-  },
   "faceSubmitCouldNotSend": "Could not send",
   "faceSubmitFailed": "Sending {what} to {relyingParty} failed:\n\n{error}",
   "@faceSubmitFailed": {
@@ -525,6 +507,32 @@
     }
   },
   "proofingDone": "Done",
+  "proofingVerifiedTitle": "Document read",
+  "proofingShareBody": "Your document details were sent to {relyingParty}. Finish to complete the verification.",
+  "@proofingShareBody": {
+    "placeholders": {
+      "relyingParty": {
+        "type": "String"
+      }
+    }
+  },
+  "proofingShareWith": "Finish with {relyingParty}",
+  "@proofingShareWith": {
+    "placeholders": {
+      "relyingParty": {
+        "type": "String"
+      }
+    }
+  },
+  "proofingSharing": "Finishing…",
+  "proofingStepSending": "Sending to {relyingParty}…",
+  "@proofingStepSending": {
+    "placeholders": {
+      "relyingParty": {
+        "type": "String"
+      }
+    }
+  },
   "proofingAddToWallet": "Add to Wallet",
   "proofingDialogOk": "OK",
   "proofingScanDocument": "Scan {docType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}}",
@@ -628,5 +636,380 @@
   "proofingRequestNfcStep": "Submitting the nfc step",
   "proofingRequestDocumentPhotoStep": "Submitting the document photo step",
   "proofingRequestFaceStep": "Submitting the face verification step",
-  "proofingRequestSubmitVerification": "Submitting the verification"
+  "proofingRequestSubmitVerification": "Submitting the verification",
+  "guidedStepOf": "Step {step} of {total}",
+  "@guidedStepOf": {
+    "placeholders": {
+      "step": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "guidedSaveForNextTime": "Save for next time",
+  "guidedSaveForNextTimeSubtitle": "Keep this document on this phone until the app is closed, so you don’t have to scan it again.",
+  "settingsYourDocuments": "Your documents",
+  "settingsSavedDocuments": "Saved documents",
+  "settingsSavedCount": "{count, plural, =0{None on this phone} other{{count} on this phone}}",
+  "@settingsSavedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsChipReading": "Chip reading",
+  "settingsChipCheck": "Chip check",
+  "settingsChipCheckSubtitle": "Ask the chip to prove it isn’t a copy (active authentication)",
+  "settingsSelfieCheck": "Selfie check",
+  "settingsFaceEngine": "Face engine",
+  "settingsFaceEngineOnDevice": "Open source, on this phone",
+  "settingsLivenessCheck": "Liveness check",
+  "settingsLivenessPassive": "Passive: just hold still",
+  "settingsLivenessActive": "Active: follow the prompts",
+  "settingsDocumentScanning": "Document scanning",
+  "settingsTextRecognition": "Text recognition",
+  "settingsVersion": "Version {version}",
+  "@settingsVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "savedCount": "{count, plural, =0{No documents on this phone} =1{1 document on this phone} other{{count} documents on this phone}}",
+  "@savedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "savedEmptyBody": "After you share a document, you can save it here until the app is closed, so you don’t have to scan it again.",
+  "savedBody": "When you scan a QR code, you can pick one of these instead of scanning your ID again. They are only shared when you agree, and are removed when the app is closed.",
+  "savedValidUntil": "Valid until {date}",
+  "@savedValidUntil": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "savedAddedToday": "added today",
+  "savedAddedOn": "added {date}",
+  "@savedAddedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "savedRemove": "Remove from this phone",
+  "chooseTitle": "Choose document",
+  "chooseHeading": "Which document do you want to use?",
+  "chooseIntroEmpty": "{relyingParty} asked to verify your identity. Add the document you want to use.",
+  "@chooseIntroEmpty": {
+    "placeholders": {
+      "relyingParty": {
+        "type": "String"
+      }
+    }
+  },
+  "chooseIntroSaved": "{relyingParty} asked to verify your identity. Use a saved document or add a new one.",
+  "@chooseIntroSaved": {
+    "placeholders": {
+      "relyingParty": {
+        "type": "String"
+      }
+    }
+  },
+  "chooseSavedOnPhone": "Saved on this phone",
+  "chooseSelfieHint": "You’ll take a quick selfie to confirm the document is yours.",
+  "chooseAddDocument": "Add a document",
+  "chooseAddNewDocument": "Or add a new document",
+  "chooseContinueWith": "Continue with {documentType, select, passport{passport} identityCard{identity card} drivingLicence{driving licence} other{document}}",
+  "@chooseContinueWith": {
+    "placeholders": {
+      "documentType": {
+        "type": "String"
+      }
+    }
+  },
+  "chooseValidUntil": "valid until {date}",
+  "@chooseValidUntil": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "homeEyebrow": "IDENTITY VERIFICATION",
+  "homeTitle": "Verify your identity with a QR code",
+  "homeBody": "When a service asks you to verify who you are, it shows a QR code. Scan it here to start.",
+  "homeConnectedBody": "You accepted a request from {relyingParty}. Continue where you left off.",
+  "@homeConnectedBody": {
+    "placeholders": {
+      "relyingParty": {
+        "type": "String"
+      }
+    }
+  },
+  "homeContinueWith": "Continue with {relyingParty}",
+  "@homeContinueWith": {
+    "placeholders": {
+      "relyingParty": {
+        "type": "String"
+      }
+    }
+  },
+  "homeHowItWorks": "How it works",
+  "homeStepScan": "Scan the QR code shown by the website or app.",
+  "homeStepDocument": "Use a document saved on this phone, or scan your ID.",
+  "homeStepSelfie": "Take a quick selfie, then share only what was asked for.",
+  "consentTitle": "Request",
+  "consentHeading": "{party} wants to verify your identity",
+  "@consentHeading": {
+    "placeholders": {
+      "party": {
+        "type": "String"
+      }
+    }
+  },
+  "consentRequestedBy": "Requested by {org}",
+  "@consentRequestedBy": {
+    "placeholders": {
+      "org": {
+        "type": "String"
+      }
+    }
+  },
+  "consentTheyWillReceive": "They will receive",
+  "qrScanClose": "Close",
+  "qrScanPointCamera": "Point your camera at the QR code",
+  "qrScanWhereToFind": "You’ll find it on the website or app that asked you to verify.",
+  "qrScanNothingShared": "Nothing is shared until you agree on the next screen.",
+  "selfieIntroBody": "We compare your face with the photo on your document chip. It takes a few seconds.",
+  "selfieTipOnDevice": "Processed on your phone. No video is stored.",
+  "selfieGettingReady": "Getting ready…",
+  "selfieStarting": "Starting…",
+  "selfieCameraGettingReady": "Getting the camera ready…",
+  "selfieHoldStillCountdown": "Hold still · {seconds}s",
+  "@selfieHoldStillCountdown": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "selfieStoppedTitle": "Selfie check stopped",
+  "selfieTryAgain": "Try again",
+  "selfieGoBack": "Go back",
+  "selfieNoMatchTitle": "We couldn’t match your face",
+  "selfieNoMatchMessage": "Make sure your face is well lit and fills the oval, then try again.",
+  "selfieCheckingTitle": "Checking your selfie",
+  "selfieSettingUpTitle": "Setting up the selfie check",
+  "selfieComparing": "Comparing your face with the photo on your document chip.",
+  "selfieLoadingModels": "Loading face models…",
+  "selfieOpeningCamera": "Opening camera…",
+  "dataViewDocumentRead": "Document read",
+  "dataViewDrivingLicenceRead": "Driving licence read",
+  "dataViewChipRead": "We read your {documentType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} chip.",
+  "@dataViewChipRead": {
+    "placeholders": {
+      "documentType": {
+        "type": "String"
+      }
+    }
+  },
+  "dataViewNotAvailable": "Not available",
+  "dataViewSubtitle": "{documentType, select, passport{Passport} identityCard{ID card} drivingLicence{Driving licence} other{Document}} · {country}",
+  "@dataViewSubtitle": {
+    "placeholders": {
+      "documentType": {
+        "type": "String"
+      },
+      "country": {
+        "type": "String"
+      }
+    }
+  },
+  "dataViewDateOfBirth": "Date of birth",
+  "dataViewPlaceOfBirth": "Place of birth",
+  "dataViewDocumentNumber": "Document number",
+  "dataViewIssuedBy": "Issued by",
+  "dataViewValidUntil": "Valid until",
+  "dataViewCategoryUntil": "until {date}",
+  "@dataViewCategoryUntil": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "nfcHoldPhoneOn": "Hold your phone on the {documentType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}}",
+  "@nfcHoldPhoneOn": {
+    "placeholders": {
+      "documentType": {
+        "type": "String"
+      }
+    }
+  },
+  "nfcGuidanceIntro": "Your {documentType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} has a chip that proves it is genuine. We read it with NFC.",
+  "@nfcGuidanceIntro": {
+    "placeholders": {
+      "documentType": {
+        "type": "String"
+      }
+    }
+  },
+  "nfcGuidanceStepLay": "{documentType, select, passport{Close the passport and lay it on a flat, non-metal surface.} identityCard{Lay the ID card on a flat, non-metal surface.} drivingLicence{Lay the driving licence on a flat, non-metal surface.} other{Lay the document on a flat, non-metal surface.}}",
+  "@nfcGuidanceStepLay": {
+    "placeholders": {
+      "documentType": {
+        "type": "String"
+      }
+    }
+  },
+  "nfcGuidanceStepPlace": "Place the top half of your phone flat on the {documentType, select, passport{cover} other{card}}.",
+  "@nfcGuidanceStepPlace": {
+    "placeholders": {
+      "documentType": {
+        "type": "String"
+      }
+    }
+  },
+  "nfcGuidanceStepKeepStill": "Keep still until the check turns green. Remove a thick phone case if reading fails.",
+  "nfcTurnedOff": "NFC is turned off. Turn it on in your phone's settings to continue.",
+  "nfcCancelReading": "Cancel reading",
+  "nfcReadingConnectionLost": "Connection lost",
+  "nfcReadingStoppedTitle": "Reading stopped",
+  "nfcReadingStoppedSubtitle": "Start again when you are ready.",
+  "nfcReadingFailedTitle": "Reading failed",
+  "nfcReadingFailedSubtitle": "Check that the {documentType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} lies flat under your phone and try again.",
+  "@nfcReadingFailedSubtitle": {
+    "placeholders": {
+      "documentType": {
+        "type": "String"
+      }
+    }
+  },
+  "nfcReadingSuccessTitle": "Chip read",
+  "nfcReadingSuccessSubtitle": "Your {documentType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} chip was read.",
+  "@nfcReadingSuccessSubtitle": {
+    "placeholders": {
+      "documentType": {
+        "type": "String"
+      }
+    }
+  },
+  "nfcReadingInProgressTitle": "Don’t move your phone",
+  "nfcReadingInProgressSubtitle": "Keep it on the {documentType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} until reading is complete.",
+  "@nfcReadingInProgressSubtitle": {
+    "placeholders": {
+      "documentType": {
+        "type": "String"
+      }
+    }
+  },
+  "nfcRingNotRead": "Not read",
+  "nfcRingComplete": "Complete",
+  "nfcRingReading": "Reading chip",
+  "nfcTryAgain": "Try again",
+  "nfcChecklistSecureDone": "Secure connection set up",
+  "nfcChecklistSecureActive": "Setting up a secure connection",
+  "nfcChecklistDetailsDone": "Personal details read",
+  "nfcChecklistDetailsActive": "Reading personal details",
+  "nfcChecklistPhotoDone": "{documentType, select, passport{Passport} identityCard{ID card} drivingLicence{Driving licence} other{Document}} photo read",
+  "@nfcChecklistPhotoDone": {
+    "placeholders": {
+      "documentType": {
+        "type": "String"
+      }
+    }
+  },
+  "nfcChecklistPhotoActive": "Reading {documentType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} photo",
+  "@nfcChecklistPhotoActive": {
+    "placeholders": {
+      "documentType": {
+        "type": "String"
+      }
+    }
+  },
+  "nfcChecklistGenuineDone": "Chip read securely",
+  "nfcChecklistGenuineActive": "Reading the chip securely",
+  "scanClose": "Close",
+  "scanSheetTitle": "{docType, select, passport{Place the photo page in the frame} identityCard{Place the back of your ID card in the frame} drivingLicence{Place the back of your driving licence in the frame} other{Place your document in the frame}}",
+  "@scanSheetTitle": {
+    "placeholders": {
+      "docType": {
+        "type": "String"
+      }
+    }
+  },
+  "scanSheetTip": "{docType, select, passport{Make sure the two lines of text at the bottom are sharp and not covered by your fingers or glare.} identityCard{Make sure the three lines of text at the bottom are sharp and not covered by your fingers or glare.} drivingLicence{Make sure the line of text at the bottom is sharp and not covered by your fingers or glare.} other{Make sure the text at the bottom is sharp and not covered by your fingers or glare.}}",
+  "@scanSheetTip": {
+    "placeholders": {
+      "docType": {
+        "type": "String"
+      }
+    }
+  },
+  "scanHideTips": "Hide tips",
+  "scanShowTips": "Show tips and manual entry",
+  "scanEnterDetailsManually": "Enter details manually",
+  "manualBack": "Back",
+  "manualTopBarTitle": "Enter details",
+  "manualContinue": "Continue",
+  "manualLicenceTitle": "Type the code from your driving licence",
+  "manualLicenceIntro": "It’s the single line of {length} characters on the back. It unlocks the chip.",
+  "@manualLicenceIntro": {
+    "placeholders": {
+      "length": {
+        "type": "int"
+      }
+    }
+  },
+  "manualDocumentTitle": "Enter your {docType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} details",
+  "@manualDocumentTitle": {
+    "placeholders": {
+      "docType": {
+        "type": "String"
+      }
+    }
+  },
+  "manualDocumentIntro": "Copy them from the {docType, select, passport{photo page} other{front of the card}}. They unlock the chip, so they need to match exactly.",
+  "@manualDocumentIntro": {
+    "placeholders": {
+      "docType": {
+        "type": "String"
+      }
+    }
+  },
+  "manualLicenceParseError": "That code could not be read. Check it against your licence and try again.",
+  "manualDocumentNumber": "{docType, select, passport{Passport number} identityCard{Identity card number} drivingLicence{Driving licence number} other{Document number}}",
+  "@manualDocumentNumber": {
+    "placeholders": {
+      "docType": {
+        "type": "String"
+      }
+    }
+  },
+  "manualDocumentNumberHint": "e.g. AB1234567",
+  "manualDateOfBirth": "Date of birth",
+  "manualExpiryDate": "Expiry date",
+  "manualWhereToFind": "Where to find them",
+  "manualWhereToFindBody": "{docType, select, passport{The passport number is at the top right of the photo page. The dates are listed as date of birth and date of expiry.} other{The document number and both dates are on the card, next to your photo.}}",
+  "@manualWhereToFindBody": {
+    "placeholders": {
+      "docType": {
+        "type": "String"
+      }
+    }
+  },
+  "manualLicenceCode": "Licence code",
+  "manualLicenceCodePrefix": "Starts with D1, D2 or DL",
+  "manualDateNotSet": "Not set",
+  "manualDateSelect": "Select"
 }

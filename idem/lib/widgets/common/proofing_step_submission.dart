@@ -26,14 +26,8 @@ Future<ProofingStepResponse?> submitProofingStep(
       barrierDismissible: false,
       builder: (_) => PopScope(
         canPop: false,
-        child: AlertDialog(
-          content: Row(
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(width: 20),
-              Expanded(child: Text(context.l10n.faceSubmitSending(what, session.info.relyingParty))),
-            ],
-          ),
+        child: Center(
+          child: CircularProgressIndicator(semanticsLabel: context.l10n.proofingStepSending(session.info.relyingParty)),
         ),
       ),
     );

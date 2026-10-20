@@ -36,6 +36,46 @@ void main() {
     });
   });
 
+  group('ProofingBranding', () {
+    Map<String, dynamic> view(Object? branding) => {
+      'id': 'sess-1',
+      'relyingParty': 'CM.com B.V.',
+      'expiresAt': '2030-01-01T00:00:00Z',
+      'branding': ?branding,
+    };
+
+    test('parses the requester\'s theme, leaving out what it does not set', () {
+      final info = ProofingSessionInfo.fromJson(
+        view({
+          'name': 'CM Tickets',
+          'primaryColor': '#036BD2',
+          'fontFamily': '"Alexandria", sans-serif',
+          'hasLogo': true,
+        }),
+      );
+      expect(info.relyingParty, 'CM.com B.V.');
+      expect(
+        info.branding,
+        const ProofingBranding(
+          name: 'CM Tickets',
+          primaryColor: '#036BD2',
+          fontFamily: '"Alexandria", sans-serif',
+          hasLogo: true,
+        ),
+      );
+    });
+
+    test('is absent from a session without one', () {
+      expect(ProofingSessionInfo.fromJson(view(null)).branding, isNull);
+    });
+
+    test('without a name is left out instead of failing the session', () {
+      final info = ProofingSessionInfo.fromJson(view({'primaryColor': '#036BD2'}));
+      expect(info.relyingParty, 'CM.com B.V.');
+      expect(info.branding, isNull);
+    });
+  });
+
   group('ProofingFaceVerification', () {
     Map<String, dynamic> view([Object? faceVerification]) => {
       'id': 's1',

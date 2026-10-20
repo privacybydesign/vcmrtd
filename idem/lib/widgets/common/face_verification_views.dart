@@ -2,7 +2,10 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:idem/l10n/l10n.dart';
+import 'package:idem/theme/brand_theme.dart';
+import 'package:idem/widgets/common/brand_mark.dart';
 import 'package:idem/widgets/common/button_styles.dart';
+import 'package:idem/widgets/guided/guided_widgets.dart';
 
 /// The layouts every face-verification engine's screen shares (Regula,
 /// Iris): the intro before the scan starts, a busy state while it runs, and
@@ -25,7 +28,7 @@ class FaceIntroView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Icon(Icons.verified_user, size: 64, color: Colors.green),
+          Icon(Icons.verified_user, size: 64, color: context.brand.accent ?? Colors.green),
           const SizedBox(height: 16),
           Text(
             title,
@@ -59,7 +62,7 @@ class FaceIntroView extends StatelessWidget {
           const SizedBox(height: 28),
           ElevatedButton.icon(
             onPressed: onStart,
-            style: actionButtonStyle,
+            style: context.brand.primaryButtonStyle ?? actionButtonStyle,
             icon: const Icon(Icons.face),
             label: Text(l10n.faceStartVerification),
           ),
@@ -67,6 +70,155 @@ class FaceIntroView extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The guided layout's intro: a selfie illustration, what the check does,
+/// [tips] for a good result, and a full-width start button ([onStart] null
+/// while it can't start yet).
+class GuidedFaceIntroView extends StatelessWidget {
+  final GuidedStyle style;
+  final String title;
+  final String body;
+  final List<(IconData, String)> tips;
+  final String startLabel;
+  final VoidCallback? onStart;
+  final VoidCallback onBack;
+  final String backTooltip;
+  final int stepNumber;
+  final int totalSteps;
+
+  const GuidedFaceIntroView({
+    super.key,
+    required this.style,
+    required this.title,
+    required this.body,
+    required this.tips,
+    required this.startLabel,
+    required this.onStart,
+    required this.onBack,
+    required this.backTooltip,
+    required this.stepNumber,
+    required this.totalSteps,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final g = style;
+    return GuidedStatusBar(
+      backdrop: Backdrop.light,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              GuidedTopBar(
+                leading: GuidedRoundButton(icon: Icons.chevron_left, tooltip: backTooltip, onPressed: onBack),
+                center: const BrandMark(size: 32, excludeFromSemantics: true),
+              ),
+              GuidedStepBar(step: stepNumber, total: totalSteps),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 36, 24, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 160,
+                          height: 160,
+                          decoration: BoxDecoration(color: g.actionTint, shape: BoxShape.circle),
+                          child: Center(
+                            child: SizedBox.fromSize(
+                              size: _SelfieIllustrationPainter.size,
+                              child: CustomPaint(painter: _SelfieIllustrationPainter(color: g.action)),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      GuidedStepLabel(step: stepNumber, total: totalSteps),
+                      const SizedBox(height: 12),
+                      Text(title, style: g.heading(26)),
+                      const SizedBox(height: 12),
+                      Text(body, style: TextStyle(fontSize: 16, height: 1.5, color: g.bodyText)),
+                      for (final (i, (icon, text)) in tips.indexed) ...[
+                        SizedBox(height: i == 0 ? 22 : 14),
+                        _GuidedTipRow(style: g, icon: icon, text: text),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: guidedBottomButtonPadding,
+                child: GuidedButton(label: startLabel, onPressed: onStart),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GuidedTipRow extends StatelessWidget {
+  final GuidedStyle style;
+  final IconData icon;
+  final String text;
+  const _GuidedTipRow({required this.style, required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(color: style.buttonGrey, borderRadius: BorderRadius.circular(12)),
+          child: Icon(icon, size: 18, color: style.slate),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(text, style: TextStyle(fontSize: 15, color: style.ink)),
+        ),
+      ],
+    );
+  }
+}
+
+/// A face in an oval: drawn in a [size] box.
+class _SelfieIllustrationPainter extends CustomPainter {
+  const _SelfieIllustrationPainter({required this.color});
+
+  static const size = Size(96, 120);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size canvasSize) {
+    canvas.scale(canvasSize.width / size.width, canvasSize.height / size.height);
+    canvas.drawOval(
+      const Rect.fromLTWH(4, 4, 88, 112),
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4,
+    );
+    final fill = Paint()..color = color.withValues(alpha: 0.25);
+    canvas.drawCircle(const Offset(48, 50), 17, fill);
+    canvas.drawPath(
+      Path()
+        ..moveTo(20, 104)
+        ..cubicTo(26, 89, 36, 82, 48, 82)
+        ..cubicTo(60, 82, 70, 89, 76, 104)
+        ..close(),
+      fill,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_SelfieIllustrationPainter old) => old.color != color;
 }
 
 class _IntroStepRow extends StatelessWidget {
@@ -109,9 +261,7 @@ class FaceBusyView extends StatelessWidget {
   }
 }
 
-/// A scan's outcome, with the compared photos when there are any. With
-/// [onRetry] the user can scan again; without it the screen is about to
-/// continue on its own.
+/// A scan that didn't pass, with the compared photos when there are any.
 class FaceResultView extends StatelessWidget {
   final IconData icon;
   final Color color;
@@ -119,7 +269,7 @@ class FaceResultView extends StatelessWidget {
   final String subtitle;
   final Uint8List? documentPhoto;
   final Uint8List? liveFace;
-  final VoidCallback? onRetry;
+  final VoidCallback onRetry;
   final String? retryLabel;
 
   const FaceResultView({
@@ -130,7 +280,7 @@ class FaceResultView extends StatelessWidget {
     required this.subtitle,
     this.documentPhoto,
     this.liveFace,
-    this.onRetry,
+    required this.onRetry,
     this.retryLabel,
   });
 
@@ -168,12 +318,7 @@ class FaceResultView extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 32),
-          if (onRetry != null)
-            OutlinedButton(onPressed: onRetry, child: Text(retryLabel ?? context.l10n.faceTryAgain))
-          else
-            Center(
-              child: Text(context.l10n.faceContinuing, style: const TextStyle(color: Colors.grey)),
-            ),
+          OutlinedButton(onPressed: onRetry, child: Text(retryLabel ?? context.l10n.faceTryAgain)),
         ],
       ),
     );

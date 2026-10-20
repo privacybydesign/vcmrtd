@@ -4,8 +4,14 @@ import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/providers/wallet_provider.dart';
+import 'package:idem/widgets/common/brand_mark.dart';
+import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/theme/text_styles.dart';
+import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:idem/widgets/pages/wallet_widgets.dart';
+
+/// Accent and gradient start when the brand sets none.
+const _fallbackGrey = Color(0xFF6b6868);
 
 /// Home screen: shows the scanning options when the wallet is empty, or just
 /// the wallet when it holds at least one card — a new scan is then started
@@ -19,11 +25,16 @@ class DocumentTypeSelectionScreen extends ConsumerWidget {
   final VoidCallback onSettingsPressed;
   final VoidCallback onScanQrPressed;
 
+  /// Guided layout only: resumes a proofing session that was accepted but not
+  /// finished, in place of scanning a new QR code.
+  final VoidCallback? onContinueProofingSession;
+
   const DocumentTypeSelectionScreen({
     super.key,
     required this.onDocumentTypeSelected,
     required this.onSettingsPressed,
     required this.onScanQrPressed,
+    this.onContinueProofingSession,
   });
 
   @override
@@ -32,13 +43,25 @@ class DocumentTypeSelectionScreen extends ConsumerWidget {
     final hasCards = cards.isNotEmpty;
     final activeProofingSession = ref.watch(activeProofingSessionProvider);
     final showQrScanOption = activeProofingSession == null;
+    final brand = context.brand;
+
+    if (context.guided != null) {
+      return _GuidedHome(
+        onSettingsPressed: onSettingsPressed,
+        onScanQrPressed: onScanQrPressed,
+        onContinueProofingSession: onContinueProofingSession,
+        connectedRelyingParty: activeProofingSession?.info.relyingParty,
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'VCMRTD',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22),
-        ),
+        title: brand.logo != null
+            ? const BrandMark(size: 32, backdrop: Backdrop.dark)
+            : Text(
+                brand.name,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22),
+              ),
         actions: [
           if (hasCards)
             IconButton(
@@ -52,12 +75,12 @@ class DocumentTypeSelectionScreen extends ConsumerWidget {
             : _ProofingSessionBanner(relyingParty: activeProofingSession.info.relyingParty),
       ),
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF6b6868), Colors.white],
-            stops: [0.0, 0.3],
+            colors: brand.homeBackgroundGradient ?? const [_fallbackGrey, Colors.white],
+            stops: const [0.0, 0.3],
           ),
         ),
         child: SafeArea(
@@ -180,7 +203,7 @@ class _ProofingSessionBanner extends StatelessWidget implements PreferredSizeWid
     return Container(
       width: double.infinity,
       height: preferredSize.height,
-      color: Colors.indigo[900],
+      color: context.brand.proofingBannerColor ?? Colors.indigo[900],
       alignment: Alignment.center,
       child: Text(
         context.l10n.docConnectedBanner(relyingParty),
@@ -226,7 +249,7 @@ List<Widget> _documentTypeOptions(BuildContext context, Function(DocumentType) o
       title: context.l10n.docPassport,
       subtitle: context.l10n.docPassportSubtitle,
       icon: Icons.book,
-      accentColor: const Color(0xFF6b6868),
+      accentColor: context.brand.documentOptionAccent ?? _fallbackGrey,
       onTap: () => onDocumentTypeSelected(DocumentType.passport),
       badgeText: context.l10n.docMostCommon,
     ),
@@ -235,7 +258,7 @@ List<Widget> _documentTypeOptions(BuildContext context, Function(DocumentType) o
       title: context.l10n.docIdentityCard,
       subtitle: context.l10n.docIdentityCardSubtitle,
       icon: Icons.credit_card,
-      accentColor: const Color(0xFF4CAF50),
+      accentColor: context.brand.documentOptionAccent ?? const Color(0xFF4CAF50),
       onTap: () => onDocumentTypeSelected(DocumentType.identityCard),
     ),
     const SizedBox(height: 16),
@@ -243,7 +266,7 @@ List<Widget> _documentTypeOptions(BuildContext context, Function(DocumentType) o
       title: context.l10n.docDrivingLicence,
       subtitle: context.l10n.docDrivingLicenceSubtitle,
       icon: Icons.directions_car,
-      accentColor: const Color(0xFF2196F3),
+      accentColor: context.brand.documentOptionAccent ?? const Color(0xFF2196F3),
       onTap: () => onDocumentTypeSelected(DocumentType.drivingLicence),
     ),
   ];
@@ -254,7 +277,7 @@ Widget _qrScanOption(BuildContext context, VoidCallback onScanQrPressed) {
     title: context.l10n.docScanQrTitle,
     subtitle: context.l10n.docScanQrSubtitle,
     icon: Icons.qr_code_scanner,
-    accentColor: const Color(0xFF9C27B0),
+    accentColor: context.brand.documentOptionAccent ?? const Color(0xFF9C27B0),
     onTap: onScanQrPressed,
   );
 }
@@ -264,7 +287,7 @@ Widget _advancedSettingsOption(BuildContext context, VoidCallback onSettingsPres
     title: context.l10n.docAdvancedSettings,
     subtitle: context.l10n.docAdvancedSettingsSubtitle,
     icon: Icons.settings,
-    accentColor: const Color(0xFF757575),
+    accentColor: context.brand.documentOptionAccent ?? const Color(0xFF757575),
     onTap: onSettingsPressed,
   );
 }
@@ -274,6 +297,8 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brand = context.brand;
+    final accent = brand.accent ?? _fallbackGrey;
     return Card(
       elevation: 8,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -285,11 +310,10 @@ class _Header extends StatelessWidget {
             Container(
               width: 80,
               height: 80,
-              decoration: BoxDecoration(
-                color: const Color(0xFF6b6868).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(40),
-              ),
-              child: const Icon(Icons.document_scanner, size: 40, color: Color(0xFF6b6868)),
+              decoration: BoxDecoration(color: accent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(40)),
+              child: brand.logo != null
+                  ? const Padding(padding: EdgeInsets.all(12), child: BrandMark(size: 56, excludeFromSemantics: true))
+                  : Icon(Icons.document_scanner, size: 40, color: accent),
             ),
             const SizedBox(height: 24),
             Text(
@@ -329,6 +353,7 @@ class _OptionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brand = context.brand;
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -361,12 +386,16 @@ class _OptionCard extends StatelessWidget {
                         children: [
                           Text(
                             title,
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF212121)),
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: brand.ink ?? const Color(0xFF212121),
+                            ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             subtitle,
-                            style: const TextStyle(fontSize: 14, color: Color(0xFF666666)),
+                            style: TextStyle(fontSize: 14, color: brand.mutedText ?? const Color(0xFF666666)),
                             maxLines: 3,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -382,10 +411,17 @@ class _OptionCard extends StatelessWidget {
                   right: 8,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: accentColor, borderRadius: BorderRadius.circular(12)),
+                    decoration: BoxDecoration(
+                      color: brand.badgeBackground ?? accentColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     child: Text(
                       badgeText!,
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: brand.badgeForeground ?? Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -395,4 +431,222 @@ class _OptionCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Home in the guided layout, where every verification starts from a QR
+/// code: the hero leads with "Scan QR code", followed by how it works. Saved
+/// documents live under settings, not here.
+class _GuidedHome extends StatelessWidget {
+  const _GuidedHome({
+    required this.onSettingsPressed,
+    required this.onScanQrPressed,
+    required this.onContinueProofingSession,
+    required this.connectedRelyingParty,
+  });
+
+  final VoidCallback onSettingsPressed;
+  final VoidCallback onScanQrPressed;
+  final VoidCallback? onContinueProofingSession;
+
+  /// Set while an accepted proofing session is still open.
+  final String? connectedRelyingParty;
+
+  @override
+  Widget build(BuildContext context) {
+    final g = context.guided!;
+    final l10n = context.l10n;
+    final connected = connectedRelyingParty != null && onContinueProofingSession != null;
+    return GuidedStatusBar(
+      backdrop: Backdrop.dark,
+      bottomBackdrop: Backdrop.light,
+      child: Scaffold(
+        backgroundColor: g.surface,
+        body: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: g.header,
+                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
+                ),
+                padding: EdgeInsets.fromLTRB(20, MediaQuery.paddingOf(context).top + 20, 20, 28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        const BrandMark(size: 40, backdrop: Backdrop.dark),
+                        const Spacer(),
+                        GuidedRoundButton(
+                          icon: Icons.settings_outlined,
+                          tooltip: l10n.docSettingsTitle,
+                          backdrop: Backdrop.dark,
+                          fill: GuidedRoundButtonFill.outlined,
+                          onPressed: onSettingsPressed,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      l10n.homeEyebrow,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.04,
+                        color: g.heroEyebrow,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(l10n.homeTitle, style: g.heading(30, color: Colors.white)),
+                    const SizedBox(height: 10),
+                    Text(
+                      connected ? l10n.homeConnectedBody(connectedRelyingParty!) : l10n.homeBody,
+                      style: TextStyle(fontSize: 16, height: 1.5, color: g.heroMuted),
+                    ),
+                    const SizedBox(height: 24),
+                    const Center(child: _GuidedQrBadge()),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: connected ? onContinueProofingSession : onScanQrPressed,
+                      style: g.heroButtonStyle.copyWith(
+                        minimumSize: const WidgetStatePropertyAll(Size.fromHeight(56)),
+                        textStyle: WidgetStatePropertyAll(
+                          g.heroButtonStyle.textStyle?.resolve({})?.copyWith(fontSize: 17),
+                        ),
+                      ),
+                      icon: Icon(connected ? Icons.arrow_forward : Icons.qr_code_scanner, size: 22),
+                      label: Text(connected ? l10n.homeContinueWith(connectedRelyingParty!) : l10n.docScanQrTitle),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        l10n.homeHowItWorks,
+                        style: g.heading(16, weight: FontWeight.w600, color: g.slate),
+                      ),
+                      const SizedBox(height: 14),
+                      for (final (i, step) in [
+                        l10n.homeStepScan,
+                        l10n.homeStepDocument,
+                        l10n.homeStepSelfie,
+                      ].indexed) ...[
+                        if (i > 0) const SizedBox(height: 14),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 26,
+                              height: 26,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(color: g.actionTint, shape: BoxShape.circle),
+                              child: Text('${i + 1}', style: g.heading(13, color: g.action)),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(step, style: TextStyle(fontSize: 15, height: 1.45, color: g.ink)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      const Spacer(),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The QR illustration in the home hero: a QR glyph with scan-frame corners.
+class _GuidedQrBadge extends StatelessWidget {
+  const _GuidedQrBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    final g = context.guided!;
+    return SizedBox(
+      width: 140,
+      height: 140,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: const Center(
+                  child: SizedBox(width: 76, height: 76, child: CustomPaint(painter: GuidedQrGlyphPainter())),
+                ),
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: CustomPaint(painter: _ScanCornersPainter(color: g.heroAccent)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ScanCornersPainter extends CustomPainter {
+  const _ScanCornersPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const len = 24.0, r = 14.0;
+    final w = size.width, h = size.height;
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+    const radius = Radius.circular(r);
+    canvas.drawPath(
+      Path()
+        ..moveTo(0, len)
+        ..lineTo(0, r)
+        ..arcToPoint(const Offset(r, 0), radius: radius)
+        ..lineTo(len, 0)
+        ..moveTo(w - len, 0)
+        ..lineTo(w - r, 0)
+        ..arcToPoint(Offset(w, r), radius: radius)
+        ..lineTo(w, len)
+        ..moveTo(w, h - len)
+        ..lineTo(w, h - r)
+        ..arcToPoint(Offset(w - r, h), radius: radius)
+        ..lineTo(w - len, h)
+        ..moveTo(len, h)
+        ..lineTo(r, h)
+        ..arcToPoint(Offset(0, h - r), radius: radius)
+        ..lineTo(0, h - len),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ScanCornersPainter old) => old.color != color;
 }

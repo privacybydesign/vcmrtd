@@ -16,11 +16,15 @@ class ScannerPage extends ConsumerStatefulWidget {
   final MrzScanPicture scanPicture;
   final void Function(ScannedMRZ mrz, DocumentPicture? picture) onSuccess;
 
+  /// Whether the scanner draws its own document frame; off when the caller draws one.
+  final bool showOverlay;
+
   const ScannerPage({
     super.key,
     this.documentType = DocumentType.passport,
     this.scanPicture = MrzScanPicture.none,
     required this.onSuccess,
+    this.showOverlay = true,
   });
 
   @override
@@ -38,6 +42,7 @@ class _ScannerPageState extends ConsumerState<ScannerPage> {
       scanPicture: widget.scanPicture,
       engine: ref.watch(ocrEngineProvider),
       routeObserver: routeObserver,
+      showOverlay: widget.showOverlay,
       onSuccess: (scannedMRZ, lines, picture) => widget.onSuccess(scannedMRZ, picture),
     );
   }
