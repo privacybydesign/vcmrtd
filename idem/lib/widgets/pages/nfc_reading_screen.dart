@@ -22,7 +22,7 @@ import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:idem/services/flow_step_plan.dart';
 
 /// What the chip read is doing, for the reading checklist.
-enum NFCReadingState { waiting, connecting, reading, authenticating, success, error, idle, cancelling }
+enum _NFCReadingState { connecting, reading, authenticating, success, error, idle, cancelling }
 
 class NfcReadingRouteParams {
   final ScannedMRZ scannedMRZ;
@@ -230,14 +230,14 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
     BuildContext context,
     GuidedStyle g, {
     required DocumentReaderState state,
-    required NFCReadingState nfcState,
+    required _NFCReadingState nfcState,
     required int? readingStep,
     required String? tip,
   }) {
     final l10n = context.l10n;
     final type = widget.params.documentType.name;
-    final failed = nfcState == NFCReadingState.error;
-    final done = nfcState == NFCReadingState.success;
+    final failed = nfcState == _NFCReadingState.error;
+    final done = nfcState == _NFCReadingState.success;
     final (title, subtitle) = switch (state) {
       DocumentReaderConnecting() => (l10n.nfcHoldPhoneOn(type), tip ?? l10n.docNfcTipFirst),
       DocumentReaderReconnecting() => (l10n.nfcReadingConnectionLost, l10n.docNfcTipStuck),
@@ -344,20 +344,20 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
     );
   }
 
-  NFCReadingState _mapState(DocumentReaderState state) {
+  _NFCReadingState _mapState(DocumentReaderState state) {
     return switch (state) {
-      DocumentReaderPending() => NFCReadingState.idle,
-      DocumentReaderCancelled() => NFCReadingState.error,
-      DocumentReaderCancelling() => NFCReadingState.cancelling,
-      DocumentReaderFailed() => NFCReadingState.error,
-      DocumentReaderConnecting() => NFCReadingState.connecting,
-      DocumentReaderReadingCardAccess() => NFCReadingState.authenticating,
-      DocumentReaderAuthenticating() => NFCReadingState.authenticating,
+      DocumentReaderPending() => _NFCReadingState.idle,
+      DocumentReaderCancelled() => _NFCReadingState.error,
+      DocumentReaderCancelling() => _NFCReadingState.cancelling,
+      DocumentReaderFailed() => _NFCReadingState.error,
+      DocumentReaderConnecting() => _NFCReadingState.connecting,
+      DocumentReaderReadingCardAccess() => _NFCReadingState.authenticating,
+      DocumentReaderAuthenticating() => _NFCReadingState.authenticating,
       DocumentReaderReadingDataGroup() ||
       DocumentReaderReadingSOD() ||
-      DocumentReaderReadingCOM() => NFCReadingState.reading,
-      DocumentReaderActiveAuthentication() => NFCReadingState.authenticating,
-      DocumentReaderSuccess() => NFCReadingState.success,
+      DocumentReaderReadingCOM() => _NFCReadingState.reading,
+      DocumentReaderActiveAuthentication() => _NFCReadingState.authenticating,
+      DocumentReaderSuccess() => _NFCReadingState.success,
       // Keep the visual state (color/icon) matching whatever step this is a
       // retry of - the reposition tip is what actually flags the connection
       // loss, this shouldn't also read as a harder failure.
@@ -537,14 +537,14 @@ class _GuidedReadingChecklist extends StatelessWidget {
 
   final GuidedStyle style;
   final int currentStep;
-  final NFCReadingState nfcState;
+  final _NFCReadingState nfcState;
   final DocumentType documentType;
 
   @override
   Widget build(BuildContext context) {
     final g = style;
     final l10n = context.l10n;
-    final complete = nfcState == NFCReadingState.success;
+    final complete = nfcState == _NFCReadingState.success;
     final labels = [
       (l10n.nfcChecklistSecureDone, l10n.nfcChecklistSecureActive),
       (l10n.nfcChecklistDetailsDone, l10n.nfcChecklistDetailsActive),
@@ -566,7 +566,7 @@ class _GuidedReadingChecklist extends StatelessWidget {
               state: i < currentStep || complete
                   ? _RowState.done
                   : i == currentStep
-                  ? (nfcState == NFCReadingState.error ? _RowState.failed : _RowState.current)
+                  ? (nfcState == _NFCReadingState.error ? _RowState.failed : _RowState.current)
                   : _RowState.pending,
               divider: i < labels.length - 1,
             ),
