@@ -10,7 +10,6 @@ import 'package:idem/widgets/common/face_verification_views.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:idem/widgets/pages/regula_face_verification_screen.dart';
 import 'package:mrz_capture/mrz_capture.dart' show StepBadge;
-import 'package:vcmrtd/vcmrtd.dart' show FaceMatch;
 
 class _FakeRegula implements RegulaFaceService {
   _FakeRegula(this.results);
@@ -39,14 +38,8 @@ const _announcement = ProofingFaceVerification(
   tag: 'ips-tref_s1',
   fromSession: true,
 );
-const _issuerAnnouncement = ProofingFaceVerification(provider: 'regula', faceApiUrl: 'https://faceapi.test');
 
-Future<List<FaceVerificationOutcome>> _pump(
-  WidgetTester tester,
-  _FakeRegula regula, {
-  Future<FaceMatch?> Function(String)? matchFace,
-  VoidCallback? onBack,
-}) async {
+Future<List<FaceVerificationOutcome>> _pump(WidgetTester tester, _FakeRegula regula) async {
   tester.view.physicalSize = const Size(390, 1000);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
@@ -58,10 +51,9 @@ Future<List<FaceVerificationOutcome>> _pump(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: RegulaFaceVerificationScreen(
-          faceVerification: matchFace == null ? _announcement : _issuerAnnouncement,
-          onBackPressed: onBack ?? () {},
+          faceVerification: _announcement,
+          onBackPressed: () {},
           onVerified: verified.add,
-          matchFace: matchFace,
         ),
       ),
     ),
@@ -141,75 +133,19 @@ void main() {
     expect(verified.single.livenessTransactionId, 'tx-1');
   });
 
-  group('standalone (passport issuer matches)', () {
-    testWidgets('a match continues with the issuer\'s score, not a transaction id', (tester) async {
-      final asked = <String>[];
-      final regula = _FakeRegula([const RegulaLivenessResult(isLive: true, transactionId: 'tx-1')]);
-      final verified = await _pump(
-        tester,
-        regula,
-        matchFace: (tx) async {
-          asked.add(tx);
-          return FaceMatch(matched: true, similarity: 0.91);
-        },
-      );
+  testWidgets('a capture that fails retries right here', (tester) async {
+    final regula = _FakeRegula([
+      Exception('camera unavailable'),
+      const RegulaLivenessResult(isLive: true, transactionId: 'tx-2'),
+    ]);
+    final verified = await _pump(tester, regula);
 
-      await tester.tap(find.text('Start selfie check'));
-      await tester.pump();
-      await tester.pump();
-      expect(find.text('Continuing…'), findsOneWidget);
-      expect(asked, ['tx-1']);
-      expect(regula.lastTag, isNull);
-      expect(verified.single.matchScore, 0.91);
-      expect(verified.single.livenessTransactionId, isNull);
-    });
+    await tester.tap(find.text('Start selfie check'));
+    await tester.pump();
+    expect(find.text('Something Went Wrong'), findsOneWidget);
 
-    testWidgets('no match sends the user back to scan again, since the issuer session is used up', (tester) async {
-      var backs = 0;
-      final verified = await _pump(
-        tester,
-        _FakeRegula([const RegulaLivenessResult(isLive: true, transactionId: 'tx-1')]),
-        matchFace: (_) async => FaceMatch(matched: false, similarity: 0.4),
-        onBack: () => backs++,
-      );
-
-      await tester.tap(find.text('Start selfie check'));
-      await tester.pump();
-      await tester.pump();
-      expect(find.text('Verification Failed'), findsOneWidget);
-
-      await tester.tap(find.text('Scan document again'));
-      expect(backs, 1);
-      expect(verified, isEmpty);
-    });
-
-    testWidgets('a capture that fails before the issuer was asked retries right here', (tester) async {
-      var backs = 0;
-      final asked = <String>[];
-      final regula = _FakeRegula([
-        Exception('camera unavailable'),
-        const RegulaLivenessResult(isLive: true, transactionId: 'tx-2'),
-      ]);
-      final verified = await _pump(
-        tester,
-        regula,
-        matchFace: (tx) async {
-          asked.add(tx);
-          return FaceMatch(matched: true, similarity: 0.9);
-        },
-        onBack: () => backs++,
-      );
-
-      await tester.tap(find.text('Start selfie check'));
-      await tester.pump();
-      expect(find.text('Scan document again'), findsNothing);
-
-      await tester.tap(find.text('Try Again'));
-      await tester.pump();
-      await tester.pump();
-      expect(backs, 0);
-      expect(asked, ['tx-2']);
-      expect(verified.single.matchScore, 0.9);
-    });
+    await tester.tap(find.text('Try Again'));
+    await tester.pump();
+    expect(verified.single.livenessTransactionId, 'tx-2');
   });
 }

@@ -5,10 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:idem/custom/custom_logger_extension.dart';
 import 'package:idem/l10n/l10n.dart';
-import 'package:idem/providers/active_authenticiation_provider.dart';
-import 'package:idem/providers/face_api_provider.dart';
-import 'package:idem/providers/face_engine_provider.dart';
-import 'package:idem/providers/passport_issuer_provider.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/widgets/pages/nfc_guidance_screen.dart';
@@ -405,7 +401,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
   }
 
   /// True from a Scan tap until its read ends, so a second tap (the screen
-  /// still shows Scan while the session is fetched) doesn't start a second
+  /// still shows Scan while NFC is checked) doesn't start a second
   /// read that keeps waiting for the document after the first one is done.
   var _reading = false;
 
@@ -420,9 +416,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
         DocumentType.drivingLicence => drivingLicenceReaderProvider,
       };
 
-      final nonceAndSessionId = await _activeAuthenticationParams();
-      // Left the screen while the session was fetched: nothing to read for.
-      if (!mounted) return;
+      final nonceAndSessionId = _activeAuthenticationParams();
       final result = await ref
           .read(readerProvider(scannedMRZ).notifier)
           .readDocument(iosNfcMessages: _createIosNfcMessageMapper(), activeAuthenticationParams: nonceAndSessionId);
@@ -438,37 +432,9 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
   }
 
   /// The nonce the chip signs for Active Authentication, or null to skip it.
-  Future<NonceAndSessionId?> _activeAuthenticationParams() async {
+  NonceAndSessionId? _activeAuthenticationParams() {
     final activeSession = ref.read(activeProofingSessionProvider);
-    ref.read(issuerFaceVerificationProvider.notifier).set(null);
-    if (activeSession == null && ref.read(faceEngineProvider) == FaceEngineChoice.regula) {
-      final nonceAndSessionId = await _startIssuerFaceVerification();
-      if (nonceAndSessionId != null) return nonceAndSessionId;
-    }
-    if (activeSession != null) return _proofingSessionChallenge(activeSession);
-    if (ref.read(activeAuthenticationProvider)) {
-      // No pinned proofing session (standalone scan straight into the
-      // local wallet) — fall back to the legacy passport-issuer flow.
-      final startValidation = await ref.read(passportIssuerProvider).startSessionAtPassportIssuer();
-      return startValidation.nonceAndSessionId;
-    }
-    return null;
-  }
-
-  /// Standalone Regula needs the issuer to match, and the issuer's verify
-  /// call needs this session's nonce, so the chip read signs it too.
-  Future<NonceAndSessionId?> _startIssuerFaceVerification() async {
-    try {
-      final startValidation = await ref.read(passportIssuerProvider).startSessionAtPassportIssuer();
-      ref.read(issuerFaceVerificationProvider.notifier).set(startValidation.faceVerification);
-      if (startValidation.faceVerification != null || ref.read(activeAuthenticationProvider)) {
-        return startValidation.nonceAndSessionId;
-      }
-    } catch (e) {
-      // Without the issuer the face step falls back to the on-device engine.
-      debugPrint('passport issuer unavailable for face verification: $e');
-    }
-    return null;
+    return activeSession == null ? null : _proofingSessionChallenge(activeSession);
   }
 
   /// Pinned to an identity-proofing-service session: the flow, not
