@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:camera/camera.dart' show CameraPreview;
 import 'package:camera_platform_interface/camera_platform_interface.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -88,8 +89,13 @@ void main() {
     CameraPlatform.instance = platform;
     camera = DeviceDocumentPhotoCamera();
   });
+  tearDown(() => camera.dispose());
 
-  Future<void> open() => camera.open(frameRatio: MRZCameraOverlay.cardFrameRatio, onFrameChecked: (_) {});
+  Future<void> open() => camera.open(
+    frameRatio: MRZCameraOverlay.cardFrameRatio,
+    content: (portrait: true, mrz: false),
+    onFrameChecked: (_) {},
+  );
 
   testWidgets('opening streams the preview frames; closing releases the camera', (tester) async {
     await tester.runAsync(open);
@@ -131,7 +137,50 @@ void main() {
     await tester.runAsync(camera.close);
   });
 
-  testWidgets('an open that a close overtook releases the camera it opened', (tester) async {
+  testWidgets('a picture taken releases the camera before it is prepared', (tester) async {
+    await tester.runAsync(open);
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: Builder(builder: camera.buildPreview),
+      ),
+    );
+
+    await tester.runAsync(() async {
+      final taken = await camera.takePicture(frameRatio: MRZCameraOverlay.cardFrameRatio);
+      // The fake's picture is no JPEG: preparing it fails, after the camera is released.
+      await expectLater(taken.photo, throwsA(anything));
+    });
+
+    expect(platform.disposed, [1]);
+  });
+
+  testWidgets('a picture taken takes the preview off the screen before its camera is released', (tester) async {
+    await tester.runAsync(open);
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: Builder(builder: camera.buildPreview),
+      ),
+    );
+    expect(find.byType(CameraPreview), findsOneWidget);
+
+    await tester.runAsync(() async {
+      final taken = await camera.takePicture(frameRatio: MRZCameraOverlay.cardFrameRatio);
+      await expectLater(taken.photo, throwsA(anything));
+    });
+    // On a device the preview is redrawn while the picture is prepared, for one.
+    for (final preview in find.byType(CameraPreview).evaluate()) {
+      preview.markNeedsBuild();
+    }
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(CameraPreview), findsNothing);
+    expect(platform.disposed, [1]);
+  });
+
+  testWidgets('an open that a close overtook opens no camera', (tester) async {
     await tester.runAsync(() async {
       platform.camerasGate = Completer();
       final opening = open();
@@ -140,12 +189,12 @@ void main() {
       await opening;
     });
 
-    expect(platform.created, 1);
-    expect(platform.disposed, [1]);
+    expect(platform.created, 0);
+    expect(platform.disposed, isEmpty);
     expect(platform.streamsStarted, 0);
   });
 
-  testWidgets('an open that a later open overtook releases the camera it opened', (tester) async {
+  testWidgets('an open that a later open overtook leaves the camera to it', (tester) async {
     await tester.runAsync(() async {
       platform.camerasGate = Completer();
       final first = open();
@@ -155,11 +204,11 @@ void main() {
       await Future.wait([first, second]);
     });
 
-    expect(platform.created, 2);
-    expect(platform.disposed, [1]);
+    expect(platform.created, 1);
+    expect(platform.disposed, isEmpty);
     expect(platform.streamsStarted, 1);
     expect(platform.streaming, isTrue);
     await tester.runAsync(camera.close);
-    expect(platform.disposed, [1, 2]);
+    expect(platform.disposed, [1]);
   });
 }

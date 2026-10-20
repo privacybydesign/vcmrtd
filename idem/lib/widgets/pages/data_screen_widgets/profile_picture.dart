@@ -1,6 +1,8 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+
 import '../../displays/passport_image_widget.dart';
+
 import 'package:flutter/services.dart';
 
 class ProfilePictureWidget extends StatelessWidget {

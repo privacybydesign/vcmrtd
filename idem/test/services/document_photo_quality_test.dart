@@ -3,7 +3,9 @@ import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:idem/services/document_liveness.dart';
 import 'package:idem/services/document_photo_quality.dart';
+import 'package:idem/services/document_portrait.dart';
 
 const _frame = Rect.fromLTWH(26, 17, 320, 202);
 const _sceneWidth = 372;
@@ -78,6 +80,53 @@ int _guilloche(int x, int y, int printed) =>
     printed == 200 ? 200 + (14 * math.sin(x / 1.7 + 3 * math.sin(y / 11))).round() : printed;
 
 void main() {
+  group('shrunkBgra', () {
+    // Each pixel's bytes are its x, y and two padding bytes; [padding] bytes come before the first pixel.
+    LumaFrame bgra(int width, int height, {int padding = 0}) {
+      final bytes = Uint8List(padding + width * height * 4);
+      for (var y = 0; y < height; y++) {
+        for (var x = 0; x < width; x++) {
+          bytes.setAll(padding + (y * width + x) * 4, [x, y, 0, 255]);
+        }
+      }
+      return LumaFrame.bgra(
+        bytes: Uint8List.sublistView(bytes, padding),
+        width: width,
+        height: height,
+        bytesPerRow: width * 4,
+      );
+    }
+
+    void expectEveryOther(LumaFrame shrunk) {
+      expect((shrunk.width, shrunk.height, shrunk.bytesPerRow), (4, 2, 16));
+      for (var y = 0; y < 2; y++) {
+        for (var x = 0; x < 4; x++) {
+          expect(shrunk.bytes.sublist((y * 4 + x) * 4, (y * 4 + x) * 4 + 2), [x * 2, y * 2]);
+        }
+      }
+    }
+
+    test('keeps every other pixel of a frame twice as long as asked', () {
+      expectEveryOther(shrunkBgra(bgra(8, 4), maxLongEdge: 4));
+    });
+
+    test('reads a frame whose bytes do not start on a whole pixel', () {
+      expectEveryOther(shrunkBgra(bgra(8, 4, padding: 1), maxLongEdge: 4));
+    });
+
+    test('leaves a frame under twice as long as asked as it is', () {
+      final frame = bgra(7, 4);
+      expect(shrunkBgra(frame, maxLongEdge: 4), same(frame));
+    });
+
+    test("leaves Android's frames as they are", () {
+      final frame = LumaFrame.luma(bytes: Uint8List(32), width: 8, height: 4, bytesPerRow: 8);
+      expect(shrunkBgra(frame, maxLongEdge: 2), same(frame));
+    });
+  });
+
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('the document in the frame', () {
     test('a card lying in the frame is found, with no issues', () {
       expect(_issues(_scene()), isEmpty);
@@ -277,6 +326,23 @@ void main() {
       expect(textReadable([line(0.35), line(0.45), line(0.1)], region), isFalse);
     });
 
+    test('an MRZ: two long lines low on the document, wherever they are and whatever they say', () {
+      const region = Rect.fromLTRB(0.1, 0.3, 0.9, 0.7);
+      Rect line(double top, {double left = 0.15, double right = 0.85}) => Rect.fromLTRB(left, top, right, top + 0.03);
+      expect(mrzLayout([line(0.55), line(0.6)], region), isTrue);
+      expect(mrzLines([line(0.55), line(0.6), line(0.65)], region), 3);
+      expect(mrzLayout([line(0.6)], region), isFalse, reason: 'one line');
+      expect(
+        mrzLayout([line(0.55, right: 0.45), line(0.55, left: 0.5), line(0.6)], region),
+        isTrue,
+        reason: 'a line split at its fillers is one line',
+      );
+      expect(mrzLayout([line(0.35), line(0.4)], region), isFalse, reason: 'in the upper half');
+      expect(mrzLayout([line(0.55, right: 0.4), line(0.6, right: 0.4)], region), isFalse, reason: 'short lines');
+      expect(withoutMrz({DocumentPhotoIssue.glare}), {DocumentPhotoIssue.glare, DocumentPhotoIssue.noMrz});
+      expect(withoutMrz({DocumentPhotoIssue.noDocument}), {DocumentPhotoIssue.noDocument});
+    });
+
     test('text that is not readable is an issue of a document found, only', () {
       expect(withUnreadable(const {}), {DocumentPhotoIssue.unreadable});
       expect(withUnreadable({DocumentPhotoIssue.glare}), {DocumentPhotoIssue.glare, DocumentPhotoIssue.unreadable});
@@ -317,13 +383,65 @@ void main() {
       expect(checkFrame(emptyFrame(), rotation: 90, region: region), {DocumentPhotoIssue.noDocument});
     });
 
+    test("fingerprints the document's colours where they lie upright", () {
+      // The card's left half blue, its right half red, in the half-resolution colour planes.
+      const chromaWidth = uprightHeight ~/ 2;
+      const chromaHeight = uprightWidth ~/ 2;
+      final u = Uint8List(chromaWidth * chromaHeight)..fillRange(0, chromaWidth * chromaHeight, 128);
+      final v = Uint8List(chromaWidth * chromaHeight)..fillRange(0, chromaWidth * chromaHeight, 128);
+      for (var cy = 0; cy < chromaHeight; cy++) {
+        for (var cx = 0; cx < chromaWidth; cx++) {
+          final upright = Offset(uprightWidth - 1 - cy * 2 + 0.5, cx * 2 + 0.5);
+          if (!frame.contains(upright)) continue;
+          final blue = upright.dx < frame.center.dx;
+          u[cy * chromaWidth + cx] = blue ? 200 : 100;
+          v[cy * chromaWidth + cx] = blue ? 100 : 200;
+        }
+      }
+      final card = cardFrame();
+      final coloured = LumaFrame.luma(
+        bytes: card.bytes,
+        width: card.width,
+        height: card.height,
+        bytesPerRow: card.bytesPerRow,
+        u: u,
+        v: v,
+        chromaBytesPerRow: chromaWidth,
+        chromaPixelStride: 1,
+      );
+
+      final signature = frameSignature(coloured, rotation: 90, region: region);
+
+      const row = signatureRows ~/ 2;
+      final left = row * signatureColumns + 1;
+      final right = row * signatureColumns + signatureColumns - 2;
+      expect(signature.cb[left], greaterThan(180));
+      expect(signature.cr[left], lessThan(120));
+      expect(signature.cb[right], lessThan(120));
+      expect(signature.cr[right], greaterThan(180));
+      expect(signature.luma[left], closeTo(200, 1));
+    });
+
+    test('the document found is where the portrait is looked for; none on a card without one', () async {
+      final finder = portraitFinder(await loadFaceModels());
+      addTearDown(finder.close);
+
+      final inspection = inspectFrame(cardFrame(), rotation: 90, region: region);
+      final document = inspection.document!;
+
+      expect(findPortrait(finder, document.pixels, document.width, document.height), isNull);
+      expect(inspectFrame(emptyFrame(), rotation: 90, region: region).document, isNull);
+      expect(withoutPortrait({DocumentPhotoIssue.blurry}), {DocumentPhotoIssue.blurry, DocumentPhotoIssue.noPortrait});
+      expect(withoutPortrait({DocumentPhotoIssue.noDocument}), {DocumentPhotoIssue.noDocument});
+    });
+
     test('DocumentFrameChecker checks every frame on its isolate, in order, like checkFrame', () async {
       final checker = await DocumentFrameChecker.start();
       addTearDown(checker.close);
       final withCard = cardFrame();
       final without = emptyFrame();
       final results = await Future.wait([
-        for (final f in [withCard, without, withCard, without]) checker.check(f, rotation: 90, region: region),
+        for (final f in [withCard, without, withCard, without]) checker.check(f, rotation: 90, region: region).issues,
       ]);
       expect(results, [
         for (final f in [withCard, without, withCard, without]) checkFrame(f, rotation: 90, region: region),
@@ -333,16 +451,43 @@ void main() {
 
     test('DocumentFrameChecker fails the frames still being checked when it closes', () async {
       final checker = await DocumentFrameChecker.start();
-      final result = checker.check(cardFrame(), rotation: 90, region: region);
+      final result = checker.check(cardFrame(), rotation: 90, region: region).issues;
       checker.close();
       await expectLater(result, throwsStateError);
+      expect(checker.stopped, isTrue);
+      await expectLater(checker.check(cardFrame(), rotation: 90, region: region).issues, throwsStateError);
+    });
+
+    test('DocumentFrameChecker looks for the portrait on its own isolate, on the document found', () async {
+      final checker = await DocumentFrameChecker.start(faceModels: await loadFaceModels());
+      addTearDown(checker.close);
+      expect(checker.portraitFree, isTrue);
+
+      final withCard = checker.check(cardFrame(), rotation: 90, region: region, portrait: true);
+      expect(checker.portraitFree, isFalse);
+      expect(await withCard.issues, checkFrame(cardFrame(), rotation: 90, region: region));
+      expect(await withCard.portrait, isNull);
+      expect(checker.portraitFree, isTrue);
+
+      final without = checker.check(emptyFrame(), rotation: 90, region: region, portrait: true);
+      await without.issues;
+      expect(await without.portrait, isNull, reason: 'no document, no portrait looked for');
+    });
+
+    test('DocumentFrameChecker without face models looks for no portrait', () async {
+      final checker = await DocumentFrameChecker.start();
+      addTearDown(checker.close);
+      expect(checker.portraitFree, isFalse);
+      final check = checker.check(cardFrame(), rotation: 90, region: region);
+      expect(check.portrait, isNull);
+      await check.issues;
     });
 
     test('DocumentFrameChecker is busy while a frame is checked', () async {
       final checker = await DocumentFrameChecker.start();
       addTearDown(checker.close);
       expect(checker.busy, isFalse);
-      final result = checker.check(cardFrame(), rotation: 90, region: region);
+      final result = checker.check(cardFrame(), rotation: 90, region: region).issues;
       expect(checker.busy, isTrue);
       await result;
       expect(checker.busy, isFalse);
@@ -350,6 +495,35 @@ void main() {
   });
 
   group('sampleDocument', () {
+    test('averages the same frame pixels as reading them one by one, in every rotation and format', () {
+      final random = math.Random(7);
+      Uint8List noise(int length) => Uint8List.fromList(List.generate(length, (_) => random.nextInt(256)));
+      const width = 61;
+      const height = 47;
+      final frames = [
+        LumaFrame.luma(bytes: noise((width + 3) * height), width: width, height: height, bytesPerRow: width + 3),
+        LumaFrame.bgra(
+          bytes: noise((width * 4 + 8) * height),
+          width: width,
+          height: height,
+          bytesPerRow: width * 4 + 8,
+        ),
+      ];
+      for (final frame in frames) {
+        for (final rotation in [0, 90, 180, 270]) {
+          for (final maxWidth in [10, 20, 40, 640]) {
+            const region = Rect.fromLTRB(0.05, 0.1, 0.9, 0.95);
+            final sample = sampleDocument(frame, rotation: rotation, region: region, maxWidth: maxWidth);
+            expect(
+              sample.pixels,
+              _sampledOneByOne(frame, rotation, region, sample.width, sample.height),
+              reason: 'bgra ${frame.isBgra}, rotation $rotation, maxWidth $maxWidth',
+            );
+          }
+        }
+      }
+    });
+
     test('turns a sideways sensor frame upright', () {
       // A 3 x 2 landscape sensor frame, pixels numbered row by row.
       final frame = LumaFrame.luma(bytes: Uint8List.fromList([0, 1, 2, 3, 4, 5]), width: 3, height: 2, bytesPerRow: 3);
@@ -476,4 +650,33 @@ void main() {
       expect((quality.clear, quality.issue), (false, null));
     });
   });
+}
+
+/// [sampleDocument] as it read every pixel through [LumaFrame.brightnessAt].
+List<int> _sampledOneByOne(LumaFrame frame, int rotation, Rect region, int width, int height) {
+  final sideways = rotation % 180 != 0;
+  final uprightWidth = sideways ? frame.height : frame.width;
+  final uprightHeight = sideways ? frame.width : frame.height;
+  final step = region.width * uprightWidth / width;
+  final taps = step.floor().clamp(1, 3);
+  int at(double origin, int i, int t, int size) => (origin + (i + (t + 0.5) / taps) * step).floor().clamp(0, size - 1);
+  int brightness(int x, int y) => switch (rotation) {
+    90 => frame.brightnessAt(y, frame.height - 1 - x),
+    180 => frame.brightnessAt(frame.width - 1 - x, frame.height - 1 - y),
+    270 => frame.brightnessAt(frame.width - 1 - y, x),
+    _ => frame.brightnessAt(x, y),
+  };
+  return [
+    for (var y = 0; y < height; y++)
+      for (var x = 0; x < width; x++)
+        [
+              for (var ty = 0; ty < taps; ty++)
+                for (var tx = 0; tx < taps; tx++)
+                  brightness(
+                    at(region.left * uprightWidth, x, tx, uprightWidth),
+                    at(region.top * uprightHeight, y, ty, uprightHeight),
+                  ),
+            ].reduce((a, b) => a + b) ~/
+            (taps * taps),
+  ];
 }

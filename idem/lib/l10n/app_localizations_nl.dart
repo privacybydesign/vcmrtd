@@ -211,6 +211,9 @@ class AppLocalizationsNl extends AppLocalizations {
   String get docPhotoBackInstructions => 'Draai je document om en leg de achterkant binnen het kader.';
 
   @override
+  String get docPhotoBackInstructionsPassport => 'Leg nu de achterkant van de pagina met je foto binnen het kader.';
+
+  @override
   String get docPhotoSideFront => 'Voorkant';
 
   @override
@@ -222,13 +225,16 @@ class AppLocalizationsNl extends AppLocalizations {
   }
 
   @override
-  String get docPhotoNoBack => 'Mijn document heeft geen achterkant';
-
-  @override
   String get docPhotoTake => 'Foto maken';
 
   @override
   String get docPhotoHintNoDocument => 'Leg het hele document binnen het kader, op een egale ondergrond.';
+
+  @override
+  String get docPhotoHintNoPortrait => 'Leg de kant met je foto binnen het kader.';
+
+  @override
+  String get docPhotoHintNoMrz => 'Leg de kant met de machineleesbare regels (<<<) binnen het kader.';
 
   @override
   String get docPhotoHintGlare => 'Reflectie op het document. Kantel het een beetje.';
@@ -261,6 +267,9 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get docPhotoUse => 'Foto gebruiken';
+
+  @override
+  String get docPhotoPreparing => 'De foto wordt voorbereid…';
 
   @override
   String get docPhotoErrorNoCamera => 'Geen camera beschikbaar';

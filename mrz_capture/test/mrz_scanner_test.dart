@@ -388,7 +388,7 @@ void main() {
   });
 
   group('MRZScannerState._processTesseractFrame', () {
-    testWidgets('sends frame metadata to channel and parses valid OCR text', (tester) async {
+    testWidgets('sends the cut-out MRZ to the channel and parses valid OCR text', (tester) async {
       MethodCall? capturedCall;
       ScannedMRZ? capturedResult;
       List<String>? capturedLines;
@@ -410,21 +410,14 @@ void main() {
       await tester.pump();
       final state = _buildState(tester);
 
-      await state.debugProcessTesseractFrame(_frame());
+      await tester.runAsync(() => state.debugProcessTesseractFrame(_frame()));
 
       expect(capturedCall, isNotNull);
       expect(capturedCall!.method, 'processImage');
       final args = Map<Object?, Object?>.from(capturedCall!.arguments as Map);
-      expect(args['bytes'], orderedEquals([1, 2, 3, 4]));
-      expect(args['width'], 2);
-      expect(args['height'], 2);
-      expect(args['stride'], 2);
-      expect(args['rotation'], 90);
+      expect(args.keys, unorderedEquals(['pixels', 'width', 'height', 'lang']));
+      expect((args['pixels']! as Uint8List).length, (args['width']! as int) * (args['height']! as int));
       expect(args['lang'], 'ocrb');
-      expect(args['roiLeft'], 0.1);
-      expect(args['roiTop'], 0.2);
-      expect(args['roiWidth'], 0.7);
-      expect(args['roiHeight'], 0.3);
       expect(capturedResult, isNotNull);
       expect(capturedLines, [_passportLine1, _passportLine2]);
       expect(state.debugCanProcess, isFalse);
@@ -441,7 +434,7 @@ void main() {
       );
       await tester.pump();
 
-      await _buildState(tester).debugProcessTesseractFrame(_frame());
+      await tester.runAsync(() => _buildState(tester).debugProcessTesseractFrame(_frame()));
 
       expect(capturedLines, [_passportLine1, _passportLine2]);
     });
@@ -457,7 +450,7 @@ void main() {
       );
       await tester.pump();
 
-      await _buildState(tester).debugProcessTesseractFrame(_frame());
+      await tester.runAsync(() => _buildState(tester).debugProcessTesseractFrame(_frame()));
 
       expect(called, isFalse);
     });
@@ -473,7 +466,7 @@ void main() {
       );
       await tester.pump();
 
-      await _buildState(tester).debugProcessTesseractFrame(_frame());
+      await tester.runAsync(() => _buildState(tester).debugProcessTesseractFrame(_frame()));
 
       expect(called, isFalse);
     });
@@ -490,7 +483,7 @@ void main() {
       await tester.pump();
       final state = _buildState(tester);
 
-      await state.debugProcessTesseractFrame(_frame());
+      await tester.runAsync(() => state.debugProcessTesseractFrame(_frame()));
 
       expect(called, isFalse);
       expect(state.debugCanProcess, isTrue);

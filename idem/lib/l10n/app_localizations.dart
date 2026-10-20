@@ -434,6 +434,12 @@ abstract class AppLocalizations {
   /// **'Turn your document over and place the back inside the frame.'**
   String get docPhotoBackInstructions;
 
+  /// No description provided for @docPhotoBackInstructionsPassport.
+  ///
+  /// In en, this message translates to:
+  /// **'Now place the back of the page with your photo inside the frame.'**
+  String get docPhotoBackInstructionsPassport;
+
   /// No description provided for @docPhotoSideFront.
   ///
   /// In en, this message translates to:
@@ -452,12 +458,6 @@ abstract class AppLocalizations {
   /// **'{side} · {current} of {total}'**
   String docPhotoSideProgress(String side, int current, int total);
 
-  /// No description provided for @docPhotoNoBack.
-  ///
-  /// In en, this message translates to:
-  /// **'My document has no back'**
-  String get docPhotoNoBack;
-
   /// No description provided for @docPhotoTake.
   ///
   /// In en, this message translates to:
@@ -469,6 +469,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Place the whole document inside the frame, on a plain surface.'**
   String get docPhotoHintNoDocument;
+
+  /// No description provided for @docPhotoHintNoPortrait.
+  ///
+  /// In en, this message translates to:
+  /// **'Place the side with your photo inside the frame.'**
+  String get docPhotoHintNoPortrait;
+
+  /// No description provided for @docPhotoHintNoMrz.
+  ///
+  /// In en, this message translates to:
+  /// **'Place the side with the machine-readable lines (<<<) inside the frame.'**
+  String get docPhotoHintNoMrz;
 
   /// No description provided for @docPhotoHintGlare.
   ///
@@ -529,6 +541,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Use photo'**
   String get docPhotoUse;
+
+  /// No description provided for @docPhotoPreparing.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing the photo…'**
+  String get docPhotoPreparing;
 
   /// No description provided for @docPhotoErrorNoCamera.
   ///

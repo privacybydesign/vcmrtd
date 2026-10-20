@@ -99,6 +99,7 @@
   "docPhotoFrontInstructionsCard": "Place the front of your document, the side with your photo, inside the frame. Use a flat surface and good light, and avoid glare.",
   "docPhotoBackTitle": "Now photograph the back",
   "docPhotoBackInstructions": "Turn your document over and place the back inside the frame.",
+  "docPhotoBackInstructionsPassport": "Now place the back of the page with your photo inside the frame.",
   "docPhotoSideFront": "Front",
   "docPhotoSideBack": "Back",
   "docPhotoSideProgress": "{side} · {current} of {total}",
@@ -115,9 +116,10 @@
       }
     }
   },
-  "docPhotoNoBack": "My document has no back",
   "docPhotoTake": "Take photo",
   "docPhotoHintNoDocument": "Place the whole document inside the frame, on a plain surface.",
+  "docPhotoHintNoPortrait": "Place the side with your photo inside the frame.",
+  "docPhotoHintNoMrz": "Place the side with the machine-readable lines (<<<) inside the frame.",
   "docPhotoHintGlare": "Reflection on the document. Tilt it slightly.",
   "docPhotoHintTilted": "Hold your phone straight above the document.",
   "docPhotoHintUnreadable": "The text on the document isn't readable yet. Hold it still, in good light.",
@@ -128,6 +130,7 @@
   "docPhotoReviewScannedMessage": "This side was photographed while the MRZ was read. Are all details sharp and readable, without glare or anything covering them?",
   "docPhotoRetake": "Retake",
   "docPhotoUse": "Use photo",
+  "docPhotoPreparing": "Preparing the photo…",
   "docPhotoErrorNoCamera": "No camera available",
   "docPhotoErrorCamera": "Could not use the camera: {error}",
   "@docPhotoErrorCamera": {

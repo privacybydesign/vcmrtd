@@ -211,6 +211,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get docPhotoBackInstructions => 'Turn your document over and place the back inside the frame.';
 
   @override
+  String get docPhotoBackInstructionsPassport => 'Now place the back of the page with your photo inside the frame.';
+
+  @override
   String get docPhotoSideFront => 'Front';
 
   @override
@@ -222,13 +225,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get docPhotoNoBack => 'My document has no back';
-
-  @override
   String get docPhotoTake => 'Take photo';
 
   @override
   String get docPhotoHintNoDocument => 'Place the whole document inside the frame, on a plain surface.';
+
+  @override
+  String get docPhotoHintNoPortrait => 'Place the side with your photo inside the frame.';
+
+  @override
+  String get docPhotoHintNoMrz => 'Place the side with the machine-readable lines (<<<) inside the frame.';
 
   @override
   String get docPhotoHintGlare => 'Reflection on the document. Tilt it slightly.';
@@ -260,6 +266,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get docPhotoUse => 'Use photo';
+
+  @override
+  String get docPhotoPreparing => 'Preparing the photo…';
 
   @override
   String get docPhotoErrorNoCamera => 'No camera available';
