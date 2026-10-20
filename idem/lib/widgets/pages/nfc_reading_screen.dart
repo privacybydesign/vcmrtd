@@ -161,7 +161,9 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
 
     final state = ref.watch(readerProvider(scannedMRZ));
 
-    if (state is DocumentReaderPending) {
+    // NFC switched off after the guidance's check: back to the guidance,
+    // which says so and lets the read start again once it is on.
+    if (state is DocumentReaderPending || state is DocumentReaderNfcUnavailable) {
       return NfcGuidanceScreen(
         onStartReading: startReading,
         onBack: _leave,

@@ -154,6 +154,16 @@ void main() {
 
       expect(find.byType(NfcGuidanceScreen), findsOneWidget);
     });
+
+    testWidgets('NFC switched off before the read renders the NfcGuidanceScreen, not an error', (tester) async {
+      _setLargeViewport(tester);
+      _FakeReader.initialState = DocumentReaderNfcUnavailable();
+      await tester.pumpWidget(_app(DocumentType.passport));
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      expect(find.byType(NfcGuidanceScreen), findsOneWidget);
+    });
   });
 
   group('NfcReadingScreen — active states render the reading screen', () {
