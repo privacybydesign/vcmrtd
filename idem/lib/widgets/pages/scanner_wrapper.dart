@@ -237,6 +237,7 @@ class _GuidedScanSheetState extends State<_GuidedScanSheet> {
 
   void _expand() {
     if (_expanded) return;
+
     setState(() {
       _expanded = true;
       _tipMounted = true;

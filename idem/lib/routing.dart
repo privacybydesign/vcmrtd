@@ -8,8 +8,6 @@ import 'package:face_verification/face_verification.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/providers/face_engine_provider.dart';
-import 'package:idem/providers/face_api_provider.dart';
-import 'package:idem/providers/passport_issuer_provider.dart';
 import 'package:idem/providers/liveness_mode_provider.dart';
 import 'package:idem/utils/document_dates.dart';
 import 'package:idem/services/flow_step_plan.dart';
@@ -179,12 +177,11 @@ void _continueAfterStep(
 /// /manual_entry's onManualEntryComplete, since both just produce a
 /// [ScannedMRZ] and from here on the decision is identical.
 ///
-/// A null [ProofingSessionInfo.steps] — no pinned session at all, or one
-/// created without a flow — means every step is implicitly wanted, so this
-/// always falls through to the unchanged nfc_read path: opening the app
-/// outside a QR/deep-link session always runs the full
-/// document_capture -> nfc_read -> face_verification sequence, never a
-/// flow-driven subset.
+/// A null [ProofingSessionInfo.steps] — a session created without a flow —
+/// means every step is implicitly wanted, so this falls through to the
+/// nfc_read path: the full document_capture -> nfc_read -> face_verification
+/// sequence, never a flow-driven subset. Without a pinned session (one
+/// unpinned meanwhile) there is nothing to capture for: back to the start.
 ///
 /// A flow session with document_capture gets the scanned identity the moment
 /// the scan completes (`POST .../steps/document_capture`), before anything
@@ -204,9 +201,13 @@ Future<void> _afterDocumentCaptured(
   Future<Uint8List> Function(DocumentPicture picture) preparePicture = preparePhotoInBackground,
 }) async {
   final activeSession = ProviderScope.containerOf(context).read(activeProofingSessionProvider);
-  final steps = activeSession?.info.steps;
+  if (activeSession == null) {
+    context.go(selectDocTypePath);
+    return;
+  }
+  final steps = activeSession.info.steps;
 
-  if (activeSession != null && steps != null && steps.contains(stepDocumentCapture)) {
+  if (steps != null && steps.contains(stepDocumentCapture)) {
     // Prepared alongside the submission, so the photo is ready by the time
     // the server answers.
     final photo = picture != null && steps.contains(stepDocumentPhoto)
@@ -218,7 +219,7 @@ Future<void> _afterDocumentCaptured(
 
   // A flow that doesn't scan a document (only document_photo, say): the
   // scan has no step of its own, so the flow goes on where the server says.
-  if (activeSession != null && steps != null && _resumeAtServerStep(context, activeSession)) return;
+  if (steps != null && _resumeAtServerStep(context, activeSession)) return;
 
   // No flow (or none with a document step): vcmrtd's own sequence.
   if (steps == null || steps.contains(stepNfcRead)) {
@@ -227,7 +228,7 @@ Future<void> _afterDocumentCaptured(
   }
   if (stepsRequestFace(steps)) {
     context.pushFaceVerificationScreenForScannedMrz(
-      referencePhotoBytes: _photoBytes(activeSession!.info.referencePhoto),
+      referencePhotoBytes: _photoBytes(activeSession.info.referencePhoto),
       scannedMrz: scannedMrz,
       documentType: documentType,
     );
@@ -967,7 +968,7 @@ GoRouter createRouter({
                 // A session gets the saved chip read as its NFC step, exactly
                 // as a fresh read would, and continues where the server says.
                 if (session == null) {
-                  _pushFaceVerificationAfterChipRead(context, card.document!, card.rawData!, card.documentType);
+                  context.go(selectDocTypePath);
                   return;
                 }
                 final response = await _submitNfcStep(
@@ -1072,12 +1073,12 @@ Widget _buildNfcReadingRoute(BuildContext context, GoRouterState state) {
     stepNumber: plan.nfcReadStepNumber ?? FlowStepPlan.defaultNfcReadStep,
     totalSteps: plan.totalSteps,
     onSuccess: (document, result) async {
-      // A standalone scan (no session) goes on to face verification. A
-      // session gets the chip read's result the moment it completes, and
-      // then continues wherever the server says.
+      // The session gets the chip read's result the moment it completes,
+      // and then continues wherever the server says; one unpinned meanwhile
+      // has nothing to continue.
       final session = ProviderScope.containerOf(context).read(activeProofingSessionProvider);
       if (session == null) {
-        _pushFaceVerificationAfterChipRead(context, document, result, params.documentType);
+        context.go(selectDocTypePath);
         return;
       }
       final response = await _submitNfcStep(context, session, document, result, params.documentType);
@@ -1195,8 +1196,6 @@ Widget _buildFaceVerificationRoute(
     providers.read(livenessModeProvider),
     proofingSession?.info,
   );
-  // Without a QR session, Regula runs against the passport issuer, which matches too.
-  final issuerFace = proofingSession == null && result != null ? providers.read(issuerFaceVerificationProvider) : null;
   final plan = _planFor(proofingSession);
 
   final stepNumber = plan.faceVerificationStepNumber ?? FlowStepPlan.defaultFaceVerificationStep;
@@ -1220,12 +1219,7 @@ Widget _buildFaceVerificationRoute(
       ),
       engineChoice: engineChoice,
       livenessMode: livenessMode,
-      faceVerification: proofingSession != null
-          ? proofingSession.info.faceVerification
-          : _issuerFaceVerification(issuerFace),
-      matchFace: issuerFace == null
-          ? null
-          : (transactionId) => _issuerFaceMatch(providers, result!, documentType, transactionId),
+      faceVerification: proofingSession?.info.faceVerification,
       photoIssueDate: issueDate,
       stepNumber: stepNumber,
       totalSteps: plan.totalSteps,
@@ -1234,58 +1228,23 @@ Widget _buildFaceVerificationRoute(
   );
 }
 
-/// The standalone Regula face step's config, run against the passport
-/// issuer; null without one.
-ProofingFaceVerification? _issuerFaceVerification(FaceVerificationConfig? issuerFace) {
-  if (issuerFace == null) return null;
-  return ProofingFaceVerification(provider: faceProviderRegula, faceApiUrl: issuerFace.faceApiUrl);
-}
-
-/// Has the passport issuer match the liveness [transactionId] against the
-/// chip photo in [result].
-Future<FaceMatch?> _issuerFaceMatch(
-  ProviderContainer providers,
-  RawDocumentData result,
-  DocumentType? documentType,
-  String transactionId,
-) async {
-  final issuer = providers.read(passportIssuerProvider);
-  final raw = result.copyWith(livenessTransactionId: transactionId);
-  final response = documentType == DocumentType.drivingLicence
-      ? await issuer.verifyDrivingLicence(raw)
-      : await issuer.verifyPassport(raw);
-  return response.faceMatch;
-}
-
-/// A session gets the face step the moment it completes, and continues
-/// where the server says; a standalone scan goes on to the document data
-/// screen. An explicit cancel/back pops back to wherever this was pushed
-/// from either way.
+/// The session gets the face step the moment it completes, and continues
+/// where the server says; one unpinned meanwhile (taken over by a new claim
+/// of it) has nothing to continue: back to the start. An explicit
+/// cancel/back pops back to wherever this was pushed from.
 Future<void> _afterFaceVerified(
   BuildContext context,
   FaceVerificationOutcome outcome,
   CollectedStepData collected,
 ) async {
   final session = ProviderScope.containerOf(context).read(activeProofingSessionProvider);
-  if (session != null) {
-    final response = await _submitFaceStep(context, session, outcome);
-    if (!context.mounted) return;
-    _continueAfterStep(context, session, response, completedStep: stepFaceVerification, collected: collected);
-    return;
-  }
-  // Without a session, face verification only runs after a chip read.
-  final document = collected.document;
-  final rawDocument = collected.rawDocument;
-  final documentType = collected.documentType;
-  if (document == null || rawDocument == null || documentType == null) {
-    // It ran for a session that was unpinned meanwhile (taken over by a new
-    // claim of it): there's no scan of this app's own to show.
+  if (session == null) {
     context.go(selectDocTypePath);
     return;
   }
-  context.goResultScreen(
-    ResultRouteArgs(document: document, rawDocument: rawDocument, documentType: documentType, plan: collected.plan),
-  );
+  final response = await _submitFaceStep(context, session, outcome);
+  if (!context.mounted) return;
+  _continueAfterStep(context, session, response, completedStep: stepFaceVerification, collected: collected);
 }
 
 /// Reports [step] of the pinned session started ([markActiveProofingStepStarted])

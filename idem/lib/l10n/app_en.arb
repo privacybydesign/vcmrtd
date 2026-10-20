@@ -37,59 +37,14 @@
   "idDocumentIdentityCard": "Identity card",
   "idDocumentResidencePermit": "Residence permit",
   "idDocumentDrivingLicence": "Driving licence",
-  "commonTryAgain": "Try Again",
-  "commonCancel": "Cancel",
-  "docNewScan": "New scan",
-  "docConnectedBanner": "Connected — will send results to {relyingParty}",
-  "@docConnectedBanner": {
-    "placeholders": {
-      "relyingParty": {
-        "type": "String"
-      }
-    }
-  },
-  "docPassport": "Passport",
-  "docPassportSubtitle": "Use a machine readable passport",
-  "docMostCommon": "Most common",
-  "docIdentityCard": "Identity Card",
-  "docIdentityCardSubtitle": "Use a machine readable identity card",
-  "docDrivingLicence": "Driving Licence",
-  "docDrivingLicenceSubtitle": "Use a machine readable driving licence. Currently works primarily with Dutch licences.",
   "docScanQrTitle": "Scan QR code",
-  "docScanQrSubtitle": "Scan any QR code with the camera",
-  "docAdvancedSettings": "Advanced settings",
-  "docAdvancedSettingsSubtitle": "Ocr Engine, Face Verification and more",
-  "docVerifyIdentityTitle": "Verify your Identity",
-  "docSelectDocumentTypePrompt": "Select the type of document you want to use for verification.",
   "docSettingsTitle": "Settings",
   "docBack": "Back",
-  "docActiveAuthentication": "Active authentication",
-  "docActiveAuthenticationSubtitle": "Perform active authentication when reading the document. A verification session follows its own flow.",
-  "docFaceEngine": "Face verification engine",
   "docFaceEngineOpenSource": "Open source",
-  "docLivenessDetection": "Liveness detection",
-  "docLivenessPassive": "Passive",
-  "docLivenessActive": "Active",
-  "docOcrEngine": "OCR engine",
   "docNfcStepStart": "Start reading",
-  "docNfcStepDetails": "Reading details",
-  "docNfcStepPhoto": "Getting photo",
-  "docNfcStepAlmostDone": "Almost done",
-  "docNfcStepStartSubtitle": "Connecting to the chip",
-  "docNfcStepDetailsSubtitle": "Getting personal data",
-  "docNfcStepPhotoSubtitle": "Getting the document photo",
-  "docNfcStepAlmostDoneSubtitle": "Verifying document security",
   "docNfcTipFirst": "Place your document behind your phone and move it around until it buzzes or beeps.",
   "docNfcTipHoldSteady": "Keep your phone and the document still - this can take a moment.",
   "docNfcTipStuck": "Reading was interrupted. Slowly lift your phone off the document and place it back down until it buzzes or beeps again.",
-  "docReadDocument": "Read {documentType, select, passport{Passport} identityCard{Identity Card} residencePermit{Residence Permit} drivingLicence{Driving Licence} other{document}}",
-  "@docReadDocument": {
-    "placeholders": {
-      "documentType": {
-        "type": "String"
-      }
-    }
-  },
   "docIosNfcHoldClose": "Hold your phone close to {documentType, select, passport{passport} identityCard{identity card} residencePermit{residence permit} drivingLicence{driving license} other{document}}",
   "@docIosNfcHoldClose": {
     "placeholders": {
@@ -122,87 +77,13 @@
   "docIosNfcSecurityCheck": "Performing security verification...",
   "docIosNfcSuccess": "Success!",
   "docIosNfcReconnecting": "Connection lost. Slowly lift your phone and place it back down.",
-  "docNfcGuidanceTitle": "Read the chip",
-  "docNfcGuidancePlacePhone": "Place your phone on the {documentType, select, passport{Passport} identityCard{Identity Card} residencePermit{Residence Permit} drivingLicence{Driving Licence} other{document}}",
-  "@docNfcGuidancePlacePhone": {
-    "placeholders": {
-      "documentType": {
-        "type": "String"
-      }
-    }
-  },
-  "docNfcGuidanceTipsTitle": "Tips for better results:",
-  "docNfcGuidanceTips": "• Place the {documentType, select, passport{Passport} identityCard{Identity Card} residencePermit{Residence Permit} drivingLicence{Driving Licence} other{document}} behind your phone like in the example\n• Remove phone case if reading fails\n• The process may take 10–30 seconds",
-  "@docNfcGuidanceTips": {
-    "placeholders": {
-      "documentType": {
-        "type": "String"
-      }
-    }
-  },
-  "docScanDocument": "Scan {documentType, select, passport{Passport} identityCard{Identity Card} residencePermit{Residence Permit} drivingLicence{Driving Licence} other{document}}",
-  "@docScanDocument": {
-    "placeholders": {
-      "documentType": {
-        "type": "String"
-      }
-    }
-  },
-  "docNfcNotAvailable": "NFC is not available",
-  "docPersonalInformation": "Personal Information",
-  "docSurname": "Surname",
-  "docOtherNames": "Other Names",
-  "docDateOfBirth": "Date of Birth",
-  "docPlaceOfBirth": "Place of Birth",
-  "docDocumentInformation": "Document Information",
-  "docDocumentNumber": "Document Number",
-  "docIssuingMemberState": "Issuing Member State",
-  "docIssuingAuthority": "Issuing Authority",
-  "docDateOfIssue": "Date of Issue",
-  "docDateOfExpiry": "Date of Expiry",
-  "docDrivingLicenceDataTitle": "Driving Licence Data",
-  "docUnableToLoadPhoto": "Unable to load photo",
   "docCategories": "Categories",
-  "docCategory": "Category",
-  "docCategoryDateOfIssue": "Date of issue",
-  "docCategoryDateOfExpiry": "Date of expiry",
-  "docWalletDocumentNumber": "Document number",
-  "docWalletAdded": "Added",
-  "docRemoveFromWallet": "Remove from wallet",
-  "docFullName": "Full Name",
   "docNationality": "Nationality",
-  "docDocument": "Document",
-  "docGender": "Gender",
-  "docExpiryDate": "Expiry Date",
-  "docCountry": "Country",
-  "docVersion": "Version",
-  "docOptionalData": "Optional Data",
-  "docAvailableDataGroups": "Available Data Groups",
-  "docDataGroupsRead": "Data Groups Read: {count}/{total}",
-  "@docDataGroupsRead": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
-  "docActiveAuthenticationAvailable": "Active Authentication Available",
   "docWebAuthSession": "Web Authentication Session",
   "docWebAuthSessionId": "Session IID: {sessionId}",
   "@docWebAuthSessionId": {
     "placeholders": {
       "sessionId": {
-        "type": "String"
-      }
-    }
-  },
-  "docDocumentDataTitle": "{documentType, select, passport{Passport} identityCard{Identity Card} residencePermit{Residence Permit} drivingLicence{Driving Licence} other{Document}} Data",
-  "@docDocumentDataTitle": {
-    "placeholders": {
-      "documentType": {
         "type": "String"
       }
     }
@@ -213,12 +94,6 @@
   "docImageJpeg2000DisplayError": "Error displaying converted JPEG2000 image.",
   "docImageJpeg2000ConvertFailed": "Failed to convert JPEG2000 image.",
   "docImageUnsupportedType": "Unknown or unsupported image type.",
-  "docIllustrationPassport": "PASSPORT",
-  "docIllustrationIssuer": "Kingdom of Example",
-  "docIllustrationName": "Name: John Doe",
-  "docIllustrationNationality": "Nationality: NL",
-  "docIllustrationDob": "DOB: 01-01-1990",
-  "docIllustrationDrivingLicence": "DRIVING LICENCE",
   "docPhotoStepLabel": "Document photo",
   "docPhotoFrontTitle": "Photograph the front",
   "docPhotoFrontInstructionsPassport": "Place the page with your photo and personal details inside the frame. Use a flat surface and good light, and avoid glare.",
@@ -306,20 +181,9 @@
     }
   },
   "faceTimeoutPerformAction": "perform the action",
-  "faceStepLabel": "Face Verification",
   "faceBack": "Back",
-  "faceSettingUp": "Setting up face verification",
-  "faceTakesAMoment": "This only takes a moment",
-  "faceLoadingOpeningCamera": "Opening camera",
-  "faceLoadingModels": "Loading face models",
-  "faceAlmostDone": "Almost done…",
   "faceHoldStill": "Hold still",
   "faceOpeningCamera": "Opening camera...",
-  "faceHowItWorks": "How it works",
-  "faceStepCenterFace": "Center your face inside the oval",
-  "faceStepFollowPrompts": "Follow the on-screen prompts",
-  "faceStart": "Start",
-  "facePreparing": "Preparing…",
   "faceTipNoFace": "Position your face in the oval",
   "faceTipCenterFace": "Move your face into the oval",
   "faceTipTooFar": "Move a bit closer to the camera",
@@ -330,42 +194,8 @@
   "faceTipRelaxFace": "Relax your expression",
   "faceTipHoldStill": "Hold still…",
   "faceTipGetReady": "Get ready…",
-  "faceExtraBadge": "extra",
-  "faceVerifyingIdentity": "Verifying identity...",
-  "faceGoBack": "Go Back",
   "faceTryAgain": "Try Again",
   "faceVerificationFailed": "Verification Failed",
-  "faceScoreMatch": "Match (≥{threshold}%)",
-  "@faceScoreMatch": {
-    "placeholders": {
-      "threshold": {
-        "type": "String"
-      }
-    }
-  },
-  "faceScoreAntiSpoof": "Anti-spoof",
-  "faceNotAvailable": "n/a",
-  "faceScoreRppg": "rPPG ({count} samples)",
-  "@faceScoreRppg": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "faceBpm": "{bpm} bpm",
-  "@faceBpm": {
-    "placeholders": {
-      "bpm": {
-        "type": "String"
-      }
-    }
-  },
-  "faceScoreLivenessActions": "Liveness actions",
-  "facePassed": "passed",
-  "faceFailed": "failed",
-  "faceScoreIdentityConsistent": "Identity consistent",
-  "faceChangedMidSession": "face changed mid-session",
   "faceDocumentPhoto": "Document photo",
   "faceLiveCapture": "Live capture",
   "faceContinuing": "Continuing…",
@@ -391,13 +221,8 @@
       }
     }
   },
-  "faceIrisIntroTitle": "Verify with the Iris SDK",
   "faceIrisIntroBody": "The Iris SDK opens its own full-screen camera to check that a live person is present, then compares that face against the portrait stored on your document.",
-  "faceIrisWhatToExpect": "What to expect",
-  "faceIrisStep1": "A camera screen from the Iris SDK will open",
   "faceIrisStep2": "Look directly at the camera and follow any prompts",
-  "faceIrisStep3": "Hold still until it finishes — this only takes a moment",
-  "faceStartVerification": "Start Verification",
   "faceSelfieIntroTitle": "Take a quick selfie",
   "faceTipEvenLight": "Find a spot with even light",
   "faceTipRemoveAccessories": "Take off sunglasses and hats",
@@ -406,18 +231,11 @@
   "faceIrisFailedSubtitle": "The live face did not match the document photo. Make sure you're well lit and looking at the camera, then try again.",
   "faceCancelled": "Cancelled",
   "faceIrisCancelledSubtitle": "You cancelled the verification. Tap below to try again.",
-  "faceRegulaIntroTitle": "Check that it's really you",
   "faceRegulaIntroBody": "A camera screen opens to check that a live person is present. The verification service then compares your face with the photo on your document's chip.",
-  "faceRegulaStep1": "A camera screen will open",
   "faceRegulaStep2": "Look straight at the camera and follow the prompts",
-  "faceRegulaStep3": "Hold still until it finishes — this only takes a moment",
   "faceRegulaOpeningCamera": "Opening the camera…",
   "faceRegulaNotLiveSubtitle": "We couldn't confirm that a live person is present. Make sure you're well lit and looking at the camera, then try again.",
   "faceRegulaCancelledSubtitle": "You cancelled the verification. Tap below to try again.",
-  "faceRegulaMatching": "Comparing your face with your document photo…",
-  "faceRegulaNoMatchSubtitle": "Your face didn't match the photo on your document. Scan your document again to retry.",
-  "faceRegulaMatchUnavailable": "Your face could not be compared with your document photo right now.",
-  "faceRegulaScanAgain": "Scan document again",
   "faceRegulaFailedError": "Verification failed: {error}",
   "@faceRegulaFailedError": {
     "placeholders": {
@@ -446,9 +264,6 @@
   },
   "faceCancel": "Cancel",
   "faceRetry": "Retry",
-  "proofingConsentTitle": "Identity proofing request",
-  "proofingConsentIntro": "is requesting to verify your identity from a document. Scanning your document and completing face verification will send the result below back to them.",
-  "proofingConsentRequesting": "They are requesting:",
   "proofingConsentExpired": "This request has expired.",
   "proofingConsentExpiresIn": "This request expires in {duration}.",
   "@proofingConsentExpiresIn": {
@@ -534,28 +349,9 @@
       }
     }
   },
-  "proofingAddToWallet": "Add to Wallet",
   "proofingDialogOk": "OK",
   "proofingScanDocument": "Scan {docType, select, passport{passport} identityCard{ID card} residencePermit{residence permit} drivingLicence{driving licence} other{document}}",
   "@proofingScanDocument": {
-    "placeholders": {
-      "docType": {
-        "type": "String"
-      }
-    }
-  },
-  "proofingPositionDocument": "Position the {docType, select, passport{passport} identityCard{ID card} residencePermit{residence permit} drivingLicence{driving licence} other{document}}",
-  "@proofingPositionDocument": {
-    "placeholders": {
-      "docType": {
-        "type": "String"
-      }
-    }
-  },
-  "proofingScanMrzInstructions": "Align the Machine Readable Zone (MRZ) with the frame at the bottom of the screen. Hold steady until scanning completes.",
-  "proofingScanMrzPhotoInstructions": "Place the whole side with the Machine Readable Zone (MRZ) inside the frame, on a flat surface in good light. Hold steady: once the MRZ is read, this side is photographed too.",
-  "proofingEnterDetailsManually": "Enter {docType, select, passport{passport} identityCard{ID card} residencePermit{residence permit} drivingLicence{driving licence} other{document}} details manually",
-  "@proofingEnterDetailsManually": {
     "placeholders": {
       "docType": {
         "type": "String"

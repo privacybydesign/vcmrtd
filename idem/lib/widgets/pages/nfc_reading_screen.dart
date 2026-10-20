@@ -5,10 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:idem/custom/custom_logger_extension.dart';
 import 'package:idem/l10n/l10n.dart';
-import 'package:idem/providers/active_authenticiation_provider.dart';
-import 'package:idem/providers/face_api_provider.dart';
-import 'package:idem/providers/face_engine_provider.dart';
-import 'package:idem/providers/passport_issuer_provider.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/widgets/pages/nfc_guidance_screen.dart';
@@ -22,7 +18,7 @@ import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:idem/services/flow_step_plan.dart';
 
 /// What the chip read is doing, for the reading checklist.
-enum NFCReadingState { waiting, connecting, reading, authenticating, success, error, idle, cancelling }
+enum _NFCReadingState { connecting, reading, authenticating, success, error, idle, cancelling }
 
 class NfcReadingRouteParams {
   final ScannedMRZ scannedMRZ;
@@ -182,7 +178,9 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
 
     final state = ref.watch(readerProvider(scannedMRZ));
 
-    if (state is DocumentReaderPending) {
+    // NFC switched off after the guidance's check: back to the guidance,
+    // which says so and lets the read start again once it is on.
+    if (state is DocumentReaderPending || state is DocumentReaderNfcUnavailable) {
       return NfcGuidanceScreen(
         onStartReading: startReading,
         onBack: _leave,
@@ -249,15 +247,15 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
     BuildContext context,
     GuidedStyle g, {
     required DocumentReaderState state,
-    required NFCReadingState nfcState,
+    required _NFCReadingState nfcState,
     required int? readingStep,
     required String? tip,
   }) {
     final l10n = context.l10n;
     final type = widget.params.documentType.name;
     final wrongDocument = _wrongDocument;
-    final failed = nfcState == NFCReadingState.error || wrongDocument != null;
-    final done = nfcState == NFCReadingState.success && wrongDocument == null;
+    final failed = nfcState == _NFCReadingState.error || wrongDocument != null;
+    final done = nfcState == _NFCReadingState.success && wrongDocument == null;
     final (title, subtitle) = switch (state) {
       _ when wrongDocument != null => (
         l10n.wrongDocumentTitle(wrongDocument.name),
@@ -368,20 +366,20 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
     );
   }
 
-  NFCReadingState _mapState(DocumentReaderState state) {
+  _NFCReadingState _mapState(DocumentReaderState state) {
     return switch (state) {
-      DocumentReaderPending() => NFCReadingState.idle,
-      DocumentReaderCancelled() => NFCReadingState.error,
-      DocumentReaderCancelling() => NFCReadingState.cancelling,
-      DocumentReaderFailed() => NFCReadingState.error,
-      DocumentReaderConnecting() => NFCReadingState.connecting,
-      DocumentReaderReadingCardAccess() => NFCReadingState.authenticating,
-      DocumentReaderAuthenticating() => NFCReadingState.authenticating,
+      DocumentReaderPending() => _NFCReadingState.idle,
+      DocumentReaderCancelled() => _NFCReadingState.error,
+      DocumentReaderCancelling() => _NFCReadingState.cancelling,
+      DocumentReaderFailed() => _NFCReadingState.error,
+      DocumentReaderConnecting() => _NFCReadingState.connecting,
+      DocumentReaderReadingCardAccess() => _NFCReadingState.authenticating,
+      DocumentReaderAuthenticating() => _NFCReadingState.authenticating,
       DocumentReaderReadingDataGroup() ||
       DocumentReaderReadingSOD() ||
-      DocumentReaderReadingCOM() => NFCReadingState.reading,
-      DocumentReaderActiveAuthentication() => NFCReadingState.authenticating,
-      DocumentReaderSuccess() => NFCReadingState.success,
+      DocumentReaderReadingCOM() => _NFCReadingState.reading,
+      DocumentReaderActiveAuthentication() => _NFCReadingState.authenticating,
+      DocumentReaderSuccess() => _NFCReadingState.success,
       // Keep the visual state (color/icon) matching whatever step this is a
       // retry of - the reposition tip is what actually flags the connection
       // loss, this shouldn't also read as a harder failure.
@@ -429,7 +427,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
   }
 
   /// True from a Scan tap until its read ends, so a second tap (the screen
-  /// still shows Scan while the session is fetched) doesn't start a second
+  /// still shows Scan while NFC is checked) doesn't start a second
   /// read that keeps waiting for the document after the first one is done.
   var _reading = false;
 
@@ -444,9 +442,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
         DocumentType.drivingLicence => drivingLicenceReaderProvider,
       };
 
-      final nonceAndSessionId = await _activeAuthenticationParams();
-      // Left the screen while the session was fetched: nothing to read for.
-      if (!mounted) return;
+      final nonceAndSessionId = _activeAuthenticationParams();
       final result = await ref
           .read(readerProvider(scannedMRZ).notifier)
           .readDocument(iosNfcMessages: _createIosNfcMessageMapper(), activeAuthenticationParams: nonceAndSessionId);
@@ -467,37 +463,9 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
   }
 
   /// The nonce the chip signs for Active Authentication, or null to skip it.
-  Future<NonceAndSessionId?> _activeAuthenticationParams() async {
+  NonceAndSessionId? _activeAuthenticationParams() {
     final activeSession = ref.read(activeProofingSessionProvider);
-    ref.read(issuerFaceVerificationProvider.notifier).set(null);
-    if (activeSession == null && ref.read(faceEngineProvider) == FaceEngineChoice.regula) {
-      final nonceAndSessionId = await _startIssuerFaceVerification();
-      if (nonceAndSessionId != null) return nonceAndSessionId;
-    }
-    if (activeSession != null) return _proofingSessionChallenge(activeSession);
-    if (ref.read(activeAuthenticationProvider)) {
-      // No pinned proofing session (standalone scan straight into the
-      // local wallet) — fall back to the legacy passport-issuer flow.
-      final startValidation = await ref.read(passportIssuerProvider).startSessionAtPassportIssuer();
-      return startValidation.nonceAndSessionId;
-    }
-    return null;
-  }
-
-  /// Standalone Regula needs the issuer to match, and the issuer's verify
-  /// call needs this session's nonce, so the chip read signs it too.
-  Future<NonceAndSessionId?> _startIssuerFaceVerification() async {
-    try {
-      final startValidation = await ref.read(passportIssuerProvider).startSessionAtPassportIssuer();
-      ref.read(issuerFaceVerificationProvider.notifier).set(startValidation.faceVerification);
-      if (startValidation.faceVerification != null || ref.read(activeAuthenticationProvider)) {
-        return startValidation.nonceAndSessionId;
-      }
-    } catch (e) {
-      // Without the issuer the face step falls back to the on-device engine.
-      debugPrint('passport issuer unavailable for face verification: $e');
-    }
-    return null;
+    return activeSession == null ? null : _proofingSessionChallenge(activeSession);
   }
 
   /// Pinned to an identity-proofing-service session: the flow, not
@@ -566,14 +534,14 @@ class _GuidedReadingChecklist extends StatelessWidget {
 
   final GuidedStyle style;
   final int currentStep;
-  final NFCReadingState nfcState;
+  final _NFCReadingState nfcState;
   final DocumentType documentType;
 
   @override
   Widget build(BuildContext context) {
     final g = style;
     final l10n = context.l10n;
-    final complete = nfcState == NFCReadingState.success;
+    final complete = nfcState == _NFCReadingState.success;
     final labels = [
       (l10n.nfcChecklistSecureDone, l10n.nfcChecklistSecureActive),
       (l10n.nfcChecklistDetailsDone, l10n.nfcChecklistDetailsActive),
@@ -595,7 +563,7 @@ class _GuidedReadingChecklist extends StatelessWidget {
               state: i < currentStep || complete
                   ? _RowState.done
                   : i == currentStep
-                  ? (nfcState == NFCReadingState.error ? _RowState.failed : _RowState.current)
+                  ? (nfcState == _NFCReadingState.error ? _RowState.failed : _RowState.current)
                   : _RowState.pending,
               divider: i < labels.length - 1,
             ),

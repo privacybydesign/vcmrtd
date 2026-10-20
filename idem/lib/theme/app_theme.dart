@@ -260,9 +260,14 @@ BrandTheme brandThemeFor(AppBranding branding) {
   final border = branding.border ?? AppColors.border;
   final success = branding.success ?? AppColors.success;
   final buttonText = _buttonText(branding.font);
-  // Secondary text and greys follow the text colour, so a themed one still matches.
-  final bodyText = branding.text == null ? AppColors.bodyText : Color.lerp(ink, Colors.white, 0.15)!;
-  final muted = branding.text == null ? AppColors.muted : Color.lerp(ink, Colors.white, 0.2)!;
+  // Secondary text and greys follow the text colour, so a themed one still
+  // matches; a text colour too light to soften keeps it as it is.
+  final bodyText = branding.text == null
+      ? AppColors.bodyText
+      : _readable(_lighten(ink, 0.15), on: const [Colors.white]) ?? ink;
+  final muted = branding.text == null
+      ? AppColors.muted
+      : _readable(_lighten(ink, 0.2), on: const [Colors.white]) ?? ink;
 
   final primaryButtonStyle = ElevatedButton.styleFrom(
     backgroundColor: primary,

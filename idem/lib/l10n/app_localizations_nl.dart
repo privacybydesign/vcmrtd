@@ -86,58 +86,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get idDocumentDrivingLicence => 'Rijbewijs';
 
   @override
-  String get commonTryAgain => 'Opnieuw proberen';
-
-  @override
-  String get commonCancel => 'Annuleren';
-
-  @override
-  String get docNewScan => 'Nieuwe scan';
-
-  @override
-  String docConnectedBanner(String relyingParty) {
-    return 'Verbonden — resultaten gaan naar $relyingParty';
-  }
-
-  @override
-  String get docPassport => 'Paspoort';
-
-  @override
-  String get docPassportSubtitle => 'Gebruik een machineleesbaar paspoort';
-
-  @override
-  String get docMostCommon => 'Meest gebruikt';
-
-  @override
-  String get docIdentityCard => 'Identiteitskaart';
-
-  @override
-  String get docIdentityCardSubtitle => 'Gebruik een machineleesbare identiteitskaart';
-
-  @override
-  String get docDrivingLicence => 'Rijbewijs';
-
-  @override
-  String get docDrivingLicenceSubtitle =>
-      'Gebruik een machineleesbaar rijbewijs. Werkt nu vooral met Nederlandse rijbewijzen.';
-
-  @override
   String get docScanQrTitle => 'QR-code scannen';
-
-  @override
-  String get docScanQrSubtitle => 'Scan een QR-code met de camera';
-
-  @override
-  String get docAdvancedSettings => 'Geavanceerde instellingen';
-
-  @override
-  String get docAdvancedSettingsSubtitle => 'OCR-engine, gezichtsverificatie en meer';
-
-  @override
-  String get docVerifyIdentityTitle => 'Verifieer je identiteit';
-
-  @override
-  String get docSelectDocumentTypePrompt => 'Kies het type document dat je wilt gebruiken voor de verificatie.';
 
   @override
   String get docSettingsTitle => 'Instellingen';
@@ -146,53 +95,10 @@ class AppLocalizationsNl extends AppLocalizations {
   String get docBack => 'Terug';
 
   @override
-  String get docActiveAuthentication => 'Actieve authenticatie';
-
-  @override
-  String get docActiveAuthenticationSubtitle =>
-      'Voer actieve authenticatie uit bij het lezen van het document. Een verificatiesessie volgt haar eigen flow.';
-
-  @override
-  String get docFaceEngine => 'Engine voor gezichtsverificatie';
-
-  @override
   String get docFaceEngineOpenSource => 'Open source';
 
   @override
-  String get docLivenessDetection => 'Liveness-detectie';
-
-  @override
-  String get docLivenessPassive => 'Passief';
-
-  @override
-  String get docLivenessActive => 'Actief';
-
-  @override
-  String get docOcrEngine => 'OCR-engine';
-
-  @override
   String get docNfcStepStart => 'Lezen starten';
-
-  @override
-  String get docNfcStepDetails => 'Gegevens lezen';
-
-  @override
-  String get docNfcStepPhoto => 'Foto ophalen';
-
-  @override
-  String get docNfcStepAlmostDone => 'Bijna klaar';
-
-  @override
-  String get docNfcStepStartSubtitle => 'Verbinden met de chip';
-
-  @override
-  String get docNfcStepDetailsSubtitle => 'Persoonsgegevens ophalen';
-
-  @override
-  String get docNfcStepPhotoSubtitle => 'Pasfoto van het document ophalen';
-
-  @override
-  String get docNfcStepAlmostDoneSubtitle => 'Beveiliging van het document controleren';
 
   @override
   String get docNfcTipFirst => 'Houd je document achter je telefoon en beweeg het rond tot je telefoon trilt of piept.';
@@ -203,18 +109,6 @@ class AppLocalizationsNl extends AppLocalizations {
   @override
   String get docNfcTipStuck =>
       'Het lezen is onderbroken. Til je telefoon langzaam van het document en leg hem terug tot hij weer trilt of piept.';
-
-  @override
-  String docReadDocument(String documentType) {
-    String _temp0 = intl.Intl.selectLogic(documentType, {
-      'passport': 'Paspoort',
-      'identityCard': 'Identiteitskaart',
-      'residencePermit': 'Verblijfsvergunning',
-      'drivingLicence': 'Rijbewijs',
-      'other': 'Document',
-    });
-    return '$_temp0 lezen';
-  }
 
   @override
   String docIosNfcHoldClose(String documentType) {
@@ -270,144 +164,10 @@ class AppLocalizationsNl extends AppLocalizations {
   String get docIosNfcReconnecting => 'Verbinding verloren. Til je telefoon langzaam op en leg hem weer terug.';
 
   @override
-  String get docNfcGuidanceTitle => 'Lees de chip';
-
-  @override
-  String docNfcGuidancePlacePhone(String documentType) {
-    String _temp0 = intl.Intl.selectLogic(documentType, {
-      'passport': 'het paspoort',
-      'identityCard': 'de identiteitskaart',
-      'residencePermit': 'de verblijfsvergunning',
-      'drivingLicence': 'het rijbewijs',
-      'other': 'het document',
-    });
-    return 'Leg je telefoon op $_temp0';
-  }
-
-  @override
-  String get docNfcGuidanceTipsTitle => 'Tips voor een beter resultaat:';
-
-  @override
-  String docNfcGuidanceTips(String documentType) {
-    String _temp0 = intl.Intl.selectLogic(documentType, {
-      'passport': 'het paspoort',
-      'identityCard': 'de identiteitskaart',
-      'residencePermit': 'de verblijfsvergunning',
-      'drivingLicence': 'het rijbewijs',
-      'other': 'het document',
-    });
-    return '• Houd $_temp0 achter je telefoon, zoals in het voorbeeld\n• Haal je telefoonhoesje eraf als het lezen niet lukt\n• Dit kan 10–30 seconden duren';
-  }
-
-  @override
-  String docScanDocument(String documentType) {
-    String _temp0 = intl.Intl.selectLogic(documentType, {
-      'passport': 'Paspoort',
-      'identityCard': 'Identiteitskaart',
-      'residencePermit': 'Verblijfsvergunning',
-      'drivingLicence': 'Rijbewijs',
-      'other': 'Document',
-    });
-    return '$_temp0 scannen';
-  }
-
-  @override
-  String get docNfcNotAvailable => 'NFC is niet beschikbaar';
-
-  @override
-  String get docPersonalInformation => 'Persoonsgegevens';
-
-  @override
-  String get docSurname => 'Achternaam';
-
-  @override
-  String get docOtherNames => 'Voornamen';
-
-  @override
-  String get docDateOfBirth => 'Geboortedatum';
-
-  @override
-  String get docPlaceOfBirth => 'Geboorteplaats';
-
-  @override
-  String get docDocumentInformation => 'Documentgegevens';
-
-  @override
-  String get docDocumentNumber => 'Documentnummer';
-
-  @override
-  String get docIssuingMemberState => 'Lidstaat van afgifte';
-
-  @override
-  String get docIssuingAuthority => 'Afgegeven door';
-
-  @override
-  String get docDateOfIssue => 'Datum van afgifte';
-
-  @override
-  String get docDateOfExpiry => 'Vervaldatum';
-
-  @override
-  String get docDrivingLicenceDataTitle => 'Rijbewijsgegevens';
-
-  @override
-  String get docUnableToLoadPhoto => 'Foto kan niet worden geladen';
-
-  @override
   String get docCategories => 'Categorieën';
 
   @override
-  String get docCategory => 'Categorie';
-
-  @override
-  String get docCategoryDateOfIssue => 'Datum van afgifte';
-
-  @override
-  String get docCategoryDateOfExpiry => 'Vervaldatum';
-
-  @override
-  String get docWalletDocumentNumber => 'Documentnummer';
-
-  @override
-  String get docWalletAdded => 'Toegevoegd';
-
-  @override
-  String get docRemoveFromWallet => 'Verwijderen uit wallet';
-
-  @override
-  String get docFullName => 'Volledige naam';
-
-  @override
   String get docNationality => 'Nationaliteit';
-
-  @override
-  String get docDocument => 'Document';
-
-  @override
-  String get docGender => 'Geslacht';
-
-  @override
-  String get docExpiryDate => 'Vervaldatum';
-
-  @override
-  String get docCountry => 'Land';
-
-  @override
-  String get docVersion => 'Versie';
-
-  @override
-  String get docOptionalData => 'Optionele gegevens';
-
-  @override
-  String get docAvailableDataGroups => 'Beschikbare datagroepen';
-
-  @override
-  String docDataGroupsRead(int count, int total) {
-    return 'Datagroepen gelezen: $count/$total';
-  }
-
-  @override
-  String get docActiveAuthenticationAvailable => 'Actieve authenticatie beschikbaar';
 
   @override
   String get docWebAuthSession => 'Webauthenticatiesessie';
@@ -415,18 +175,6 @@ class AppLocalizationsNl extends AppLocalizations {
   @override
   String docWebAuthSessionId(String sessionId) {
     return 'Sessie-ID: $sessionId';
-  }
-
-  @override
-  String docDocumentDataTitle(String documentType) {
-    String _temp0 = intl.Intl.selectLogic(documentType, {
-      'passport': 'Paspoortgegevens',
-      'identityCard': 'Gegevens identiteitskaart',
-      'residencePermit': 'Gegevens verblijfsvergunning',
-      'drivingLicence': 'Rijbewijsgegevens',
-      'other': 'Documentgegevens',
-    });
-    return '$_temp0';
   }
 
   @override
@@ -446,24 +194,6 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get docImageUnsupportedType => 'Onbekend of niet-ondersteund afbeeldingstype.';
-
-  @override
-  String get docIllustrationPassport => 'PASPOORT';
-
-  @override
-  String get docIllustrationIssuer => 'Koninkrijk Voorbeeld';
-
-  @override
-  String get docIllustrationName => 'Naam: Jan Jansen';
-
-  @override
-  String get docIllustrationNationality => 'Nationaliteit: NL';
-
-  @override
-  String get docIllustrationDob => 'Geb.: 01-01-1990';
-
-  @override
-  String get docIllustrationDrivingLicence => 'RIJBEWIJS';
 
   @override
   String get docPhotoStepLabel => 'Documentfoto';
@@ -580,46 +310,13 @@ class AppLocalizationsNl extends AppLocalizations {
   String get faceTimeoutPerformAction => 'voer de actie uit';
 
   @override
-  String get faceStepLabel => 'Gezichtsverificatie';
-
-  @override
   String get faceBack => 'Terug';
-
-  @override
-  String get faceSettingUp => 'Gezichtsverificatie voorbereiden';
-
-  @override
-  String get faceTakesAMoment => 'Dit duurt maar even';
-
-  @override
-  String get faceLoadingOpeningCamera => 'Camera openen';
-
-  @override
-  String get faceLoadingModels => 'Gezichtsmodellen laden';
-
-  @override
-  String get faceAlmostDone => 'Bijna klaar…';
 
   @override
   String get faceHoldStill => 'Niet bewegen';
 
   @override
   String get faceOpeningCamera => 'Camera openen...';
-
-  @override
-  String get faceHowItWorks => 'Zo werkt het';
-
-  @override
-  String get faceStepCenterFace => 'Plaats je gezicht midden in het ovaal';
-
-  @override
-  String get faceStepFollowPrompts => 'Volg de instructies op het scherm';
-
-  @override
-  String get faceStart => 'Starten';
-
-  @override
-  String get facePreparing => 'Voorbereiden…';
 
   @override
   String get faceTipNoFace => 'Plaats je gezicht in het ovaal';
@@ -652,55 +349,10 @@ class AppLocalizationsNl extends AppLocalizations {
   String get faceTipGetReady => 'Maak je klaar…';
 
   @override
-  String get faceExtraBadge => 'extra';
-
-  @override
-  String get faceVerifyingIdentity => 'Identiteit controleren...';
-
-  @override
-  String get faceGoBack => 'Terug';
-
-  @override
   String get faceTryAgain => 'Opnieuw proberen';
 
   @override
   String get faceVerificationFailed => 'Verificatie mislukt';
-
-  @override
-  String faceScoreMatch(String threshold) {
-    return 'Overeenkomst (≥$threshold%)';
-  }
-
-  @override
-  String get faceScoreAntiSpoof => 'Anti-spoofing';
-
-  @override
-  String get faceNotAvailable => 'n.v.t.';
-
-  @override
-  String faceScoreRppg(int count) {
-    return 'rPPG ($count metingen)';
-  }
-
-  @override
-  String faceBpm(String bpm) {
-    return '$bpm spm';
-  }
-
-  @override
-  String get faceScoreLivenessActions => 'Echtheidsacties';
-
-  @override
-  String get facePassed => 'geslaagd';
-
-  @override
-  String get faceFailed => 'mislukt';
-
-  @override
-  String get faceScoreIdentityConsistent => 'Identiteit consistent';
-
-  @override
-  String get faceChangedMidSession => 'gezicht veranderde tijdens de sessie';
 
   @override
   String get faceDocumentPhoto => 'Documentfoto';
@@ -740,26 +392,11 @@ class AppLocalizationsNl extends AppLocalizations {
   }
 
   @override
-  String get faceIrisIntroTitle => 'Verifiëren met de Iris SDK';
-
-  @override
   String get faceIrisIntroBody =>
       'De Iris SDK opent een eigen camerascherm om te controleren dat er echt iemand voor de camera zit, en vergelijkt dat gezicht daarna met de pasfoto op je document.';
 
   @override
-  String get faceIrisWhatToExpect => 'Wat kun je verwachten';
-
-  @override
-  String get faceIrisStep1 => 'Er opent een camerascherm van de Iris SDK';
-
-  @override
   String get faceIrisStep2 => 'Kijk recht in de camera en volg de instructies';
-
-  @override
-  String get faceIrisStep3 => 'Blijf stil tot het klaar is — dit duurt maar even';
-
-  @override
-  String get faceStartVerification => 'Verificatie starten';
 
   @override
   String get faceSelfieIntroTitle => 'Maak even een selfie';
@@ -788,20 +425,11 @@ class AppLocalizationsNl extends AppLocalizations {
       'Je hebt de verificatie geannuleerd. Tik hieronder om het opnieuw te proberen.';
 
   @override
-  String get faceRegulaIntroTitle => 'Controleer dat jij het echt bent';
-
-  @override
   String get faceRegulaIntroBody =>
       'Er opent een camerascherm dat controleert of er een levend persoon aanwezig is. De verificatiedienst vergelijkt daarna je gezicht met de foto op de chip van je document.';
 
   @override
-  String get faceRegulaStep1 => 'Er opent een camerascherm';
-
-  @override
   String get faceRegulaStep2 => 'Kijk recht in de camera en volg de aanwijzingen';
-
-  @override
-  String get faceRegulaStep3 => 'Blijf stil tot het klaar is — dit duurt maar even';
 
   @override
   String get faceRegulaOpeningCamera => 'Camera openen…';
@@ -813,19 +441,6 @@ class AppLocalizationsNl extends AppLocalizations {
   @override
   String get faceRegulaCancelledSubtitle =>
       'Je hebt de verificatie geannuleerd. Tik hieronder om het opnieuw te proberen.';
-
-  @override
-  String get faceRegulaMatching => 'Je gezicht wordt vergeleken met de foto op je document…';
-
-  @override
-  String get faceRegulaNoMatchSubtitle =>
-      'Je gezicht kwam niet overeen met de foto op je document. Scan je document opnieuw om het nog eens te proberen.';
-
-  @override
-  String get faceRegulaMatchUnavailable => 'Je gezicht kon nu niet worden vergeleken met de foto op je document.';
-
-  @override
-  String get faceRegulaScanAgain => 'Document opnieuw scannen';
 
   @override
   String faceRegulaFailedError(String error) {
@@ -854,16 +469,6 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get faceRetry => 'Opnieuw proberen';
-
-  @override
-  String get proofingConsentTitle => 'Verzoek om identiteitsverificatie';
-
-  @override
-  String get proofingConsentIntro =>
-      'wil je identiteit verifiëren met een identiteitsdocument. Als je je document scant en de gezichtsverificatie afrondt, wordt het resultaat hieronder naar hen teruggestuurd.';
-
-  @override
-  String get proofingConsentRequesting => 'Ze vragen om:';
 
   @override
   String get proofingConsentExpired => 'Dit verzoek is verlopen.';
@@ -953,9 +558,6 @@ class AppLocalizationsNl extends AppLocalizations {
   }
 
   @override
-  String get proofingAddToWallet => 'Toevoegen aan wallet';
-
-  @override
   String get proofingDialogOk => 'OK';
 
   @override
@@ -968,38 +570,6 @@ class AppLocalizationsNl extends AppLocalizations {
       'other': 'Document scannen',
     });
     return '$_temp0';
-  }
-
-  @override
-  String proofingPositionDocument(String docType) {
-    String _temp0 = intl.Intl.selectLogic(docType, {
-      'passport': 'paspoort',
-      'identityCard': 'identiteitskaart',
-      'residencePermit': 'verblijfsvergunning',
-      'drivingLicence': 'rijbewijs',
-      'other': 'document',
-    });
-    return 'Houd je $_temp0 voor de camera';
-  }
-
-  @override
-  String get proofingScanMrzInstructions =>
-      'Lijn de machineleesbare zone (MRZ) uit met het kader onderaan het scherm. Houd je telefoon stil tot het scannen klaar is.';
-
-  @override
-  String get proofingScanMrzPhotoInstructions =>
-      'Leg de hele kant met de machineleesbare zone (MRZ) binnen het kader, op een vlakke ondergrond en in goed licht. Houd je telefoon stil: zodra de MRZ gelezen is, wordt van deze kant ook een foto gemaakt.';
-
-  @override
-  String proofingEnterDetailsManually(String docType) {
-    String _temp0 = intl.Intl.selectLogic(docType, {
-      'passport': 'paspoort',
-      'identityCard': 'identiteitskaart',
-      'residencePermit': 'verblijfsvergunning',
-      'drivingLicence': 'rijbewijs',
-      'other': 'document',
-    });
-    return 'Gegevens van je $_temp0 handmatig invoeren';
   }
 
   @override

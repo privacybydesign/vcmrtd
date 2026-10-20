@@ -4,11 +4,11 @@ import 'dart:math' as math;
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:image/image.dart' as img;
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/theme/brand_theme.dart';
+import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
 /// The longest side of the photo the document_photo step sends: sharp
@@ -410,34 +410,35 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: switch (_state) {
-        _PhotoState.review => _buildReview(context),
-        _ => _buildCamera(context),
-      },
+    return GuidedStatusBar(
+      backdrop: Backdrop.dark,
+      child: Scaffold(
+        backgroundColor: context.guided.header,
+        body: switch (_state) {
+          _PhotoState.review => _buildReview(context),
+          _ => _buildCamera(context),
+        },
+      ),
     );
   }
 
-  /// The back button + step badge, in white over the camera like the MRZ
+  /// The back button, title and step bar on the dark header, like the MRZ
   /// scanner's (ScannerWrapper).
   Widget _buildTopBar(BuildContext context) {
-    return SizedBox(
-      height: 48,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: IconButton(
-              tooltip: context.l10n.docBack,
-              icon: Icon(PlatformIcons(context).back, color: Colors.white),
-              onPressed: _state == _PhotoState.capturing ? null : _back,
-            ),
+    final l10n = context.l10n;
+    return Column(
+      children: [
+        GuidedTopBar(
+          leading: GuidedRoundButton(
+            icon: Icons.chevron_left,
+            tooltip: l10n.docBack,
+            backdrop: Backdrop.dark,
+            onPressed: _state == _PhotoState.capturing ? null : _back,
           ),
-          StepBadge(current: widget.stepNumber, total: widget.totalSteps, label: context.l10n.docPhotoStepLabel),
-        ],
-      ),
+          center: GuidedTopBarTitle(l10n.docPhotoStepLabel, backdrop: Backdrop.dark),
+        ),
+        GuidedStepBar(step: widget.stepNumber, total: widget.totalSteps, backdrop: Backdrop.dark),
+      ],
     );
   }
 
@@ -450,23 +451,22 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
       padding: const EdgeInsets.only(bottom: 4),
       child: Text(
         l10n.docPhotoSideProgress(front ? l10n.docPhotoSideFront : l10n.docPhotoSideBack, _index + 1, _sideCount),
-        style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600, letterSpacing: 0.5),
+        style: TextStyle(color: context.guided.stepLabelOnDark, fontSize: 13, fontWeight: FontWeight.w700),
       ),
     );
   }
 
   Widget _buildHeader(BuildContext context, {required String title, required String message}) {
+    final g = context.guided;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSideIndicator(context),
-          Text(
-            title,
-            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-          Text(message, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+          GuidedHeading(title, style: g.heading(20, color: Colors.white, height: 1.3)),
+          const SizedBox(height: 4),
+          Text(message, style: TextStyle(color: g.heroMuted, fontSize: 15, height: 1.4)),
         ],
       ),
     );
@@ -480,20 +480,18 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
   Widget _buildCameraActions(BuildContext context, {required bool front}) {
     final l10n = context.l10n;
     final ready = _state == _PhotoState.preview;
+    // The main action on the dark header, so it stands out whatever the primary.
+    final style = context.guided.heroButtonStyle;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+      padding: guidedBottomButtonPadding.copyWith(top: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (_state == _PhotoState.error)
-            ElevatedButton(
-              style: context.brand.guided.primaryButtonStyle,
-              onPressed: _openCamera,
-              child: Text(l10n.faceTryAgain),
-            )
+            ElevatedButton(style: style, onPressed: _openCamera, child: Text(l10n.faceTryAgain))
           else
             ElevatedButton.icon(
-              style: context.brand.guided.primaryButtonStyle,
+              style: style,
               onPressed: ready && !_sending ? _capture : null,
               icon: _state == _PhotoState.capturing
                   ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
@@ -523,7 +521,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
           frameRatio: _frameRatio,
           child: SizedBox.expand(
             child: _state == _PhotoState.opening || _state == _PhotoState.error
-                ? const ColoredBox(color: Colors.black)
+                ? ColoredBox(color: context.guided.header)
                 : _camera.buildPreview(context),
           ),
         ),
@@ -540,7 +538,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
               const Spacer(),
               if (_error != null)
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                   child: Text(
                     _error!,
                     textAlign: TextAlign.center,
@@ -569,21 +567,19 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
           ),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(20),
               child: Image.memory(_photo!, fit: BoxFit.contain, gaplessPlayback: true),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+            padding: guidedBottomButtonPadding,
             child: Row(
               children: [
                 Expanded(
                   child: OutlinedButton(
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
                       foregroundColor: Colors.white,
-                      side: const BorderSide(color: Colors.white),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      side: const BorderSide(color: Colors.white, width: 2),
                     ),
                     onPressed: _sending ? null : _retake,
                     child: Text(l10n.docPhotoRetake),
@@ -592,7 +588,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
                 const SizedBox(width: 16),
                 Expanded(
                   child: ElevatedButton(
-                    style: context.brand.guided.primaryButtonStyle,
+                    style: context.guided.heroButtonStyle,
                     onPressed: _sending ? null : _usePhoto,
                     child: Text(l10n.docPhotoUse),
                   ),

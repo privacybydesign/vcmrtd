@@ -194,6 +194,15 @@ void main() {
       expect(_contrast(AppColors.bodyText, Colors.white), greaterThanOrEqualTo(_aaNormalText));
       expect(_contrast(guided.muted, Colors.white), greaterThanOrEqualTo(_aaNormalText));
     });
+
+    test('secondary text stays at WCAG AA for a text colour that only just reads on white', () {
+      // #707070 is 4.95:1 on white; softened 15% and 20% it would drop below 4.5:1.
+      final branding = AppBranding.fromSession(const ProofingBranding(name: 'Acme', textColor: '#707070'));
+      expect(branding.text, const Color(0xFF707070));
+      final guided = brandThemeFor(branding).guided;
+      expect(_contrast(guided.bodyText, Colors.white), greaterThanOrEqualTo(_aaNormalText));
+      expect(_contrast(guided.muted, Colors.white), greaterThanOrEqualTo(_aaNormalText));
+    });
   });
 
   group('home screen branding', () {
