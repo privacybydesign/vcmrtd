@@ -6,7 +6,10 @@ import 'package:idem/providers/face_api_provider.dart';
 import 'package:idem/services/face_verification_outcome.dart';
 import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/services/regula_face_service.dart';
+import 'package:idem/widgets/common/face_verification_views.dart';
+import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:idem/widgets/pages/regula_face_verification_screen.dart';
+import 'package:mrz_capture/mrz_capture.dart' show StepBadge;
 import 'package:vcmrtd/vcmrtd.dart' show FaceMatch;
 
 class _FakeRegula implements RegulaFaceService {
@@ -95,6 +98,26 @@ void main() {
     await tester.tap(find.text('Try Again'));
     await tester.pump();
     expect(verified.single.livenessTransactionId, 'tx-2');
+  });
+
+  testWidgets('the result and busy views after the intro keep the guided layout', (tester) async {
+    final regula = _FakeRegula([
+      const RegulaLivenessResult(isLive: false, transactionId: 'tx-1'),
+      const RegulaLivenessResult(isLive: true, transactionId: 'tx-2'),
+    ]);
+    await _pump(tester, regula);
+
+    await tester.tap(find.text('Start selfie check'));
+    await tester.pump();
+    expect(find.descendant(of: find.byType(FaceStepScaffold), matching: find.byType(FaceResultView)), findsOneWidget);
+    expect(find.byType(GuidedStepBar), findsOneWidget);
+    expect(find.byType(StepBadge), findsNothing);
+
+    await tester.tap(find.text('Try Again'));
+    await tester.pump();
+    expect(find.descendant(of: find.byType(FaceStepScaffold), matching: find.byType(FaceBusyView)), findsOneWidget);
+    expect(find.byType(GuidedStepBar), findsOneWidget);
+    expect(find.byType(StepBadge), findsNothing);
   });
 
   testWidgets('cancelling shows the cancelled state', (tester) async {
