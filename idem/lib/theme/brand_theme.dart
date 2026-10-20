@@ -4,31 +4,15 @@ import 'package:idem/theme/app_theme.dart';
 /// Per-brand look, carried on [ThemeData.extensions] and built by
 /// [brandThemeFor].
 ///
-/// Every colour and style here is an override: null means "keep the widget's
-/// own default". Widgets read it through [BrandContext.brand], which falls
-/// back to [BrandTheme.idem] (all nulls, the classic layout) when no theme
-/// carries one (e.g. a bare MaterialApp in a widget test).
+/// Widgets read it through [BrandContext.brand], which falls back to Idem's
+/// own look when no theme carries one (e.g. a bare MaterialApp in a widget
+/// test).
 @immutable
 class BrandTheme extends ThemeExtension<BrandTheme> {
-  const BrandTheme({
-    required this.name,
-    this.logo,
-    this.accent,
-    this.success,
-    this.ink,
-    this.mutedText,
-    this.headingFontFamily,
-    this.homeBackgroundGradient,
-    this.documentOptionAccent,
-    this.badgeBackground,
-    this.badgeForeground,
-    this.proofingBannerColor,
-    this.primaryButtonStyle,
-    this.secondaryButtonStyle,
-    this.guided,
-  });
+  const BrandTheme({required this.name, this.logo, required this.guided});
 
-  static const idem = BrandTheme(name: 'VCMRTD');
+  /// Idem's own look, for when no theme carries one.
+  static final idem = brandThemeFor(AppBranding.idem);
 
   /// The brand's name: the home app bar title, the wordmark when there is no
   /// [logo], and the logo's semantic label when there is.
@@ -37,42 +21,8 @@ class BrandTheme extends ThemeExtension<BrandTheme> {
   /// Square brand mark; see [BrandMark].
   final ImageProvider? logo;
 
-  /// Highlight colour for interactive and in-progress states (NFC waiting, links).
-  final Color? accent;
-
-  /// Colour for completed and verified states.
-  final Color? success;
-
-  /// Primary text colour.
-  final Color? ink;
-
-  /// Secondary text colour.
-  final Color? mutedText;
-
-  /// Font family for headings; body text takes the theme's default family.
-  final String? headingFontFamily;
-
-  /// Top-to-bottom gradient behind the home screen.
-  final List<Color>? homeBackgroundGradient;
-
-  /// Icon colour for every option card on the home screen.
-  final Color? documentOptionAccent;
-
-  final Color? badgeBackground;
-  final Color? badgeForeground;
-
-  /// Strip under the home app bar while a proofing session is connected.
-  final Color? proofingBannerColor;
-
-  /// Style for the main call-to-action buttons (continue, submit, start).
-  final ButtonStyle? primaryButtonStyle;
-
-  /// Style for the alternative action next to a primary one (decline).
-  final ButtonStyle? secondaryButtonStyle;
-
-  /// When set, screens use the guided layout (dark hero, step progress, flat
-  /// bordered cards) instead of the classic Idem layout.
-  final GuidedStyle? guided;
+  /// The guided layout's palette (dark hero, step progress, flat bordered cards).
+  final GuidedStyle guided;
 
   @override
   BrandTheme copyWith() => this;

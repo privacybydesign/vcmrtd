@@ -32,7 +32,6 @@ import 'package:idem/widgets/common/proofing_step_submission.dart';
 import 'package:idem/widgets/pages/qr_scanner_screen.dart';
 import 'package:idem/widgets/pages/scanner_wrapper.dart';
 import 'package:idem/widgets/pages/settings_screen.dart';
-import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:idem/widgets/pages/guided_manual_entry_screen.dart';
 import 'package:idem/providers/wallet_provider.dart';
 import 'package:idem/theme/brand_theme.dart';
@@ -337,7 +336,7 @@ void _continueAtServerStep(
   }
 
   if (currentStep == stepDocumentCapture) {
-    context.go(context.guided != null ? _chooseDocumentPath : selectDocTypePath);
+    context.go(_chooseDocumentPath);
     return;
   }
 
@@ -496,7 +495,7 @@ void _afterConsent(BuildContext context, ActiveProofingSession session) {
   final steps = session.info.steps;
   if (steps == null || steps.contains(stepDocumentCapture)) {
     // The guided flow is QR-first: pick which document to use next.
-    context.go(context.guided != null ? _chooseDocumentPath : selectDocTypePath);
+    context.go(_chooseDocumentPath);
     return;
   }
 
@@ -904,9 +903,6 @@ GoRouter createRouter({
         path: selectDocTypePath,
         builder: (context, state) {
           return DocumentTypeSelectionScreen(
-            onDocumentTypeSelected: (docType) {
-              context.pushMrzReaderScreen(MrzReaderRouteParams(documentType: docType));
-            },
             onSettingsPressed: context.pushSettingsScreen,
             onScanQrPressed: context.pushQrScannerScreen,
             onContinueProofingSession: () => context.push(_chooseDocumentPath),
@@ -917,7 +913,7 @@ GoRouter createRouter({
         path: _settingsPath,
         builder: (context, state) => SettingsScreen(
           onBackPressed: context.pop,
-          onSavedDocumentsPressed: context.guided != null ? () => context.push(_savedDocumentsPath) : null,
+          onSavedDocumentsPressed: () => context.push(_savedDocumentsPath),
         ),
       ),
       GoRoute(
@@ -1038,21 +1034,13 @@ GoRouter createRouter({
           void onComplete(ScannedMRZ scannedMrz) => _afterDocumentCaptured(context, scannedMrz, params.documentType);
           return _ReportsStepStarted(
             step: stepDocumentCapture,
-            child: context.guided != null
-                ? GuidedManualEntryScreen(
-                    documentType: params.documentType,
-                    onBack: context.pop,
-                    onManualEntryComplete: onComplete,
-                    stepNumber: plan.documentCaptureStepNumber ?? FlowStepPlan.defaultDocumentCaptureStep,
-                    totalSteps: plan.totalSteps,
-                  )
-                : ManualEntryScreen(
-                    documentType: params.documentType,
-                    onBack: context.pop,
-                    onManualEntryComplete: onComplete,
-                    stepNumber: plan.documentCaptureStepNumber ?? FlowStepPlan.defaultDocumentCaptureStep,
-                    totalSteps: plan.totalSteps,
-                  ),
+            child: GuidedManualEntryScreen(
+              documentType: params.documentType,
+              onBack: context.pop,
+              onManualEntryComplete: onComplete,
+              stepNumber: plan.documentCaptureStepNumber ?? FlowStepPlan.defaultDocumentCaptureStep,
+              totalSteps: plan.totalSteps,
+            ),
           );
         },
       ),

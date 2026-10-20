@@ -59,23 +59,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final guided = context.guided;
-    if (guided != null) return _buildGuided(guided);
-
-    return Stack(
-      children: [
-        _QrOverlay(
-          child: MRZCameraView(showOverlay: false, routeObserver: widget.routeObserver, onImage: _processFrame),
-        ),
-        SafeArea(
-          child: IconButton(
-            tooltip: context.l10n.docBack,
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: widget.onBack,
-          ),
-        ),
-      ],
-    );
+    return _buildGuided(context.guided);
   }
 }
 
@@ -248,64 +232,4 @@ class _GuidedQrFramePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_GuidedQrFramePainter old) => old.frame != frame || old.scrim != scrim;
-}
-
-/// Darkens everything outside a centered square, with a white border marking
-/// where the QR code should be held.
-class _QrOverlay extends StatelessWidget {
-  const _QrOverlay({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (_, c) {
-        final side = (c.maxWidth < c.maxHeight ? c.maxWidth : c.maxHeight) * 0.7;
-        final rect = RRect.fromLTRBR(
-          (c.maxWidth - side) / 2,
-          (c.maxHeight - side) / 2,
-          (c.maxWidth + side) / 2,
-          (c.maxHeight + side) / 2,
-          const Radius.circular(16),
-        );
-        return Stack(
-          children: [
-            child,
-            ClipPath(
-              clipper: _SquareHoleClipper(rect: rect),
-              child: Container(foregroundDecoration: const BoxDecoration(color: Color.fromRGBO(0, 0, 0, 0.45))),
-            ),
-            Positioned(
-              left: rect.left,
-              top: rect.top,
-              child: Container(
-                width: rect.width,
-                height: rect.height,
-                decoration: BoxDecoration(
-                  border: Border.all(width: 2.0, color: Colors.white),
-                  borderRadius: BorderRadius.all(rect.tlRadius),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _SquareHoleClipper extends CustomClipper<Path> {
-  _SquareHoleClipper({required this.rect});
-
-  final RRect rect;
-
-  @override
-  Path getClip(Size size) => Path()
-    ..addRRect(rect)
-    ..addRect(Rect.fromLTWH(0.0, 0.0, size.width, size.height))
-    ..fillType = PathFillType.evenOdd;
-
-  @override
-  bool shouldReclip(_SquareHoleClipper oldClipper) => false;
 }

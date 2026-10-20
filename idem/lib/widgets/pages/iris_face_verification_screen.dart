@@ -153,28 +153,16 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
 
   @override
   Widget build(BuildContext context) {
-    final guided = context.guided;
-    if (guided != null && _status == _Status.intro) return _buildGuidedIntro(guided);
+    if (_status == _Status.intro) return _buildGuidedIntro(context.guided);
     return FaceStepScaffold(
       stepNumber: widget.stepNumber,
       totalSteps: widget.totalSteps,
       onBack: widget.onBackPressed,
       child: switch (_status) {
-        _Status.intro => _buildIntro(),
-        _Status.launching => _buildLaunching(),
+        _Status.intro || _Status.launching => _buildLaunching(),
         _Status.continuing => FaceBusyView(label: context.l10n.faceContinuing),
         _Status.result => _buildResult(),
       },
-    );
-  }
-
-  Widget _buildIntro() {
-    final l10n = context.l10n;
-    return FaceIntroView(
-      title: l10n.faceIrisIntroTitle,
-      body: l10n.faceIrisIntroBody,
-      steps: [l10n.faceIrisStep1, l10n.faceIrisStep2, l10n.faceIrisStep3],
-      onStart: _runVerification,
     );
   }
 

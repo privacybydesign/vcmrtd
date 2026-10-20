@@ -27,7 +27,7 @@ void main() {
     testWidgets('shows the relying party name and a catch-all label when nothing was restricted', (tester) async {
       await tester.pumpWidget(_app(ProofingSessionConsentScreen(info: _info(), onConsent: () {}, onDecline: () {})));
 
-      expect(find.text('acme-tenant'), findsOneWidget);
+      expect(find.text('acme-tenant wants to verify your identity'), findsOneWidget);
       expect(find.text('Everything the app reads from your document'), findsOneWidget);
     });
 

@@ -28,11 +28,7 @@ Widget _home(ThemeData theme) {
     child: MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       theme: theme,
-      home: DocumentTypeSelectionScreen(
-        onDocumentTypeSelected: (_) {},
-        onSettingsPressed: () {},
-        onScanQrPressed: () {},
-      ),
+      home: DocumentTypeSelectionScreen(onSettingsPressed: () {}, onScanQrPressed: () {}),
     ),
   );
 }
@@ -51,7 +47,7 @@ void main() {
     test('highlights on the header stay readable, even with a near-black primary', () {
       const dark = AppBranding(name: 'Dark', primary: Color(0xFF18181B), secondary: Color(0xFF52525B));
       for (final branding in [AppBranding.idem, dark]) {
-        final guided = appTheme(branding).extension<BrandTheme>()!.guided!;
+        final guided = appTheme(branding).extension<BrandTheme>()!.guided;
         for (final color in [guided.heroAccent, guided.heroEyebrow, guided.stepLabelOnDark]) {
           expect(_contrast(color, guided.header), greaterThanOrEqualTo(_aaLargeText), reason: branding.name);
         }
@@ -59,33 +55,33 @@ void main() {
     });
 
     test('Idem\'s own buttons stand apart from its header and text', () {
-      final guided = appTheme().extension<BrandTheme>()!.guided!;
+      final guided = appTheme().extension<BrandTheme>()!.guided;
       expect(_contrast(guided.action, guided.header), greaterThanOrEqualTo(1.5));
       expect(guided.action, isNot(guided.ink));
       expect(guided.heroButtonStyle, same(guided.primaryButtonStyle));
     });
 
     test('Idem has its own type and button shape; a tenant keeps the design\'s', () {
-      final idem = appTheme().extension<BrandTheme>()!.guided!;
+      final idem = appTheme().extension<BrandTheme>()!.guided;
       expect(idem.headingFontFamily, isNull);
       expect(idem.primaryButtonStyle.shape?.resolve({}), isA<RoundedRectangleBorder>());
 
       const tenant = AppBranding(name: 'Acme', primary: Color(0xFF036BD2), secondary: Color(0xFF5412C7));
-      final guided = appTheme(tenant).extension<BrandTheme>()!.guided!;
+      final guided = appTheme(tenant).extension<BrandTheme>()!.guided;
       expect(guided.headingFontFamily, AppFonts.heading);
       expect(guided.primaryButtonStyle.shape?.resolve({}), isA<StadiumBorder>());
     });
 
     test('a primary as dark as the header gets a white hero button', () {
       const branding = AppBranding(name: 'Dark', primary: Color(0xFF101E1E), secondary: Color(0xFF52525B));
-      final guided = appTheme(branding).extension<BrandTheme>()!.guided!;
+      final guided = appTheme(branding).extension<BrandTheme>()!.guided;
       expect(guided.heroButtonStyle.backgroundColor?.resolve({}), Colors.white);
       expect(guided.heroButtonStyle.foregroundColor?.resolve({}), guided.ink);
     });
 
     test('takes its colours from the branding', () {
       const branding = AppBranding(name: 'Acme', primary: Color(0xFF036BD2), secondary: Color(0xFF5412C7));
-      final guided = appTheme(branding).extension<BrandTheme>()!.guided!;
+      final guided = appTheme(branding).extension<BrandTheme>()!.guided;
       expect(guided.action, branding.primary);
       expect(guided.stepLabel, branding.secondary);
     });
@@ -191,7 +187,7 @@ void main() {
     });
 
     test('the default colours meet WCAG AA contrast on their backgrounds', () {
-      final guided = appTheme().extension<BrandTheme>()!.guided!;
+      final guided = appTheme().extension<BrandTheme>()!.guided;
       expect(_contrast(guided.action, Colors.white), greaterThanOrEqualTo(_aaNormalText));
       expect(_contrast(guided.stepLabel, guided.badgeBackground), greaterThanOrEqualTo(_aaNormalText));
       expect(_contrast(AppColors.ink, AppColors.surface), greaterThanOrEqualTo(_aaNormalText));

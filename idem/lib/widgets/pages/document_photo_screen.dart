@@ -9,7 +9,6 @@ import 'package:image/image.dart' as img;
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/theme/brand_theme.dart';
-import 'package:idem/widgets/common/button_styles.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 
 /// The longest side of the photo the document_photo step sends: sharp
@@ -488,13 +487,13 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
         children: [
           if (_state == _PhotoState.error)
             ElevatedButton(
-              style: context.brand.primaryButtonStyle ?? actionButtonStyle,
+              style: context.brand.guided.primaryButtonStyle,
               onPressed: _openCamera,
               child: Text(l10n.faceTryAgain),
             )
           else
             ElevatedButton.icon(
-              style: context.brand.primaryButtonStyle ?? actionButtonStyle,
+              style: context.brand.guided.primaryButtonStyle,
               onPressed: ready && !_sending ? _capture : null,
               icon: _state == _PhotoState.capturing
                   ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
@@ -593,7 +592,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
                 const SizedBox(width: 16),
                 Expanded(
                   child: ElevatedButton(
-                    style: context.brand.primaryButtonStyle ?? actionButtonStyle,
+                    style: context.brand.guided.primaryButtonStyle,
                     onPressed: _sending ? null : _usePhoto,
                     child: Text(l10n.docPhotoUse),
                   ),

@@ -18,7 +18,7 @@ class SavedDocumentsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final g = context.guided!;
+    final g = context.guided;
     final l10n = context.l10n;
     final cards = ref.watch(walletProvider).reversed.toList();
     final date = DateFormat(documentDatePattern, l10n.localeName);

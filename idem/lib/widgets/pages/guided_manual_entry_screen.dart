@@ -94,7 +94,7 @@ class _GuidedManualEntryScreenState extends State<GuidedManualEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final g = context.guided!;
+    final g = context.guided;
     final l10n = context.l10n;
     final docType = widget.documentType.name;
     final (title, intro) = _usesMrzLine

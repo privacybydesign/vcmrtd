@@ -14,7 +14,6 @@ import 'package:idem/providers/reader_providers.dart';
 import 'package:idem/providers/wallet_provider.dart';
 import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/theme/app_theme.dart';
-import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/routing.dart';
 import 'package:idem/widgets/pages/choose_document_screen.dart';
@@ -105,11 +104,6 @@ void _tallViewport(WidgetTester tester) {
 }
 
 void main() {
-  test('the app theme uses the guided layout; a theme without a brand the classic one', () {
-    expect(appTheme().extension<BrandTheme>()!.guided, isNotNull);
-    expect(BrandTheme.idem.guided, isNull);
-  });
-
   testWidgets('the guided manual entry counts the flow\'s steps, not a fixed three', (tester) async {
     await tester.pumpWidget(
       _app(
@@ -356,17 +350,6 @@ void main() {
       );
       expect(find.text('🏦'), findsOneWidget);
     });
-
-    testWidgets('a theme without a brand keeps the classic consent screen', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          theme: ThemeData(),
-          home: ProofingSessionConsentScreen(info: _session('Acme Bank'), onConsent: () {}, onDecline: () {}),
-        ),
-      );
-      expect(find.text('Identity proofing request'), findsOneWidget);
-    });
   });
 
   group('guided manual entry', () {
@@ -467,11 +450,7 @@ void main() {
       var scans = 0;
       await tester.pumpWidget(
         _app(
-          DocumentTypeSelectionScreen(
-            onDocumentTypeSelected: (_) {},
-            onSettingsPressed: () {},
-            onScanQrPressed: () => scans++,
-          ),
+          DocumentTypeSelectionScreen(onSettingsPressed: () {}, onScanQrPressed: () => scans++),
           overrides: [
             walletProvider.overrideWith(() => _SeededWallet([_walletCard('1', DocumentType.passport)])),
           ],
@@ -486,11 +465,7 @@ void main() {
     testWidgets('announces its title as a heading', (tester) async {
       _tallViewport(tester);
       final semantics = tester.ensureSemantics();
-      await tester.pumpWidget(
-        _app(
-          DocumentTypeSelectionScreen(onDocumentTypeSelected: (_) {}, onSettingsPressed: () {}, onScanQrPressed: () {}),
-        ),
-      );
+      await tester.pumpWidget(_app(DocumentTypeSelectionScreen(onSettingsPressed: () {}, onScanQrPressed: () {})));
       expect(tester.getSemantics(find.text('Verify your identity with a QR code')), isSemantics(isHeader: true));
       semantics.dispose();
     });
@@ -501,7 +476,6 @@ void main() {
       await tester.pumpWidget(
         _app(
           DocumentTypeSelectionScreen(
-            onDocumentTypeSelected: (_) {},
             onSettingsPressed: () {},
             onScanQrPressed: () {},
             onContinueProofingSession: () => continued++,
@@ -604,33 +578,6 @@ void main() {
     await tester.pump();
     expect(find.text('Take a quick selfie'), findsNothing);
     expect(find.textContaining('No video is stored'), findsNothing);
-  });
-
-  testWidgets('guided selfie check waits for Start instead of starting once ready', (tester) async {
-    _tallViewport(tester);
-    Widget screen(GlobalKey<FlutterFaceVerificationScreenState> key) => FlutterFaceVerificationScreen(
-      key: key,
-      testEngine: FaceVerificationEngine.withWorker(_IdleWorker()),
-      nfcImageBytes: Uint8List.fromList(img.encodePng(img.Image(width: 2, height: 2))),
-      onBackPressed: () {},
-      onVerified: (_) {},
-    );
-    final guided = GlobalKey<FlutterFaceVerificationScreenState>();
-    await tester.pumpWidget(_app(screen(guided)));
-    await tester.pump();
-    expect(guided.currentState!.debugAutoStarts, isFalse);
-
-    // The classic layout has no intro, so it still starts by itself.
-    final classic = GlobalKey<FlutterFaceVerificationScreenState>();
-    await tester.pumpWidget(
-      MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: screen(classic),
-      ),
-    );
-    await tester.pump();
-    expect(classic.currentState!.debugAutoStarts, isTrue);
   });
 
   test('wallet cards made from a read document can be shared again', () {

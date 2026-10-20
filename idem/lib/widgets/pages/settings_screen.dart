@@ -18,17 +18,6 @@ import 'package:idem/providers/app_version_provider.dart';
 const _regulaLabel = 'Regula';
 const _irisLabel = 'Iris SDK';
 
-String _faceEngineLabel(AppLocalizations l10n, FaceEngineChoice choice) => switch (choice) {
-  FaceEngineChoice.regula => _regulaLabel,
-  FaceEngineChoice.onDevice => l10n.docFaceEngineOpenSource,
-  FaceEngineChoice.iris => _irisLabel,
-};
-
-String _livenessModeLabel(AppLocalizations l10n, LivenessMode mode) => switch (mode) {
-  LivenessMode.passive => l10n.docLivenessPassive,
-  LivenessMode.active => l10n.docLivenessActive,
-};
-
 String _ocrEngineLabel(OcrEngine engine) => switch (engine) {
   OcrEngine.googleMlKit => 'Google ML Kit',
   OcrEngine.tesseract4android => 'Tesseract4Android',
@@ -51,75 +40,7 @@ class SettingsScreen extends ConsumerWidget {
   final bool? showOcrEngineForTesting;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final guided = context.guided;
-    if (guided != null) return _buildGuided(context, ref, guided);
-
-    final l10n = context.l10n;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.docSettingsTitle),
-        leading: IconButton(tooltip: l10n.docBack, icon: const Icon(Icons.arrow_back), onPressed: onBackPressed),
-      ),
-      body: ListView(
-        children: [
-          SwitchListTile(
-            title: Text(l10n.docActiveAuthentication),
-            subtitle: Text(l10n.docActiveAuthenticationSubtitle),
-            value: ref.watch(activeAuthenticationProvider),
-            onChanged: (value) => ref.read(activeAuthenticationProvider.notifier).set(value),
-          ),
-          const Divider(height: 1),
-          ListTile(
-            title: Text(l10n.docFaceEngine),
-            subtitle: Text(_faceEngineLabel(l10n, ref.watch(faceEngineProvider))),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _pickOption<FaceEngineChoice>(
-              context: context,
-              title: l10n.docFaceEngine,
-              current: ref.read(faceEngineProvider),
-              options: [for (final choice in FaceEngineChoice.values) (choice, _faceEngineLabel(l10n, choice))],
-              onSelected: (choice) => ref.read(faceEngineProvider.notifier).set(choice),
-            ),
-          ),
-          // Regula falls back to on-device when a session doesn't offer it.
-          if (ref.watch(faceEngineProvider) != FaceEngineChoice.iris) ...[
-            const Divider(height: 1),
-            ListTile(
-              title: Text(l10n.docLivenessDetection),
-              subtitle: Text(_livenessModeLabel(l10n, ref.watch(livenessModeProvider))),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => _pickOption<LivenessMode>(
-                context: context,
-                title: l10n.docLivenessDetection,
-                current: ref.read(livenessModeProvider),
-                options: [
-                  for (final mode in const [LivenessMode.passive, LivenessMode.active])
-                    (mode, _livenessModeLabel(l10n, mode)),
-                ],
-                onSelected: (mode) => ref.read(livenessModeProvider.notifier).set(mode),
-              ),
-            ),
-          ],
-          if (showOcrEngineForTesting ?? Platform.isAndroid) ...[
-            const Divider(height: 1),
-            ListTile(
-              title: Text(l10n.docOcrEngine),
-              subtitle: Text(_ocrEngineLabel(ref.watch(ocrEngineProvider))),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => _pickOption<OcrEngine>(
-                context: context,
-                title: l10n.docOcrEngine,
-                current: ref.read(ocrEngineProvider),
-                options: [for (final engine in OcrEngine.values) (engine, _ocrEngineLabel(engine))],
-                onSelected: (engine) => ref.read(ocrEngineProvider.notifier).set(engine),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context, WidgetRef ref) => _buildGuided(context, ref, context.guided);
 
   /// Guided layout: the same settings, grouped into cards with plain-language labels.
   Widget _buildGuided(BuildContext context, WidgetRef ref, GuidedStyle g) {

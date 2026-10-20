@@ -13,8 +13,8 @@ Uint8List _fakePortraitPng() {
 }
 
 Future<void> _startVerification(WidgetTester tester) async {
-  expect(find.text('Start Verification'), findsOneWidget);
-  await tester.tap(find.text('Start Verification'));
+  expect(find.text('Start selfie check'), findsOneWidget);
+  await tester.tap(find.text('Start selfie check'));
   await tester.pump();
 }
 
@@ -37,7 +37,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Start Verification'), findsOneWidget);
+    expect(find.text('Start selfie check'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 

@@ -125,12 +125,11 @@ class _RegulaFaceVerificationScreenState extends ConsumerState<RegulaFaceVerific
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final guided = context.guided;
-    if (guided != null && _status == _Status.intro) {
+    if (_status == _Status.intro) {
       return GuidedFaceIntroView(
         stepNumber: widget.stepNumber,
         totalSteps: widget.totalSteps,
-        style: guided,
+        style: context.guided,
         title: l10n.faceSelfieIntroTitle,
         body: l10n.faceRegulaIntroBody,
         tips: [
@@ -149,13 +148,7 @@ class _RegulaFaceVerificationScreenState extends ConsumerState<RegulaFaceVerific
       totalSteps: widget.totalSteps,
       onBack: widget.onBackPressed,
       child: switch (_status) {
-        _Status.intro => FaceIntroView(
-          title: l10n.faceRegulaIntroTitle,
-          body: l10n.faceRegulaIntroBody,
-          steps: [l10n.faceRegulaStep1, l10n.faceRegulaStep2, l10n.faceRegulaStep3],
-          onStart: _run,
-        ),
-        _Status.launching => FaceBusyView(label: l10n.faceRegulaOpeningCamera),
+        _Status.intro || _Status.launching => FaceBusyView(label: l10n.faceRegulaOpeningCamera),
         _Status.matching => FaceBusyView(label: l10n.faceRegulaMatching),
         _Status.continuing => FaceBusyView(label: l10n.faceContinuing),
         _Status.noMatch => FaceResultView(

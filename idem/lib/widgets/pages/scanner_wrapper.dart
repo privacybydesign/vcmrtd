@@ -2,7 +2,6 @@
 // Provides callbacks for the scanner page to integrate with navigation
 
 import 'package:flutter/material.dart';
-import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:idem/theme/brand_theme.dart';
@@ -102,93 +101,7 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
 
   @override
   Widget build(BuildContext context) {
-    final guided = context.guided;
-    if (guided != null) return _buildGuided(context, guided);
-
-    final scannerBuilder = widget.scannerBuilder ?? _defaultScannerBuilder;
-
-    return Scaffold(
-      body: Stack(
-        children: [
-          scannerBuilder(documentType: widget.documentType, scanPicture: widget.scanPicture, onSuccess: _onScanned),
-          Positioned(left: 0, right: 0, top: 0, child: _buildTopOverlay(context)),
-          Positioned(left: 0, right: 0, bottom: 0, child: _buildBottomControls(context)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTopOverlay(BuildContext context) {
-    return SafeArea(
-      bottom: false,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            height: 48,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: IconButton(
-                    icon: Icon(PlatformIcons(context).back, color: Colors.white),
-                    onPressed: widget.onBack,
-                  ),
-                ),
-                StepBadge(
-                  current: widget.stepNumber,
-                  total: widget.totalSteps,
-                  label: context.l10n.proofingScanDocument(widget.documentType.name),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Padding(padding: const EdgeInsets.fromLTRB(30, 0, 24, 0), child: _buildOverlayCard(context)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOverlayCard(BuildContext context) {
-    // The inset a Card's default margin used to give it.
-    return Padding(
-      padding: const EdgeInsets.all(4),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            context.l10n.proofingPositionDocument(widget.documentType.name),
-            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-          Text(
-            widget.scanPicture == MrzScanPicture.capture
-                ? context.l10n.proofingScanMrzPhotoInstructions
-                : context.l10n.proofingScanMrzInstructions,
-            style: TextStyle(color: Colors.white70, fontSize: 14),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomControls(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(30, 24, 24, 32),
-      child: SafeArea(
-        top: false,
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black),
-          onPressed: widget.onManualEntry,
-          child: Text(
-            context.l10n.proofingEnterDetailsManually(widget.documentType.name),
-            style: const TextStyle(color: Colors.black),
-          ),
-        ),
-      ),
-    );
+    return _buildGuided(context, context.guided);
   }
 
   /// Guided layout: a dark scrim with a card-shaped cut-out and the
@@ -324,7 +237,7 @@ class _GuidedScanSheetState extends State<_GuidedScanSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final g = context.guided!;
+    final g = context.guided;
     final l10n = context.l10n;
     final docType = widget.documentType.name;
     final (title, tip) = (l10n.scanSheetTitle(docType), l10n.scanSheetTip(docType));
@@ -507,14 +420,6 @@ class _GuidedScanFramePainter extends CustomPainter {
   @override
   bool shouldRepaint(_GuidedScanFramePainter old) =>
       old.frame != frame || old.mrzLines != mrzLines || old.scrim != scrim || old.highlight != highlight;
-}
-
-Widget _defaultScannerBuilder({
-  required DocumentType documentType,
-  required MrzScanPicture scanPicture,
-  required MrzScannedWithPicture onSuccess,
-}) {
-  return ScannerPage(documentType: documentType, scanPicture: scanPicture, onSuccess: onSuccess);
 }
 
 Widget _guidedScannerBuilder({

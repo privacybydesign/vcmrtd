@@ -5,12 +5,8 @@ import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/services/flow_step_plan.dart';
 import 'package:idem/widgets/pages/data_screen_widgets/submit_to_proofing_session.dart';
-import 'package:idem/widgets/guided/guided_widgets.dart';
 
-import '../../widgets/pages/data_screen_widgets/document_data_view.dart';
 import '../../widgets/pages/data_screen_widgets/guided_document_data_view.dart';
-import '../../widgets/pages/data_screen_widgets/personal_data_section.dart';
-import '../../widgets/pages/data_screen_widgets/security_content.dart';
 
 class PassportDataScreen extends StatelessWidget {
   final PassportData document;
@@ -19,7 +15,7 @@ class PassportDataScreen extends StatelessWidget {
   final DocumentType documentType;
 
   /// Set when every step was already sent to the session as it completed -
-  /// see [DocumentDataView.submittedTo].
+  /// see [GuidedDocumentDataView.submittedTo].
   final String? submittedTo;
   final PendingStep pendingStep;
 
@@ -48,26 +44,7 @@ class PassportDataScreen extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    if (context.guided != null) return _buildGuided(context);
-    return DocumentDataView(
-      title: context.l10n.docDocumentDataTitle(documentType.name),
-      document: document,
-      rawDocument: passportDataResult,
-      documentType: documentType,
-      submittedTo: submittedTo,
-      pendingStep: pendingStep,
-      onBackPressed: onBackPressed,
-      onShare: onShare,
-      stepNumber: stepNumber,
-      totalSteps: totalSteps,
-      children: [
-        PersonalDataSection(passport: document),
-        const SizedBox(height: 20),
-        SecurityContent(passport: document),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => _buildGuided(context);
 
   Widget _buildGuided(BuildContext context) {
     final l10n = context.l10n;

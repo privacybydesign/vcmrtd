@@ -18,7 +18,6 @@ import 'package:vcmrtd/vcmrtd.dart';
 
 import 'package:idem/providers/reader_providers.dart';
 import 'package:idem/routing.dart';
-import 'package:idem/widgets/common/animated_nfc_status_widget.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:idem/widgets/pages/nfc_guidance_screen.dart';
 import 'package:idem/widgets/pages/nfc_reading_screen.dart';
@@ -157,7 +156,7 @@ void main() {
     });
   });
 
-  group('NfcReadingScreen — active states render the status widget', () {
+  group('NfcReadingScreen — active states render the reading screen', () {
     final states = <String, DocumentReaderState>{
       'connecting': DocumentReaderConnecting(),
       'cardAccess': DocumentReaderReadingCardAccess(),
@@ -171,14 +170,14 @@ void main() {
     };
 
     states.forEach((name, state) {
-      testWidgets('renders AnimatedNFCStatusWidget for $name', (tester) async {
+      testWidgets('renders the reading screen for $name', (tester) async {
         _setLargeViewport(tester);
         _FakeReader.initialState = state;
         await tester.pumpWidget(_app(DocumentType.passport));
         await tester.pump(const Duration(milliseconds: 100));
 
-        expect(find.text('2 of 4 · Read ${DocumentType.passport.displayName}'), findsOneWidget);
-        expect(find.byType(AnimatedNFCStatusWidget), findsOneWidget);
+        expect(find.byType(NfcGuidanceScreen), findsNothing);
+        expect(find.byTooltip('Cancel reading'), findsOneWidget);
 
         // Drain any continuous animations.
         await tester.pump(const Duration(milliseconds: 600));
@@ -195,8 +194,8 @@ void main() {
       await tester.pumpWidget(_app(DocumentType.passport));
       await tester.pump(const Duration(milliseconds: 600));
 
-      expect(find.byType(AnimatedNFCStatusWidget), findsOneWidget);
-      expect(find.text('Try Again'), findsOneWidget);
+      expect(find.text('Reading failed'), findsOneWidget);
+      expect(find.text('Try again'), findsOneWidget);
     });
 
     testWidgets('cancelled state renders error UI', (tester) async {
@@ -205,7 +204,7 @@ void main() {
       await tester.pumpWidget(_app(DocumentType.passport));
       await tester.pump(const Duration(milliseconds: 600));
 
-      expect(find.byType(AnimatedNFCStatusWidget), findsOneWidget);
+      expect(find.text('Reading stopped'), findsOneWidget);
     });
 
     testWidgets('failed state with a lost-connection error shows the reposition tip immediately', (tester) async {
@@ -246,14 +245,14 @@ void main() {
       // Still on the reading screen (not regressed to the guidance screen or
       // a hard failure) since the retry budget isn't exhausted yet.
       expect(find.byType(NfcGuidanceScreen), findsNothing);
-      expect(find.text('2 of 4 · Read ${DocumentType.passport.displayName}'), findsOneWidget);
+      expect(find.byTooltip('Cancel reading'), findsOneWidget);
 
       // Reading resumes: the tip must revert immediately, not stay stuck
       // showing a stale warning.
       reader.emit(DocumentReaderReadingDataGroup(dataGroup: 'DG2', progress: 0.6));
       await tester.pump();
       expect(find.textContaining('Slowly lift your phone off the document'), findsNothing);
-      expect(find.textContaining('Keep your phone and the document still'), findsOneWidget);
+      expect(find.text('Don’t move your phone'), findsOneWidget);
     });
   });
 
@@ -264,7 +263,7 @@ void main() {
       await tester.pumpWidget(_app(DocumentType.identityCard));
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('2 of 4 · Read ${DocumentType.identityCard.displayName}'), findsOneWidget);
+      expect(find.text('Hold your phone on the ID card'), findsOneWidget);
       await tester.pump(const Duration(milliseconds: 600));
     });
   });
@@ -280,7 +279,7 @@ void main() {
       await tester.pumpWidget(_app(DocumentType.passport));
       await tester.pump(const Duration(milliseconds: 600));
 
-      await tester.tap(find.text('Try Again'));
+      await tester.tap(find.text('Try again'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 600));
 
@@ -295,8 +294,7 @@ void main() {
       await tester.pumpWidget(_app(DocumentType.passport));
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('Cancel'), findsOneWidget);
-      await tester.tap(find.text('Cancel'));
+      await tester.tap(find.byTooltip('Cancel reading'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 600));
     });

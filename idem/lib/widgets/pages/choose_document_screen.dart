@@ -44,7 +44,7 @@ class _ChooseDocumentScreenState extends State<ChooseDocumentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final g = context.guided!;
+    final g = context.guided;
     final l10n = context.l10n;
     final saved = widget.savedDocuments;
     final picked = _picked;
@@ -188,7 +188,7 @@ class _SavedDocumentOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final g = context.guided!;
+    final g = context.guided;
     final l10n = context.l10n;
     final details = [
       ?card.documentNumber,

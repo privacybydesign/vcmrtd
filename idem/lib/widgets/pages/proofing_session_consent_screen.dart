@@ -6,7 +6,6 @@ import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/widgets/common/brand_mark.dart';
 import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
-import 'package:idem/widgets/common/button_styles.dart';
 
 /// Shown right after the app fetches a scanned/deep-linked proofing session,
 /// before anything else happens: who's asking, what they want, and an
@@ -48,85 +47,7 @@ class _ProofingSessionConsentScreenState extends State<ProofingSessionConsentScr
     final info = widget.info;
     final expiresIn = info.expiresAt.difference(DateTime.now());
     final expired = expiresIn.isNegative;
-    final guided = context.guided;
-    if (guided != null) return widget._buildGuided(context, guided, expiresIn: expiresIn, expired: expired);
-    final l10n = context.l10n;
-
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.proofingConsentTitle)),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.verified_user, color: context.brand.success ?? Colors.green, size: 28),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              info.relyingParty,
-                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        l10n.proofingConsentIntro,
-                        style: TextStyle(fontSize: 15, color: Colors.grey[700], height: 1.4),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(l10n.proofingConsentRequesting, style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              for (final label in _requestedAttributeLabels(l10n, info.requestedAttributes))
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4.0),
-                  child: Row(
-                    children: [
-                      Icon(Icons.check_circle_outline, size: 20, color: context.brand.success ?? Colors.green),
-                      const SizedBox(width: 8),
-                      Expanded(child: Text(label)),
-                    ],
-                  ),
-                ),
-              const SizedBox(height: 20),
-              Text(
-                expired ? l10n.proofingConsentExpired : l10n.proofingConsentExpiresIn(_formatDuration(l10n, expiresIn)),
-                style: TextStyle(fontSize: 13, color: expired ? Colors.red[700] : Colors.grey[600]),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: expired ? null : widget.onConsent,
-                icon: const Icon(Icons.check),
-                label: Text(l10n.proofingContinue),
-                style: context.brand.primaryButtonStyle ?? actionButtonStyle,
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton.icon(
-                onPressed: widget.onDecline,
-                icon: const Icon(Icons.close),
-                label: Text(l10n.proofingDecline),
-                style: context.brand.secondaryButtonStyle ?? actionButtonStyle,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    return widget._buildGuided(context, context.guided, expiresIn: expiresIn, expired: expired);
   }
 }
 

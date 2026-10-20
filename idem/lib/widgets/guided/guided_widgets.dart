@@ -11,8 +11,7 @@ import 'package:idem/theme/brand_theme.dart';
 const guidedBottomButtonPadding = EdgeInsets.fromLTRB(20, 0, 20, 28);
 
 extension GuidedContext on BuildContext {
-  /// The active brand's guided style, or null for the classic layout.
-  GuidedStyle? get guided => brand.guided;
+  GuidedStyle get guided => brand.guided;
 }
 
 const _roundButtonSize = 44.0;
@@ -36,7 +35,7 @@ class GuidedRoundButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final g = context.guided!;
+    final g = context.guided;
     final onDark = backdrop == Backdrop.dark;
     final outlined = fill == GuidedRoundButtonFill.outlined;
     final foreground = onDark ? Colors.white : g.ink;
@@ -109,7 +108,7 @@ class GuidedTopBarTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final g = context.guided!;
+    final g = context.guided;
     return GuidedHeading(
       text,
       style: g.heading(16, weight: FontWeight.w600, color: backdrop == Backdrop.dark ? Colors.white : g.ink),
@@ -147,7 +146,7 @@ class GuidedStepBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final g = context.guided!;
+    final g = context.guided;
     final onDark = backdrop == Backdrop.dark;
     final filled = onDark ? g.heroAccent : g.action;
     final empty = onDark ? Colors.white.withValues(alpha: 0.2) : g.border;
@@ -183,7 +182,7 @@ class GuidedStepLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final g = context.guided!;
+    final g = context.guided;
     return Text(
       context.l10n.guidedStepOf(step, total),
       style: TextStyle(
@@ -212,7 +211,7 @@ class GuidedButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final g = context.guided!;
+    final g = context.guided;
     final style = switch (kind) {
       GuidedButtonKind.primary => g.primaryButtonStyle,
       GuidedButtonKind.secondary => g.secondaryButtonStyle,
@@ -306,7 +305,7 @@ class GuidedSaveForNextTime extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final g = context.guided!;
+    final g = context.guided;
     return MergeSemantics(
       child: Material(
         color: Colors.white,

@@ -301,18 +301,6 @@ BrandTheme brandThemeFor(AppBranding branding) {
   return BrandTheme(
     name: branding.name,
     logo: branding.logo,
-    accent: branding.link ?? primary,
-    success: success,
-    ink: ink,
-    mutedText: bodyText,
-    headingFontFamily: branding.font.heading,
-    homeBackgroundGradient: [header, surface],
-    documentOptionAccent: primary,
-    badgeBackground: badgeBackground,
-    badgeForeground: secondary,
-    proofingBannerColor: secondary,
-    primaryButtonStyle: primaryButtonStyle,
-    secondaryButtonStyle: secondaryButtonStyle,
     guided: GuidedStyle(
       headingFontFamily: branding.font.heading,
       ink: ink,
@@ -350,7 +338,7 @@ BrandTheme brandThemeFor(AppBranding branding) {
 
 ThemeData appTheme([AppBranding branding = AppBranding.idem]) {
   final brand = brandThemeFor(branding);
-  final guided = brand.guided!;
+  final guided = brand.guided;
   final font = branding.font;
   final buttonText = _buttonText(font);
   final colorScheme = ColorScheme.fromSeed(seedColor: branding.primary).copyWith(
@@ -390,7 +378,7 @@ ThemeData appTheme([AppBranding branding = AppBranding.idem]) {
         color: Colors.white,
       ),
     ),
-    elevatedButtonTheme: ElevatedButtonThemeData(style: brand.primaryButtonStyle),
+    elevatedButtonTheme: ElevatedButtonThemeData(style: guided.primaryButtonStyle),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: guided.ink,

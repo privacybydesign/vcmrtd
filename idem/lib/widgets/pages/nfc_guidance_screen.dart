@@ -1,4 +1,4 @@
-﻿// Created for UX improvement - NFC positioning guidance screen
+// Created for UX improvement - NFC positioning guidance screen
 // Implementation based on hive design specifications
 
 import 'dart:async';
@@ -6,10 +6,7 @@ import 'dart:async';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
-import 'package:mrz_capture/mrz_capture.dart';
 import 'package:idem/l10n/l10n.dart';
-import 'package:idem/widgets/common/document_illustrations.dart';
 import 'package:idem/widgets/common/brand_mark.dart';
 import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
@@ -41,7 +38,6 @@ class NfcGuidanceScreen extends StatefulWidget {
 
 class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
-  late Animation<double> _positionAnimation;
   var _isNfcAvailable = false;
   late Timer _timerStateUpdater;
 
@@ -49,14 +45,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with SingleTicker
   void initState() {
     super.initState();
 
-    // Setup positioning animation
     _animationController = AnimationController(duration: const Duration(seconds: 1), vsync: this);
-
-    _positionAnimation = Tween<double>(
-      begin: 0.0,
-      end: 2.0,
-    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeInOut));
-    // Start animation loop
     _animationController.repeat(reverse: true);
 
     _initNFCState();
@@ -92,48 +81,7 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with SingleTicker
 
   @override
   Widget build(BuildContext context) {
-    final guided = context.guided;
-    if (guided != null) return _buildGuided(guided);
-
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildTopBar(context),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      context.l10n.docNfcGuidanceTitle,
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF212121)),
-                    ),
-                    const SizedBox(height: 4.0),
-                    Text(
-                      context.l10n.docNfcGuidancePlacePhone(widget.documentType.name),
-                      style: const TextStyle(fontSize: 15, color: Color(0xFF6B7280)),
-                    ),
-                    const SizedBox(height: 24.0),
-                    // Animation area
-                    SizedBox(height: 240, child: _buildPositioningDiagram()),
-                    const SizedBox(height: 24.0),
-
-                    // Instruction area
-                    _buildInstructions(),
-                    const SizedBox(height: 24.0),
-
-                    // Button area
-                    _buildButtons(),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    return _buildGuided(context.guided);
   }
 
   Widget _buildGuided(GuidedStyle g) {
@@ -235,93 +183,6 @@ class _NfcGuidanceScreenState extends State<NfcGuidanceScreen> with SingleTicker
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildTopBar(BuildContext context) {
-    return StepBadgeTopBar(
-      icon: PlatformIcons(context).back,
-      onBack: widget.onBack,
-      current: widget.stepNumber,
-      total: widget.totalSteps,
-      label: context.l10n.docReadDocument(widget.documentType.name),
-    );
-  }
-
-  Widget _buildPositioningDiagram() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Positioned(bottom: 60, child: buildDocumentIllustration(widget.documentType)),
-          // Only the phone moves; the rest isn't rebuilt every frame.
-          AnimatedBuilder(
-            animation: _positionAnimation,
-            child: buildPhoneIllustration(),
-            builder: (context, phone) => Positioned(top: 40 + (_positionAnimation.value * 20), child: phone!),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInstructions() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Tips
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(8)),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                context.l10n.docNfcGuidanceTipsTitle,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                context.l10n.docNfcGuidanceTips(widget.documentType.name),
-                style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280), height: 1.4),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildButtons() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (_isNfcAvailable)
-          ElevatedButton(
-            onPressed: widget.onStartReading,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text(
-                context.l10n.docScanDocument(widget.documentType.name),
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-              ),
-            ),
-          )
-        else
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Text(
-              context.l10n.docNfcNotAvailable,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            ),
-          ),
-      ],
     );
   }
 }

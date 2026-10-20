@@ -16,6 +16,7 @@ import 'package:face_verification/face_verification.dart';
 import 'package:idem/widgets/pages/face_verification_entry_screen.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/routing.dart';
+import 'package:idem/widgets/pages/guided_manual_entry_screen.dart';
 import 'package:idem/services/face_verification_outcome.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:idem/widgets/pages/document_photo_screen.dart';
@@ -329,9 +330,7 @@ void main() {
       await tester.pumpWidget(_routerApp(router));
       await tester.pump();
 
-      expect(find.text('Passport'), findsOneWidget);
-      expect(find.text('Identity Card'), findsOneWidget);
-      expect(find.text('Driving Licence'), findsOneWidget);
+      expect(find.text('Verify your identity with a QR code'), findsOneWidget);
     });
 
     testWidgets('back on face verification and NFC reached with go (nothing to pop) returns to document '
@@ -381,24 +380,8 @@ void main() {
       await tester.pump();
 
       expect(find.byType(ScannerWrapper), findsOneWidget);
-      expect(find.text('1 of 4 · Scan ID card'), findsOneWidget);
+      expect(find.text('Scan ID card'), findsOneWidget);
       expect(find.text('fake route scanner ${DocumentType.identityCard.name}'), findsOneWidget);
-    });
-
-    testWidgets('document selection callback navigates to MRZ reader', (tester) async {
-      final router = createRouter(scannerBuilder: _scannerBuilder());
-      addTearDown(router.dispose);
-
-      await tester.pumpWidget(_routerApp(router));
-      await tester.pumpAndSettle();
-
-      tester
-          .widget<DocumentTypeSelectionScreen>(find.byType(DocumentTypeSelectionScreen))
-          .onDocumentTypeSelected(DocumentType.identityCard);
-      await tester.pump();
-      await tester.pump();
-
-      expect(find.byType(ScannerWrapper), findsOneWidget);
     });
 
     testWidgets('settings callback navigates to the settings screen and back', (tester) async {
@@ -464,7 +447,7 @@ void main() {
       tester.widgetList<ScannerWrapper>(find.byType(ScannerWrapper)).last.onManualEntry();
       await tester.pump();
       await tester.pump();
-      expect(find.byType(ManualEntryScreen), findsOneWidget);
+      expect(find.byType(GuidedManualEntryScreen), findsOneWidget);
     });
 
     testWidgets('a successful driving licence NFC read jumps into face verification with its own photo', (
@@ -511,6 +494,10 @@ void main() {
 
     testWidgets('NFC success skips face verification and submits the session on Share when the '
         "session's steps ask for neither selfie, liveness, nor face_match", (tester) async {
+      tester.view.physicalSize = const Size(1200, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
       final router = createRouter(scannerBuilder: _scannerBuilder());
       addTearDown(router.dispose);
       var submits = 0;
@@ -1313,10 +1300,10 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      expect(find.byType(ManualEntryScreen), findsOneWidget);
+      expect(find.byType(GuidedManualEntryScreen), findsOneWidget);
 
       tester
-          .widget<ManualEntryScreen>(find.byType(ManualEntryScreen))
+          .widget<GuidedManualEntryScreen>(find.byType(GuidedManualEntryScreen))
           .onManualEntryComplete(_scannedPassport(DocumentType.passport));
       await tester.pump();
       await tester.pump();
@@ -1324,7 +1311,7 @@ void main() {
       expect(find.byType(NfcReadingScreen), findsOneWidget);
     });
 
-    testWidgets('proofing consent route: Continue pins the session and returns to document selection', (tester) async {
+    testWidgets('proofing consent route: Continue pins the session and goes on to choosing a document', (tester) async {
       final router = createRouter(scannerBuilder: _scannerBuilder());
       addTearDown(router.dispose);
       final sessionRef = const ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok');
@@ -1347,7 +1334,7 @@ void main() {
       await tester.tap(find.text('Continue'));
       await tester.pumpAndSettle();
 
-      expect(router.routeInformationProvider.value.uri.path, '/select_doc_type');
+      expect(router.routeInformationProvider.value.uri.path, '/choose_document');
       final pinned = container.read(activeProofingSessionProvider);
       expect(pinned, isNotNull);
       expect(pinned!.ref.token, 'tok');
@@ -1772,7 +1759,7 @@ void main() {
 
           expect(find.byType(QrScannerScreen), findsNothing);
           expect(find.byType(ProofingSessionConsentScreen), findsOneWidget);
-          expect(find.text('acme-tenant'), findsOneWidget);
+          expect(find.text('acme-tenant wants to verify your identity'), findsOneWidget);
         },
         () => MockClient((request) async {
           // Only a claim gets the session (flutter_test's expect can't run in here).
