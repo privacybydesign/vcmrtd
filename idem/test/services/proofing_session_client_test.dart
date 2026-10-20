@@ -109,6 +109,43 @@ void main() {
     });
   });
 
+  group('ProofingSessionLink.parse', () {
+    test('parses the https App Link as a handover claim', () {
+      final link = ProofingSessionLink.parse(
+        'https://idem.yivi.app/verify?handover=h-1&api=${Uri.encodeQueryComponent('https://proof.example.com')}',
+      );
+      expect(
+        link,
+        isA<ProofingHandoverLink>()
+            .having((l) => l.handoverToken, 'handoverToken', 'h-1')
+            .having((l) => l.apiBase, 'apiBase', 'https://proof.example.com'),
+      );
+    });
+
+    test('parses the staging https App Link as a handover claim', () {
+      final link = ProofingSessionLink.parse(
+        'https://idem.staging.yivi.app/verify?handover=h-1&api=${Uri.encodeQueryComponent('https://proof.example.com')}',
+      );
+      expect(
+        link,
+        isA<ProofingHandoverLink>()
+            .having((l) => l.handoverToken, 'handoverToken', 'h-1')
+            .having((l) => l.apiBase, 'apiBase', 'https://proof.example.com'),
+      );
+    });
+
+    test('rejects the https App Link without an api', () {
+      expect(ProofingSessionLink.parse('https://idem.yivi.app/verify?handover=h-1'), isNull);
+    });
+
+    test('keeps another host\'s https handover link a browser handover', () {
+      expect(
+        ProofingSessionLink.parse('https://proof.example.com/verify?handover=h-1&api=https://proof.example.com'),
+        isA<ProofingBrowserHandoverLink>(),
+      );
+    });
+  });
+
   group('ProofingDocumentInfo', () {
     test('fromPassportData + toJson round-trips MRZ fields, prefers DG11 displayName', () {
       final data = _fakePassportData(nameOfHolder: 'Anna Marià Eriksson');

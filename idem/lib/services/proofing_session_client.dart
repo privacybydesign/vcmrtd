@@ -63,12 +63,21 @@ sealed class ProofingSessionLink {
 
   String get apiBase;
 
+  /// The https App Link / Universal Link that opens this app on a session:
+  /// `https://idem.yivi.app/verify?handover=...&api=...`, the same claim as the
+  /// vcmrtd:// deep link, but one that mail clients and in-app browsers keep
+  /// tappable and that a phone camera opens. Only these hosts (prod, and
+  /// staging for the alpha app) and this path count: any other https link
+  /// carrying a handover is the Web App's own.
+  static const _appLinkHosts = {'idem.yivi.app', 'idem.staging.yivi.app'};
+  static const _appLinkPath = '/verify';
+
   /// Accepts `vcmrtd://verify?handover=...&api=...` (the claim/handover QR's
-  /// and deep link's shape) plus the old session-token shapes
-  /// [ProofingSessionRef.parse] accepts.
+  /// and deep link's shape), its https App Link form on idem.yivi.app, plus the
+  /// old session-token shapes [ProofingSessionRef.parse] accepts.
   static ProofingSessionLink? parse(String raw) {
     final uri = Uri.tryParse(raw);
-    if (uri != null && uri.scheme == 'vcmrtd' && uri.queryParameters.containsKey('handover')) {
+    if (uri != null && (uri.scheme == 'vcmrtd' || _isAppLink(uri)) && uri.queryParameters.containsKey('handover')) {
       final handover = uri.queryParameters['handover'];
       final api = uri.queryParameters['api'];
       if (handover == null || handover.isEmpty || api == null || api.isEmpty) return null;
@@ -84,6 +93,9 @@ sealed class ProofingSessionLink {
     final ref = ProofingSessionRef.parse(raw);
     return ref == null ? null : ProofingSessionTokenLink(ref);
   }
+
+  static bool _isAppLink(Uri uri) =>
+      uri.scheme == 'https' && _appLinkHosts.contains(uri.host) && uri.path == _appLinkPath;
 }
 
 /// A handover QR for the Web App's browser slot: recognised only to tell the

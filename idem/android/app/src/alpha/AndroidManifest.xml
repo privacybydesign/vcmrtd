@@ -1,5 +1,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- The label lives in the flavor manifests rather than main/, so alpha and
          beta can be told apart on a device that has both installed. -->
-    <application android:label="Idem Alpha" />
+    <application android:label="Idem Alpha">
+        <activity android:name=".MainActivity">
+            <!-- Alpha only: the staging App Link host, whose assetlinks.json
+                 names only the alpha app. On Android 8-11 a beta build listing
+                 it would fail verification for idem.yivi.app as well. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https"
+                      android:host="idem.staging.yivi.app"
+                      android:path="/verify" />
+            </intent-filter>
+        </activity>
+    </application>
 </manifest>
