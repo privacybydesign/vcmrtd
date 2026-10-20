@@ -133,12 +133,16 @@ void main() {
         const ProofingBranding(
           name: 'Acme',
           primaryColor: '#7FB2FF',
+          secondaryColor: '#FFF3B0',
+          errorColor: '#FFC0C0',
           textColor: '#999999',
           linkColor: '#99BBFF',
           surfaceColor: '#1A1A1A',
         ),
       );
       expect(branding.primary, AppBranding.idem.primary);
+      expect(branding.secondary, AppBranding.idem.secondary);
+      expect(branding.error, isNull);
       expect(branding.text, isNull);
       expect(branding.link, isNull);
       expect(branding.surface, isNull);

@@ -1,7 +1,17 @@
+require "shellwords"
+
 before_all do
   skip_docs()
   # Ensure that build and profiles directories are present in fastlane directory.
   sh("mkdir -p ./build/ ./profiles/")
+end
+
+# A release build without trusted servers refuses every proofing session
+# (lib/services/trusted_servers.dart), so it isn't built at all.
+def trusted_servers_define
+  servers = ENV["PROOFING_TRUSTED_SERVERS"].to_s.strip
+  UI.user_error!("Set PROOFING_TRUSTED_SERVERS to the proofing servers' origins, comma-separated") if servers.empty?
+  "--dart-define=PROOFING_TRUSTED_SERVERS=#{servers}"
 end
 
 # The app and the library are siblings at the repo root, so each is linted in
@@ -71,7 +81,7 @@ private_lane :android_build_app do |options|
   # In Fastlane it's not possible to mask secrets in the command, while showing the shell output of the command.
   # Therefore, we use environment variables to hide parameter values.
   puts "In the following command, parameter values are hidden using environment variables."
-  cmd = "flutter build $FASTLANE_BUILD_TYPE --flavor $FASTLANE_FLAVOR --release"
+  cmd = "flutter build $FASTLANE_BUILD_TYPE --flavor $FASTLANE_FLAVOR --release #{trusted_servers_define.shellescape}"
   ENV["FASTLANE_BUILD_TYPE"] = options[:build_type]
   ENV["FASTLANE_FLAVOR"] = options[:flavor]
   if options[:keystore_path]
@@ -147,7 +157,10 @@ lane :ios_build_app do |options|
   )
 
   Dir.chdir("..") do
-    sh("flutter", "build", "ipa", "--release", "--export-options-plist", "./ios/Runner/Flutter-Build-IPA.plist")
+    sh(
+      "flutter", "build", "ipa", "--release", trusted_servers_define,
+      "--export-options-plist", "./ios/Runner/Flutter-Build-IPA.plist"
+    )
     sh("cp ./build/ios/ipa/*.ipa ./fastlane/build/app-#{options[:flavor]}-ios-#{export_method}.ipa")
   end
 end

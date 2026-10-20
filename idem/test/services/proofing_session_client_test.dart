@@ -68,6 +68,12 @@ void main() {
     test('is absent from a session without one', () {
       expect(ProofingSessionInfo.fromJson(view(null)).branding, isNull);
     });
+
+    test('without a name is left out instead of failing the session', () {
+      final info = ProofingSessionInfo.fromJson(view({'primaryColor': '#036BD2'}));
+      expect(info.relyingParty, 'CM.com B.V.');
+      expect(info.branding, isNull);
+    });
   });
 
   group('ProofingFaceVerification', () {

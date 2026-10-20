@@ -26,6 +26,9 @@ on:
 
 concurrency: dry-run-${{ github.ref }}
 
+env:
+  PROOFING_TRUSTED_SERVERS: ${{ vars.PROOFING_TRUSTED_SERVERS }}
+
 jobs:
   dry-run-ios:
     if: inputs.platform == 'both' || inputs.platform == 'ios'

@@ -29,10 +29,16 @@ class _LogoClient extends ProofingSessionClient {
   /// When set, fetches wait for it, so a test can end the session meanwhile.
   Completer<void>? gate;
 
+  int failuresLeft = 0;
+
   @override
   Future<Uint8List?> fetchBrandingLogo(ProofingSessionRef ref) async {
     fetches++;
     await gate?.future;
+    if (failuresLeft > 0) {
+      failuresLeft--;
+      throw Exception('offline');
+    }
     return logo;
   }
 }
@@ -70,6 +76,25 @@ void main() {
 
     notifier.reset();
     expect(container.read(activeBrandingProvider).name, AppBranding.idem.name);
+  });
+
+  test('a logo that failed to load is fetched again with the next view', () async {
+    final client = _LogoClient(Uint8List.fromList([1, 2, 3]))..failuresLeft = 1;
+    final container = ProviderContainer(overrides: [proofingSessionClientProvider.overrideWithValue(client)]);
+    addTearDown(container.dispose);
+    final notifier = container.read(activeBrandingProvider.notifier);
+    const branding = ProofingBranding(name: 'CM.com', hasLogo: true);
+
+    await notifier.useSession(_ref, _info(branding: branding));
+    expect(container.read(activeBrandingProvider).name, 'CM.com');
+    expect(container.read(activeBrandingProvider).logo, isNull);
+
+    await notifier.useSession(_ref, _info(branding: branding));
+    expect(client.fetches, 2);
+    expect(container.read(activeBrandingProvider).logo, isA<MemoryImage>());
+
+    await notifier.useSession(_ref, _info(branding: branding));
+    expect(client.fetches, 2);
   });
 
   test('a session without branding gets the app\'s own look', () async {

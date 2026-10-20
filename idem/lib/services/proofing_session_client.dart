@@ -346,9 +346,10 @@ class ProofingSessionInfo {
     faceVerification: json['faceVerification'] is Map<String, dynamic>
         ? ProofingFaceVerification.fromJson(json['faceVerification'] as Map<String, dynamic>)
         : null,
-    branding: json['branding'] is Map<String, dynamic>
-        ? ProofingBranding.fromJson(json['branding'] as Map<String, dynamic>)
-        : null,
+    branding: switch (json['branding']) {
+      final Map<String, dynamic> branding when branding['name'] is String => ProofingBranding.fromJson(branding),
+      _ => null,
+    },
   );
 }
 

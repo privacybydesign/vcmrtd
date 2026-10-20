@@ -56,18 +56,21 @@ class ActiveBrandingNotifier extends Notifier<AppBranding> {
     }
 
     Uint8List? logo;
+    var logoFailed = false;
     if (branding.hasLogo) {
       try {
         logo = await ref.read(proofingSessionClientProvider).fetchBrandingLogo(sessionRef);
       } catch (e) {
+        logoFailed = true;
         _log.warning('branding logo unavailable: $e');
       }
     }
 
     if (generation != _generation) return;
-    _source = source;
     state = AppBranding.fromSession(branding, logo: logo);
-    _built = (source, state);
+    // Not remembered when the logo failed, so the next view fetches it again.
+    _source = logoFailed ? null : source;
+    if (!logoFailed) _built = (source, state);
   }
 
   /// The session [sessionRef] completed or this device lost it (expired,
