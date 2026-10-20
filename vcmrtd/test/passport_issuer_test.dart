@@ -32,6 +32,14 @@ void main() {
       );
       expect(issuer.allowedIrmaHosts, {'irma.example', 'irma2.example'});
     });
+
+    test('refuses to issue a residence permit before any request', () {
+      final issuer = DefaultPassportIssuer(hostName: 'https://issuer.example');
+      expect(
+        () => issuer.startIrmaIssuanceSession(RawDocumentData(dataGroups: {}, efSod: ''), DocumentType.residencePermit),
+        throwsUnsupportedError,
+      );
+    });
   });
 
   group('DefaultPassportIssuer.parseStartValidationResponse', () {

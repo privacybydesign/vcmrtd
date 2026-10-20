@@ -16,6 +16,7 @@ class MrzCaptureLocalizationsEn extends MrzCaptureLocalizations {
     String _temp0 = intl.Intl.selectLogic(docType, {
       'passport': 'Passport',
       'identityCard': 'Identity Card',
+      'residencePermit': 'Residence Permit',
       'drivingLicence': 'Driving Licence',
       'other': 'document',
     });
@@ -34,6 +35,10 @@ class MrzCaptureLocalizationsEn extends MrzCaptureLocalizations {
       '• Identity Card Number: On the front of the card\n• Date of Birth: Listed as \"Date of birth\" or \"DOB\"\n• Expiry Date: Listed as \"Date of expiry\" or \"Valid until\"';
 
   @override
+  String get mrzHelpResidencePermit =>
+      '• Document Number: On the front of the card\n• Date of Birth: Listed as \"Date of birth\" or \"DOB\"\n• Expiry Date: Listed as \"Date of expiry\" or \"Valid until\"';
+
+  @override
   String get mrzHelpDrivingLicence =>
       '• The MRZ is at the bottom of the front side of your driver\'s licence\n• You can also get this by scanning the QR Code on the back of your driver\'s licence\n• It\'s a single line of exactly 30 characters\n• Starts with \"D1\", \"D2\", or \"DL\"';
 
@@ -42,6 +47,7 @@ class MrzCaptureLocalizationsEn extends MrzCaptureLocalizations {
     String _temp0 = intl.Intl.selectLogic(docType, {
       'passport': 'Passport Number',
       'identityCard': 'Identity Card Number',
+      'residencePermit': 'Document Number',
       'drivingLicence': 'Driving Licence Number',
       'other': 'Document Number',
     });
@@ -53,6 +59,7 @@ class MrzCaptureLocalizationsEn extends MrzCaptureLocalizations {
     String _temp0 = intl.Intl.selectLogic(docType, {
       'passport': 'passport',
       'identityCard': 'identity card',
+      'residencePermit': 'residence permit',
       'drivingLicence': 'driving licence',
       'other': 'document',
     });
@@ -67,6 +74,7 @@ class MrzCaptureLocalizationsEn extends MrzCaptureLocalizations {
     String _temp0 = intl.Intl.selectLogic(docType, {
       'passport': 'Passport',
       'identityCard': 'Identity Card',
+      'residencePermit': 'Residence Permit',
       'drivingLicence': 'Driving Licence',
       'other': 'Document',
     });
@@ -78,6 +86,7 @@ class MrzCaptureLocalizationsEn extends MrzCaptureLocalizations {
     String _temp0 = intl.Intl.selectLogic(docType, {
       'passport': 'Passport',
       'identityCard': 'Identity Card',
+      'residencePermit': 'Residence Permit',
       'drivingLicence': 'Driving Licence',
       'other': 'Document',
     });
@@ -107,6 +116,7 @@ class MrzCaptureLocalizationsEn extends MrzCaptureLocalizations {
     String _temp0 = intl.Intl.selectLogic(docType, {
       'passport': 'passport',
       'identityCard': 'identity card',
+      'residencePermit': 'residence permit',
       'drivingLicence': 'driving licence',
       'other': 'document',
     });
@@ -121,6 +131,7 @@ class MrzCaptureLocalizationsEn extends MrzCaptureLocalizations {
     String _temp0 = intl.Intl.selectLogic(docType, {
       'passport': 'Passport',
       'identityCard': 'Identity Card',
+      'residencePermit': 'Residence Permit',
       'drivingLicence': 'Driving Licence',
       'other': 'Document',
     });
@@ -158,6 +169,7 @@ class MrzCaptureLocalizationsEn extends MrzCaptureLocalizations {
     String _temp0 = intl.Intl.selectLogic(docType, {
       'passport': 'Passport',
       'identityCard': 'Identity Card',
+      'residencePermit': 'Residence Permit',
       'drivingLicence': 'Driving Licence',
       'other': 'Document',
     });
@@ -172,6 +184,7 @@ class MrzCaptureLocalizationsEn extends MrzCaptureLocalizations {
     String _temp0 = intl.Intl.selectLogic(docType, {
       'passport': 'passport',
       'identityCard': 'identity card',
+      'residencePermit': 'residence permit',
       'drivingLicence': 'driving licence',
       'other': 'document',
     });

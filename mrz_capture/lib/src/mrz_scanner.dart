@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
@@ -303,11 +303,8 @@ class MRZScannerState extends State<MRZScanner> with RouteAware {
             PassportMrzParser().parse(lines),
             documentType: DocumentType.passport,
           );
-        case DocumentType.identityCard:
-          return ScannedPassportMRZ.fromMRZResult(
-            IdCardMrzParser().parse(lines),
-            documentType: DocumentType.identityCard,
-          );
+        case DocumentType.identityCard || DocumentType.residencePermit:
+          return ScannedPassportMRZ.fromMRZResult(IdCardMrzParser().parse(lines), documentType: widget.documentType);
         case DocumentType.drivingLicence:
           return ScannedDriverLicenseMRZ.fromMRZResult(DrivingLicenceMrzParser().parse(lines));
       }

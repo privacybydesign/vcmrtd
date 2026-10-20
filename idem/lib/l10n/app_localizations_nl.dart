@@ -80,6 +80,9 @@ class AppLocalizationsNl extends AppLocalizations {
   String get idDocumentIdentityCard => 'Identiteitskaart';
 
   @override
+  String get idDocumentResidencePermit => 'Verblijfsvergunning';
+
+  @override
   String get idDocumentDrivingLicence => 'Rijbewijs';
 
   @override
@@ -206,6 +209,7 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'Paspoort',
       'identityCard': 'Identiteitskaart',
+      'residencePermit': 'Verblijfsvergunning',
       'drivingLicence': 'Rijbewijs',
       'other': 'Document',
     });
@@ -217,6 +221,7 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'het paspoort',
       'identityCard': 'de identiteitskaart',
+      'residencePermit': 'de verblijfsvergunning',
       'drivingLicence': 'het rijbewijs',
       'other': 'het document',
     });
@@ -248,6 +253,7 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'het paspoort',
       'identityCard': 'de identiteitskaart',
+      'residencePermit': 'de verblijfsvergunning',
       'drivingLicence': 'het rijbewijs',
       'other': 'het document',
     });
@@ -271,6 +277,7 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'het paspoort',
       'identityCard': 'de identiteitskaart',
+      'residencePermit': 'de verblijfsvergunning',
       'drivingLicence': 'het rijbewijs',
       'other': 'het document',
     });
@@ -285,6 +292,7 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'het paspoort',
       'identityCard': 'de identiteitskaart',
+      'residencePermit': 'de verblijfsvergunning',
       'drivingLicence': 'het rijbewijs',
       'other': 'het document',
     });
@@ -296,6 +304,7 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'Paspoort',
       'identityCard': 'Identiteitskaart',
+      'residencePermit': 'Verblijfsvergunning',
       'drivingLicence': 'Rijbewijs',
       'other': 'Document',
     });
@@ -413,6 +422,7 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'Paspoortgegevens',
       'identityCard': 'Gegevens identiteitskaart',
+      'residencePermit': 'Gegevens verblijfsvergunning',
       'drivingLicence': 'Rijbewijsgegevens',
       'other': 'Documentgegevens',
     });
@@ -953,6 +963,7 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(docType, {
       'passport': 'Paspoort scannen',
       'identityCard': 'Identiteitskaart scannen',
+      'residencePermit': 'Verblijfsvergunning scannen',
       'drivingLicence': 'Rijbewijs scannen',
       'other': 'Document scannen',
     });
@@ -964,6 +975,7 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(docType, {
       'passport': 'paspoort',
       'identityCard': 'identiteitskaart',
+      'residencePermit': 'verblijfsvergunning',
       'drivingLicence': 'rijbewijs',
       'other': 'document',
     });
@@ -983,6 +995,7 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(docType, {
       'passport': 'paspoort',
       'identityCard': 'identiteitskaart',
+      'residencePermit': 'verblijfsvergunning',
       'drivingLicence': 'rijbewijs',
       'other': 'document',
     });
@@ -1234,6 +1247,7 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'paspoort',
       'identityCard': 'identiteitskaart',
+      'residencePermit': 'verblijfsvergunning',
       'drivingLicence': 'rijbewijs',
       'other': 'document',
     });
@@ -1366,6 +1380,7 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'paspoort',
       'identityCard': 'identiteitskaart',
+      'residencePermit': 'verblijfsvergunning',
       'drivingLicence': 'rijbewijs',
       'other': 'document',
     });
@@ -1380,6 +1395,7 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'Paspoort',
       'identityCard': 'Identiteitskaart',
+      'residencePermit': 'Verblijfsvergunning',
       'drivingLicence': 'Rijbewijs',
       'other': 'Document',
     });
@@ -1411,6 +1427,7 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'het paspoort',
       'identityCard': 'de identiteitskaart',
+      'residencePermit': 'de verblijfsvergunning',
       'drivingLicence': 'het rijbewijs',
       'other': 'het document',
     });
@@ -1422,6 +1439,7 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'je paspoort',
       'identityCard': 'je identiteitskaart',
+      'residencePermit': 'je verblijfsvergunning',
       'drivingLicence': 'je rijbewijs',
       'other': 'je document',
     });
@@ -1433,6 +1451,7 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'Sluit het paspoort en leg het op een vlakke, niet-metalen ondergrond.',
       'identityCard': 'Leg de identiteitskaart op een vlakke, niet-metalen ondergrond.',
+      'residencePermit': 'Leg de verblijfsvergunning op een vlakke, niet-metalen ondergrond.',
       'drivingLicence': 'Leg het rijbewijs op een vlakke, niet-metalen ondergrond.',
       'other': 'Leg het document op een vlakke, niet-metalen ondergrond.',
     });
@@ -1472,6 +1491,7 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'het paspoort',
       'identityCard': 'de identiteitskaart',
+      'residencePermit': 'de verblijfsvergunning',
       'drivingLicence': 'het rijbewijs',
       'other': 'het document',
     });
@@ -1486,6 +1506,7 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'je paspoort',
       'identityCard': 'je identiteitskaart',
+      'residencePermit': 'je verblijfsvergunning',
       'drivingLicence': 'je rijbewijs',
       'other': 'je document',
     });
@@ -1500,6 +1521,7 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'het paspoort',
       'identityCard': 'de identiteitskaart',
+      'residencePermit': 'de verblijfsvergunning',
       'drivingLicence': 'het rijbewijs',
       'other': 'het document',
     });
@@ -1535,6 +1557,7 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'het paspoort',
       'identityCard': 'de identiteitskaart',
+      'residencePermit': 'de verblijfsvergunning',
       'drivingLicence': 'het rijbewijs',
       'other': 'het document',
     });
@@ -1546,6 +1569,7 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'het paspoort',
       'identityCard': 'de identiteitskaart',
+      'residencePermit': 'de verblijfsvergunning',
       'drivingLicence': 'het rijbewijs',
       'other': 'het document',
     });
@@ -1566,6 +1590,7 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(docType, {
       'passport': 'Leg de fotopagina in het kader',
       'identityCard': 'Leg de achterkant van je identiteitskaart in het kader',
+      'residencePermit': 'Leg de achterkant van je verblijfsvergunning in het kader',
       'drivingLicence': 'Leg de achterkant van je rijbewijs in het kader',
       'other': 'Leg je document in het kader',
     });
@@ -1578,6 +1603,8 @@ class AppLocalizationsNl extends AppLocalizations {
       'passport':
           'Zorg dat de twee regels tekst onderaan scherp zijn en niet bedekt worden door je vingers of schittering.',
       'identityCard':
+          'Zorg dat de drie regels tekst onderaan scherp zijn en niet bedekt worden door je vingers of schittering.',
+      'residencePermit':
           'Zorg dat de drie regels tekst onderaan scherp zijn en niet bedekt worden door je vingers of schittering.',
       'drivingLicence':
           'Zorg dat de regel tekst onderaan scherp is en niet bedekt wordt door je vingers of schittering.',
@@ -1617,6 +1644,7 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(docType, {
       'passport': 'paspoort',
       'identityCard': 'identiteitskaart',
+      'residencePermit': 'verblijfsvergunning',
       'drivingLicence': 'rijbewijs',
       'other': 'document',
     });
@@ -1638,6 +1666,7 @@ class AppLocalizationsNl extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(docType, {
       'passport': 'Paspoortnummer',
       'identityCard': 'Identiteitskaartnummer',
+      'residencePermit': 'Documentnummer',
       'drivingLicence': 'Rijbewijsnummer',
       'other': 'Documentnummer',
     });

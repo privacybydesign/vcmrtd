@@ -190,7 +190,7 @@ Rect guidedScanFrame(Size size, DocumentType type) => MRZCameraOverlay.frameRect
 
 int _mrzLineCount(DocumentType type) => switch (type) {
   DocumentType.passport => 2,
-  DocumentType.identityCard => 3,
+  DocumentType.identityCard || DocumentType.residencePermit => 3,
   DocumentType.drivingLicence => 1,
 };
 

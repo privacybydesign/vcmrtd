@@ -4,9 +4,10 @@ import 'package:vcmrtd/vcmrtd.dart';
 /// An MRZ that was read, either by the scanner or through manual entry.
 ///
 /// Sealed, so a caller can switch over it exhaustively. There are two shapes,
-/// not three: identity cards come back as a [ScannedPassportMRZ] carrying
-/// `DocumentType.identityCard`, because `mrz_parser` returns the same result
-/// type for the passport and the ID card parser.
+/// not three: identity cards and residence permits come back as a
+/// [ScannedPassportMRZ] carrying their own [DocumentType], because
+/// `mrz_parser` returns the same result type for the passport and the ID card
+/// parser.
 sealed class ScannedMRZ {
   final String documentNumber;
   final String countryCode;

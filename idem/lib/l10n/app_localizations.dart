@@ -218,6 +218,12 @@ abstract class AppLocalizations {
   /// **'Identity card'**
   String get idDocumentIdentityCard;
 
+  /// No description provided for @idDocumentResidencePermit.
+  ///
+  /// In en, this message translates to:
+  /// **'Residence permit'**
+  String get idDocumentResidencePermit;
+
   /// No description provided for @idDocumentDrivingLicence.
   ///
   /// In en, this message translates to:
@@ -455,13 +461,13 @@ abstract class AppLocalizations {
   /// No description provided for @docReadDocument.
   ///
   /// In en, this message translates to:
-  /// **'Read {documentType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{document}}'**
+  /// **'Read {documentType, select, passport{Passport} identityCard{Identity Card} residencePermit{Residence Permit} drivingLicence{Driving Licence} other{document}}'**
   String docReadDocument(String documentType);
 
   /// No description provided for @docIosNfcHoldClose.
   ///
   /// In en, this message translates to:
-  /// **'Hold your phone close to {documentType, select, passport{passport} identityCard{identity card} drivingLicence{driving license} other{document}}'**
+  /// **'Hold your phone close to {documentType, select, passport{passport} identityCard{identity card} residencePermit{residence permit} drivingLicence{driving license} other{document}}'**
   String docIosNfcHoldClose(String documentType);
 
   /// No description provided for @docIosNfcCancelled.
@@ -503,7 +509,7 @@ abstract class AppLocalizations {
   /// No description provided for @docIosNfcReadingData.
   ///
   /// In en, this message translates to:
-  /// **'Reading {documentType, select, passport{passport} identityCard{identity card} drivingLicence{driving license} other{document}} data'**
+  /// **'Reading {documentType, select, passport{passport} identityCard{identity card} residencePermit{residence permit} drivingLicence{driving license} other{document}} data'**
   String docIosNfcReadingData(String documentType);
 
   /// No description provided for @docIosNfcSecurityCheck.
@@ -533,7 +539,7 @@ abstract class AppLocalizations {
   /// No description provided for @docNfcGuidancePlacePhone.
   ///
   /// In en, this message translates to:
-  /// **'Place your phone on the {documentType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{document}}'**
+  /// **'Place your phone on the {documentType, select, passport{Passport} identityCard{Identity Card} residencePermit{Residence Permit} drivingLicence{Driving Licence} other{document}}'**
   String docNfcGuidancePlacePhone(String documentType);
 
   /// No description provided for @docNfcGuidanceTipsTitle.
@@ -545,13 +551,13 @@ abstract class AppLocalizations {
   /// No description provided for @docNfcGuidanceTips.
   ///
   /// In en, this message translates to:
-  /// **'• Place the {documentType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{document}} behind your phone like in the example\n• Remove phone case if reading fails\n• The process may take 10–30 seconds'**
+  /// **'• Place the {documentType, select, passport{Passport} identityCard{Identity Card} residencePermit{Residence Permit} drivingLicence{Driving Licence} other{document}} behind your phone like in the example\n• Remove phone case if reading fails\n• The process may take 10–30 seconds'**
   String docNfcGuidanceTips(String documentType);
 
   /// No description provided for @docScanDocument.
   ///
   /// In en, this message translates to:
-  /// **'Scan {documentType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{document}}'**
+  /// **'Scan {documentType, select, passport{Passport} identityCard{Identity Card} residencePermit{Residence Permit} drivingLicence{Driving Licence} other{document}}'**
   String docScanDocument(String documentType);
 
   /// No description provided for @docNfcNotAvailable.
@@ -761,7 +767,7 @@ abstract class AppLocalizations {
   /// No description provided for @docDocumentDataTitle.
   ///
   /// In en, this message translates to:
-  /// **'{documentType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{Document}} Data'**
+  /// **'{documentType, select, passport{Passport} identityCard{Identity Card} residencePermit{Residence Permit} drivingLicence{Driving Licence} other{Document}} Data'**
   String docDocumentDataTitle(String documentType);
 
   /// No description provided for @docImageNoData.
@@ -1703,13 +1709,13 @@ abstract class AppLocalizations {
   /// No description provided for @proofingScanDocument.
   ///
   /// In en, this message translates to:
-  /// **'Scan {docType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}}'**
+  /// **'Scan {docType, select, passport{passport} identityCard{ID card} residencePermit{residence permit} drivingLicence{driving licence} other{document}}'**
   String proofingScanDocument(String docType);
 
   /// No description provided for @proofingPositionDocument.
   ///
   /// In en, this message translates to:
-  /// **'Position the {docType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}}'**
+  /// **'Position the {docType, select, passport{passport} identityCard{ID card} residencePermit{residence permit} drivingLicence{driving licence} other{document}}'**
   String proofingPositionDocument(String docType);
 
   /// No description provided for @proofingScanMrzInstructions.
@@ -1727,7 +1733,7 @@ abstract class AppLocalizations {
   /// No description provided for @proofingEnterDetailsManually.
   ///
   /// In en, this message translates to:
-  /// **'Enter {docType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} details manually'**
+  /// **'Enter {docType, select, passport{passport} identityCard{ID card} residencePermit{residence permit} drivingLicence{driving licence} other{document}} details manually'**
   String proofingEnterDetailsManually(String docType);
 
   /// No description provided for @proofingContinueInBrowserTitle.
@@ -2117,7 +2123,7 @@ abstract class AppLocalizations {
   /// No description provided for @chooseContinueWith.
   ///
   /// In en, this message translates to:
-  /// **'Continue with {documentType, select, passport{passport} identityCard{identity card} drivingLicence{driving licence} other{document}}'**
+  /// **'Continue with {documentType, select, passport{passport} identityCard{identity card} residencePermit{residence permit} drivingLicence{driving licence} other{document}}'**
   String chooseContinueWith(String documentType);
 
   /// No description provided for @chooseValidUntil.
@@ -2339,7 +2345,7 @@ abstract class AppLocalizations {
   /// No description provided for @dataViewChipRead.
   ///
   /// In en, this message translates to:
-  /// **'We read your {documentType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} chip.'**
+  /// **'We read your {documentType, select, passport{passport} identityCard{ID card} residencePermit{residence permit} drivingLicence{driving licence} other{document}} chip.'**
   String dataViewChipRead(String documentType);
 
   /// No description provided for @dataViewNotAvailable.
@@ -2351,7 +2357,7 @@ abstract class AppLocalizations {
   /// No description provided for @dataViewSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'{documentType, select, passport{Passport} identityCard{ID card} drivingLicence{Driving licence} other{Document}} · {country}'**
+  /// **'{documentType, select, passport{Passport} identityCard{ID card} residencePermit{Residence permit} drivingLicence{Driving licence} other{Document}} · {country}'**
   String dataViewSubtitle(String documentType, String country);
 
   /// No description provided for @dataViewDateOfBirth.
@@ -2393,19 +2399,19 @@ abstract class AppLocalizations {
   /// No description provided for @nfcHoldPhoneOn.
   ///
   /// In en, this message translates to:
-  /// **'Hold your phone on the {documentType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}}'**
+  /// **'Hold your phone on the {documentType, select, passport{passport} identityCard{ID card} residencePermit{residence permit} drivingLicence{driving licence} other{document}}'**
   String nfcHoldPhoneOn(String documentType);
 
   /// No description provided for @nfcGuidanceIntro.
   ///
   /// In en, this message translates to:
-  /// **'Your {documentType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} has a chip that proves it is genuine. We read it with NFC.'**
+  /// **'Your {documentType, select, passport{passport} identityCard{ID card} residencePermit{residence permit} drivingLicence{driving licence} other{document}} has a chip that proves it is genuine. We read it with NFC.'**
   String nfcGuidanceIntro(String documentType);
 
   /// No description provided for @nfcGuidanceStepLay.
   ///
   /// In en, this message translates to:
-  /// **'{documentType, select, passport{Close the passport and lay it on a flat, non-metal surface.} identityCard{Lay the ID card on a flat, non-metal surface.} drivingLicence{Lay the driving licence on a flat, non-metal surface.} other{Lay the document on a flat, non-metal surface.}}'**
+  /// **'{documentType, select, passport{Close the passport and lay it on a flat, non-metal surface.} identityCard{Lay the ID card on a flat, non-metal surface.} residencePermit{Lay the residence permit on a flat, non-metal surface.} drivingLicence{Lay the driving licence on a flat, non-metal surface.} other{Lay the document on a flat, non-metal surface.}}'**
   String nfcGuidanceStepLay(String documentType);
 
   /// No description provided for @nfcGuidanceStepPlace.
@@ -2459,7 +2465,7 @@ abstract class AppLocalizations {
   /// No description provided for @nfcReadingFailedSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Check that the {documentType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} lies flat under your phone and try again.'**
+  /// **'Check that the {documentType, select, passport{passport} identityCard{ID card} residencePermit{residence permit} drivingLicence{driving licence} other{document}} lies flat under your phone and try again.'**
   String nfcReadingFailedSubtitle(String documentType);
 
   /// No description provided for @nfcReadingSuccessTitle.
@@ -2471,7 +2477,7 @@ abstract class AppLocalizations {
   /// No description provided for @nfcReadingSuccessSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Your {documentType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} chip was read.'**
+  /// **'Your {documentType, select, passport{passport} identityCard{ID card} residencePermit{residence permit} drivingLicence{driving licence} other{document}} chip was read.'**
   String nfcReadingSuccessSubtitle(String documentType);
 
   /// No description provided for @nfcReadingInProgressTitle.
@@ -2483,7 +2489,7 @@ abstract class AppLocalizations {
   /// No description provided for @nfcReadingInProgressSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Keep it on the {documentType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} until reading is complete.'**
+  /// **'Keep it on the {documentType, select, passport{passport} identityCard{ID card} residencePermit{residence permit} drivingLicence{driving licence} other{document}} until reading is complete.'**
   String nfcReadingInProgressSubtitle(String documentType);
 
   /// No description provided for @nfcRingNotRead.
@@ -2537,13 +2543,13 @@ abstract class AppLocalizations {
   /// No description provided for @nfcChecklistPhotoDone.
   ///
   /// In en, this message translates to:
-  /// **'{documentType, select, passport{Passport} identityCard{ID card} drivingLicence{Driving licence} other{Document}} photo read'**
+  /// **'{documentType, select, passport{Passport} identityCard{ID card} residencePermit{Residence permit} drivingLicence{Driving licence} other{Document}} photo read'**
   String nfcChecklistPhotoDone(String documentType);
 
   /// No description provided for @nfcChecklistPhotoActive.
   ///
   /// In en, this message translates to:
-  /// **'Reading {documentType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} photo'**
+  /// **'Reading {documentType, select, passport{passport} identityCard{ID card} residencePermit{residence permit} drivingLicence{driving licence} other{document}} photo'**
   String nfcChecklistPhotoActive(String documentType);
 
   /// No description provided for @nfcChecklistGenuineDone.
@@ -2567,13 +2573,13 @@ abstract class AppLocalizations {
   /// No description provided for @scanSheetTitle.
   ///
   /// In en, this message translates to:
-  /// **'{docType, select, passport{Place the photo page in the frame} identityCard{Place the back of your ID card in the frame} drivingLicence{Place the back of your driving licence in the frame} other{Place your document in the frame}}'**
+  /// **'{docType, select, passport{Place the photo page in the frame} identityCard{Place the back of your ID card in the frame} residencePermit{Place the back of your residence permit in the frame} drivingLicence{Place the back of your driving licence in the frame} other{Place your document in the frame}}'**
   String scanSheetTitle(String docType);
 
   /// No description provided for @scanSheetTip.
   ///
   /// In en, this message translates to:
-  /// **'{docType, select, passport{Make sure the two lines of text at the bottom are sharp and not covered by your fingers or glare.} identityCard{Make sure the three lines of text at the bottom are sharp and not covered by your fingers or glare.} drivingLicence{Make sure the line of text at the bottom is sharp and not covered by your fingers or glare.} other{Make sure the text at the bottom is sharp and not covered by your fingers or glare.}}'**
+  /// **'{docType, select, passport{Make sure the two lines of text at the bottom are sharp and not covered by your fingers or glare.} identityCard{Make sure the three lines of text at the bottom are sharp and not covered by your fingers or glare.} residencePermit{Make sure the three lines of text at the bottom are sharp and not covered by your fingers or glare.} drivingLicence{Make sure the line of text at the bottom is sharp and not covered by your fingers or glare.} other{Make sure the text at the bottom is sharp and not covered by your fingers or glare.}}'**
   String scanSheetTip(String docType);
 
   /// No description provided for @scanHideTips.
@@ -2627,7 +2633,7 @@ abstract class AppLocalizations {
   /// No description provided for @manualDocumentTitle.
   ///
   /// In en, this message translates to:
-  /// **'Enter your {docType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} details'**
+  /// **'Enter your {docType, select, passport{passport} identityCard{ID card} residencePermit{residence permit} drivingLicence{driving licence} other{document}} details'**
   String manualDocumentTitle(String docType);
 
   /// No description provided for @manualDocumentIntro.
@@ -2645,7 +2651,7 @@ abstract class AppLocalizations {
   /// No description provided for @manualDocumentNumber.
   ///
   /// In en, this message translates to:
-  /// **'{docType, select, passport{Passport number} identityCard{Identity card number} drivingLicence{Driving licence number} other{Document number}}'**
+  /// **'{docType, select, passport{Passport number} identityCard{Identity card number} residencePermit{Document number} drivingLicence{Driving licence number} other{Document number}}'**
   String manualDocumentNumber(String docType);
 
   /// No description provided for @manualDocumentNumberHint.

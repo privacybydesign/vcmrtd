@@ -188,6 +188,26 @@ void main() {
       expect(result, isNotNull);
     });
 
+    for (final code in ['IR', 'AR', 'C<']) {
+      testWidgets('reads a residence permit with document code $code', (tester) async {
+        final reads = <ScannedMRZ>[];
+        await tester.pumpWidget(
+          _scaffold(documentType: DocumentType.residencePermit, onSuccess: (mrz, _, _) => reads.add(mrz)),
+        );
+        await tester.pump();
+
+        final line1 = code + _idLine1.substring(2);
+        // An OCR'd O for a 0 in the expiry date, so the TD1 fixer has to step in.
+        final line2 = _idLine2.replaceFirst('120415', '12O415');
+        expect(_buildState(tester).debugTryParseAndNotify([line1, line2, _idLine3]), isTrue);
+
+        final mrz = reads.single as ScannedPassportMRZ;
+        expect(mrz.documentType, DocumentType.residencePermit);
+        expect(mrz.documentNumber, 'D23145890');
+        expect(mrz.dateOfExpiry, DateTime(2012, 4, 15));
+      });
+    }
+
     testWidgets('returns non-null for valid driving licence MRZ line', (tester) async {
       await tester.pumpWidget(_scaffold(documentType: DocumentType.drivingLicence));
       await tester.pump();

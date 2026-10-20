@@ -44,7 +44,8 @@ import 'package:idem/widgets/pages/saved_documents_screen.dart';
 (Uint8List, DateTime?) _faceVerificationInputFor(DocumentData document, DocumentType documentType) {
   return switch (documentType) {
     DocumentType.passport ||
-    DocumentType.identityCard => ((document as PassportData).photoImageData, document.dateOfIssue),
+    DocumentType.identityCard ||
+    DocumentType.residencePermit => ((document as PassportData).photoImageData, document.dateOfIssue),
     DocumentType.drivingLicence => (
       (document as DrivingLicenceData).photoImageData,
       parseDrivingLicenceDate(document.dateOfIssue),
@@ -1115,7 +1116,7 @@ Widget _buildResultRoute(BuildContext context, GoRouterState state) {
   final onShare = args.pendingStep == PendingStep.share ? share : null;
 
   return switch (args.documentType) {
-    DocumentType.passport || DocumentType.identityCard => PassportDataScreen(
+    DocumentType.passport || DocumentType.identityCard || DocumentType.residencePermit => PassportDataScreen(
       document: args.document as PassportData,
       passportDataResult: args.rawDocument,
       documentType: args.documentType,

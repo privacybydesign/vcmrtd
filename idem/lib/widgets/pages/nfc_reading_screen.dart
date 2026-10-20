@@ -37,6 +37,7 @@ class NfcReadingRouteParams {
       'document_type': switch (documentType) {
         DocumentType.passport => 'passport',
         DocumentType.identityCard => 'identity_card',
+        DocumentType.residencePermit => 'residence_permit',
         DocumentType.drivingLicence => 'drivers_license',
       },
     };
@@ -60,12 +61,13 @@ class NfcReadingRouteParams {
     final documentType = switch (docType) {
       'passport' => DocumentType.passport,
       'identity_card' => DocumentType.identityCard,
+      'residence_permit' => DocumentType.residencePermit,
       'drivers_license' => DocumentType.drivingLicence,
       _ => throw Exception('unexpected document type: $docType'),
     };
 
     final scannedMRZ = switch (documentType) {
-      DocumentType.passport || DocumentType.identityCard => ScannedPassportMRZ(
+      DocumentType.passport || DocumentType.identityCard || DocumentType.residencePermit => ScannedPassportMRZ(
         documentNumber: params['doc_number']!,
         countryCode: params['country_code']!,
         dateOfBirth: DateTime.parse(params['date_of_birth']!),
@@ -140,7 +142,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
   void didPopNext() {
     final readerProvider = switch (widget.params.documentType) {
       DocumentType.passport => passportReaderProvider,
-      DocumentType.identityCard => identityCardReaderProvider,
+      DocumentType.identityCard || DocumentType.residencePermit => identityCardReaderProvider,
       DocumentType.drivingLicence => drivingLicenceReaderProvider,
     };
     final state = ref.read(readerProvider(scannedMRZ));
@@ -155,7 +157,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
     widget.params.documentType.toString().logInfo();
     final readerProvider = switch (widget.params.documentType) {
       DocumentType.passport => passportReaderProvider,
-      DocumentType.identityCard => identityCardReaderProvider,
+      DocumentType.identityCard || DocumentType.residencePermit => identityCardReaderProvider,
       DocumentType.drivingLicence => drivingLicenceReaderProvider,
     };
 
@@ -384,7 +386,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
   Future<void> cancel() async {
     final readerProvider = switch (widget.params.documentType) {
       DocumentType.passport => passportReaderProvider,
-      DocumentType.identityCard => identityCardReaderProvider,
+      DocumentType.identityCard || DocumentType.residencePermit => identityCardReaderProvider,
       DocumentType.drivingLicence => drivingLicenceReaderProvider,
     };
 
@@ -394,7 +396,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
   Future<void> retry() async {
     final readerProvider = switch (widget.params.documentType) {
       DocumentType.passport => passportReaderProvider,
-      DocumentType.identityCard => identityCardReaderProvider,
+      DocumentType.identityCard || DocumentType.residencePermit => identityCardReaderProvider,
       DocumentType.drivingLicence => drivingLicenceReaderProvider,
     };
 
@@ -414,7 +416,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
     try {
       final readerProvider = switch (widget.params.documentType) {
         DocumentType.passport => passportReaderProvider,
-        DocumentType.identityCard => identityCardReaderProvider,
+        DocumentType.identityCard || DocumentType.residencePermit => identityCardReaderProvider,
         DocumentType.drivingLicence => drivingLicenceReaderProvider,
       };
 

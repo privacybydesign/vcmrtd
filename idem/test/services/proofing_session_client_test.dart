@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:idem/services/proofing_chip_evidence.dart';
 import 'package:idem/services/proofing_session_client.dart';
 
 void main() {
@@ -28,6 +29,28 @@ void main() {
       expect(json['documentType'], 'drivers_license');
       final mrz = ProofingChipAccess.fromJson(json)!.toScannedMrz() as ScannedDriverLicenseMRZ;
       expect([mrz.documentNumber, mrz.version, mrz.randomData, mrz.configuration], ['DL123', '1', 'RND', 'CFG']);
+    });
+
+    test('a residence permit key travels as an identity card key', () {
+      final key = ProofingChipAccess.fromScannedMrz(
+        ScannedPassportMRZ(
+          documentNumber: 'D23145890',
+          countryCode: 'NLD',
+          dateOfBirth: DateTime(1974, 8, 12),
+          dateOfExpiry: DateTime(2032, 4, 15),
+          documentType: DocumentType.residencePermit,
+        ),
+        DocumentType.residencePermit,
+      );
+      final json = key.toJson();
+      expect(json['documentType'], 'identity_card');
+      final mrz = ProofingChipAccess.fromJson(json)!.toScannedMrz() as ScannedPassportMRZ;
+      expect(mrz.documentNumber, 'D23145890');
+      expect(mrz.dateOfExpiry, DateTime(2032, 4, 15));
+    });
+
+    test('a key of a type this app does not know opens nothing', () {
+      expect(ProofingChipAccess.fromJson({'documentType': 'residence_permit', 'documentNumber': 'X1'}), isNull);
     });
 
     test('an incomplete key opens nothing', () {
@@ -273,6 +296,17 @@ void main() {
       expect(ProofingPhotoInfo.fromSelfie(jpeg).toJson()['mimeType'], 'image/jpeg');
       expect(ProofingPhotoInfo.fromSelfie(Uint8List(0)).toJson()['mimeType'], 'image/jpeg');
     });
+  });
+
+  test('a residence permit chip read is sent as ICAO evidence, its type taken from the MRZ', () {
+    final data = _fakePassportData();
+    final evidence = ProofingChipEvidence.from(
+      data,
+      RawDocumentData(dataGroups: {'DG1': '1122'}, efSod: 'aabb'),
+      DocumentType.residencePermit,
+    );
+    expect(evidence.mrtdEvidence.toJson()['documentType'], 'icao');
+    expect(evidence.document.toJson()['type'], data.mrz.documentCode);
   });
 
   group('ProofingMrtdEvidence', () {

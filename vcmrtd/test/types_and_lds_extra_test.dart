@@ -26,12 +26,14 @@ void main() {
       expect(documentTypeToString(DocumentType.passport), 'passport');
       expect(documentTypeToString(DocumentType.drivingLicence), 'drivers_license');
       expect(documentTypeToString(DocumentType.identityCard), 'id_card');
+      expect(documentTypeToString(DocumentType.residencePermit), 'residence_permit');
     });
 
     test('stringToDocumentType round-trips', () {
       expect(stringToDocumentType('passport'), DocumentType.passport);
       expect(stringToDocumentType('drivers_license'), DocumentType.drivingLicence);
       expect(stringToDocumentType('id_card'), DocumentType.identityCard);
+      expect(stringToDocumentType('residence_permit'), DocumentType.residencePermit);
     });
 
     test('stringToDocumentType throws on unknown', () {
@@ -42,6 +44,7 @@ void main() {
       expect(DocumentType.passport.displayName, 'Passport');
       expect(DocumentType.drivingLicence.displayName, 'Driving Licence');
       expect(DocumentType.identityCard.displayName, 'Identity Card');
+      expect(DocumentType.residencePermit.displayName, 'Residence Permit');
     });
   });
 

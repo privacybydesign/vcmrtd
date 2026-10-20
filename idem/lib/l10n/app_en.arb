@@ -35,6 +35,7 @@
   "sessionStoppedTitle": "Verification stopped",
   "idDocumentPassport": "Passport",
   "idDocumentIdentityCard": "Identity card",
+  "idDocumentResidencePermit": "Residence permit",
   "idDocumentDrivingLicence": "Driving licence",
   "commonTryAgain": "Try Again",
   "commonCancel": "Cancel",
@@ -81,7 +82,7 @@
   "docNfcTipFirst": "Place your document behind your phone and move it around until it buzzes or beeps.",
   "docNfcTipHoldSteady": "Keep your phone and the document still - this can take a moment.",
   "docNfcTipStuck": "Reading was interrupted. Slowly lift your phone off the document and place it back down until it buzzes or beeps again.",
-  "docReadDocument": "Read {documentType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{document}}",
+  "docReadDocument": "Read {documentType, select, passport{Passport} identityCard{Identity Card} residencePermit{Residence Permit} drivingLicence{Driving Licence} other{document}}",
   "@docReadDocument": {
     "placeholders": {
       "documentType": {
@@ -89,7 +90,7 @@
       }
     }
   },
-  "docIosNfcHoldClose": "Hold your phone close to {documentType, select, passport{passport} identityCard{identity card} drivingLicence{driving license} other{document}}",
+  "docIosNfcHoldClose": "Hold your phone close to {documentType, select, passport{passport} identityCard{identity card} residencePermit{residence permit} drivingLicence{driving license} other{document}}",
   "@docIosNfcHoldClose": {
     "placeholders": {
       "documentType": {
@@ -110,7 +111,7 @@
     }
   },
   "docIosNfcAuthenticating": "Authenticating",
-  "docIosNfcReadingData": "Reading {documentType, select, passport{passport} identityCard{identity card} drivingLicence{driving license} other{document}} data",
+  "docIosNfcReadingData": "Reading {documentType, select, passport{passport} identityCard{identity card} residencePermit{residence permit} drivingLicence{driving license} other{document}} data",
   "@docIosNfcReadingData": {
     "placeholders": {
       "documentType": {
@@ -122,7 +123,7 @@
   "docIosNfcSuccess": "Success!",
   "docIosNfcReconnecting": "Connection lost. Slowly lift your phone and place it back down.",
   "docNfcGuidanceTitle": "Read the chip",
-  "docNfcGuidancePlacePhone": "Place your phone on the {documentType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{document}}",
+  "docNfcGuidancePlacePhone": "Place your phone on the {documentType, select, passport{Passport} identityCard{Identity Card} residencePermit{Residence Permit} drivingLicence{Driving Licence} other{document}}",
   "@docNfcGuidancePlacePhone": {
     "placeholders": {
       "documentType": {
@@ -131,7 +132,7 @@
     }
   },
   "docNfcGuidanceTipsTitle": "Tips for better results:",
-  "docNfcGuidanceTips": "• Place the {documentType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{document}} behind your phone like in the example\n• Remove phone case if reading fails\n• The process may take 10–30 seconds",
+  "docNfcGuidanceTips": "• Place the {documentType, select, passport{Passport} identityCard{Identity Card} residencePermit{Residence Permit} drivingLicence{Driving Licence} other{document}} behind your phone like in the example\n• Remove phone case if reading fails\n• The process may take 10–30 seconds",
   "@docNfcGuidanceTips": {
     "placeholders": {
       "documentType": {
@@ -139,7 +140,7 @@
       }
     }
   },
-  "docScanDocument": "Scan {documentType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{document}}",
+  "docScanDocument": "Scan {documentType, select, passport{Passport} identityCard{Identity Card} residencePermit{Residence Permit} drivingLicence{Driving Licence} other{document}}",
   "@docScanDocument": {
     "placeholders": {
       "documentType": {
@@ -198,7 +199,7 @@
       }
     }
   },
-  "docDocumentDataTitle": "{documentType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{Document}} Data",
+  "docDocumentDataTitle": "{documentType, select, passport{Passport} identityCard{Identity Card} residencePermit{Residence Permit} drivingLicence{Driving Licence} other{Document}} Data",
   "@docDocumentDataTitle": {
     "placeholders": {
       "documentType": {
@@ -535,7 +536,7 @@
   },
   "proofingAddToWallet": "Add to Wallet",
   "proofingDialogOk": "OK",
-  "proofingScanDocument": "Scan {docType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}}",
+  "proofingScanDocument": "Scan {docType, select, passport{passport} identityCard{ID card} residencePermit{residence permit} drivingLicence{driving licence} other{document}}",
   "@proofingScanDocument": {
     "placeholders": {
       "docType": {
@@ -543,7 +544,7 @@
       }
     }
   },
-  "proofingPositionDocument": "Position the {docType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}}",
+  "proofingPositionDocument": "Position the {docType, select, passport{passport} identityCard{ID card} residencePermit{residence permit} drivingLicence{driving licence} other{document}}",
   "@proofingPositionDocument": {
     "placeholders": {
       "docType": {
@@ -553,7 +554,7 @@
   },
   "proofingScanMrzInstructions": "Align the Machine Readable Zone (MRZ) with the frame at the bottom of the screen. Hold steady until scanning completes.",
   "proofingScanMrzPhotoInstructions": "Place the whole side with the Machine Readable Zone (MRZ) inside the frame, on a flat surface in good light. Hold steady: once the MRZ is read, this side is photographed too.",
-  "proofingEnterDetailsManually": "Enter {docType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} details manually",
+  "proofingEnterDetailsManually": "Enter {docType, select, passport{passport} identityCard{ID card} residencePermit{residence permit} drivingLicence{driving licence} other{document}} details manually",
   "@proofingEnterDetailsManually": {
     "placeholders": {
       "docType": {
@@ -729,7 +730,7 @@
   "chooseSelfieHint": "You’ll take a quick selfie to confirm the document is yours.",
   "chooseAddDocument": "Add a document",
   "chooseAddNewDocument": "Or add a new document",
-  "chooseContinueWith": "Continue with {documentType, select, passport{passport} identityCard{identity card} drivingLicence{driving licence} other{document}}",
+  "chooseContinueWith": "Continue with {documentType, select, passport{passport} identityCard{identity card} residencePermit{residence permit} drivingLicence{driving licence} other{document}}",
   "@chooseContinueWith": {
     "placeholders": {
       "documentType": {
@@ -815,7 +816,7 @@
   "selfieOpeningCamera": "Opening camera…",
   "dataViewDocumentRead": "Document read",
   "dataViewDrivingLicenceRead": "Driving licence read",
-  "dataViewChipRead": "We read your {documentType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} chip.",
+  "dataViewChipRead": "We read your {documentType, select, passport{passport} identityCard{ID card} residencePermit{residence permit} drivingLicence{driving licence} other{document}} chip.",
   "@dataViewChipRead": {
     "placeholders": {
       "documentType": {
@@ -824,7 +825,7 @@
     }
   },
   "dataViewNotAvailable": "Not available",
-  "dataViewSubtitle": "{documentType, select, passport{Passport} identityCard{ID card} drivingLicence{Driving licence} other{Document}} · {country}",
+  "dataViewSubtitle": "{documentType, select, passport{Passport} identityCard{ID card} residencePermit{Residence permit} drivingLicence{Driving licence} other{Document}} · {country}",
   "@dataViewSubtitle": {
     "placeholders": {
       "documentType": {
@@ -848,7 +849,7 @@
       }
     }
   },
-  "nfcHoldPhoneOn": "Hold your phone on the {documentType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}}",
+  "nfcHoldPhoneOn": "Hold your phone on the {documentType, select, passport{passport} identityCard{ID card} residencePermit{residence permit} drivingLicence{driving licence} other{document}}",
   "@nfcHoldPhoneOn": {
     "placeholders": {
       "documentType": {
@@ -856,7 +857,7 @@
       }
     }
   },
-  "nfcGuidanceIntro": "Your {documentType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} has a chip that proves it is genuine. We read it with NFC.",
+  "nfcGuidanceIntro": "Your {documentType, select, passport{passport} identityCard{ID card} residencePermit{residence permit} drivingLicence{driving licence} other{document}} has a chip that proves it is genuine. We read it with NFC.",
   "@nfcGuidanceIntro": {
     "placeholders": {
       "documentType": {
@@ -864,7 +865,7 @@
       }
     }
   },
-  "nfcGuidanceStepLay": "{documentType, select, passport{Close the passport and lay it on a flat, non-metal surface.} identityCard{Lay the ID card on a flat, non-metal surface.} drivingLicence{Lay the driving licence on a flat, non-metal surface.} other{Lay the document on a flat, non-metal surface.}}",
+  "nfcGuidanceStepLay": "{documentType, select, passport{Close the passport and lay it on a flat, non-metal surface.} identityCard{Lay the ID card on a flat, non-metal surface.} residencePermit{Lay the residence permit on a flat, non-metal surface.} drivingLicence{Lay the driving licence on a flat, non-metal surface.} other{Lay the document on a flat, non-metal surface.}}",
   "@nfcGuidanceStepLay": {
     "placeholders": {
       "documentType": {
@@ -887,7 +888,7 @@
   "nfcReadingStoppedTitle": "Reading stopped",
   "nfcReadingStoppedSubtitle": "Start again when you are ready.",
   "nfcReadingFailedTitle": "Reading failed",
-  "nfcReadingFailedSubtitle": "Check that the {documentType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} lies flat under your phone and try again.",
+  "nfcReadingFailedSubtitle": "Check that the {documentType, select, passport{passport} identityCard{ID card} residencePermit{residence permit} drivingLicence{driving licence} other{document}} lies flat under your phone and try again.",
   "@nfcReadingFailedSubtitle": {
     "placeholders": {
       "documentType": {
@@ -896,7 +897,7 @@
     }
   },
   "nfcReadingSuccessTitle": "Chip read",
-  "nfcReadingSuccessSubtitle": "Your {documentType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} chip was read.",
+  "nfcReadingSuccessSubtitle": "Your {documentType, select, passport{passport} identityCard{ID card} residencePermit{residence permit} drivingLicence{driving licence} other{document}} chip was read.",
   "@nfcReadingSuccessSubtitle": {
     "placeholders": {
       "documentType": {
@@ -905,7 +906,7 @@
     }
   },
   "nfcReadingInProgressTitle": "Don’t move your phone",
-  "nfcReadingInProgressSubtitle": "Keep it on the {documentType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} until reading is complete.",
+  "nfcReadingInProgressSubtitle": "Keep it on the {documentType, select, passport{passport} identityCard{ID card} residencePermit{residence permit} drivingLicence{driving licence} other{document}} until reading is complete.",
   "@nfcReadingInProgressSubtitle": {
     "placeholders": {
       "documentType": {
@@ -921,7 +922,7 @@
   "nfcChecklistSecureActive": "Setting up a secure connection",
   "nfcChecklistDetailsDone": "Personal details read",
   "nfcChecklistDetailsActive": "Reading personal details",
-  "nfcChecklistPhotoDone": "{documentType, select, passport{Passport} identityCard{ID card} drivingLicence{Driving licence} other{Document}} photo read",
+  "nfcChecklistPhotoDone": "{documentType, select, passport{Passport} identityCard{ID card} residencePermit{Residence permit} drivingLicence{Driving licence} other{Document}} photo read",
   "@nfcChecklistPhotoDone": {
     "placeholders": {
       "documentType": {
@@ -929,7 +930,7 @@
       }
     }
   },
-  "nfcChecklistPhotoActive": "Reading {documentType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} photo",
+  "nfcChecklistPhotoActive": "Reading {documentType, select, passport{passport} identityCard{ID card} residencePermit{residence permit} drivingLicence{driving licence} other{document}} photo",
   "@nfcChecklistPhotoActive": {
     "placeholders": {
       "documentType": {
@@ -940,7 +941,7 @@
   "nfcChecklistGenuineDone": "Chip read securely",
   "nfcChecklistGenuineActive": "Reading the chip securely",
   "scanClose": "Close",
-  "scanSheetTitle": "{docType, select, passport{Place the photo page in the frame} identityCard{Place the back of your ID card in the frame} drivingLicence{Place the back of your driving licence in the frame} other{Place your document in the frame}}",
+  "scanSheetTitle": "{docType, select, passport{Place the photo page in the frame} identityCard{Place the back of your ID card in the frame} residencePermit{Place the back of your residence permit in the frame} drivingLicence{Place the back of your driving licence in the frame} other{Place your document in the frame}}",
   "@scanSheetTitle": {
     "placeholders": {
       "docType": {
@@ -948,7 +949,7 @@
       }
     }
   },
-  "scanSheetTip": "{docType, select, passport{Make sure the two lines of text at the bottom are sharp and not covered by your fingers or glare.} identityCard{Make sure the three lines of text at the bottom are sharp and not covered by your fingers or glare.} drivingLicence{Make sure the line of text at the bottom is sharp and not covered by your fingers or glare.} other{Make sure the text at the bottom is sharp and not covered by your fingers or glare.}}",
+  "scanSheetTip": "{docType, select, passport{Make sure the two lines of text at the bottom are sharp and not covered by your fingers or glare.} identityCard{Make sure the three lines of text at the bottom are sharp and not covered by your fingers or glare.} residencePermit{Make sure the three lines of text at the bottom are sharp and not covered by your fingers or glare.} drivingLicence{Make sure the line of text at the bottom is sharp and not covered by your fingers or glare.} other{Make sure the text at the bottom is sharp and not covered by your fingers or glare.}}",
   "@scanSheetTip": {
     "placeholders": {
       "docType": {
@@ -971,7 +972,7 @@
       }
     }
   },
-  "manualDocumentTitle": "Enter your {docType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} details",
+  "manualDocumentTitle": "Enter your {docType, select, passport{passport} identityCard{ID card} residencePermit{residence permit} drivingLicence{driving licence} other{document}} details",
   "@manualDocumentTitle": {
     "placeholders": {
       "docType": {
@@ -988,7 +989,7 @@
     }
   },
   "manualLicenceParseError": "That code could not be read. Check it against your licence and try again.",
-  "manualDocumentNumber": "{docType, select, passport{Passport number} identityCard{Identity card number} drivingLicence{Driving licence number} other{Document number}}",
+  "manualDocumentNumber": "{docType, select, passport{Passport number} identityCard{Identity card number} residencePermit{Document number} drivingLicence{Driving licence number} other{Document number}}",
   "@manualDocumentNumber": {
     "placeholders": {
       "docType": {
