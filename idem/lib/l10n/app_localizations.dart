@@ -224,107 +224,11 @@ abstract class AppLocalizations {
   /// **'Driving licence'**
   String get idDocumentDrivingLicence;
 
-  /// No description provided for @commonTryAgain.
-  ///
-  /// In en, this message translates to:
-  /// **'Try Again'**
-  String get commonTryAgain;
-
-  /// No description provided for @commonCancel.
-  ///
-  /// In en, this message translates to:
-  /// **'Cancel'**
-  String get commonCancel;
-
-  /// No description provided for @docNewScan.
-  ///
-  /// In en, this message translates to:
-  /// **'New scan'**
-  String get docNewScan;
-
-  /// No description provided for @docConnectedBanner.
-  ///
-  /// In en, this message translates to:
-  /// **'Connected — will send results to {relyingParty}'**
-  String docConnectedBanner(String relyingParty);
-
-  /// No description provided for @docPassport.
-  ///
-  /// In en, this message translates to:
-  /// **'Passport'**
-  String get docPassport;
-
-  /// No description provided for @docPassportSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Use a machine readable passport'**
-  String get docPassportSubtitle;
-
-  /// No description provided for @docMostCommon.
-  ///
-  /// In en, this message translates to:
-  /// **'Most common'**
-  String get docMostCommon;
-
-  /// No description provided for @docIdentityCard.
-  ///
-  /// In en, this message translates to:
-  /// **'Identity Card'**
-  String get docIdentityCard;
-
-  /// No description provided for @docIdentityCardSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Use a machine readable identity card'**
-  String get docIdentityCardSubtitle;
-
-  /// No description provided for @docDrivingLicence.
-  ///
-  /// In en, this message translates to:
-  /// **'Driving Licence'**
-  String get docDrivingLicence;
-
-  /// No description provided for @docDrivingLicenceSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Use a machine readable driving licence. Currently works primarily with Dutch licences.'**
-  String get docDrivingLicenceSubtitle;
-
   /// No description provided for @docScanQrTitle.
   ///
   /// In en, this message translates to:
   /// **'Scan QR code'**
   String get docScanQrTitle;
-
-  /// No description provided for @docScanQrSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Scan any QR code with the camera'**
-  String get docScanQrSubtitle;
-
-  /// No description provided for @docAdvancedSettings.
-  ///
-  /// In en, this message translates to:
-  /// **'Advanced settings'**
-  String get docAdvancedSettings;
-
-  /// No description provided for @docAdvancedSettingsSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Ocr Engine, Face Verification and more'**
-  String get docAdvancedSettingsSubtitle;
-
-  /// No description provided for @docVerifyIdentityTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Verify your Identity'**
-  String get docVerifyIdentityTitle;
-
-  /// No description provided for @docSelectDocumentTypePrompt.
-  ///
-  /// In en, this message translates to:
-  /// **'Select the type of document you want to use for verification.'**
-  String get docSelectDocumentTypePrompt;
 
   /// No description provided for @docSettingsTitle.
   ///
@@ -338,101 +242,17 @@ abstract class AppLocalizations {
   /// **'Back'**
   String get docBack;
 
-  /// No description provided for @docActiveAuthentication.
-  ///
-  /// In en, this message translates to:
-  /// **'Active authentication'**
-  String get docActiveAuthentication;
-
-  /// No description provided for @docActiveAuthenticationSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Perform active authentication when reading the document. A verification session follows its own flow.'**
-  String get docActiveAuthenticationSubtitle;
-
-  /// No description provided for @docFaceEngine.
-  ///
-  /// In en, this message translates to:
-  /// **'Face verification engine'**
-  String get docFaceEngine;
-
   /// No description provided for @docFaceEngineOpenSource.
   ///
   /// In en, this message translates to:
   /// **'Open source'**
   String get docFaceEngineOpenSource;
 
-  /// No description provided for @docLivenessDetection.
-  ///
-  /// In en, this message translates to:
-  /// **'Liveness detection'**
-  String get docLivenessDetection;
-
-  /// No description provided for @docLivenessPassive.
-  ///
-  /// In en, this message translates to:
-  /// **'Passive'**
-  String get docLivenessPassive;
-
-  /// No description provided for @docLivenessActive.
-  ///
-  /// In en, this message translates to:
-  /// **'Active'**
-  String get docLivenessActive;
-
-  /// No description provided for @docOcrEngine.
-  ///
-  /// In en, this message translates to:
-  /// **'OCR engine'**
-  String get docOcrEngine;
-
   /// No description provided for @docNfcStepStart.
   ///
   /// In en, this message translates to:
   /// **'Start reading'**
   String get docNfcStepStart;
-
-  /// No description provided for @docNfcStepDetails.
-  ///
-  /// In en, this message translates to:
-  /// **'Reading details'**
-  String get docNfcStepDetails;
-
-  /// No description provided for @docNfcStepPhoto.
-  ///
-  /// In en, this message translates to:
-  /// **'Getting photo'**
-  String get docNfcStepPhoto;
-
-  /// No description provided for @docNfcStepAlmostDone.
-  ///
-  /// In en, this message translates to:
-  /// **'Almost done'**
-  String get docNfcStepAlmostDone;
-
-  /// No description provided for @docNfcStepStartSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Connecting to the chip'**
-  String get docNfcStepStartSubtitle;
-
-  /// No description provided for @docNfcStepDetailsSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Getting personal data'**
-  String get docNfcStepDetailsSubtitle;
-
-  /// No description provided for @docNfcStepPhotoSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Getting the document photo'**
-  String get docNfcStepPhotoSubtitle;
-
-  /// No description provided for @docNfcStepAlmostDoneSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Verifying document security'**
-  String get docNfcStepAlmostDoneSubtitle;
 
   /// No description provided for @docNfcTipFirst.
   ///
@@ -451,12 +271,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reading was interrupted. Slowly lift your phone off the document and place it back down until it buzzes or beeps again.'**
   String get docNfcTipStuck;
-
-  /// No description provided for @docReadDocument.
-  ///
-  /// In en, this message translates to:
-  /// **'Read {documentType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{document}}'**
-  String docReadDocument(String documentType);
 
   /// No description provided for @docIosNfcHoldClose.
   ///
@@ -524,227 +338,17 @@ abstract class AppLocalizations {
   /// **'Connection lost. Slowly lift your phone and place it back down.'**
   String get docIosNfcReconnecting;
 
-  /// No description provided for @docNfcGuidanceTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Read the chip'**
-  String get docNfcGuidanceTitle;
-
-  /// No description provided for @docNfcGuidancePlacePhone.
-  ///
-  /// In en, this message translates to:
-  /// **'Place your phone on the {documentType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{document}}'**
-  String docNfcGuidancePlacePhone(String documentType);
-
-  /// No description provided for @docNfcGuidanceTipsTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Tips for better results:'**
-  String get docNfcGuidanceTipsTitle;
-
-  /// No description provided for @docNfcGuidanceTips.
-  ///
-  /// In en, this message translates to:
-  /// **'• Place the {documentType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{document}} behind your phone like in the example\n• Remove phone case if reading fails\n• The process may take 10–30 seconds'**
-  String docNfcGuidanceTips(String documentType);
-
-  /// No description provided for @docScanDocument.
-  ///
-  /// In en, this message translates to:
-  /// **'Scan {documentType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{document}}'**
-  String docScanDocument(String documentType);
-
-  /// No description provided for @docNfcNotAvailable.
-  ///
-  /// In en, this message translates to:
-  /// **'NFC is not available'**
-  String get docNfcNotAvailable;
-
-  /// No description provided for @docPersonalInformation.
-  ///
-  /// In en, this message translates to:
-  /// **'Personal Information'**
-  String get docPersonalInformation;
-
-  /// No description provided for @docSurname.
-  ///
-  /// In en, this message translates to:
-  /// **'Surname'**
-  String get docSurname;
-
-  /// No description provided for @docOtherNames.
-  ///
-  /// In en, this message translates to:
-  /// **'Other Names'**
-  String get docOtherNames;
-
-  /// No description provided for @docDateOfBirth.
-  ///
-  /// In en, this message translates to:
-  /// **'Date of Birth'**
-  String get docDateOfBirth;
-
-  /// No description provided for @docPlaceOfBirth.
-  ///
-  /// In en, this message translates to:
-  /// **'Place of Birth'**
-  String get docPlaceOfBirth;
-
-  /// No description provided for @docDocumentInformation.
-  ///
-  /// In en, this message translates to:
-  /// **'Document Information'**
-  String get docDocumentInformation;
-
-  /// No description provided for @docDocumentNumber.
-  ///
-  /// In en, this message translates to:
-  /// **'Document Number'**
-  String get docDocumentNumber;
-
-  /// No description provided for @docIssuingMemberState.
-  ///
-  /// In en, this message translates to:
-  /// **'Issuing Member State'**
-  String get docIssuingMemberState;
-
-  /// No description provided for @docIssuingAuthority.
-  ///
-  /// In en, this message translates to:
-  /// **'Issuing Authority'**
-  String get docIssuingAuthority;
-
-  /// No description provided for @docDateOfIssue.
-  ///
-  /// In en, this message translates to:
-  /// **'Date of Issue'**
-  String get docDateOfIssue;
-
-  /// No description provided for @docDateOfExpiry.
-  ///
-  /// In en, this message translates to:
-  /// **'Date of Expiry'**
-  String get docDateOfExpiry;
-
-  /// No description provided for @docDrivingLicenceDataTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Driving Licence Data'**
-  String get docDrivingLicenceDataTitle;
-
-  /// No description provided for @docUnableToLoadPhoto.
-  ///
-  /// In en, this message translates to:
-  /// **'Unable to load photo'**
-  String get docUnableToLoadPhoto;
-
   /// No description provided for @docCategories.
   ///
   /// In en, this message translates to:
   /// **'Categories'**
   String get docCategories;
 
-  /// No description provided for @docCategory.
-  ///
-  /// In en, this message translates to:
-  /// **'Category'**
-  String get docCategory;
-
-  /// No description provided for @docCategoryDateOfIssue.
-  ///
-  /// In en, this message translates to:
-  /// **'Date of issue'**
-  String get docCategoryDateOfIssue;
-
-  /// No description provided for @docCategoryDateOfExpiry.
-  ///
-  /// In en, this message translates to:
-  /// **'Date of expiry'**
-  String get docCategoryDateOfExpiry;
-
-  /// No description provided for @docWalletDocumentNumber.
-  ///
-  /// In en, this message translates to:
-  /// **'Document number'**
-  String get docWalletDocumentNumber;
-
-  /// No description provided for @docWalletAdded.
-  ///
-  /// In en, this message translates to:
-  /// **'Added'**
-  String get docWalletAdded;
-
-  /// No description provided for @docRemoveFromWallet.
-  ///
-  /// In en, this message translates to:
-  /// **'Remove from wallet'**
-  String get docRemoveFromWallet;
-
-  /// No description provided for @docFullName.
-  ///
-  /// In en, this message translates to:
-  /// **'Full Name'**
-  String get docFullName;
-
   /// No description provided for @docNationality.
   ///
   /// In en, this message translates to:
   /// **'Nationality'**
   String get docNationality;
-
-  /// No description provided for @docDocument.
-  ///
-  /// In en, this message translates to:
-  /// **'Document'**
-  String get docDocument;
-
-  /// No description provided for @docGender.
-  ///
-  /// In en, this message translates to:
-  /// **'Gender'**
-  String get docGender;
-
-  /// No description provided for @docExpiryDate.
-  ///
-  /// In en, this message translates to:
-  /// **'Expiry Date'**
-  String get docExpiryDate;
-
-  /// No description provided for @docCountry.
-  ///
-  /// In en, this message translates to:
-  /// **'Country'**
-  String get docCountry;
-
-  /// No description provided for @docVersion.
-  ///
-  /// In en, this message translates to:
-  /// **'Version'**
-  String get docVersion;
-
-  /// No description provided for @docOptionalData.
-  ///
-  /// In en, this message translates to:
-  /// **'Optional Data'**
-  String get docOptionalData;
-
-  /// No description provided for @docAvailableDataGroups.
-  ///
-  /// In en, this message translates to:
-  /// **'Available Data Groups'**
-  String get docAvailableDataGroups;
-
-  /// No description provided for @docDataGroupsRead.
-  ///
-  /// In en, this message translates to:
-  /// **'Data Groups Read: {count}/{total}'**
-  String docDataGroupsRead(int count, int total);
-
-  /// No description provided for @docActiveAuthenticationAvailable.
-  ///
-  /// In en, this message translates to:
-  /// **'Active Authentication Available'**
-  String get docActiveAuthenticationAvailable;
 
   /// No description provided for @docWebAuthSession.
   ///
@@ -757,12 +361,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Session IID: {sessionId}'**
   String docWebAuthSessionId(String sessionId);
-
-  /// No description provided for @docDocumentDataTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'{documentType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{Document}} Data'**
-  String docDocumentDataTitle(String documentType);
 
   /// No description provided for @docImageNoData.
   ///
@@ -799,42 +397,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unknown or unsupported image type.'**
   String get docImageUnsupportedType;
-
-  /// No description provided for @docIllustrationPassport.
-  ///
-  /// In en, this message translates to:
-  /// **'PASSPORT'**
-  String get docIllustrationPassport;
-
-  /// No description provided for @docIllustrationIssuer.
-  ///
-  /// In en, this message translates to:
-  /// **'Kingdom of Example'**
-  String get docIllustrationIssuer;
-
-  /// No description provided for @docIllustrationName.
-  ///
-  /// In en, this message translates to:
-  /// **'Name: John Doe'**
-  String get docIllustrationName;
-
-  /// No description provided for @docIllustrationNationality.
-  ///
-  /// In en, this message translates to:
-  /// **'Nationality: NL'**
-  String get docIllustrationNationality;
-
-  /// No description provided for @docIllustrationDob.
-  ///
-  /// In en, this message translates to:
-  /// **'DOB: 01-01-1990'**
-  String get docIllustrationDob;
-
-  /// No description provided for @docIllustrationDrivingLicence.
-  ///
-  /// In en, this message translates to:
-  /// **'DRIVING LICENCE'**
-  String get docIllustrationDrivingLicence;
 
   /// No description provided for @docPhotoStepLabel.
   ///
@@ -1028,47 +590,11 @@ abstract class AppLocalizations {
   /// **'perform the action'**
   String get faceTimeoutPerformAction;
 
-  /// No description provided for @faceStepLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Face Verification'**
-  String get faceStepLabel;
-
   /// No description provided for @faceBack.
   ///
   /// In en, this message translates to:
   /// **'Back'**
   String get faceBack;
-
-  /// No description provided for @faceSettingUp.
-  ///
-  /// In en, this message translates to:
-  /// **'Setting up face verification'**
-  String get faceSettingUp;
-
-  /// No description provided for @faceTakesAMoment.
-  ///
-  /// In en, this message translates to:
-  /// **'This only takes a moment'**
-  String get faceTakesAMoment;
-
-  /// No description provided for @faceLoadingOpeningCamera.
-  ///
-  /// In en, this message translates to:
-  /// **'Opening camera'**
-  String get faceLoadingOpeningCamera;
-
-  /// No description provided for @faceLoadingModels.
-  ///
-  /// In en, this message translates to:
-  /// **'Loading face models'**
-  String get faceLoadingModels;
-
-  /// No description provided for @faceAlmostDone.
-  ///
-  /// In en, this message translates to:
-  /// **'Almost done…'**
-  String get faceAlmostDone;
 
   /// No description provided for @faceHoldStill.
   ///
@@ -1081,36 +607,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Opening camera...'**
   String get faceOpeningCamera;
-
-  /// No description provided for @faceHowItWorks.
-  ///
-  /// In en, this message translates to:
-  /// **'How it works'**
-  String get faceHowItWorks;
-
-  /// No description provided for @faceStepCenterFace.
-  ///
-  /// In en, this message translates to:
-  /// **'Center your face inside the oval'**
-  String get faceStepCenterFace;
-
-  /// No description provided for @faceStepFollowPrompts.
-  ///
-  /// In en, this message translates to:
-  /// **'Follow the on-screen prompts'**
-  String get faceStepFollowPrompts;
-
-  /// No description provided for @faceStart.
-  ///
-  /// In en, this message translates to:
-  /// **'Start'**
-  String get faceStart;
-
-  /// No description provided for @facePreparing.
-  ///
-  /// In en, this message translates to:
-  /// **'Preparing…'**
-  String get facePreparing;
 
   /// No description provided for @faceTipNoFace.
   ///
@@ -1172,24 +668,6 @@ abstract class AppLocalizations {
   /// **'Get ready…'**
   String get faceTipGetReady;
 
-  /// No description provided for @faceExtraBadge.
-  ///
-  /// In en, this message translates to:
-  /// **'extra'**
-  String get faceExtraBadge;
-
-  /// No description provided for @faceVerifyingIdentity.
-  ///
-  /// In en, this message translates to:
-  /// **'Verifying identity...'**
-  String get faceVerifyingIdentity;
-
-  /// No description provided for @faceGoBack.
-  ///
-  /// In en, this message translates to:
-  /// **'Go Back'**
-  String get faceGoBack;
-
   /// No description provided for @faceTryAgain.
   ///
   /// In en, this message translates to:
@@ -1201,66 +679,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Verification Failed'**
   String get faceVerificationFailed;
-
-  /// No description provided for @faceScoreMatch.
-  ///
-  /// In en, this message translates to:
-  /// **'Match (≥{threshold}%)'**
-  String faceScoreMatch(String threshold);
-
-  /// No description provided for @faceScoreAntiSpoof.
-  ///
-  /// In en, this message translates to:
-  /// **'Anti-spoof'**
-  String get faceScoreAntiSpoof;
-
-  /// No description provided for @faceNotAvailable.
-  ///
-  /// In en, this message translates to:
-  /// **'n/a'**
-  String get faceNotAvailable;
-
-  /// No description provided for @faceScoreRppg.
-  ///
-  /// In en, this message translates to:
-  /// **'rPPG ({count} samples)'**
-  String faceScoreRppg(int count);
-
-  /// No description provided for @faceBpm.
-  ///
-  /// In en, this message translates to:
-  /// **'{bpm} bpm'**
-  String faceBpm(String bpm);
-
-  /// No description provided for @faceScoreLivenessActions.
-  ///
-  /// In en, this message translates to:
-  /// **'Liveness actions'**
-  String get faceScoreLivenessActions;
-
-  /// No description provided for @facePassed.
-  ///
-  /// In en, this message translates to:
-  /// **'passed'**
-  String get facePassed;
-
-  /// No description provided for @faceFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'failed'**
-  String get faceFailed;
-
-  /// No description provided for @faceScoreIdentityConsistent.
-  ///
-  /// In en, this message translates to:
-  /// **'Identity consistent'**
-  String get faceScoreIdentityConsistent;
-
-  /// No description provided for @faceChangedMidSession.
-  ///
-  /// In en, this message translates to:
-  /// **'face changed mid-session'**
-  String get faceChangedMidSession;
 
   /// No description provided for @faceDocumentPhoto.
   ///
@@ -1328,47 +746,17 @@ abstract class AppLocalizations {
   /// **'Verification failed: {error}'**
   String faceIrisFailedError(String error);
 
-  /// No description provided for @faceIrisIntroTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Verify with the Iris SDK'**
-  String get faceIrisIntroTitle;
-
   /// No description provided for @faceIrisIntroBody.
   ///
   /// In en, this message translates to:
   /// **'The Iris SDK opens its own full-screen camera to check that a live person is present, then compares that face against the portrait stored on your document.'**
   String get faceIrisIntroBody;
 
-  /// No description provided for @faceIrisWhatToExpect.
-  ///
-  /// In en, this message translates to:
-  /// **'What to expect'**
-  String get faceIrisWhatToExpect;
-
-  /// No description provided for @faceIrisStep1.
-  ///
-  /// In en, this message translates to:
-  /// **'A camera screen from the Iris SDK will open'**
-  String get faceIrisStep1;
-
   /// No description provided for @faceIrisStep2.
   ///
   /// In en, this message translates to:
   /// **'Look directly at the camera and follow any prompts'**
   String get faceIrisStep2;
-
-  /// No description provided for @faceIrisStep3.
-  ///
-  /// In en, this message translates to:
-  /// **'Hold still until it finishes — this only takes a moment'**
-  String get faceIrisStep3;
-
-  /// No description provided for @faceStartVerification.
-  ///
-  /// In en, this message translates to:
-  /// **'Start Verification'**
-  String get faceStartVerification;
 
   /// No description provided for @faceSelfieIntroTitle.
   ///
@@ -1418,35 +806,17 @@ abstract class AppLocalizations {
   /// **'You cancelled the verification. Tap below to try again.'**
   String get faceIrisCancelledSubtitle;
 
-  /// No description provided for @faceRegulaIntroTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Check that it\'s really you'**
-  String get faceRegulaIntroTitle;
-
   /// No description provided for @faceRegulaIntroBody.
   ///
   /// In en, this message translates to:
   /// **'A camera screen opens to check that a live person is present. The verification service then compares your face with the photo on your document\'s chip.'**
   String get faceRegulaIntroBody;
 
-  /// No description provided for @faceRegulaStep1.
-  ///
-  /// In en, this message translates to:
-  /// **'A camera screen will open'**
-  String get faceRegulaStep1;
-
   /// No description provided for @faceRegulaStep2.
   ///
   /// In en, this message translates to:
   /// **'Look straight at the camera and follow the prompts'**
   String get faceRegulaStep2;
-
-  /// No description provided for @faceRegulaStep3.
-  ///
-  /// In en, this message translates to:
-  /// **'Hold still until it finishes — this only takes a moment'**
-  String get faceRegulaStep3;
 
   /// No description provided for @faceRegulaOpeningCamera.
   ///
@@ -1465,30 +835,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You cancelled the verification. Tap below to try again.'**
   String get faceRegulaCancelledSubtitle;
-
-  /// No description provided for @faceRegulaMatching.
-  ///
-  /// In en, this message translates to:
-  /// **'Comparing your face with your document photo…'**
-  String get faceRegulaMatching;
-
-  /// No description provided for @faceRegulaNoMatchSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Your face didn\'t match the photo on your document. Scan your document again to retry.'**
-  String get faceRegulaNoMatchSubtitle;
-
-  /// No description provided for @faceRegulaMatchUnavailable.
-  ///
-  /// In en, this message translates to:
-  /// **'Your face could not be compared with your document photo right now.'**
-  String get faceRegulaMatchUnavailable;
-
-  /// No description provided for @faceRegulaScanAgain.
-  ///
-  /// In en, this message translates to:
-  /// **'Scan document again'**
-  String get faceRegulaScanAgain;
 
   /// No description provided for @faceRegulaFailedError.
   ///
@@ -1537,24 +883,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Retry'**
   String get faceRetry;
-
-  /// No description provided for @proofingConsentTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Identity proofing request'**
-  String get proofingConsentTitle;
-
-  /// No description provided for @proofingConsentIntro.
-  ///
-  /// In en, this message translates to:
-  /// **'is requesting to verify your identity from a document. Scanning your document and completing face verification will send the result below back to them.'**
-  String get proofingConsentIntro;
-
-  /// No description provided for @proofingConsentRequesting.
-  ///
-  /// In en, this message translates to:
-  /// **'They are requesting:'**
-  String get proofingConsentRequesting;
 
   /// No description provided for @proofingConsentExpired.
   ///
@@ -1688,12 +1016,6 @@ abstract class AppLocalizations {
   /// **'Sending to {relyingParty}…'**
   String proofingStepSending(String relyingParty);
 
-  /// No description provided for @proofingAddToWallet.
-  ///
-  /// In en, this message translates to:
-  /// **'Add to Wallet'**
-  String get proofingAddToWallet;
-
   /// No description provided for @proofingDialogOk.
   ///
   /// In en, this message translates to:
@@ -1705,30 +1027,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Scan {docType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}}'**
   String proofingScanDocument(String docType);
-
-  /// No description provided for @proofingPositionDocument.
-  ///
-  /// In en, this message translates to:
-  /// **'Position the {docType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}}'**
-  String proofingPositionDocument(String docType);
-
-  /// No description provided for @proofingScanMrzInstructions.
-  ///
-  /// In en, this message translates to:
-  /// **'Align the Machine Readable Zone (MRZ) with the frame at the bottom of the screen. Hold steady until scanning completes.'**
-  String get proofingScanMrzInstructions;
-
-  /// No description provided for @proofingScanMrzPhotoInstructions.
-  ///
-  /// In en, this message translates to:
-  /// **'Place the whole side with the Machine Readable Zone (MRZ) inside the frame, on a flat surface in good light. Hold steady: once the MRZ is read, this side is photographed too.'**
-  String get proofingScanMrzPhotoInstructions;
-
-  /// No description provided for @proofingEnterDetailsManually.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter {docType, select, passport{passport} identityCard{ID card} drivingLicence{driving licence} other{document}} details manually'**
-  String proofingEnterDetailsManually(String docType);
 
   /// No description provided for @proofingContinueInBrowserTitle.
   ///
