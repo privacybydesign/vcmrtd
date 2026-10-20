@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:idem/l10n/l10n.dart';
+import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:idem/widgets/pages/document_photo_screen.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtd/vcmrtd.dart';
@@ -203,7 +204,10 @@ void main() {
     await tester.pump();
 
     expect(find.byKey(const Key('fake preview')), findsOneWidget);
-    expect(find.text('2 of 3 · Document photo'), findsOneWidget);
+    expect(find.text('Document photo'), findsOneWidget);
+    final stepBar = tester.widget<GuidedStepBar>(find.byType(GuidedStepBar));
+    expect((stepBar.step, stepBar.total), (2, 3));
+    expect(find.byType(StepBadge), findsNothing);
     expect(find.text('Front · 1 of 2'), findsOneWidget);
     expect(find.text('Photograph the front'), findsOneWidget);
     expect(_frameRatio(tester), MRZCameraOverlay.cardFrameRatio);
