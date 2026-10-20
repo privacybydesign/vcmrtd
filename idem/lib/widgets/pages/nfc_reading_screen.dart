@@ -5,14 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:idem/custom/custom_logger_extension.dart';
 import 'package:idem/l10n/l10n.dart';
-import 'package:idem/providers/active_authenticiation_provider.dart';
-import 'package:idem/providers/face_api_provider.dart';
-import 'package:idem/providers/face_engine_provider.dart';
-import 'package:idem/providers/passport_issuer_provider.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/services/proofing_session_client.dart';
-import 'package:idem/widgets/common/animated_nfc_status_widget.dart';
-import 'package:idem/widgets/common/nfc_reading_animation.dart';
 import 'package:idem/widgets/pages/nfc_guidance_screen.dart';
 import 'package:idem/providers/reader_providers.dart';
 import 'package:mrz_capture/mrz_capture.dart';
@@ -22,6 +16,9 @@ import 'package:idem/widgets/common/brand_mark.dart';
 import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:idem/services/flow_step_plan.dart';
+
+/// What the chip read is doing, for the reading checklist.
+enum _NFCReadingState { connecting, reading, authenticating, success, error, idle, cancelling }
 
 class NfcReadingRouteParams {
   final ScannedMRZ scannedMRZ;
@@ -115,17 +112,6 @@ class NfcReadingScreen extends ConsumerStatefulWidget {
 }
 
 class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteAware {
-  /// The checklist's reading steps as (title, subtitle).
-  List<(String, String)> _readingSteps() {
-    final l10n = context.l10n;
-    return [
-      (l10n.docNfcStepStart, l10n.docNfcStepStartSubtitle),
-      (l10n.docNfcStepDetails, l10n.docNfcStepDetailsSubtitle),
-      (l10n.docNfcStepPhoto, l10n.docNfcStepPhotoSubtitle),
-      (l10n.docNfcStepAlmostDone, l10n.docNfcStepAlmostDoneSubtitle),
-    ];
-  }
-
   late ScannedMRZ scannedMRZ;
 
   @override
@@ -171,7 +157,9 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
 
     final state = ref.watch(readerProvider(scannedMRZ));
 
-    if (state is DocumentReaderPending) {
+    // NFC switched off after the guidance's check: back to the guidance,
+    // which says so and lets the read start again once it is on.
+    if (state is DocumentReaderPending || state is DocumentReaderNfcUnavailable) {
       return NfcGuidanceScreen(
         onStartReading: startReading,
         onBack: _leave,
@@ -185,53 +173,10 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
     final readingStep = _readingStepForState(state);
     final tip = _tipForState(state, readingStep);
 
-    final guided = context.guided;
-    if (guided != null) {
-      return _buildGuided(context, guided, state: state, nfcState: nfcState, readingStep: readingStep, tip: tip);
-    }
-
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildTopBar(context),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    if (nfcState != NFCReadingState.success && nfcState != NFCReadingState.error) ...[
-                      NfcReadingAnimation(documentType: widget.params.documentType),
-                      const SizedBox(height: 16),
-                    ],
-                    Center(
-                      child: AnimatedNFCStatusWidget(
-                        state: nfcState,
-                        message: '',
-                        progress: progressForState(state),
-                        onRetry: retry,
-                        onCancel: () => _handleBack(context),
-                        tip: tip,
-                      ),
-                    ),
-                    if (readingStep != null) ...[
-                      const SizedBox(height: 16),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: _buildStepChecklist(currentStep: readingStep, nfcState: nfcState),
-                      ),
-                    ],
-                    const SizedBox(height: 24),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    return _buildGuided(context, context.guided, state: state, nfcState: nfcState, readingStep: readingStep, tip: tip);
   }
 
-  /// Maps the reader state to an index into [_readingSteps]. Regresses
+  /// Maps the reader state to a row of the reading checklist. Regresses
   /// to step 0 on failure/cancellation, since the user needs to reposition
   /// the document and start the reading flow again.
   int? _readingStepForState(DocumentReaderState state) {
@@ -276,123 +221,19 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
     return state is DocumentReaderConnecting ? context.l10n.docNfcTipFirst : context.l10n.docNfcTipHoldSteady;
   }
 
-  /// Checklist card of reading steps, e.g. a checkmark for a done step, a
-  /// small spinner for the current one, and an outlined circle for steps
-  /// still ahead.
-  Widget _buildStepChecklist({required int currentStep, required NFCReadingState nfcState}) {
-    final steps = _readingSteps();
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(12)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (var index = 0; index < steps.length; index++)
-            _buildStepRow(
-              index: index,
-              title: steps[index].$1,
-              subtitle: steps[index].$2,
-              currentStep: currentStep,
-              nfcState: nfcState,
-              isLast: index == steps.length - 1,
-            ),
-        ],
-      ),
-    );
-  }
-
-  /// A step row with its status icon connected to the next row by a
-  /// vertical line, filled in green once this step is done.
-  Widget _buildStepRow({
-    required int index,
-    required String title,
-    required String subtitle,
-    required int currentStep,
-    required NFCReadingState nfcState,
-    required bool isLast,
-  }) {
-    final isDone = index < currentStep;
-    final isCurrent = index == currentStep;
-
-    final brand = context.brand;
-    final titleColor = switch ((isDone, isCurrent)) {
-      (true, _) => brand.ink ?? const Color(0xFF212121),
-      (_, true) => nfcStateColor(nfcState, brand),
-      _ => Colors.grey[500],
-    };
-
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Column(
-            children: [
-              _buildStepStatusIcon(isDone: isDone, isCurrent: isCurrent, nfcState: nfcState),
-              if (!isLast)
-                Expanded(
-                  child: Container(
-                    width: 2,
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    color: isDone ? nfcStateColor(NFCReadingState.success, brand) : Colors.grey[300],
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(bottom: isLast ? 0 : 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: titleColor),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(subtitle, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStepStatusIcon({required bool isDone, required bool isCurrent, required NFCReadingState nfcState}) {
-    if (isDone) {
-      return Icon(Icons.check_circle, color: nfcStateColor(NFCReadingState.success, context.brand), size: 22);
-    }
-    if (isCurrent) {
-      if (nfcState == NFCReadingState.error) {
-        return const Icon(Icons.error, color: Color(0xFFF44336), size: 22);
-      }
-      return SizedBox(
-        width: 20,
-        height: 20,
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          valueColor: AlwaysStoppedAnimation(nfcStateColor(nfcState, context.brand)),
-        ),
-      );
-    }
-    return Icon(Icons.circle_outlined, color: Colors.grey[400], size: 22);
-  }
-
   /// Guided layout: a progress ring over a checklist of what's been read.
   Widget _buildGuided(
     BuildContext context,
     GuidedStyle g, {
     required DocumentReaderState state,
-    required NFCReadingState nfcState,
+    required _NFCReadingState nfcState,
     required int? readingStep,
     required String? tip,
   }) {
     final l10n = context.l10n;
     final type = widget.params.documentType.name;
-    final failed = nfcState == NFCReadingState.error;
-    final done = nfcState == NFCReadingState.success;
+    final failed = nfcState == _NFCReadingState.error;
+    final done = nfcState == _NFCReadingState.success;
     final (title, subtitle) = switch (state) {
       DocumentReaderConnecting() => (l10n.nfcHoldPhoneOn(type), tip ?? l10n.docNfcTipFirst),
       DocumentReaderReconnecting() => (l10n.nfcReadingConnectionLost, l10n.docNfcTipStuck),
@@ -467,7 +308,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
                         ),
                       ),
                       const SizedBox(height: 24),
-                      Text(title, textAlign: TextAlign.center, style: g.heading(24, height: 1.25)),
+                      GuidedHeading(title, textAlign: TextAlign.center, style: g.heading(24, height: 1.25)),
                       const SizedBox(height: 8),
                       Text(
                         subtitle,
@@ -479,8 +320,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
                         _GuidedReadingChecklist(
                           style: g,
                           currentStep: readingStep,
-                          failed: failed,
-                          complete: done,
+                          nfcState: nfcState,
                           documentType: widget.params.documentType,
                         ),
                       ],
@@ -500,30 +340,20 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
     );
   }
 
-  Widget _buildTopBar(BuildContext context) {
-    return StepBadgeTopBar(
-      icon: Icons.arrow_back,
-      onBack: () => _handleBack(context),
-      current: widget.stepNumber,
-      total: widget.totalSteps,
-      label: context.l10n.docReadDocument(widget.params.documentType.name),
-    );
-  }
-
-  NFCReadingState _mapState(DocumentReaderState state) {
+  _NFCReadingState _mapState(DocumentReaderState state) {
     return switch (state) {
-      DocumentReaderPending() => NFCReadingState.idle,
-      DocumentReaderCancelled() => NFCReadingState.error,
-      DocumentReaderCancelling() => NFCReadingState.cancelling,
-      DocumentReaderFailed() => NFCReadingState.error,
-      DocumentReaderConnecting() => NFCReadingState.connecting,
-      DocumentReaderReadingCardAccess() => NFCReadingState.authenticating,
-      DocumentReaderAuthenticating() => NFCReadingState.authenticating,
+      DocumentReaderPending() => _NFCReadingState.idle,
+      DocumentReaderCancelled() => _NFCReadingState.error,
+      DocumentReaderCancelling() => _NFCReadingState.cancelling,
+      DocumentReaderFailed() => _NFCReadingState.error,
+      DocumentReaderConnecting() => _NFCReadingState.connecting,
+      DocumentReaderReadingCardAccess() => _NFCReadingState.authenticating,
+      DocumentReaderAuthenticating() => _NFCReadingState.authenticating,
       DocumentReaderReadingDataGroup() ||
       DocumentReaderReadingSOD() ||
-      DocumentReaderReadingCOM() => NFCReadingState.reading,
-      DocumentReaderActiveAuthentication() => NFCReadingState.authenticating,
-      DocumentReaderSuccess() => NFCReadingState.success,
+      DocumentReaderReadingCOM() => _NFCReadingState.reading,
+      DocumentReaderActiveAuthentication() => _NFCReadingState.authenticating,
+      DocumentReaderSuccess() => _NFCReadingState.success,
       // Keep the visual state (color/icon) matching whatever step this is a
       // retry of - the reposition tip is what actually flags the connection
       // loss, this shouldn't also read as a harder failure.
@@ -571,7 +401,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
   }
 
   /// True from a Scan tap until its read ends, so a second tap (the screen
-  /// still shows Scan while the session is fetched) doesn't start a second
+  /// still shows Scan while NFC is checked) doesn't start a second
   /// read that keeps waiting for the document after the first one is done.
   var _reading = false;
 
@@ -586,9 +416,7 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
         DocumentType.drivingLicence => drivingLicenceReaderProvider,
       };
 
-      final nonceAndSessionId = await _activeAuthenticationParams();
-      // Left the screen while the session was fetched: nothing to read for.
-      if (!mounted) return;
+      final nonceAndSessionId = _activeAuthenticationParams();
       final result = await ref
           .read(readerProvider(scannedMRZ).notifier)
           .readDocument(iosNfcMessages: _createIosNfcMessageMapper(), activeAuthenticationParams: nonceAndSessionId);
@@ -604,37 +432,9 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
   }
 
   /// The nonce the chip signs for Active Authentication, or null to skip it.
-  Future<NonceAndSessionId?> _activeAuthenticationParams() async {
+  NonceAndSessionId? _activeAuthenticationParams() {
     final activeSession = ref.read(activeProofingSessionProvider);
-    ref.read(issuerFaceVerificationProvider.notifier).set(null);
-    if (activeSession == null && ref.read(faceEngineProvider) == FaceEngineChoice.regula) {
-      final nonceAndSessionId = await _startIssuerFaceVerification();
-      if (nonceAndSessionId != null) return nonceAndSessionId;
-    }
-    if (activeSession != null) return _proofingSessionChallenge(activeSession);
-    if (ref.read(activeAuthenticationProvider)) {
-      // No pinned proofing session (standalone scan straight into the
-      // local wallet) — fall back to the legacy passport-issuer flow.
-      final startValidation = await ref.read(passportIssuerProvider).startSessionAtPassportIssuer();
-      return startValidation.nonceAndSessionId;
-    }
-    return null;
-  }
-
-  /// Standalone Regula needs the issuer to match, and the issuer's verify
-  /// call needs this session's nonce, so the chip read signs it too.
-  Future<NonceAndSessionId?> _startIssuerFaceVerification() async {
-    try {
-      final startValidation = await ref.read(passportIssuerProvider).startSessionAtPassportIssuer();
-      ref.read(issuerFaceVerificationProvider.notifier).set(startValidation.faceVerification);
-      if (startValidation.faceVerification != null || ref.read(activeAuthenticationProvider)) {
-        return startValidation.nonceAndSessionId;
-      }
-    } catch (e) {
-      // Without the issuer the face step falls back to the on-device engine.
-      debugPrint('passport issuer unavailable for face verification: $e');
-    }
-    return null;
+    return activeSession == null ? null : _proofingSessionChallenge(activeSession);
   }
 
   /// Pinned to an identity-proofing-service session: the flow, not
@@ -697,21 +497,20 @@ class _GuidedReadingChecklist extends StatelessWidget {
   const _GuidedReadingChecklist({
     required this.style,
     required this.currentStep,
-    required this.failed,
-    required this.complete,
+    required this.nfcState,
     required this.documentType,
   });
 
   final GuidedStyle style;
   final int currentStep;
-  final bool failed;
-  final bool complete;
+  final _NFCReadingState nfcState;
   final DocumentType documentType;
 
   @override
   Widget build(BuildContext context) {
     final g = style;
     final l10n = context.l10n;
+    final complete = nfcState == _NFCReadingState.success;
     final labels = [
       (l10n.nfcChecklistSecureDone, l10n.nfcChecklistSecureActive),
       (l10n.nfcChecklistDetailsDone, l10n.nfcChecklistDetailsActive),
@@ -733,7 +532,7 @@ class _GuidedReadingChecklist extends StatelessWidget {
               state: i < currentStep || complete
                   ? _RowState.done
                   : i == currentStep
-                  ? (failed ? _RowState.failed : _RowState.current)
+                  ? (nfcState == _NFCReadingState.error ? _RowState.failed : _RowState.current)
                   : _RowState.pending,
               divider: i < labels.length - 1,
             ),

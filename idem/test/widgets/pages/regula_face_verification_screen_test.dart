@@ -6,9 +6,10 @@ import 'package:idem/providers/face_api_provider.dart';
 import 'package:idem/services/face_verification_outcome.dart';
 import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/services/regula_face_service.dart';
-import 'package:idem/theme/app_theme.dart';
+import 'package:idem/widgets/common/face_verification_views.dart';
+import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:idem/widgets/pages/regula_face_verification_screen.dart';
-import 'package:vcmrtd/vcmrtd.dart' show FaceMatch;
+import 'package:mrz_capture/mrz_capture.dart' show StepBadge;
 
 class _FakeRegula implements RegulaFaceService {
   _FakeRegula(this.results);
@@ -37,15 +38,11 @@ const _announcement = ProofingFaceVerification(
   tag: 'ips-tref_s1',
   fromSession: true,
 );
-const _issuerAnnouncement = ProofingFaceVerification(provider: 'regula', faceApiUrl: 'https://faceapi.test');
 
-Future<List<FaceVerificationOutcome>> _pump(
-  WidgetTester tester,
-  _FakeRegula regula, {
-  Future<FaceMatch?> Function(String)? matchFace,
-  VoidCallback? onBack,
-  ThemeData? theme,
-}) async {
+Future<List<FaceVerificationOutcome>> _pump(WidgetTester tester, _FakeRegula regula) async {
+  tester.view.physicalSize = const Size(390, 1000);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
   final verified = <FaceVerificationOutcome>[];
   await tester.pumpWidget(
     ProviderScope(
@@ -53,12 +50,10 @@ Future<List<FaceVerificationOutcome>> _pump(
       child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        theme: theme,
         home: RegulaFaceVerificationScreen(
-          faceVerification: matchFace == null ? _announcement : _issuerAnnouncement,
-          onBackPressed: onBack ?? () {},
+          faceVerification: _announcement,
+          onBackPressed: () {},
           onVerified: verified.add,
-          matchFace: matchFace,
         ),
       ),
     ),
@@ -71,7 +66,7 @@ void main() {
     final regula = _FakeRegula([const RegulaLivenessResult(isLive: true, transactionId: 'tx-1')]);
     final verified = await _pump(tester, regula);
 
-    await tester.tap(find.text('Start Verification'));
+    await tester.tap(find.text('Start selfie check'));
     await tester.pump();
     expect(find.text('Continuing…'), findsOneWidget);
     expect(regula.lastTag, 'ips-tref_s1');
@@ -88,7 +83,7 @@ void main() {
     ]);
     final verified = await _pump(tester, regula);
 
-    await tester.tap(find.text('Start Verification'));
+    await tester.tap(find.text('Start selfie check'));
     await tester.pump();
     expect(find.text('Verification Failed'), findsOneWidget);
 
@@ -97,100 +92,60 @@ void main() {
     expect(verified.single.livenessTransactionId, 'tx-2');
   });
 
+  testWidgets('the result and busy views after the intro keep the guided layout', (tester) async {
+    final regula = _FakeRegula([
+      const RegulaLivenessResult(isLive: false, transactionId: 'tx-1'),
+      const RegulaLivenessResult(isLive: true, transactionId: 'tx-2'),
+    ]);
+    await _pump(tester, regula);
+
+    await tester.tap(find.text('Start selfie check'));
+    await tester.pump();
+    expect(find.descendant(of: find.byType(FaceStepScaffold), matching: find.byType(FaceResultView)), findsOneWidget);
+    expect(find.byType(GuidedStepBar), findsOneWidget);
+    expect(find.byType(StepBadge), findsNothing);
+
+    await tester.tap(find.text('Try Again'));
+    await tester.pump();
+    expect(find.descendant(of: find.byType(FaceStepScaffold), matching: find.byType(FaceBusyView)), findsOneWidget);
+    expect(find.byType(GuidedStepBar), findsOneWidget);
+    expect(find.byType(StepBadge), findsNothing);
+  });
+
   testWidgets('cancelling shows the cancelled state', (tester) async {
     final verified = await _pump(tester, _FakeRegula([const RegulaLivenessCancelled()]));
 
-    await tester.tap(find.text('Start Verification'));
+    await tester.tap(find.text('Start selfie check'));
     await tester.pump();
 
     expect(find.text('Cancelled'), findsOneWidget);
     expect(verified, isEmpty);
   });
 
-  testWidgets('the guided layout opens on the selfie intro, whose button starts the scan', (tester) async {
-    tester.view.physicalSize = const Size(390, 1000);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
+  testWidgets('opens on the selfie intro, whose button starts the scan', (tester) async {
     final regula = _FakeRegula([const RegulaLivenessResult(isLive: true, transactionId: 'tx-1')]);
-    final verified = await _pump(tester, regula, theme: appTheme());
+    final verified = await _pump(tester, regula);
 
     expect(find.text('Take a quick selfie'), findsOneWidget);
-    expect(find.text('Start Verification'), findsNothing);
 
     await tester.tap(find.text('Start selfie check'));
     await tester.pump();
     expect(verified.single.livenessTransactionId, 'tx-1');
   });
 
-  group('standalone (passport issuer matches)', () {
-    testWidgets('a match continues with the issuer\'s score, not a transaction id', (tester) async {
-      final asked = <String>[];
-      final regula = _FakeRegula([const RegulaLivenessResult(isLive: true, transactionId: 'tx-1')]);
-      final verified = await _pump(
-        tester,
-        regula,
-        matchFace: (tx) async {
-          asked.add(tx);
-          return FaceMatch(matched: true, similarity: 0.91);
-        },
-      );
+  testWidgets('a capture that fails retries right here', (tester) async {
+    final regula = _FakeRegula([
+      Exception('camera unavailable'),
+      const RegulaLivenessResult(isLive: true, transactionId: 'tx-2'),
+    ]);
+    final verified = await _pump(tester, regula);
 
-      await tester.tap(find.text('Start Verification'));
-      await tester.pump();
-      await tester.pump();
-      expect(find.text('Continuing…'), findsOneWidget);
-      expect(asked, ['tx-1']);
-      expect(regula.lastTag, isNull);
-      expect(verified.single.matchScore, 0.91);
-      expect(verified.single.livenessTransactionId, isNull);
-    });
+    await tester.tap(find.text('Start selfie check'));
+    await tester.pump();
+    expect(find.text('Something Went Wrong'), findsOneWidget);
 
-    testWidgets('no match sends the user back to scan again, since the issuer session is used up', (tester) async {
-      var backs = 0;
-      final verified = await _pump(
-        tester,
-        _FakeRegula([const RegulaLivenessResult(isLive: true, transactionId: 'tx-1')]),
-        matchFace: (_) async => FaceMatch(matched: false, similarity: 0.4),
-        onBack: () => backs++,
-      );
-
-      await tester.tap(find.text('Start Verification'));
-      await tester.pump();
-      await tester.pump();
-      expect(find.text('Verification Failed'), findsOneWidget);
-
-      await tester.tap(find.text('Scan document again'));
-      expect(backs, 1);
-      expect(verified, isEmpty);
-    });
-
-    testWidgets('a capture that fails before the issuer was asked retries right here', (tester) async {
-      var backs = 0;
-      final asked = <String>[];
-      final regula = _FakeRegula([
-        Exception('camera unavailable'),
-        const RegulaLivenessResult(isLive: true, transactionId: 'tx-2'),
-      ]);
-      final verified = await _pump(
-        tester,
-        regula,
-        matchFace: (tx) async {
-          asked.add(tx);
-          return FaceMatch(matched: true, similarity: 0.9);
-        },
-        onBack: () => backs++,
-      );
-
-      await tester.tap(find.text('Start Verification'));
-      await tester.pump();
-      expect(find.text('Scan document again'), findsNothing);
-
-      await tester.tap(find.text('Try Again'));
-      await tester.pump();
-      await tester.pump();
-      expect(backs, 0);
-      expect(asked, ['tx-2']);
-      expect(verified.single.matchScore, 0.9);
-    });
+    await tester.tap(find.text('Try Again'));
+    await tester.pump();
+    expect(verified.single.livenessTransactionId, 'tx-2');
   });
 }

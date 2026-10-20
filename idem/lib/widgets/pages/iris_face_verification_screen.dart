@@ -2,7 +2,6 @@ import 'package:iris_sdk_flutter/iris_sdk_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
-import 'package:mrz_capture/mrz_capture.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/services/face_verification_outcome.dart';
 import 'package:idem/services/flow_step_plan.dart';
@@ -154,43 +153,16 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
 
   @override
   Widget build(BuildContext context) {
-    final guided = context.guided;
-    if (guided != null && _status == _Status.intro) return _buildGuidedIntro(guided);
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildTopBar(context),
-            Expanded(
-              child: switch (_status) {
-                _Status.intro => _buildIntro(),
-                _Status.launching => _buildLaunching(),
-                _Status.continuing => FaceBusyView(label: context.l10n.faceContinuing),
-                _Status.result => _buildResult(),
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTopBar(BuildContext context) => StepBadgeTopBar(
-    icon: Icons.arrow_back,
-    tooltip: context.l10n.faceBack,
-    onBack: widget.onBackPressed,
-    current: widget.stepNumber,
-    total: widget.totalSteps,
-    label: context.l10n.faceStepLabel,
-  );
-
-  Widget _buildIntro() {
-    final l10n = context.l10n;
-    return FaceIntroView(
-      title: l10n.faceIrisIntroTitle,
-      body: l10n.faceIrisIntroBody,
-      steps: [l10n.faceIrisStep1, l10n.faceIrisStep2, l10n.faceIrisStep3],
-      onStart: _runVerification,
+    if (_status == _Status.intro) return _buildGuidedIntro(context.guided);
+    return FaceStepScaffold(
+      stepNumber: widget.stepNumber,
+      totalSteps: widget.totalSteps,
+      onBack: widget.onBackPressed,
+      child: switch (_status) {
+        _Status.intro || _Status.launching => _buildLaunching(),
+        _Status.continuing => FaceBusyView(label: context.l10n.faceContinuing),
+        _Status.result => _buildResult(),
+      },
     );
   }
 
@@ -221,7 +193,7 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
     if (error != null) {
       return FaceResultView(
         icon: Icons.error_outline,
-        color: Colors.red,
+        tone: FaceResultTone.failure,
         title: context.l10n.faceSomethingWentWrong,
         subtitle: error,
         onRetry: _runVerification,
@@ -231,7 +203,7 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
     return switch (_result?.outcome ?? IrisVerificationOutcome.failed) {
       IrisVerificationOutcome.matched || IrisVerificationOutcome.failed => FaceResultView(
         icon: Icons.cancel,
-        color: Colors.red,
+        tone: FaceResultTone.failure,
         title: context.l10n.faceVerificationFailed,
         subtitle: context.l10n.faceIrisFailedSubtitle,
         documentPhoto: _documentPhoto,
@@ -239,7 +211,7 @@ class _IrisFaceVerificationScreenState extends State<IrisFaceVerificationScreen>
       ),
       IrisVerificationOutcome.cancelled => FaceResultView(
         icon: Icons.info_outline,
-        color: Colors.orange,
+        tone: FaceResultTone.notice,
         title: context.l10n.faceCancelled,
         subtitle: context.l10n.faceIrisCancelledSubtitle,
         onRetry: _runVerification,

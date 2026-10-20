@@ -83,58 +83,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get idDocumentDrivingLicence => 'Driving licence';
 
   @override
-  String get commonTryAgain => 'Try Again';
-
-  @override
-  String get commonCancel => 'Cancel';
-
-  @override
-  String get docNewScan => 'New scan';
-
-  @override
-  String docConnectedBanner(String relyingParty) {
-    return 'Connected — will send results to $relyingParty';
-  }
-
-  @override
-  String get docPassport => 'Passport';
-
-  @override
-  String get docPassportSubtitle => 'Use a machine readable passport';
-
-  @override
-  String get docMostCommon => 'Most common';
-
-  @override
-  String get docIdentityCard => 'Identity Card';
-
-  @override
-  String get docIdentityCardSubtitle => 'Use a machine readable identity card';
-
-  @override
-  String get docDrivingLicence => 'Driving Licence';
-
-  @override
-  String get docDrivingLicenceSubtitle =>
-      'Use a machine readable driving licence. Currently works primarily with Dutch licences.';
-
-  @override
   String get docScanQrTitle => 'Scan QR code';
-
-  @override
-  String get docScanQrSubtitle => 'Scan any QR code with the camera';
-
-  @override
-  String get docAdvancedSettings => 'Advanced settings';
-
-  @override
-  String get docAdvancedSettingsSubtitle => 'Ocr Engine, Face Verification and more';
-
-  @override
-  String get docVerifyIdentityTitle => 'Verify your Identity';
-
-  @override
-  String get docSelectDocumentTypePrompt => 'Select the type of document you want to use for verification.';
 
   @override
   String get docSettingsTitle => 'Settings';
@@ -143,53 +92,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get docBack => 'Back';
 
   @override
-  String get docActiveAuthentication => 'Active authentication';
-
-  @override
-  String get docActiveAuthenticationSubtitle =>
-      'Perform active authentication when reading the document. A verification session follows its own flow.';
-
-  @override
-  String get docFaceEngine => 'Face verification engine';
-
-  @override
   String get docFaceEngineOpenSource => 'Open source';
 
   @override
-  String get docLivenessDetection => 'Liveness detection';
-
-  @override
-  String get docLivenessPassive => 'Passive';
-
-  @override
-  String get docLivenessActive => 'Active';
-
-  @override
-  String get docOcrEngine => 'OCR engine';
-
-  @override
   String get docNfcStepStart => 'Start reading';
-
-  @override
-  String get docNfcStepDetails => 'Reading details';
-
-  @override
-  String get docNfcStepPhoto => 'Getting photo';
-
-  @override
-  String get docNfcStepAlmostDone => 'Almost done';
-
-  @override
-  String get docNfcStepStartSubtitle => 'Connecting to the chip';
-
-  @override
-  String get docNfcStepDetailsSubtitle => 'Getting personal data';
-
-  @override
-  String get docNfcStepPhotoSubtitle => 'Getting the document photo';
-
-  @override
-  String get docNfcStepAlmostDoneSubtitle => 'Verifying document security';
 
   @override
   String get docNfcTipFirst => 'Place your document behind your phone and move it around until it buzzes or beeps.';
@@ -200,17 +106,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get docNfcTipStuck =>
       'Reading was interrupted. Slowly lift your phone off the document and place it back down until it buzzes or beeps again.';
-
-  @override
-  String docReadDocument(String documentType) {
-    String _temp0 = intl.Intl.selectLogic(documentType, {
-      'passport': 'Passport',
-      'identityCard': 'Identity Card',
-      'drivingLicence': 'Driving Licence',
-      'other': 'document',
-    });
-    return 'Read $_temp0';
-  }
 
   @override
   String docIosNfcHoldClose(String documentType) {
@@ -264,141 +159,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get docIosNfcReconnecting => 'Connection lost. Slowly lift your phone and place it back down.';
 
   @override
-  String get docNfcGuidanceTitle => 'Read the chip';
-
-  @override
-  String docNfcGuidancePlacePhone(String documentType) {
-    String _temp0 = intl.Intl.selectLogic(documentType, {
-      'passport': 'Passport',
-      'identityCard': 'Identity Card',
-      'drivingLicence': 'Driving Licence',
-      'other': 'document',
-    });
-    return 'Place your phone on the $_temp0';
-  }
-
-  @override
-  String get docNfcGuidanceTipsTitle => 'Tips for better results:';
-
-  @override
-  String docNfcGuidanceTips(String documentType) {
-    String _temp0 = intl.Intl.selectLogic(documentType, {
-      'passport': 'Passport',
-      'identityCard': 'Identity Card',
-      'drivingLicence': 'Driving Licence',
-      'other': 'document',
-    });
-    return '• Place the $_temp0 behind your phone like in the example\n• Remove phone case if reading fails\n• The process may take 10–30 seconds';
-  }
-
-  @override
-  String docScanDocument(String documentType) {
-    String _temp0 = intl.Intl.selectLogic(documentType, {
-      'passport': 'Passport',
-      'identityCard': 'Identity Card',
-      'drivingLicence': 'Driving Licence',
-      'other': 'document',
-    });
-    return 'Scan $_temp0';
-  }
-
-  @override
-  String get docNfcNotAvailable => 'NFC is not available';
-
-  @override
-  String get docPersonalInformation => 'Personal Information';
-
-  @override
-  String get docSurname => 'Surname';
-
-  @override
-  String get docOtherNames => 'Other Names';
-
-  @override
-  String get docDateOfBirth => 'Date of Birth';
-
-  @override
-  String get docPlaceOfBirth => 'Place of Birth';
-
-  @override
-  String get docDocumentInformation => 'Document Information';
-
-  @override
-  String get docDocumentNumber => 'Document Number';
-
-  @override
-  String get docIssuingMemberState => 'Issuing Member State';
-
-  @override
-  String get docIssuingAuthority => 'Issuing Authority';
-
-  @override
-  String get docDateOfIssue => 'Date of Issue';
-
-  @override
-  String get docDateOfExpiry => 'Date of Expiry';
-
-  @override
-  String get docDrivingLicenceDataTitle => 'Driving Licence Data';
-
-  @override
-  String get docUnableToLoadPhoto => 'Unable to load photo';
-
-  @override
   String get docCategories => 'Categories';
 
   @override
-  String get docCategory => 'Category';
-
-  @override
-  String get docCategoryDateOfIssue => 'Date of issue';
-
-  @override
-  String get docCategoryDateOfExpiry => 'Date of expiry';
-
-  @override
-  String get docWalletDocumentNumber => 'Document number';
-
-  @override
-  String get docWalletAdded => 'Added';
-
-  @override
-  String get docRemoveFromWallet => 'Remove from wallet';
-
-  @override
-  String get docFullName => 'Full Name';
-
-  @override
   String get docNationality => 'Nationality';
-
-  @override
-  String get docDocument => 'Document';
-
-  @override
-  String get docGender => 'Gender';
-
-  @override
-  String get docExpiryDate => 'Expiry Date';
-
-  @override
-  String get docCountry => 'Country';
-
-  @override
-  String get docVersion => 'Version';
-
-  @override
-  String get docOptionalData => 'Optional Data';
-
-  @override
-  String get docAvailableDataGroups => 'Available Data Groups';
-
-  @override
-  String docDataGroupsRead(int count, int total) {
-    return 'Data Groups Read: $count/$total';
-  }
-
-  @override
-  String get docActiveAuthenticationAvailable => 'Active Authentication Available';
 
   @override
   String get docWebAuthSession => 'Web Authentication Session';
@@ -406,17 +170,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String docWebAuthSessionId(String sessionId) {
     return 'Session IID: $sessionId';
-  }
-
-  @override
-  String docDocumentDataTitle(String documentType) {
-    String _temp0 = intl.Intl.selectLogic(documentType, {
-      'passport': 'Passport',
-      'identityCard': 'Identity Card',
-      'drivingLicence': 'Driving Licence',
-      'other': 'Document',
-    });
-    return '$_temp0 Data';
   }
 
   @override
@@ -436,24 +189,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get docImageUnsupportedType => 'Unknown or unsupported image type.';
-
-  @override
-  String get docIllustrationPassport => 'PASSPORT';
-
-  @override
-  String get docIllustrationIssuer => 'Kingdom of Example';
-
-  @override
-  String get docIllustrationName => 'Name: John Doe';
-
-  @override
-  String get docIllustrationNationality => 'Nationality: NL';
-
-  @override
-  String get docIllustrationDob => 'DOB: 01-01-1990';
-
-  @override
-  String get docIllustrationDrivingLicence => 'DRIVING LICENCE';
 
   @override
   String get docPhotoStepLabel => 'Document photo';
@@ -569,46 +304,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get faceTimeoutPerformAction => 'perform the action';
 
   @override
-  String get faceStepLabel => 'Face Verification';
-
-  @override
   String get faceBack => 'Back';
-
-  @override
-  String get faceSettingUp => 'Setting up face verification';
-
-  @override
-  String get faceTakesAMoment => 'This only takes a moment';
-
-  @override
-  String get faceLoadingOpeningCamera => 'Opening camera';
-
-  @override
-  String get faceLoadingModels => 'Loading face models';
-
-  @override
-  String get faceAlmostDone => 'Almost done…';
 
   @override
   String get faceHoldStill => 'Hold still';
 
   @override
   String get faceOpeningCamera => 'Opening camera...';
-
-  @override
-  String get faceHowItWorks => 'How it works';
-
-  @override
-  String get faceStepCenterFace => 'Center your face inside the oval';
-
-  @override
-  String get faceStepFollowPrompts => 'Follow the on-screen prompts';
-
-  @override
-  String get faceStart => 'Start';
-
-  @override
-  String get facePreparing => 'Preparing…';
 
   @override
   String get faceTipNoFace => 'Position your face in the oval';
@@ -641,55 +343,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get faceTipGetReady => 'Get ready…';
 
   @override
-  String get faceExtraBadge => 'extra';
-
-  @override
-  String get faceVerifyingIdentity => 'Verifying identity...';
-
-  @override
-  String get faceGoBack => 'Go Back';
-
-  @override
   String get faceTryAgain => 'Try Again';
 
   @override
   String get faceVerificationFailed => 'Verification Failed';
-
-  @override
-  String faceScoreMatch(String threshold) {
-    return 'Match (≥$threshold%)';
-  }
-
-  @override
-  String get faceScoreAntiSpoof => 'Anti-spoof';
-
-  @override
-  String get faceNotAvailable => 'n/a';
-
-  @override
-  String faceScoreRppg(int count) {
-    return 'rPPG ($count samples)';
-  }
-
-  @override
-  String faceBpm(String bpm) {
-    return '$bpm bpm';
-  }
-
-  @override
-  String get faceScoreLivenessActions => 'Liveness actions';
-
-  @override
-  String get facePassed => 'passed';
-
-  @override
-  String get faceFailed => 'failed';
-
-  @override
-  String get faceScoreIdentityConsistent => 'Identity consistent';
-
-  @override
-  String get faceChangedMidSession => 'face changed mid-session';
 
   @override
   String get faceDocumentPhoto => 'Document photo';
@@ -729,26 +386,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get faceIrisIntroTitle => 'Verify with the Iris SDK';
-
-  @override
   String get faceIrisIntroBody =>
       'The Iris SDK opens its own full-screen camera to check that a live person is present, then compares that face against the portrait stored on your document.';
 
   @override
-  String get faceIrisWhatToExpect => 'What to expect';
-
-  @override
-  String get faceIrisStep1 => 'A camera screen from the Iris SDK will open';
-
-  @override
   String get faceIrisStep2 => 'Look directly at the camera and follow any prompts';
-
-  @override
-  String get faceIrisStep3 => 'Hold still until it finishes — this only takes a moment';
-
-  @override
-  String get faceStartVerification => 'Start Verification';
 
   @override
   String get faceSelfieIntroTitle => 'Take a quick selfie';
@@ -776,20 +418,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get faceIrisCancelledSubtitle => 'You cancelled the verification. Tap below to try again.';
 
   @override
-  String get faceRegulaIntroTitle => 'Check that it\'s really you';
-
-  @override
   String get faceRegulaIntroBody =>
       'A camera screen opens to check that a live person is present. The verification service then compares your face with the photo on your document\'s chip.';
 
   @override
-  String get faceRegulaStep1 => 'A camera screen will open';
-
-  @override
   String get faceRegulaStep2 => 'Look straight at the camera and follow the prompts';
-
-  @override
-  String get faceRegulaStep3 => 'Hold still until it finishes — this only takes a moment';
 
   @override
   String get faceRegulaOpeningCamera => 'Opening the camera…';
@@ -800,19 +433,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get faceRegulaCancelledSubtitle => 'You cancelled the verification. Tap below to try again.';
-
-  @override
-  String get faceRegulaMatching => 'Comparing your face with your document photo…';
-
-  @override
-  String get faceRegulaNoMatchSubtitle =>
-      'Your face didn\'t match the photo on your document. Scan your document again to retry.';
-
-  @override
-  String get faceRegulaMatchUnavailable => 'Your face could not be compared with your document photo right now.';
-
-  @override
-  String get faceRegulaScanAgain => 'Scan document again';
 
   @override
   String faceRegulaFailedError(String error) {
@@ -841,16 +461,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get faceRetry => 'Retry';
-
-  @override
-  String get proofingConsentTitle => 'Identity proofing request';
-
-  @override
-  String get proofingConsentIntro =>
-      'is requesting to verify your identity from a document. Scanning your document and completing face verification will send the result below back to them.';
-
-  @override
-  String get proofingConsentRequesting => 'They are requesting:';
 
   @override
   String get proofingConsentExpired => 'This request has expired.';
@@ -939,9 +549,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get proofingAddToWallet => 'Add to Wallet';
-
-  @override
   String get proofingDialogOk => 'OK';
 
   @override
@@ -953,36 +560,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'other': 'document',
     });
     return 'Scan $_temp0';
-  }
-
-  @override
-  String proofingPositionDocument(String docType) {
-    String _temp0 = intl.Intl.selectLogic(docType, {
-      'passport': 'passport',
-      'identityCard': 'ID card',
-      'drivingLicence': 'driving licence',
-      'other': 'document',
-    });
-    return 'Position the $_temp0';
-  }
-
-  @override
-  String get proofingScanMrzInstructions =>
-      'Align the Machine Readable Zone (MRZ) with the frame at the bottom of the screen. Hold steady until scanning completes.';
-
-  @override
-  String get proofingScanMrzPhotoInstructions =>
-      'Place the whole side with the Machine Readable Zone (MRZ) inside the frame, on a flat surface in good light. Hold steady: once the MRZ is read, this side is photographed too.';
-
-  @override
-  String proofingEnterDetailsManually(String docType) {
-    String _temp0 = intl.Intl.selectLogic(docType, {
-      'passport': 'passport',
-      'identityCard': 'ID card',
-      'drivingLicence': 'driving licence',
-      'other': 'document',
-    });
-    return 'Enter $_temp0 details manually';
   }
 
   @override

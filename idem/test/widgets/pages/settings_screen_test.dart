@@ -65,11 +65,11 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.text('Face verification engine'), findsOneWidget);
+      expect(find.text('Face engine'), findsOneWidget);
       expect(find.text('Regula'), findsOneWidget);
       expect(container.read(faceEngineProvider), FaceEngineChoice.regula);
 
-      await tester.tap(find.text('Face verification engine'));
+      await tester.tap(find.text('Face engine'));
       await tester.pumpAndSettle();
 
       expect(find.text('Iris SDK'), findsOneWidget);
@@ -95,19 +95,19 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.text('Liveness detection'), findsOneWidget);
-      expect(find.text('Passive'), findsOneWidget);
+      expect(find.text('Liveness check'), findsOneWidget);
+      expect(find.text('Passive: just hold still'), findsOneWidget);
       expect(container.read(livenessModeProvider), LivenessMode.passive);
 
-      await tester.tap(find.text('Liveness detection'));
+      await tester.tap(find.text('Liveness check'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Active'), findsOneWidget);
-      await tester.tap(find.text('Active'));
+      expect(find.text('Active: follow the prompts'), findsOneWidget);
+      await tester.tap(find.text('Active: follow the prompts'));
       await tester.pumpAndSettle();
 
       expect(container.read(livenessModeProvider), LivenessMode.active);
-      expect(find.text('Active'), findsOneWidget);
+      expect(find.text('Active: follow the prompts'), findsOneWidget);
     });
 
     testWidgets('liveness detection tile is hidden when the Iris SDK is selected', (tester) async {
@@ -125,12 +125,12 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.text('Liveness detection'), findsOneWidget);
+      expect(find.text('Liveness check'), findsOneWidget);
 
       container.read(faceEngineProvider.notifier).set(FaceEngineChoice.iris);
       await tester.pump();
 
-      expect(find.text('Liveness detection'), findsNothing);
+      expect(find.text('Liveness check'), findsNothing);
     });
 
     testWidgets('OCR engine tile can be shown and updates provider via picker', (tester) async {
@@ -148,10 +148,10 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.text('OCR engine'), findsOneWidget);
+      expect(find.text('Text recognition'), findsOneWidget);
       expect(find.text('Google ML Kit'), findsOneWidget);
 
-      await tester.tap(find.text('OCR engine'));
+      await tester.tap(find.text('Text recognition'));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Tesseract4Android'));

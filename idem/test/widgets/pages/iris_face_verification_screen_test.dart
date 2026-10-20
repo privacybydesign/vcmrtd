@@ -5,7 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
+import 'package:idem/widgets/common/face_verification_views.dart';
+import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:idem/widgets/pages/iris_face_verification_screen.dart';
+import 'package:mrz_capture/mrz_capture.dart' show StepBadge;
 
 Uint8List _fakePortraitPng() {
   final image = img.Image(width: 2, height: 2);
@@ -13,8 +16,8 @@ Uint8List _fakePortraitPng() {
 }
 
 Future<void> _startVerification(WidgetTester tester) async {
-  expect(find.text('Start Verification'), findsOneWidget);
-  await tester.tap(find.text('Start Verification'));
+  expect(find.text('Start selfie check'), findsOneWidget);
+  await tester.tap(find.text('Start selfie check'));
   await tester.pump();
 }
 
@@ -37,7 +40,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Start Verification'), findsOneWidget);
+    expect(find.text('Start selfie check'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
@@ -59,6 +62,8 @@ void main() {
     await _startVerification(tester);
 
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.descendant(of: find.byType(FaceStepScaffold), matching: find.byType(FaceBusyView)), findsOneWidget);
+    expect(find.byType(GuidedStepBar), findsOneWidget);
 
     completer.complete({'outcome': 'failed', 'face': null});
     await tester.pumpAndSettle();
@@ -113,6 +118,10 @@ void main() {
     expect(find.text('Verification Failed'), findsOneWidget);
     expect(find.text('Document photo'), findsOneWidget);
     expect(find.text('Live capture'), findsNothing);
+    // The result keeps the guided layout of the intro.
+    expect(find.descendant(of: find.byType(FaceStepScaffold), matching: find.byType(FaceResultView)), findsOneWidget);
+    expect(find.byType(GuidedStepBar), findsOneWidget);
+    expect(find.byType(StepBadge), findsNothing);
   });
 
   testWidgets('renders a cancelled result when the user cancels the SDK flow', (tester) async {

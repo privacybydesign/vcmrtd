@@ -260,9 +260,14 @@ BrandTheme brandThemeFor(AppBranding branding) {
   final border = branding.border ?? AppColors.border;
   final success = branding.success ?? AppColors.success;
   final buttonText = _buttonText(branding.font);
-  // Secondary text and greys follow the text colour, so a themed one still matches.
-  final bodyText = branding.text == null ? AppColors.bodyText : Color.lerp(ink, Colors.white, 0.15)!;
-  final muted = branding.text == null ? AppColors.muted : Color.lerp(ink, Colors.white, 0.4)!;
+  // Secondary text and greys follow the text colour, so a themed one still
+  // matches; a text colour too light to soften keeps it as it is.
+  final bodyText = branding.text == null
+      ? AppColors.bodyText
+      : _readable(_lighten(ink, 0.15), on: const [Colors.white]) ?? ink;
+  final muted = branding.text == null
+      ? AppColors.muted
+      : _readable(_lighten(ink, 0.2), on: const [Colors.white]) ?? ink;
 
   final primaryButtonStyle = ElevatedButton.styleFrom(
     backgroundColor: primary,
@@ -301,18 +306,6 @@ BrandTheme brandThemeFor(AppBranding branding) {
   return BrandTheme(
     name: branding.name,
     logo: branding.logo,
-    accent: branding.link ?? primary,
-    success: success,
-    ink: ink,
-    mutedText: bodyText,
-    headingFontFamily: branding.font.heading,
-    homeBackgroundGradient: [header, surface],
-    documentOptionAccent: primary,
-    badgeBackground: badgeBackground,
-    badgeForeground: secondary,
-    proofingBannerColor: secondary,
-    primaryButtonStyle: primaryButtonStyle,
-    secondaryButtonStyle: secondaryButtonStyle,
     guided: GuidedStyle(
       headingFontFamily: branding.font.heading,
       ink: ink,
@@ -350,7 +343,7 @@ BrandTheme brandThemeFor(AppBranding branding) {
 
 ThemeData appTheme([AppBranding branding = AppBranding.idem]) {
   final brand = brandThemeFor(branding);
-  final guided = brand.guided!;
+  final guided = brand.guided;
   final font = branding.font;
   final buttonText = _buttonText(font);
   final colorScheme = ColorScheme.fromSeed(seedColor: branding.primary).copyWith(
@@ -390,7 +383,7 @@ ThemeData appTheme([AppBranding branding = AppBranding.idem]) {
         color: Colors.white,
       ),
     ),
-    elevatedButtonTheme: ElevatedButtonThemeData(style: brand.primaryButtonStyle),
+    elevatedButtonTheme: ElevatedButtonThemeData(style: guided.primaryButtonStyle),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: guided.ink,

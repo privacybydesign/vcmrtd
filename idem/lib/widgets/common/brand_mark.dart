@@ -36,10 +36,10 @@ class BrandMark extends StatelessWidget {
       brand.name,
       maxLines: 1,
       style: TextStyle(
-        fontFamily: brand.headingFontFamily,
+        fontFamily: brand.guided.headingFontFamily,
         fontSize: size * 0.5,
         fontWeight: FontWeight.w700,
-        color: backdrop == Backdrop.dark ? Colors.white : (brand.ink ?? Colors.black87),
+        color: backdrop == Backdrop.dark ? Colors.white : brand.guided.ink,
       ),
     );
     return SizedBox(

@@ -14,7 +14,6 @@ import 'package:idem/providers/reader_providers.dart';
 import 'package:idem/providers/wallet_provider.dart';
 import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/theme/app_theme.dart';
-import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/routing.dart';
 import 'package:idem/widgets/pages/choose_document_screen.dart';
@@ -54,7 +53,7 @@ class _FakeReader extends DocumentReader<PassportData> {
 }
 
 /// The ICAO specimen, expiring in 2034 so it can be reused.
-PassportData _passport() => PassportData(
+PassportData _passport({String name = 'ANNA MARIA ERIKSSON'}) => PassportData(
   mrz: PassportMRZ(
     Uint8List.fromList(
       'P<UTOERIKSSON<<ANNA<MARIA<<<<<<<<<<<<<<<<<<<L898902C36UTO7408122F3404159ZE184226B<<<<<16'.codeUnits,
@@ -64,7 +63,7 @@ PassportData _passport() => PassportData(
   photoImageType: ImageType.jpeg,
   photoImageWidth: 2,
   photoImageHeight: 2,
-  nameOfHolder: 'ANNA MARIA ERIKSSON',
+  nameOfHolder: name,
 );
 
 class _SeededWallet extends WalletNotifier {
@@ -105,11 +104,6 @@ void _tallViewport(WidgetTester tester) {
 }
 
 void main() {
-  test('the app theme uses the guided layout; a theme without a brand the classic one', () {
-    expect(appTheme().extension<BrandTheme>()!.guided, isNotNull);
-    expect(BrandTheme.idem.guided, isNull);
-  });
-
   testWidgets('the guided manual entry counts the flow\'s steps, not a fixed three', (tester) async {
     await tester.pumpWidget(
       _app(
@@ -184,6 +178,8 @@ void main() {
     expect(manualEntries, 1);
 
     await tester.fling(find.text(title), const Offset(0, 200), 1000);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('Enter details manually'), findsOneWidget);
     await tester.pumpAndSettle();
     expect(find.text('Enter details manually'), findsNothing);
 
@@ -224,6 +220,7 @@ void main() {
     Future<void> pump(
       WidgetTester tester, {
       String? submittedTo,
+      String? name,
       PendingStep pendingStep = PendingStep.none,
       Future<bool> Function()? onShare,
     }) async {
@@ -231,7 +228,7 @@ void main() {
       await tester.pumpWidget(
         _app(
           PassportDataScreen(
-            document: _passport(),
+            document: name == null ? _passport() : _passport(name: name),
             passportDataResult: RawDocumentData(dataGroups: const {}, efSod: '00'),
             onBackPressed: () {},
             submittedTo: submittedTo,
@@ -249,6 +246,11 @@ void main() {
       expect(find.text('Anna Maria Eriksson'), findsOneWidget);
       expect(find.text('Done'), findsOneWidget);
       expect(find.textContaining('genuine'), findsNothing);
+    });
+
+    testWidgets('capitalises each part of a hyphenated or apostrophised name', (tester) async {
+      await pump(tester, name: "JEAN-LUC O'BRIEN");
+      expect(find.text("Jean-Luc O'Brien"), findsOneWidget);
     });
 
     testWidgets('a session that already got every step offers to keep the document', (tester) async {
@@ -341,15 +343,12 @@ void main() {
       expect(find.text('A'), findsOneWidget);
     });
 
-    testWidgets('a theme without a brand keeps the classic consent screen', (tester) async {
+    testWidgets('uses the whole first character of the requester as the initial', (tester) async {
+      _tallViewport(tester);
       await tester.pumpWidget(
-        MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          theme: ThemeData(),
-          home: ProofingSessionConsentScreen(info: _session('Acme Bank'), onConsent: () {}, onDecline: () {}),
-        ),
+        _app(ProofingSessionConsentScreen(info: _session('🏦 Acme Bank'), onConsent: () {}, onDecline: () {})),
       );
-      expect(find.text('Identity proofing request'), findsOneWidget);
+      expect(find.text('🏦'), findsOneWidget);
     });
   });
 
@@ -451,11 +450,7 @@ void main() {
       var scans = 0;
       await tester.pumpWidget(
         _app(
-          DocumentTypeSelectionScreen(
-            onDocumentTypeSelected: (_) {},
-            onSettingsPressed: () {},
-            onScanQrPressed: () => scans++,
-          ),
+          DocumentTypeSelectionScreen(onSettingsPressed: () {}, onScanQrPressed: () => scans++),
           overrides: [
             walletProvider.overrideWith(() => _SeededWallet([_walletCard('1', DocumentType.passport)])),
           ],
@@ -467,13 +462,20 @@ void main() {
       expect(scans, 1);
     });
 
+    testWidgets('announces its title as a heading', (tester) async {
+      _tallViewport(tester);
+      final semantics = tester.ensureSemantics();
+      await tester.pumpWidget(_app(DocumentTypeSelectionScreen(onSettingsPressed: () {}, onScanQrPressed: () {})));
+      expect(tester.getSemantics(find.text('Verify your identity with a QR code')), isSemantics(isHeader: true));
+      semantics.dispose();
+    });
+
     testWidgets('offers to continue an accepted request instead of a new scan', (tester) async {
       _tallViewport(tester);
       var continued = 0;
       await tester.pumpWidget(
         _app(
           DocumentTypeSelectionScreen(
-            onDocumentTypeSelected: (_) {},
             onSettingsPressed: () {},
             onScanQrPressed: () {},
             onContinueProofingSession: () => continued++,
@@ -576,33 +578,6 @@ void main() {
     await tester.pump();
     expect(find.text('Take a quick selfie'), findsNothing);
     expect(find.textContaining('No video is stored'), findsNothing);
-  });
-
-  testWidgets('guided selfie check waits for Start instead of starting once ready', (tester) async {
-    _tallViewport(tester);
-    Widget screen(GlobalKey<FlutterFaceVerificationScreenState> key) => FlutterFaceVerificationScreen(
-      key: key,
-      testEngine: FaceVerificationEngine.withWorker(_IdleWorker()),
-      nfcImageBytes: Uint8List.fromList(img.encodePng(img.Image(width: 2, height: 2))),
-      onBackPressed: () {},
-      onVerified: (_) {},
-    );
-    final guided = GlobalKey<FlutterFaceVerificationScreenState>();
-    await tester.pumpWidget(_app(screen(guided)));
-    await tester.pump();
-    expect(guided.currentState!.debugAutoStarts, isFalse);
-
-    // The classic layout has no intro, so it still starts by itself.
-    final classic = GlobalKey<FlutterFaceVerificationScreenState>();
-    await tester.pumpWidget(
-      MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: screen(classic),
-      ),
-    );
-    await tester.pump();
-    expect(classic.currentState!.debugAutoStarts, isTrue);
   });
 
   test('wallet cards made from a read document can be shared again', () {

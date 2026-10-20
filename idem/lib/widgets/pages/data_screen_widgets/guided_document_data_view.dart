@@ -33,6 +33,9 @@ class GuidedDocumentDataView extends ConsumerStatefulWidget {
   final DocumentData document;
   final RawDocumentData rawDocument;
   final DocumentType documentType;
+
+  /// The relying party every step was already sent to as it completed (see
+  /// routing.dart's _submitNfcStep), or null for a scan without a session.
   final String? submittedTo;
   final PendingStep pendingStep;
   final VoidCallback onBackPressed;
@@ -95,7 +98,7 @@ class _GuidedDocumentDataViewState extends ConsumerState<GuidedDocumentDataView>
 
   @override
   Widget build(BuildContext context) {
-    final g = context.guided!;
+    final g = context.guided;
     final share = widget.pendingStep == PendingStep.share && widget.onShare != null;
     final sessionId = widget.rawDocument.sessionId;
     final divider = Border(bottom: BorderSide(color: g.subtleBorder));
@@ -128,7 +131,7 @@ class _GuidedDocumentDataViewState extends ConsumerState<GuidedDocumentDataView>
                         ),
                       ),
                       const SizedBox(height: 20),
-                      Text(
+                      GuidedHeading(
                         _title(share: share),
                         textAlign: TextAlign.center,
                         style: g.heading(26),
