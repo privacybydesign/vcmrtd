@@ -242,21 +242,14 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
     return state is DocumentReaderConnecting ? context.l10n.docNfcTipFirst : context.l10n.docNfcTipHoldSteady;
   }
 
-  /// Guided layout: a progress ring over a checklist of what's been read.
-  Widget _buildGuided(
-    BuildContext context,
-    GuidedStyle g, {
-    required DocumentReaderState state,
-    required _NFCReadingState nfcState,
-    required int? readingStep,
+  (String, String) _guidedTitles(
+    DocumentReaderState state, {
+    required DocumentType? wrongDocument,
     required String? tip,
   }) {
     final l10n = context.l10n;
     final type = widget.params.documentType.name;
-    final wrongDocument = _wrongDocument;
-    final failed = nfcState == _NFCReadingState.error || wrongDocument != null;
-    final done = nfcState == _NFCReadingState.success && wrongDocument == null;
-    final (title, subtitle) = switch (state) {
+    return switch (state) {
       _ when wrongDocument != null => (
         l10n.wrongDocumentTitle(wrongDocument.name),
         l10n.wrongDocumentHint(wrongDocument.name),
@@ -269,6 +262,22 @@ class _NfcReadingScreenState extends ConsumerState<NfcReadingScreen> with RouteA
       DocumentReaderSuccess() => (l10n.nfcReadingSuccessTitle, l10n.nfcReadingSuccessSubtitle(type)),
       _ => (l10n.nfcReadingInProgressTitle, l10n.nfcReadingInProgressSubtitle(type)),
     };
+  }
+
+  /// Guided layout: a progress ring over a checklist of what's been read.
+  Widget _buildGuided(
+    BuildContext context,
+    GuidedStyle g, {
+    required DocumentReaderState state,
+    required _NFCReadingState nfcState,
+    required int? readingStep,
+    required String? tip,
+  }) {
+    final l10n = context.l10n;
+    final wrongDocument = _wrongDocument;
+    final failed = nfcState == _NFCReadingState.error || wrongDocument != null;
+    final done = nfcState == _NFCReadingState.success && wrongDocument == null;
+    final (title, subtitle) = _guidedTitles(state, wrongDocument: wrongDocument, tip: tip);
     final ringColor = failed
         ? g.error
         : done
