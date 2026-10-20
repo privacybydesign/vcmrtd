@@ -8,6 +8,7 @@
 import 'dart:typed_data';
 
 import 'package:logging/logging.dart';
+import 'package:pointycastle/ecc/api.dart';
 import 'package:test/test.dart';
 import 'package:vcmrtd/extensions.dart';
 import 'package:vcmrtd/src/com/com_provider.dart';
@@ -131,25 +132,46 @@ class SimulatedEcdhChip extends ComProvider {
     // Mapped generator: G' computed from chip mapping priv * terminal mapping pub.
     final terminalMappingKey = _chip.transformPublic(pubKey: _terminalMappingPub!);
     final mappedGen = _chip.getMappedGenerator(otherPubKey: terminalMappingKey, nonce: _chipNonce);
-
-    _chip.setEphemeralKeyPair(private: _chipEphPriv, mappedGenerator: mappedGen);
-    final chipEphPub = _chip.getPubKeyEphemeral();
-
-    // Ephemeral shared secret -> session keys.
     final terminalEphKey = _chip.transformPublic(pubKey: terminalEphPub);
+
+    _chip.setEphemeralKeyPair(
+      private: chooseEphemeralPrivateKey(mappedGen, terminalEphKey.Q!),
+      mappedGenerator: mappedGen,
+    );
+    final chipEphPub = _chip.getPubKeyEphemeral();
+    _chipEphPub = chipEphPub;
+
+    // Ephemeral shared secret -> session keys. The seed is the x-coordinate
+    // at full field size, as a real chip computes it.
     final ephShared = _chip.getEphemeralSharedSecret(otherEphemeralPubKey: terminalEphKey);
-    final seed = ECDHPace.ecPointToList(point: ephShared).toRelavantBytes();
+    final seed = _fieldElement(ephShared.x!.toBigInteger()!, _chip.coordLen);
     _macKey = PACE.cacluateMacKey(paceProtocol: protocol, seed: seed);
 
     final body = Uint8List.fromList([0x04, ...chipEphPub.toBytes()]);
     return _ok(_wrap7C(0x84, body));
   }
 
-  // Step 4: the terminal verifies the chip's token against the token it
-  // computed over its OWN ephemeral public key, so the chip must return the
-  // token computed over the TERMINAL's ephemeral public key (captured in
-  // step 3 by the CapturingEcdhChip subclass).
+  /// The chip's ephemeral private key for step 3. Subclasses override this to
+  /// steer the handshake into edge cases.
+  Uint8List chooseEphemeralPrivateKey(ECPoint mappedGenerator, ECPoint terminalEphemeralPublic) => _chipEphPriv;
+
+  // Step 4: like a real chip, first reject the terminal's token unless it was
+  // computed over this chip's ephemeral public key. The terminal verifies the
+  // chip's token against the token it computed over its OWN ephemeral public
+  // key, so the chip must return the token computed over the TERMINAL's
+  // ephemeral public key (captured in step 3 by the CapturingEcdhChip subclass).
   Uint8List _step4(Uint8List cmd) {
+    final outer = TLV.fromBytes(_extractCommandData(cmd)); // 7C
+    final terminalToken = TLV.fromBytes(outer.value).value; // 85 token
+    final expectedToken = PACE.cacluateAuthToken(
+      paceProtocol: protocol,
+      inputData: PACE.generateEncodingInputData(crytpographicMechanism: protocol, ephemeralPublic: _chipEphPub!),
+      macKey: _macKey!,
+    );
+    if (terminalToken.hex() != expectedToken.hex()) {
+      return Uint8List.fromList([0x63, 0x00]); // authentication failed
+    }
+
     final inputData = PACE.generateEncodingInputData(
       crytpographicMechanism: protocol,
       ephemeralPublic: _terminalEphPub!,
@@ -159,6 +181,43 @@ class SimulatedEcdhChip extends ComProvider {
   }
 
   PublicKeyPACEeCDH? _terminalEphPub;
+  PublicKeyPACEeCDH? _chipEphPub;
+}
+
+/// FE2OS: [value] as a big-endian octet string of exactly [length] bytes.
+Uint8List _fieldElement(BigInt value, int length) {
+  final out = Uint8List(length);
+  for (var i = length - 1; i >= 0; i--) {
+    out[i] = (value & BigInt.from(0xFF)).toInt();
+    value >>= 8;
+  }
+  return out;
+}
+
+bool _hasLeadingZeroByte(ECFieldElement coordinate, int length) =>
+    coordinate.toBigInteger()!.bitLength <= (length - 1) * 8;
+
+/// A [CapturingEcdhChip] that picks its ephemeral private key so [accept]
+/// holds. It walks d, d+1, d+2, ... from the ICAO example key; a value with a
+/// leading zero byte turns up after a few hundred steps on average.
+class SteeringEcdhChip extends CapturingEcdhChip {
+  final bool Function(ECPoint chipEphemeralPublic, ECPoint sharedSecret) accept;
+
+  SteeringEcdhChip({required super.dbaKey, required super.protocol, required super.paramId, required this.accept});
+
+  @override
+  Uint8List chooseEphemeralPrivateKey(ECPoint mappedGenerator, ECPoint terminalEphemeralPublic) {
+    var d = Utils.uint8ListToBigInt(super.chooseEphemeralPrivateKey(mappedGenerator, terminalEphemeralPublic));
+    var public = (mappedGenerator * d)!;
+    var shared = (terminalEphemeralPublic * d)!;
+    for (var i = 0; i < 20000; i++) {
+      if (accept(public, shared)) return _fieldElement(d, _chip.coordLen);
+      d += BigInt.one;
+      public = (public + mappedGenerator)!;
+      shared = (shared + terminalEphemeralPublic)!;
+    }
+    throw StateError('SteeringEcdhChip: no ephemeral key found');
+  }
 }
 
 void main() {
@@ -178,6 +237,37 @@ void main() {
       expect(result.chipAuthenticated, false); // GM, not CAM
       // Secure messaging must now be active.
       expect(icc.sm, isNotNull);
+    }, timeout: const Timeout(Duration(seconds: 30)));
+  });
+
+  // A coordinate or shared secret whose top byte is 0x00 comes up in about 1 in
+  // 256 real sessions each. The terminal must still encode it at full field
+  // size, or the chip and terminal compute different keys and tokens.
+  group('PACE.initSession ECDH-GM with leading zero bytes (simulated chip)', () {
+    Future<void> handshake(bool Function(ECPoint chipEphemeralPublic, ECPoint sharedSecret) accept) async {
+      final efCardAccess = EfCardAccess.fromBytes("31143012060A04007F0007020204020202010202010D".parseHex());
+      final protocol = efCardAccess.paceInfo!.protocol;
+      final dba = DBAKey("T22000129", DateTime(1964, 8, 12), DateTime(2010, 10, 31), paceMode: true);
+
+      final chip = SteeringEcdhChip(dbaKey: dba, protocol: protocol, paramId: 13, accept: accept);
+      final icc = ICC(chip);
+
+      await PACE.initSession(paceKey: dba, icc: icc, efCardAccess: efCardAccess);
+      expect(icc.sm, isNotNull);
+    }
+
+    const coordLen = 32; // brainpoolP256r1
+
+    test('chip ephemeral public key with a leading zero byte in X', () async {
+      await handshake((public, _) => _hasLeadingZeroByte(public.x!, coordLen));
+    }, timeout: const Timeout(Duration(seconds: 30)));
+
+    test('chip ephemeral public key with a leading zero byte in Y', () async {
+      await handshake((public, _) => _hasLeadingZeroByte(public.y!, coordLen));
+    }, timeout: const Timeout(Duration(seconds: 30)));
+
+    test('shared secret with a leading zero byte in X', () async {
+      await handshake((_, shared) => _hasLeadingZeroByte(shared.x!, coordLen));
     }, timeout: const Timeout(Duration(seconds: 30)));
   });
 
