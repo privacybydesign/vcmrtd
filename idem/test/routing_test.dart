@@ -185,7 +185,7 @@ DrivingLicenceData _drivingLicenceData() {
 }
 
 ScannerWidgetBuilder _scannerBuilder() {
-  return ({required documentType, required scanPicture, required onSuccess}) {
+  return ({required documentType, required scanPicture, required onSuccess, required onWrongDocument}) {
     return _FakeScanner(documentType: documentType, onSuccess: onSuccess);
   };
 }

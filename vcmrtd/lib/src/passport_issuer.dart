@@ -164,6 +164,7 @@ class DefaultPassportIssuer implements PassportIssuer {
       DocumentType.drivingLicence => "issue-driving-licence",
       DocumentType.passport => "issue-passport",
       DocumentType.identityCard => "issue-id-card",
+      DocumentType.residencePermit => throw UnsupportedError('The passport issuer cannot issue a residence permit'),
     };
     // Create secure data payload
     final payload = documentDataResult.toJson();

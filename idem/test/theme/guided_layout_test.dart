@@ -164,7 +164,9 @@ void main() {
           onMrzScanned: (_, [_]) {},
           onManualEntry: () => manualEntries++,
           onBack: () {},
-          scannerBuilder: ({required documentType, required scanPicture, required onSuccess}) => const SizedBox(),
+          scannerBuilder:
+              ({required documentType, required scanPicture, required onSuccess, required onWrongDocument}) =>
+                  const SizedBox(),
         ),
       ),
     );

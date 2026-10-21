@@ -18,6 +18,7 @@ class ScannerPage extends ConsumerStatefulWidget {
   /// ([MRZScanner.scanPicture]).
   final MrzScanPicture scanPicture;
   final void Function(ScannedMRZ mrz, DocumentPicture? picture) onSuccess;
+  final ValueChanged<DocumentType>? onWrongDocument;
 
   final ScanFrame frame;
 
@@ -26,6 +27,7 @@ class ScannerPage extends ConsumerStatefulWidget {
     this.documentType = DocumentType.passport,
     this.scanPicture = MrzScanPicture.none,
     required this.onSuccess,
+    this.onWrongDocument,
     this.frame = ScanFrame.scanner,
   });
 
@@ -46,6 +48,7 @@ class _ScannerPageState extends ConsumerState<ScannerPage> {
       routeObserver: routeObserver,
       showOverlay: widget.frame == ScanFrame.scanner,
       onSuccess: (scannedMRZ, lines, picture) => widget.onSuccess(scannedMRZ, picture),
+      onWrongDocument: widget.onWrongDocument,
     );
   }
 }

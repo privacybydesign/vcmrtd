@@ -1,7 +1,7 @@
 {
   "@@locale": "en",
   "mrzContinueToNfc": "Continue to NFC Reading",
-  "mrzEnterDetailsLabel": "Enter {docType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{document}} details",
+  "mrzEnterDetailsLabel": "Enter {docType, select, passport{Passport} identityCard{Identity Card} residencePermit{Residence Permit} drivingLicence{Driving Licence} other{document}} details",
   "@mrzEnterDetailsLabel": {
     "placeholders": {
       "docType": {
@@ -12,8 +12,9 @@
   "mrzWhereToFind": "Where to find this information:",
   "mrzHelpPassport": "• Passport Number: Usually at the top right of the photo page\n• Date of Birth: Listed as \"Date of birth\" or \"DOB\"\n• Expiry Date: Listed as \"Date of expiry\" or \"Valid until\"",
   "mrzHelpIdentityCard": "• Identity Card Number: On the front of the card\n• Date of Birth: Listed as \"Date of birth\" or \"DOB\"\n• Expiry Date: Listed as \"Date of expiry\" or \"Valid until\"",
+  "mrzHelpResidencePermit": "• Document Number: On the front of the card\n• Date of Birth: Listed as \"Date of birth\" or \"DOB\"\n• Expiry Date: Listed as \"Date of expiry\" or \"Valid until\"",
   "mrzHelpDrivingLicence": "• The MRZ is at the bottom of the front side of your driver's licence\n• You can also get this by scanning the QR Code on the back of your driver's licence\n• It's a single line of exactly 30 characters\n• Starts with \"D1\", \"D2\", or \"DL\"",
-  "mrzDocNumberTitle": "{docType, select, passport{Passport Number} identityCard{Identity Card Number} drivingLicence{Driving Licence Number} other{Document Number}}",
+  "mrzDocNumberTitle": "{docType, select, passport{Passport Number} identityCard{Identity Card Number} residencePermit{Document Number} drivingLicence{Driving Licence Number} other{Document Number}}",
   "@mrzDocNumberTitle": {
     "placeholders": {
       "docType": {
@@ -21,7 +22,7 @@
       }
     }
   },
-  "mrzDocNumberHint": "Enter your {docType, select, passport{passport} identityCard{identity card} drivingLicence{driving licence} other{document}} number",
+  "mrzDocNumberHint": "Enter your {docType, select, passport{passport} identityCard{identity card} residencePermit{residence permit} drivingLicence{driving licence} other{document}} number",
   "@mrzDocNumberHint": {
     "placeholders": {
       "docType": {
@@ -30,7 +31,7 @@
     }
   },
   "mrzDocNumberExample": "e.g., AB1234567",
-  "mrzDocNumberRequired": "{docType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{Document}} number is required",
+  "mrzDocNumberRequired": "{docType, select, passport{Passport} identityCard{Identity Card} residencePermit{Residence Permit} drivingLicence{Driving Licence} other{Document}} number is required",
   "@mrzDocNumberRequired": {
     "placeholders": {
       "docType": {
@@ -38,7 +39,7 @@
       }
     }
   },
-  "mrzDocNumberTooShort": "{docType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{Document}} number must be at least 6 characters",
+  "mrzDocNumberTooShort": "{docType, select, passport{Passport} identityCard{Identity Card} residencePermit{Residence Permit} drivingLicence{Driving Licence} other{Document}} number must be at least 6 characters",
   "@mrzDocNumberTooShort": {
     "placeholders": {
       "docType": {
@@ -52,7 +53,7 @@
   "mrzDobRequired": "Date of birth is required",
   "mrzDobInFuture": "Date of birth cannot be in the future",
   "mrzExpiryTitle": "Expiry Date",
-  "mrzExpiryHint": "Select {docType, select, passport{passport} identityCard{identity card} drivingLicence{driving licence} other{document}} expiry date",
+  "mrzExpiryHint": "Select {docType, select, passport{passport} identityCard{identity card} residencePermit{residence permit} drivingLicence{driving licence} other{document}} expiry date",
   "@mrzExpiryHint": {
     "placeholders": {
       "docType": {
@@ -61,7 +62,7 @@
     }
   },
   "mrzExpiryRequired": "Expiry date is required",
-  "mrzDocumentExpired": "{docType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{Document}} has expired",
+  "mrzDocumentExpired": "{docType, select, passport{Passport} identityCard{Identity Card} residencePermit{Residence Permit} drivingLicence{Driving Licence} other{Document}} has expired",
   "@mrzDocumentExpired": {
     "placeholders": {
       "docType": {
@@ -84,7 +85,7 @@
       }
     }
   },
-  "mrzHeaderTitle": "Enter Your {docType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{Document}} Information",
+  "mrzHeaderTitle": "Enter Your {docType, select, passport{Passport} identityCard{Identity Card} residencePermit{Residence Permit} drivingLicence{Driving Licence} other{Document}} Information",
   "@mrzHeaderTitle": {
     "placeholders": {
       "docType": {
@@ -93,7 +94,7 @@
     }
   },
   "mrzHeaderTitleMrz": "Enter MRZ String",
-  "mrzHeaderSubtitle": "Please enter the information exactly as it appears on your {docType, select, passport{passport} identityCard{identity card} drivingLicence{driving licence} other{document}}",
+  "mrzHeaderSubtitle": "Please enter the information exactly as it appears on your {docType, select, passport{passport} identityCard{identity card} residencePermit{residence permit} drivingLicence{driving licence} other{document}}",
   "@mrzHeaderSubtitle": {
     "placeholders": {
       "docType": {

@@ -16,7 +16,7 @@ class ProofingChipEvidence {
 
   factory ProofingChipEvidence.from(DocumentData document, RawDocumentData raw, DocumentType documentType) =>
       switch (documentType) {
-        DocumentType.passport || DocumentType.identityCard => ProofingChipEvidence(
+        DocumentType.passport || DocumentType.identityCard || DocumentType.residencePermit => ProofingChipEvidence(
           document: ProofingDocumentInfo.fromPassportData(document as PassportData),
           photo: ProofingPhotoInfo.fromImage(document.photoImageData, document.photoImageType),
           mrtdEvidence: ProofingMrtdEvidence.fromRawDocumentData(raw, aaKeyDataGroup: 'DG15', documentType: 'icao'),

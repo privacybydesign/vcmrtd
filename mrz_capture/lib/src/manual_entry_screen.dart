@@ -153,6 +153,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
           Text(switch (widget.documentType) {
             DocumentType.drivingLicence => _l10n.mrzHelpDrivingLicence,
             DocumentType.identityCard => _l10n.mrzHelpIdentityCard,
+            DocumentType.residencePermit => _l10n.mrzHelpResidencePermit,
             DocumentType.passport => _l10n.mrzHelpPassport,
           }, style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280), height: 1.4)),
         ],
@@ -350,7 +351,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
     }
 
     final scannedMrz = switch (widget.documentType) {
-      DocumentType.passport || DocumentType.identityCard => _createScannedPassport(),
+      DocumentType.passport || DocumentType.identityCard || DocumentType.residencePermit => _createScannedPassport(),
       DocumentType.drivingLicence => _createScannedDriverLicense(),
     };
 

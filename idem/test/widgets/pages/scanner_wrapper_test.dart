@@ -47,6 +47,7 @@ Widget _buildWrapper({
   void Function(MrzScanPicture scanPicture)? onBuildScanner,
   DocumentPicture? picture,
   ValueChanged<DocumentPicture?>? onPicture,
+  ValueChanged<ValueChanged<DocumentType>>? reportWrongDocument,
 }) {
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -60,8 +61,9 @@ Widget _buildWrapper({
       onManualEntry: onManualEntry ?? () {},
       onBack: onBack ?? () {},
       scanPicture: scanPicture,
-      scannerBuilder: ({required documentType, required scanPicture, required onSuccess}) {
+      scannerBuilder: ({required documentType, required scanPicture, required onSuccess, required onWrongDocument}) {
         onBuildScanner?.call(scanPicture);
+        reportWrongDocument?.call(onWrongDocument);
         return _FakeScanner(documentType: documentType, onSuccess: onSuccess, picture: picture);
       },
     ),
@@ -179,9 +181,10 @@ void main() {
             onMrzScanned: (mrz, [_]) => scanned.add(mrz),
             onManualEntry: () {},
             onBack: () {},
-            scannerBuilder: ({required documentType, required scanPicture, required onSuccess}) {
-              return _FakeScanner(documentType: documentType, onSuccess: onSuccess);
-            },
+            scannerBuilder:
+                ({required documentType, required scanPicture, required onSuccess, required onWrongDocument}) {
+                  return _FakeScanner(documentType: documentType, onSuccess: onSuccess);
+                },
           ),
         ),
       );
@@ -204,6 +207,18 @@ void main() {
       await tester.pump();
 
       expect(scanned, hasLength(2));
+    });
+
+    testWidgets('says which card it is when the other card type is scanned', (tester) async {
+      late ValueChanged<DocumentType> wrongDocument;
+      await tester.pumpWidget(
+        _buildWrapper(documentType: DocumentType.residencePermit, reportWrongDocument: (f) => wrongDocument = f),
+      );
+
+      wrongDocument(DocumentType.identityCard);
+      await tester.pump();
+
+      expect(find.text('This is an ID card. Go back and choose ID card.'), findsOneWidget);
     });
   });
 }

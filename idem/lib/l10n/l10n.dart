@@ -91,6 +91,7 @@ extension DocumentTypeL10n on DocumentType {
   String localizedName(AppLocalizations l10n) => switch (this) {
     DocumentType.passport => l10n.idDocumentPassport,
     DocumentType.identityCard => l10n.idDocumentIdentityCard,
+    DocumentType.residencePermit => l10n.idDocumentResidencePermit,
     DocumentType.drivingLicence => l10n.idDocumentDrivingLicence,
   };
 }

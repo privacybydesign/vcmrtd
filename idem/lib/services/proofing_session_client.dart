@@ -515,6 +515,7 @@ class ProofingChipAccess {
     final type = switch (json['documentType']) {
       'passport' => DocumentType.passport,
       'identity_card' => DocumentType.identityCard,
+      'residence_permit' => DocumentType.residencePermit,
       'drivers_license' => DocumentType.drivingLicence,
       _ => null,
     };
@@ -536,6 +537,7 @@ class ProofingChipAccess {
     'documentType': switch (documentType) {
       DocumentType.passport => 'passport',
       DocumentType.identityCard => 'identity_card',
+      DocumentType.residencePermit => 'residence_permit',
       DocumentType.drivingLicence => 'drivers_license',
     },
     'documentNumber': documentNumber,
