@@ -70,6 +70,34 @@ void main() {
       expect(find.text('age_over'), findsNothing);
     });
 
+    testWidgets('names the age the session view carries in ageOver', (tester) async {
+      final info = ProofingSessionInfo.fromJson({
+        'id': 'sess1',
+        'relyingParty': 'acme-tenant',
+        'requestedAttributes': ['age_over'],
+        'ageOver': 21,
+        'expiresAt': DateTime.now().add(const Duration(minutes: 10)).toUtc().toIso8601String(),
+      });
+      await tester.pumpWidget(_app(ProofingSessionConsentScreen(info: info, onConsent: () {}, onDecline: () {})));
+
+      expect(find.text('Whether you are 21 or older'), findsOneWidget);
+    });
+
+    testWidgets('says "old enough" for an age check when the server sent no age', (tester) async {
+      await tester.pumpWidget(
+        _app(
+          ProofingSessionConsentScreen(
+            info: _info(requestedAttributes: const ['age_over']),
+            onConsent: () {},
+            onDecline: () {},
+          ),
+        ),
+      );
+
+      expect(find.text('Whether you are old enough'), findsOneWidget);
+      expect(find.text('age_over'), findsNothing);
+    });
+
     testWidgets('falls back to the raw key for an attribute it does not recognise', (tester) async {
       await tester.pumpWidget(
         _app(
