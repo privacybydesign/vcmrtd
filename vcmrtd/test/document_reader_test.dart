@@ -16,6 +16,7 @@ import 'package:vcmrtd/extensions.dart';
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:vcmrtd/internal.dart';
 import 'package:vcmrtd/src/parsers/document_parser.dart';
+import 'package:vcmrtd/src/proto/pace.dart';
 
 import 'fake_com_provider.dart';
 
@@ -461,6 +462,39 @@ void main() {
         expect(h.state, isA<DocumentReaderPending>());
         expect(h.reader.getLogs(), contains('NFC status: NfcStatus.enabled'));
       });
+
+      test('returns to Pending once NFC is switched on again', () async {
+        mockAvailability('disabled');
+        final h = makeHarness();
+        await h.reader.checkNfcAvailability();
+        expect(h.state, isA<DocumentReaderNfcUnavailable>());
+
+        mockAvailability('available');
+        await h.reader.checkNfcAvailability();
+        expect(h.state, isA<DocumentReaderPending>());
+      });
+
+      test('leaves a finished read state alone when NFC is available', () async {
+        mockAvailability('available');
+        final h = makeHarness();
+        await h.reader.readDocument(iosNfcMessages: _msg);
+        expect(h.state, isA<DocumentReaderSuccess>());
+
+        await h.reader.checkNfcAvailability();
+        expect(h.state, isA<DocumentReaderSuccess>());
+      });
+
+      test('readDocument proceeds after NFC was switched on following an unavailable read', () async {
+        mockAvailability('disabled');
+        final h = makeHarness(present: {DataGroups.dg1, DataGroups.dg2});
+        expect(await h.reader.readDocument(iosNfcMessages: _msg), isNull);
+        expect(h.state, isA<DocumentReaderNfcUnavailable>());
+
+        mockAvailability('available');
+        final result = await h.reader.readDocument(iosNfcMessages: _msg);
+        expect(result, isNotNull);
+        expect(h.state, isA<DocumentReaderSuccess>());
+      });
     });
   });
 
@@ -724,6 +758,27 @@ void main() {
       expect(h.state, isA<DocumentReaderFailed>());
     });
 
+    test('a final tag-lost failure is reported as DocumentReadingError.tagLost', () async {
+      final tagLost = NfcProviderError('PlatformException(500, Communication error, Tag was lost., null)');
+      final h = makeHarness(
+        present: {DataGroups.dg1, DataGroups.dg2},
+        steps: {'DG1': List.generate(5, (_) => _Step.fail(tagLost))},
+      );
+      final result = await h.reader.readDocument(iosNfcMessages: _msg);
+      expect(result, isNull);
+      expect((h.state as DocumentReaderFailed).error, DocumentReadingError.tagLost);
+    });
+
+    test('a final failure that is not a lost tag stays DocumentReadingError.unknown', () async {
+      final h = makeHarness(
+        present: {DataGroups.dg1, DataGroups.dg2},
+        steps: {'DG1': List.generate(5, (_) => _Step.fail(Exception('dg lost')))},
+      );
+      final result = await h.reader.readDocument(iosNfcMessages: _msg);
+      expect(result, isNull);
+      expect((h.state as DocumentReaderFailed).error, DocumentReadingError.unknown);
+    });
+
     test('optional DG read failure is logged and skipped, read still succeeds', () async {
       // DG7 (optional) never manages to be read; unlike a mandatory DG this
       // must not abort the whole document, mirroring how an optional DG's
@@ -783,6 +838,20 @@ void main() {
       final result = await h.reader.readDocument(iosNfcMessages: _msg);
       expect(result, isNull);
       expect(h.state, isA<DocumentReaderFailed>());
+    });
+
+    test('a tag lost during PACE, wrapped in a PACEError, is reported as tagLost', () async {
+      final h = makeHarness(
+        present: {DataGroups.dg1, DataGroups.dg2},
+        startSessionError: Exception('bac disabled'),
+        startSessionPaceError: PACEError(
+          'PACE key establishment failed: PACE(0); Failed: '
+          'NfcProviderError: PlatformException(500, Communication error, Tag was lost., null)',
+        ),
+      );
+      final result = await h.reader.readDocument(iosNfcMessages: _msg);
+      expect(result, isNull);
+      expect((h.state as DocumentReaderFailed).error, DocumentReadingError.tagLost);
     });
   });
 

@@ -12,6 +12,7 @@ import 'package:pointycastle/ecc/api.dart';
 import 'package:test/test.dart';
 import 'package:vcmrtd/extensions.dart';
 import 'package:vcmrtd/src/com/com_provider.dart';
+import 'package:vcmrtd/src/com/nfc_provider.dart';
 import 'package:vcmrtd/src/crypto/aes.dart';
 import 'package:vcmrtd/src/lds/asn1ObjectIdentifiers.dart';
 import 'package:vcmrtd/src/lds/efcard_access.dart';
@@ -402,7 +403,34 @@ void main() {
       // No APDU should have been sent (rejected before step 0).
       expect(chip.transceiveCount, 0);
     });
+
+    test('keeps the tag-lost text of a lost tag in the PACEError it throws', () async {
+      final efCardAccess = EfCardAccess.fromBytes("31143012060A04007F0007020204020202010202010D".parseHex());
+      final dba = DBAKey("T22000129", DateTime(1964, 8, 12), DateTime(2010, 10, 31), paceMode: true);
+      final icc = ICC(_TagLostChip());
+      await expectLater(
+        PACE.initSession(paceKey: dba, icc: icc, efCardAccess: efCardAccess),
+        throwsA(isA<PACEError>().having((e) => NfcProviderError.isTagLost(e), 'is a lost tag', true)),
+      );
+    });
   });
+}
+
+/// A chip that loses the tag on the first APDU, like the NFC plugin does.
+class _TagLostChip extends ComProvider {
+  _TagLostChip() : super(Logger('TagLostChip'));
+  @override
+  Future<void> connect() async {}
+  @override
+  Future<void> reconnect() async {}
+  @override
+  Future<void> disconnect() async {}
+  @override
+  bool isConnected() => true;
+  @override
+  Future<Uint8List> transceive(Uint8List data) async {
+    throw NfcProviderError('PlatformException(500, Communication error, Tag was lost., null)');
+  }
 }
 
 /// A simulated DH-GM PACE chip performing the real DH-GM key agreement.
