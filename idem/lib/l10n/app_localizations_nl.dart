@@ -519,18 +519,26 @@ class AppLocalizationsNl extends AppLocalizations {
   String get proofingAttributeEverything => 'Alles wat de app uit je document leest';
 
   @override
+  String proofingAttributeAgeOver(int age) {
+    return 'Of je $age jaar of ouder bent';
+  }
+
+  @override
+  String get proofingAttributeAgeCheck => 'Of je oud genoeg bent';
+
+  @override
   String proofingSentTo(String relyingParty) {
-    return 'Verstuurd naar $relyingParty';
+    return 'Opgeslagen voor $relyingParty';
   }
 
   @override
   String proofingSentBrowserFace(String relyingParty) {
-    return 'Je documentidentiteit is naar $relyingParty gestuurd. Rond de gezichtsverificatie af in het browsertabblad waar je deze sessie bent begonnen.';
+    return 'Je documentgegevens zijn opgeslagen voor deze verificatie. $relyingParty ontvangt ze zodra je afrondt. Rond de gezichtsverificatie af in het browsertabblad waar je deze sessie bent begonnen.';
   }
 
   @override
   String proofingSentEverything(String relyingParty) {
-    return 'Alles wat deze verificatie van dit apparaat nodig had, is naar $relyingParty gestuurd.';
+    return 'Alles wat deze verificatie van dit apparaat nodig had, is opgeslagen. $relyingParty ontvangt het zodra de verificatie is afgerond.';
   }
 
   @override
@@ -541,7 +549,7 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String proofingShareBody(String relyingParty) {
-    return 'Je documentgegevens zijn naar $relyingParty gestuurd. Rond af om de verificatie te voltooien.';
+    return 'Je documentgegevens zijn opgeslagen voor deze verificatie. $relyingParty ontvangt ze als je afrondt.';
   }
 
   @override
@@ -875,6 +883,11 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get consentTheyWillReceive => 'Zij ontvangen';
+
+  @override
+  String consentStepByStep(String party) {
+    return 'Je gegevens gaan stap voor stap naar de verificatiedienst, zodat je op een ander apparaat verder kunt. $party ontvangt ze pas als je afrondt. Stop je, dan worden ze verwijderd zodra dit verzoek verloopt.';
+  }
 
   @override
   String get qrScanClose => 'Sluiten';
