@@ -72,100 +72,100 @@ class DataGroupReader {
     await _exec(() => _api.initSessionViaPACE(paceAccessKey as PaceKey, efCardAccess));
   }
 
-  Future<Uint8List> readDG1() async {
+  Future<Uint8List> readDG1({ReadProgressCallback? onProgress}) async {
     await _selectDF1();
     _log.debug("Reading EF.DG1");
-    return await _readFileBySFI(DG1_SFI);
+    return await _readFileBySFI(DG1_SFI, onProgress: onProgress);
   }
 
-  Future<Uint8List> readDG2() async {
+  Future<Uint8List> readDG2({ReadProgressCallback? onProgress}) async {
     await _selectDF1();
     _log.debug("Reading EF.DG2");
-    return await _readFileBySFI(DG2_SFI);
+    return await _readFileBySFI(DG2_SFI, onProgress: onProgress);
   }
 
-  Future<Uint8List> readDG3() async {
+  Future<Uint8List> readDG3({ReadProgressCallback? onProgress}) async {
     await _selectDF1();
     _log.debug("Reading EF.DG3");
-    return await _readFileBySFI(DG3_SFI);
+    return await _readFileBySFI(DG3_SFI, onProgress: onProgress);
   }
 
-  Future<Uint8List> readDG4() async {
+  Future<Uint8List> readDG4({ReadProgressCallback? onProgress}) async {
     await _selectDF1();
     _log.debug("Reading EF.DG4");
-    return await _readFileBySFI(DG4_SFI);
+    return await _readFileBySFI(DG4_SFI, onProgress: onProgress);
   }
 
-  Future<Uint8List> readDG5() async {
+  Future<Uint8List> readDG5({ReadProgressCallback? onProgress}) async {
     await _selectDF1();
     _log.debug("Reading EF.DG5");
-    return await _readFileBySFI(DG5_SFI);
+    return await _readFileBySFI(DG5_SFI, onProgress: onProgress);
   }
 
-  Future<Uint8List> readDG6() async {
+  Future<Uint8List> readDG6({ReadProgressCallback? onProgress}) async {
     await _selectDF1();
     _log.debug("Reading EF.DG6");
-    return await _readFileBySFI(DG6_SFI);
+    return await _readFileBySFI(DG6_SFI, onProgress: onProgress);
   }
 
-  Future<Uint8List> readDG7() async {
+  Future<Uint8List> readDG7({ReadProgressCallback? onProgress}) async {
     await _selectDF1();
     _log.debug("Reading EF.DG7");
-    return await _readFileBySFI(DG7_SFI);
+    return await _readFileBySFI(DG7_SFI, onProgress: onProgress);
   }
 
-  Future<Uint8List> readDG8() async {
+  Future<Uint8List> readDG8({ReadProgressCallback? onProgress}) async {
     await _selectDF1();
     _log.debug("Reading EF.DG8");
-    return await _readFileBySFI(DG8_SFI);
+    return await _readFileBySFI(DG8_SFI, onProgress: onProgress);
   }
 
-  Future<Uint8List> readDG9() async {
+  Future<Uint8List> readDG9({ReadProgressCallback? onProgress}) async {
     await _selectDF1();
     _log.debug("Reading EF.DG9");
-    return await _readFileBySFI(DG9_SFI);
+    return await _readFileBySFI(DG9_SFI, onProgress: onProgress);
   }
 
-  Future<Uint8List> readDG10() async {
+  Future<Uint8List> readDG10({ReadProgressCallback? onProgress}) async {
     await _selectDF1();
     _log.debug("Reading EF.DG10");
-    return await _readFileBySFI(DG10_SFI);
+    return await _readFileBySFI(DG10_SFI, onProgress: onProgress);
   }
 
-  Future<Uint8List> readDG11() async {
+  Future<Uint8List> readDG11({ReadProgressCallback? onProgress}) async {
     await _selectDF1();
     _log.debug("Reading EF.DG11");
-    return await _readFileBySFI(DG11_SFI);
+    return await _readFileBySFI(DG11_SFI, onProgress: onProgress);
   }
 
-  Future<Uint8List> readDG12() async {
+  Future<Uint8List> readDG12({ReadProgressCallback? onProgress}) async {
     await _selectDF1();
     _log.debug("Reading EF.DG12");
-    return await _readFileBySFI(DG12_SFI);
+    return await _readFileBySFI(DG12_SFI, onProgress: onProgress);
   }
 
-  Future<Uint8List> readDG13() async {
+  Future<Uint8List> readDG13({ReadProgressCallback? onProgress}) async {
     await _selectDF1();
     _log.debug("Reading EF.DG13");
-    return await _readFileBySFI(DG13_SFI);
+    return await _readFileBySFI(DG13_SFI, onProgress: onProgress);
   }
 
-  Future<Uint8List> readDG14() async {
+  Future<Uint8List> readDG14({ReadProgressCallback? onProgress}) async {
     await _selectDF1();
     _log.debug("Reading EF.DG14");
-    return await _readFileBySFI(DG14_SFI);
+    return await _readFileBySFI(DG14_SFI, onProgress: onProgress);
   }
 
-  Future<Uint8List> readDG15() async {
+  Future<Uint8List> readDG15({ReadProgressCallback? onProgress}) async {
     await _selectDF1();
     _log.debug("Reading EF.DG15");
-    return await _readFileBySFI(DG15_SFI);
+    return await _readFileBySFI(DG15_SFI, onProgress: onProgress);
   }
 
-  Future<Uint8List> readDG16() async {
+  Future<Uint8List> readDG16({ReadProgressCallback? onProgress}) async {
     await _selectDF1();
     _log.debug("Reading EF.DG16");
-    return await _readFileBySFI(DG16_SFI);
+    return await _readFileBySFI(DG16_SFI, onProgress: onProgress);
   }
 
   Future<Uint8List> readEfCOM() async {
@@ -190,9 +190,9 @@ class DataGroupReader {
   /// by a previous, interrupted attempt. Only clears the cached progress once
   /// the file has been read in full, so a further failure keeps resuming
   /// rather than starting over.
-  Future<Uint8List> _readFileBySFI(int sfi) async {
+  Future<Uint8List> _readFileBySFI(int sfi, {ReadProgressCallback? onProgress}) async {
     final readState = _fileReadState.putIfAbsent(sfi, () => MrtdFileReadState());
-    final bytes = await _exec(() => _api.readFileBySFI(sfi, state: readState));
+    final bytes = await _exec(() => _api.readFileBySFI(sfi, state: readState, onProgress: onProgress));
     _fileReadState.remove(sfi);
     return bytes;
   }
