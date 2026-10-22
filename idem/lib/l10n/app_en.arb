@@ -298,7 +298,16 @@
   "proofingAttributeChipChecks": "Document authenticity checks",
   "proofingAttributeBiometrics": "Face verification result",
   "proofingAttributeEverything": "Everything the app reads from your document",
-  "proofingSentTo": "Sent to {relyingParty}",
+  "proofingAttributeAgeOver": "Whether you are {age} or older",
+  "@proofingAttributeAgeOver": {
+    "placeholders": {
+      "age": {
+        "type": "int"
+      }
+    }
+  },
+  "proofingAttributeAgeCheck": "Whether you are old enough",
+  "proofingSentTo": "Saved for {relyingParty}",
   "@proofingSentTo": {
     "placeholders": {
       "relyingParty": {
@@ -306,7 +315,7 @@
       }
     }
   },
-  "proofingSentBrowserFace": "Your document identity was sent to {relyingParty}. Finish face verification in the browser tab where you started this session.",
+  "proofingSentBrowserFace": "Your document details are saved for this verification. {relyingParty} receives them once you finish. Finish face verification in the browser tab where you started this session.",
   "@proofingSentBrowserFace": {
     "placeholders": {
       "relyingParty": {
@@ -314,7 +323,7 @@
       }
     }
   },
-  "proofingSentEverything": "Everything this verification needed from this device was sent to {relyingParty}.",
+  "proofingSentEverything": "Everything this verification needed from this device is saved. {relyingParty} receives it once the verification is finished.",
   "@proofingSentEverything": {
     "placeholders": {
       "relyingParty": {
@@ -324,7 +333,7 @@
   },
   "proofingDone": "Done",
   "proofingVerifiedTitle": "Document read",
-  "proofingShareBody": "Your document details were sent to {relyingParty}. Finish to complete the verification.",
+  "proofingShareBody": "Your document details are saved for this verification. {relyingParty} receives them when you finish.",
   "@proofingShareBody": {
     "placeholders": {
       "relyingParty": {
@@ -583,6 +592,14 @@
     }
   },
   "consentTheyWillReceive": "They will receive",
+  "consentStepByStep": "Your details go to the verification service step by step, so you can continue on another device. {party} only receives them when you finish. If you stop, they are deleted when this request expires.",
+  "@consentStepByStep": {
+    "placeholders": {
+      "party": {
+        "type": "String"
+      }
+    }
+  },
   "qrScanClose": "Close",
   "qrScanPointCamera": "Point your camera at the QR code",
   "qrScanWhereToFind": "You’ll find it on the website or app that asked you to verify.",

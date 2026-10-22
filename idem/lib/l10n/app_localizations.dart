@@ -968,22 +968,34 @@ abstract class AppLocalizations {
   /// **'Everything the app reads from your document'**
   String get proofingAttributeEverything;
 
+  /// No description provided for @proofingAttributeAgeOver.
+  ///
+  /// In en, this message translates to:
+  /// **'Whether you are {age} or older'**
+  String proofingAttributeAgeOver(int age);
+
+  /// No description provided for @proofingAttributeAgeCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Whether you are old enough'**
+  String get proofingAttributeAgeCheck;
+
   /// No description provided for @proofingSentTo.
   ///
   /// In en, this message translates to:
-  /// **'Sent to {relyingParty}'**
+  /// **'Saved for {relyingParty}'**
   String proofingSentTo(String relyingParty);
 
   /// No description provided for @proofingSentBrowserFace.
   ///
   /// In en, this message translates to:
-  /// **'Your document identity was sent to {relyingParty}. Finish face verification in the browser tab where you started this session.'**
+  /// **'Your document details are saved for this verification. {relyingParty} receives them once you finish. Finish face verification in the browser tab where you started this session.'**
   String proofingSentBrowserFace(String relyingParty);
 
   /// No description provided for @proofingSentEverything.
   ///
   /// In en, this message translates to:
-  /// **'Everything this verification needed from this device was sent to {relyingParty}.'**
+  /// **'Everything this verification needed from this device is saved. {relyingParty} receives it once the verification is finished.'**
   String proofingSentEverything(String relyingParty);
 
   /// No description provided for @proofingDone.
@@ -1001,7 +1013,7 @@ abstract class AppLocalizations {
   /// No description provided for @proofingShareBody.
   ///
   /// In en, this message translates to:
-  /// **'Your document details were sent to {relyingParty}. Finish to complete the verification.'**
+  /// **'Your document details are saved for this verification. {relyingParty} receives them when you finish.'**
   String proofingShareBody(String relyingParty);
 
   /// No description provided for @proofingShareWith.
@@ -1507,6 +1519,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'They will receive'**
   String get consentTheyWillReceive;
+
+  /// No description provided for @consentStepByStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Your details go to the verification service step by step, so you can continue on another device. {party} only receives them when you finish. If you stop, they are deleted when this request expires.'**
+  String consentStepByStep(String party);
 
   /// No description provided for @qrScanClose.
   ///

@@ -6,12 +6,14 @@ import 'package:idem/widgets/pages/proofing_session_consent_screen.dart';
 
 ProofingSessionInfo _info({
   List<String> requestedAttributes = const [],
+  int? ageOver,
   Duration expiresIn = const Duration(minutes: 10),
 }) {
   return ProofingSessionInfo(
     id: 'sess1',
     relyingParty: 'acme-tenant',
     requestedAttributes: requestedAttributes,
+    ageOver: ageOver,
     expiresAt: DateTime.now().add(expiresIn),
   );
 }
@@ -31,6 +33,12 @@ void main() {
       expect(find.text('Everything the app reads from your document'), findsOneWidget);
     });
 
+    testWidgets('says the details go step by step and reach the party only on finishing', (tester) async {
+      await tester.pumpWidget(_app(ProofingSessionConsentScreen(info: _info(), onConsent: () {}, onDecline: () {})));
+
+      expect(find.textContaining('acme-tenant only receives them when you finish'), findsOneWidget);
+    });
+
     testWidgets('shows a human-readable label per requested attribute, deduplicating dg2/face_image', (tester) async {
       await tester.pumpWidget(
         _app(
@@ -45,6 +53,49 @@ void main() {
       expect(find.text('Document identity (name, date of birth, document number, expiry)'), findsOneWidget);
       expect(find.text('Your face photo from the document chip'), findsOneWidget);
       expect(find.text('Face verification result'), findsOneWidget);
+    });
+
+    testWidgets('names the age an age check answers for', (tester) async {
+      await tester.pumpWidget(
+        _app(
+          ProofingSessionConsentScreen(
+            info: _info(requestedAttributes: const ['age_over', 'chip_checks'], ageOver: 18),
+            onConsent: () {},
+            onDecline: () {},
+          ),
+        ),
+      );
+
+      expect(find.text('Whether you are 18 or older'), findsOneWidget);
+      expect(find.text('age_over'), findsNothing);
+    });
+
+    testWidgets('names the age the session view carries in ageOver', (tester) async {
+      final info = ProofingSessionInfo.fromJson({
+        'id': 'sess1',
+        'relyingParty': 'acme-tenant',
+        'requestedAttributes': ['age_over'],
+        'ageOver': 21,
+        'expiresAt': DateTime.now().add(const Duration(minutes: 10)).toUtc().toIso8601String(),
+      });
+      await tester.pumpWidget(_app(ProofingSessionConsentScreen(info: info, onConsent: () {}, onDecline: () {})));
+
+      expect(find.text('Whether you are 21 or older'), findsOneWidget);
+    });
+
+    testWidgets('says "old enough" for an age check when the server sent no age', (tester) async {
+      await tester.pumpWidget(
+        _app(
+          ProofingSessionConsentScreen(
+            info: _info(requestedAttributes: const ['age_over']),
+            onConsent: () {},
+            onDecline: () {},
+          ),
+        ),
+      );
+
+      expect(find.text('Whether you are old enough'), findsOneWidget);
+      expect(find.text('age_over'), findsNothing);
     });
 
     testWidgets('falls back to the raw key for an attribute it does not recognise', (tester) async {

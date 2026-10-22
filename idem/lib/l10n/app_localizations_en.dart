@@ -515,18 +515,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get proofingAttributeEverything => 'Everything the app reads from your document';
 
   @override
+  String proofingAttributeAgeOver(int age) {
+    return 'Whether you are $age or older';
+  }
+
+  @override
+  String get proofingAttributeAgeCheck => 'Whether you are old enough';
+
+  @override
   String proofingSentTo(String relyingParty) {
-    return 'Sent to $relyingParty';
+    return 'Saved for $relyingParty';
   }
 
   @override
   String proofingSentBrowserFace(String relyingParty) {
-    return 'Your document identity was sent to $relyingParty. Finish face verification in the browser tab where you started this session.';
+    return 'Your document details are saved for this verification. $relyingParty receives them once you finish. Finish face verification in the browser tab where you started this session.';
   }
 
   @override
   String proofingSentEverything(String relyingParty) {
-    return 'Everything this verification needed from this device was sent to $relyingParty.';
+    return 'Everything this verification needed from this device is saved. $relyingParty receives it once the verification is finished.';
   }
 
   @override
@@ -537,7 +545,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String proofingShareBody(String relyingParty) {
-    return 'Your document details were sent to $relyingParty. Finish to complete the verification.';
+    return 'Your document details are saved for this verification. $relyingParty receives them when you finish.';
   }
 
   @override
@@ -869,6 +877,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get consentTheyWillReceive => 'They will receive';
+
+  @override
+  String consentStepByStep(String party) {
+    return 'Your details go to the verification service step by step, so you can continue on another device. $party only receives them when you finish. If you stop, they are deleted when this request expires.';
+  }
 
   @override
   String get qrScanClose => 'Close';
