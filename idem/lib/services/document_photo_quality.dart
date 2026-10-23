@@ -167,27 +167,39 @@ DocumentSample sampleDocument(
   final rows = _tapPositions(height, taps, top, step, uprightHeight);
   // Each upright tap as its byte offset in the frame, so the loop below only adds and reads.
   final (columnOffsets, rowOffsets) = _frameOffsets(frame, rotation, columns, rows);
-  final bytes = frame.bytes;
-  final bgra = frame.isBgra;
-  final tapCount = taps * taps;
   final pixels = Uint8List(width * height);
   for (var y = 0; y < height; y++) {
-    final rowTaps = y * taps;
     for (var x = 0; x < width; x++) {
-      final columnTaps = x * taps;
-      var sum = 0;
-      for (var ty = 0; ty < taps; ty++) {
-        final rowOffset = rowOffsets[rowTaps + ty];
-        for (var tx = 0; tx < taps; tx++) {
-          final i = columnOffsets[columnTaps + tx] + rowOffset;
-          sum += bgra ? (bytes[i] * _lumaBlue + bytes[i + 1] * _lumaGreen + bytes[i + 2] * _lumaRed) >> 8 : bytes[i];
-        }
-      }
-      pixels[y * width + x] = sum ~/ tapCount;
+      pixels[y * width + x] = _averageTaps(frame, columnOffsets, rowOffsets, x * taps, y * taps, taps);
     }
   }
 
   return DocumentSample(pixels, width, height);
+}
+
+/// The mean brightness of the [taps] x [taps] frame pixels from [firstColumn] and [firstRow].
+@pragma('vm:prefer-inline')
+int _averageTaps(
+  LumaFrame frame,
+  Int32List columnOffsets,
+  Int32List rowOffsets,
+  int firstColumn,
+  int firstRow,
+  int taps,
+) {
+  final bytes = frame.bytes;
+  var sum = 0;
+  for (var ty = 0; ty < taps; ty++) {
+    final rowOffset = rowOffsets[firstRow + ty];
+    for (var tx = 0; tx < taps; tx++) {
+      final i = columnOffsets[firstColumn + tx] + rowOffset;
+      sum += frame.isBgra
+          ? (bytes[i] * _lumaBlue + bytes[i + 1] * _lumaGreen + bytes[i + 2] * _lumaRed) >> 8
+          : bytes[i];
+    }
+  }
+
+  return sum ~/ (taps * taps);
 }
 
 Int32List _tapPositions(int count, int taps, double origin, double step, int size) => Int32List.fromList([
