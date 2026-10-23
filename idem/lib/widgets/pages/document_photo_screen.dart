@@ -14,7 +14,7 @@ import 'package:idem/l10n/l10n.dart';
 import 'package:idem/services/document_photo_quality.dart';
 import 'package:idem/services/document_portrait.dart';
 import 'package:idem/services/document_text_reader.dart';
-import 'package:idem/services/mrz_fields.dart';
+import 'package:idem/services/document_viz.dart';
 import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:vcmrtd/vcmrtd.dart';
@@ -67,7 +67,11 @@ img.Image _fitLongEdge(img.Image image, int maxLongEdge) {
 /// picture takes a while.
 Future<Uint8List> preparePhotoInBackground(DocumentPicture picture) => compute(prepareDocumentPhoto, picture);
 
-final _textLog = Logger('DocumentPhotoText');
+final _vizLog = Logger('DocumentViz');
+
+/// What the text on both sides said, shown on the last side's review in
+/// debug builds while the comparison is tuned.
+final debugVizCheck = ValueNotifier<VizCheck?>(null);
 
 const _deviceRotations = {
   DeviceOrientation.portraitUp: 0,
@@ -464,6 +468,7 @@ class DocumentPhotoScreen extends StatefulWidget {
     required this.totalSteps,
     this.documentType,
     this.scanned,
+    this.known,
     this.camera,
     this.readPhotoText,
   });
@@ -481,11 +486,15 @@ class DocumentPhotoScreen extends StatefulWidget {
   /// photo page (its front), a card's back. Needs [documentType] to say which.
   final Uint8List? scanned;
 
+  /// What the MRZ scan or chip read says the document is: both sides' text
+  /// is checked against it.
+  final KnownDocument? known;
+
   /// The device's back camera when null.
   final DocumentPhotoCamera? camera;
 
-  /// The lines of text on a photo; ML Kit's when null.
-  final Future<List<String>> Function(Uint8List photo)? readPhotoText;
+  /// The text and barcodes on a photo; ML Kit's when null.
+  final Future<PhotoText> Function(Uint8List photo)? readPhotoText;
 
   @override
   State<DocumentPhotoScreen> createState() => _DocumentPhotoScreenState();
@@ -510,7 +519,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
   final _quality = DocumentPhotoQuality();
 
   DocumentTextReader? _photoTextReader;
-  final _sideMrz = Map<Uint8List, Future<MrzFields?>>.identity();
+  final _sideTexts = Map<Uint8List, Future<SideText?>>.identity();
 
   var _qualityWaived = false;
   Timer? _waiveTimer;
@@ -551,7 +560,8 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
     final content = _content;
     final other = _taken[_side == DocumentPhotoSide.front ? DocumentPhotoSide.back : DocumentPhotoSide.front];
     if (!content.mrz || other == null) return content;
-    return await _readMrz(other) == null ? content : (portrait: content.portrait, mrz: false);
+    final text = await _readSide(other);
+    return text?.mrz == null ? content : (portrait: content.portrait, mrz: false);
   }
 
   /// Both sides of a passport's photo page get the passport-page frame;
@@ -682,23 +692,40 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
     });
   }
 
-  /// Reads the MRZ on [photo] ahead of the next side's [_contentToLookFor].
+  /// Reads the text on [photo] and, once both sides have one, compares them.
   void _onReview(Uint8List photo) {
-    if (_index + 1 < _sideCount) unawaited(_readMrz(photo));
+    unawaited(_readSide(photo));
+    final otherSide = _side == DocumentPhotoSide.front ? DocumentPhotoSide.back : DocumentPhotoSide.front;
+    final other = _taken[otherSide];
+    if (other == null) return;
+    final front = _side == DocumentPhotoSide.front;
+    unawaited(_compareSides(front: front ? photo : other, back: front ? other : photo));
   }
 
-  Future<MrzFields?> _readMrz(Uint8List photo) => _sideMrz.putIfAbsent(photo, () async {
+  Future<SideText?> _readSide(Uint8List photo) => _sideTexts.putIfAbsent(photo, () async {
     try {
       final read = widget.readPhotoText ?? (_photoTextReader ??= DocumentTextReader()).photoText;
-      return readMrzFields(await read(photo));
+      final text = await read(photo);
+      return SideText.read(text.lines, barcodes: text.barcodes);
     } catch (e) {
-      _textLog.warning('photo text not read: $e');
+      _vizLog.warning('VIZ text not read: $e');
       return null;
     }
   });
 
+  /// Only logged for now, until the text of real documents' sides is
+  /// measured: search the log for `VIZ`.
+  Future<void> _compareSides({required Uint8List front, required Uint8List back}) async {
+    debugVizCheck.value = null;
+    final texts = await Future.wait([_readSide(front), _readSide(back)]);
+    if (!mounted || !(identical(_photo, front) || identical(_photo, back))) return;
+    final check = checkSides(texts[0], texts[1], known: widget.known);
+    _vizLog.info('VIZ ${widget.documentType?.name ?? 'unknown'} known=${widget.known != null} $check');
+    debugVizCheck.value = check;
+  }
+
   void _retake() {
-    _sideMrz.remove(_photo);
+    _sideTexts.remove(_photo);
     setState(() => _photo = null);
     unawaited(_openCamera());
   }
@@ -992,10 +1019,11 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
     );
   }
 
-  /// Retake and use: only once the photo that is sent is ready.
+  /// Retake and use, and in debug builds what the checks said: only once the photo that is sent is ready.
   List<Widget> _buildReviewActions(BuildContext context) {
     final l10n = context.l10n;
     return [
+      if (kDebugMode && _taken.length + 1 == _sideCount) const _VizCheckBanner(),
       Padding(
         padding: guidedBottomButtonPadding,
         child: Row(
@@ -1102,4 +1130,34 @@ class _CropPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_CropPainter old) => old.image != image || old.crop != crop;
+}
+
+class _VizCheckBanner extends StatelessWidget {
+  const _VizCheckBanner();
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder(
+    valueListenable: debugVizCheck,
+    builder: (context, check, _) {
+      if (check == null) return const SizedBox.shrink();
+      return Container(
+        key: const Key('viz check'),
+        margin: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: switch (check.match) {
+            SidesMatch.same => Colors.green.shade700,
+            SidesMatch.different => Colors.red.shade700,
+            SidesMatch.unknown => Colors.grey.shade700,
+          },
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          'Sides: ${check.match.name} · front document ${check.frontLooksLikeDocument} · '
+          'back document ${check.backLooksLikeDocument} (debug)',
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+        ),
+      );
+    },
+  );
 }

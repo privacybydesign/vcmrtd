@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:idem/services/document_text_reader.dart';
+import 'package:image/image.dart' as img;
 
 void main() {
   group('fractionsOfUpright', () {
@@ -25,6 +26,22 @@ void main() {
       );
       expect(fractions, [const Rect.fromLTRB(0.1, 0.1, 0.2, 0.3)]);
     });
+  });
+
+  test('quarterTurns turns a photo a quarter clockwise, then anticlockwise', () {
+    // White on the left, black on the right.
+    final photo = img.Image(width: 32, height: 16);
+    for (final pixel in photo) {
+      final white = pixel.x < 16 ? 255 : 0;
+      pixel.setRgb(white, white, white);
+    }
+
+    final turned = quarterTurns(Uint8List.fromList(img.encodeJpg(photo))).map(img.decodeJpg).toList();
+
+    expect([for (final t in turned) (t!.width, t.height)], [(16, 32), (16, 32)]);
+    int brightness(img.Image image, int y) => image.getPixel(8, y).r.toInt();
+    expect(brightness(turned[0]!, 4), greaterThan(200), reason: 'clockwise: the left comes on top');
+    expect(brightness(turned[1]!, 4), lessThan(50), reason: 'anticlockwise: the right comes on top');
   });
 
   test('nv21FromLuma drops the row padding and adds neutral chroma', () {
