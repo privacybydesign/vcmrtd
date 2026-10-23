@@ -228,6 +228,9 @@ class AppLocalizationsNl extends AppLocalizations {
   String get docPhotoTake => 'Foto maken';
 
   @override
+  String get docPhotoShowTips => 'Tips tonen';
+
+  @override
   String get docPhotoHintNoDocument => 'Leg het hele document binnen het kader, op een egale ondergrond.';
 
   @override

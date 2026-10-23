@@ -3,7 +3,6 @@ import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:idem/services/document_liveness.dart';
 import 'package:idem/services/document_photo_quality.dart';
 import 'package:idem/services/document_portrait.dart';
 
@@ -80,51 +79,6 @@ int _guilloche(int x, int y, int printed) =>
     printed == 200 ? 200 + (14 * math.sin(x / 1.7 + 3 * math.sin(y / 11))).round() : printed;
 
 void main() {
-  group('shrunkBgra', () {
-    // Each pixel's bytes are its x, y and two padding bytes; [padding] bytes come before the first pixel.
-    LumaFrame bgra(int width, int height, {int padding = 0}) {
-      final bytes = Uint8List(padding + width * height * 4);
-      for (var y = 0; y < height; y++) {
-        for (var x = 0; x < width; x++) {
-          bytes.setAll(padding + (y * width + x) * 4, [x, y, 0, 255]);
-        }
-      }
-      return LumaFrame.bgra(
-        bytes: Uint8List.sublistView(bytes, padding),
-        width: width,
-        height: height,
-        bytesPerRow: width * 4,
-      );
-    }
-
-    void expectEveryOther(LumaFrame shrunk) {
-      expect((shrunk.width, shrunk.height, shrunk.bytesPerRow), (4, 2, 16));
-      for (var y = 0; y < 2; y++) {
-        for (var x = 0; x < 4; x++) {
-          expect(shrunk.bytes.sublist((y * 4 + x) * 4, (y * 4 + x) * 4 + 2), [x * 2, y * 2]);
-        }
-      }
-    }
-
-    test('keeps every other pixel of a frame twice as long as asked', () {
-      expectEveryOther(shrunkBgra(bgra(8, 4), maxLongEdge: 4));
-    });
-
-    test('reads a frame whose bytes do not start on a whole pixel', () {
-      expectEveryOther(shrunkBgra(bgra(8, 4, padding: 1), maxLongEdge: 4));
-    });
-
-    test('leaves a frame under twice as long as asked as it is', () {
-      final frame = bgra(7, 4);
-      expect(shrunkBgra(frame, maxLongEdge: 4), same(frame));
-    });
-
-    test("leaves Android's frames as they are", () {
-      final frame = LumaFrame.luma(bytes: Uint8List(32), width: 8, height: 4, bytesPerRow: 8);
-      expect(shrunkBgra(frame, maxLongEdge: 2), same(frame));
-    });
-  });
-
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('the document in the frame', () {
@@ -381,45 +335,6 @@ void main() {
     test('finds the card where the frame lies in the upright frame', () {
       expect(checkFrame(cardFrame(), rotation: 90, region: region), {DocumentPhotoIssue.blurry});
       expect(checkFrame(emptyFrame(), rotation: 90, region: region), {DocumentPhotoIssue.noDocument});
-    });
-
-    test("fingerprints the document's colours where they lie upright", () {
-      // The card's left half blue, its right half red, in the half-resolution colour planes.
-      const chromaWidth = uprightHeight ~/ 2;
-      const chromaHeight = uprightWidth ~/ 2;
-      final u = Uint8List(chromaWidth * chromaHeight)..fillRange(0, chromaWidth * chromaHeight, 128);
-      final v = Uint8List(chromaWidth * chromaHeight)..fillRange(0, chromaWidth * chromaHeight, 128);
-      for (var cy = 0; cy < chromaHeight; cy++) {
-        for (var cx = 0; cx < chromaWidth; cx++) {
-          final upright = Offset(uprightWidth - 1 - cy * 2 + 0.5, cx * 2 + 0.5);
-          if (!frame.contains(upright)) continue;
-          final blue = upright.dx < frame.center.dx;
-          u[cy * chromaWidth + cx] = blue ? 200 : 100;
-          v[cy * chromaWidth + cx] = blue ? 100 : 200;
-        }
-      }
-      final card = cardFrame();
-      final coloured = LumaFrame.luma(
-        bytes: card.bytes,
-        width: card.width,
-        height: card.height,
-        bytesPerRow: card.bytesPerRow,
-        u: u,
-        v: v,
-        chromaBytesPerRow: chromaWidth,
-        chromaPixelStride: 1,
-      );
-
-      final signature = frameSignature(coloured, rotation: 90, region: region);
-
-      const row = signatureRows ~/ 2;
-      final left = row * signatureColumns + 1;
-      final right = row * signatureColumns + signatureColumns - 2;
-      expect(signature.cb[left], greaterThan(180));
-      expect(signature.cr[left], lessThan(120));
-      expect(signature.cb[right], lessThan(120));
-      expect(signature.cr[right], greaterThan(180));
-      expect(signature.luma[left], closeTo(200, 1));
     });
 
     test('the document found is where the portrait is looked for; none on a card without one', () async {

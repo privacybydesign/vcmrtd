@@ -62,6 +62,7 @@
   "docPhotoSideBack": "Achterkant",
   "docPhotoSideProgress": "{side} · {current} van {total}",
   "docPhotoTake": "Foto maken",
+  "docPhotoShowTips": "Tips tonen",
   "docPhotoHintNoDocument": "Leg het hele document binnen het kader, op een egale ondergrond.",
   "docPhotoHintNoPortrait": "Leg de kant met je foto binnen het kader.",
   "docPhotoHintNoMrz": "Leg de kant met de machineleesbare regels (<<<) binnen het kader.",

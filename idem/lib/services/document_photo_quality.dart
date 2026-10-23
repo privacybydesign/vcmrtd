@@ -5,7 +5,6 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui';
 
-import 'package:idem/services/document_liveness.dart';
 import 'package:idem/services/document_portrait.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 
@@ -100,83 +99,24 @@ const _lumaRed = 77;
 const _bgraBytesPerPixel = 4;
 
 class LumaFrame {
-  /// Android's YUV420/NV21: the first plane is brightness; [u] and [v], at
-  /// half its resolution, the colour - grey without them.
-  const LumaFrame.luma({
-    required this.bytes,
-    required this.width,
-    required this.height,
-    required this.bytesPerRow,
-    this.u,
-    this.v,
-    this.chromaBytesPerRow = 0,
-    this.chromaPixelStride = 1,
-  }) : isBgra = false;
+  /// Android's YUV420/NV21: the first plane is brightness.
+  const LumaFrame.luma({required this.bytes, required this.width, required this.height, required this.bytesPerRow})
+    : isBgra = false;
 
   const LumaFrame.bgra({required this.bytes, required this.width, required this.height, required this.bytesPerRow})
-    : isBgra = true,
-      u = null,
-      v = null,
-      chromaBytesPerRow = 0,
-      chromaPixelStride = 1;
+    : isBgra = true;
 
   final Uint8List bytes;
   final int width;
   final int height;
   final int bytesPerRow;
   final bool isBgra;
-  final Uint8List? u;
-  final Uint8List? v;
-  final int chromaBytesPerRow;
-  final int chromaPixelStride;
-
-  /// Blue and red difference (YCbCr), 128 for grey.
-  (int, int) chromaAt(int x, int y) {
-    if (isBgra) {
-      final i = y * bytesPerRow + x * _bgraBytesPerPixel;
-      final (b, g, r) = (bytes[i], bytes[i + 1], bytes[i + 2]);
-      return (128 + ((-43 * r - 85 * g + 128 * b) >> 8), 128 + ((128 * r - 107 * g - 21 * b) >> 8));
-    }
-    final u = this.u;
-    final v = this.v;
-    if (u == null || v == null) return (128, 128);
-    final i = (y >> 1) * chromaBytesPerRow + (x >> 1) * chromaPixelStride;
-    return (u[math.min(i, u.length - 1)], v[math.min(i, v.length - 1)]);
-  }
 
   int brightnessAt(int x, int y) {
     if (!isBgra) return bytes[y * bytesPerRow + x];
     final i = y * bytesPerRow + x * _bgraBytesPerPixel;
     return (bytes[i] * _lumaBlue + bytes[i + 1] * _lumaGreen + bytes[i + 2] * _lumaRed) >> 8;
   }
-}
-
-/// A BGRA [frame] with every so many pixels left out, its longer side at
-/// least [maxLongEdge] but under twice it: a full-resolution iOS frame is
-/// too much for text recognition and the checks to keep up with.
-LumaFrame shrunkBgra(LumaFrame frame, {required int maxLongEdge}) {
-  final step = math.max(frame.width, frame.height) ~/ maxLongEdge;
-  if (!frame.isBgra || step <= 1) return frame;
-  final width = frame.width ~/ step;
-  final height = frame.height ~/ step;
-  final pixels = Uint32List(width * height);
-  // Read four bytes at a time, which needs them to start on a whole pixel.
-  var bytes = frame.bytes;
-  if (bytes.offsetInBytes % _bgraBytesPerPixel != 0) bytes = Uint8List.fromList(bytes);
-  final source = bytes.buffer.asUint32List(bytes.offsetInBytes, bytes.lengthInBytes ~/ _bgraBytesPerPixel);
-  final pixelsPerRow = frame.bytesPerRow ~/ _bgraBytesPerPixel;
-  for (var y = 0; y < height; y++) {
-    final from = y * step * pixelsPerRow;
-    for (var x = 0; x < width; x++) {
-      pixels[y * width + x] = source[from + x * step];
-    }
-  }
-  return LumaFrame.bgra(
-    bytes: pixels.buffer.asUint8List(),
-    width: width,
-    height: height,
-    bytesPerRow: width * _bgraBytesPerPixel,
-  );
 }
 
 class DocumentSample {
@@ -254,7 +194,7 @@ Int32List _tapPositions(int count, int taps, double origin, double step, int siz
 ]);
 
 /// Where the upright [columns] and [rows] are in [frame]'s bytes: a pixel's
-/// offset is its column's plus its row's, as [_uprightBrightness] maps them.
+/// offset is its column's plus its row's, turned by [rotation].
 (Int32List, Int32List) _frameOffsets(LumaFrame frame, int rotation, Int32List columns, Int32List rows) {
   final pixel = frame.isBgra ? _bgraBytesPerPixel : 1;
   final row = frame.bytesPerRow;
@@ -269,13 +209,6 @@ Int32List _tapPositions(int count, int taps, double origin, double step, int siz
     Int32List.fromList([for (final y in rows) upright(y)]),
   );
 }
-
-int Function(int x, int y) _uprightBrightness(LumaFrame frame, int rotation) => switch (rotation) {
-  90 => (x, y) => frame.brightnessAt(y, frame.height - 1 - x),
-  180 => (x, y) => frame.brightnessAt(frame.width - 1 - x, frame.height - 1 - y),
-  270 => (x, y) => frame.brightnessAt(frame.width - 1 - y, x),
-  _ => frame.brightnessAt,
-};
 
 Set<DocumentPhotoIssue> checkFrame(LumaFrame frame, {required int rotation, required Rect region}) =>
     inspectFrame(frame, rotation: rotation, region: region).issues;
@@ -309,60 +242,6 @@ typedef FrameInspection = ({Set<DocumentPhotoIssue> issues, DocumentSample? docu
       (region.bottom - sampled.top) * scaleY,
     ),
   );
-}
-
-(int, int) Function(int x, int y) _uprightChroma(LumaFrame frame, int rotation) => switch (rotation) {
-  90 => (x, y) => frame.chromaAt(y, frame.height - 1 - x),
-  180 => (x, y) => frame.chromaAt(frame.width - 1 - x, frame.height - 1 - y),
-  270 => (x, y) => frame.chromaAt(frame.width - 1 - y, x),
-  _ => frame.chromaAt,
-};
-
-const _signatureTaps = 3;
-
-/// The document lies inside the frame drawn over the preview, not on its edge.
-const _signatureInset = 0.08;
-
-/// The document in [frame] for [DocumentLiveness]: cheap enough for every
-/// frame, and taken in the frame drawn over the preview ([region], fractions
-/// of the upright frame) so a frame whose document the torch's glare hides
-/// still counts.
-FrameSignature frameSignature(LumaFrame frame, {required int rotation, required Rect region}) {
-  final inner = region.deflateBy(region.width * _signatureInset, region.height * _signatureInset);
-  final brightnessAt = _uprightBrightness(frame, rotation);
-  final chromaAt = _uprightChroma(frame, rotation);
-  final uprightWidth = rotation % 180 == 0 ? frame.width : frame.height;
-  final uprightHeight = rotation % 180 == 0 ? frame.height : frame.width;
-  const cells = signatureColumns * signatureRows;
-  final luma = Float32List(cells);
-  final cb = Float32List(cells);
-  final cr = Float32List(cells);
-  for (var row = 0; row < signatureRows; row++) {
-    for (var column = 0; column < signatureColumns; column++) {
-      final cell = row * signatureColumns + column;
-      var lumaSum = 0;
-      var cbSum = 0;
-      var crSum = 0;
-      for (var ty = 0; ty < _signatureTaps; ty++) {
-        for (var tx = 0; tx < _signatureTaps; tx++) {
-          final fx = inner.left + (column + (tx + 0.5) / _signatureTaps) / signatureColumns * inner.width;
-          final fy = inner.top + (row + (ty + 0.5) / _signatureTaps) / signatureRows * inner.height;
-          final ux = (fx * uprightWidth).toInt().clamp(0, uprightWidth - 1);
-          final uy = (fy * uprightHeight).toInt().clamp(0, uprightHeight - 1);
-          lumaSum += brightnessAt(ux, uy);
-          final (b, r) = chromaAt(ux, uy);
-          cbSum += b;
-          crSum += r;
-        }
-      }
-      const taps = _signatureTaps * _signatureTaps;
-      luma[cell] = lumaSum / taps;
-      cb[cell] = cbSum / taps;
-      cr[cell] = crSum / taps;
-    }
-  }
-
-  return FrameSignature(luma: luma, cb: cb, cr: cr);
 }
 
 Set<DocumentPhotoIssue> documentPhotoIssues(DocumentSample sample, {required Rect frame}) =>
@@ -850,14 +729,8 @@ class DocumentFrameChecker {
     _pending.add(issues);
     final portraitFound = portrait ? Completer<DocumentPortrait?>() : null;
     if (portraitFound != null) _portraitPending.add(portraitFound);
-    TransferableTypedData? transferable(Uint8List? bytes) =>
-        bytes == null ? null : TransferableTypedData.fromList([bytes]);
     _requests!.send((
       bytes: TransferableTypedData.fromList([frame.bytes]),
-      u: transferable(frame.u),
-      v: transferable(frame.v),
-      chromaBytesPerRow: frame.chromaBytesPerRow,
-      chromaPixelStride: frame.chromaPixelStride,
       width: frame.width,
       height: frame.height,
       bytesPerRow: frame.bytesPerRow,
@@ -957,25 +830,12 @@ class DocumentFrameChecker {
     final bytes = r.bytes.materialize().asUint8List();
     return r.bgra
         ? LumaFrame.bgra(bytes: bytes, width: r.width, height: r.height, bytesPerRow: r.bytesPerRow)
-        : LumaFrame.luma(
-            bytes: bytes,
-            width: r.width,
-            height: r.height,
-            bytesPerRow: r.bytesPerRow,
-            u: r.u?.materialize().asUint8List(),
-            v: r.v?.materialize().asUint8List(),
-            chromaBytesPerRow: r.chromaBytesPerRow,
-            chromaPixelStride: r.chromaPixelStride,
-          );
+        : LumaFrame.luma(bytes: bytes, width: r.width, height: r.height, bytesPerRow: r.bytesPerRow);
   }
 }
 
 typedef _FrameRequest = ({
   TransferableTypedData bytes,
-  TransferableTypedData? u,
-  TransferableTypedData? v,
-  int chromaBytesPerRow,
-  int chromaPixelStride,
   int width,
   int height,
   int bytesPerRow,
