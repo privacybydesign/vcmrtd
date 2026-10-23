@@ -23,8 +23,6 @@ void main() {
       documentNumber: 'D23145890',
       dateOfBirth: DateTime(1974, 8, 12),
       dateOfExpiry: DateTime(2012, 4, 15),
-      personalNumber: null,
-      licenceData: null,
     ));
   });
 
@@ -51,35 +49,19 @@ void main() {
       documentNumber: 'L898902C3',
       dateOfBirth: DateTime(1974, 8, 12),
       dateOfExpiry: DateTime(2012, 4, 15),
-      personalNumber: 'ZE184226B',
-      licenceData: null,
     ));
-  });
-
-  test("reads a passport's personal number up to its fillers, where text recognition split the line", () {
-    final mrz = readMrzFields(['P<NLDERIKSSON<<ANNA<<<', 'L898902C36NLD7408122F1204159999999990<<', '<<<84'], now: now);
-
-    expect(mrz?.personalNumber, '999999990');
-  });
-
-  test('a passport without a personal number has none', () {
-    final mrz = readMrzFields(['P<UTOERIKSSON<<ANNA<<<', 'L898902C36UTO7408122F1204159<<<<<<<<<<<<<<04'], now: now);
-
-    expect(mrz?.personalNumber, isNull);
   });
 
   test('reads a driving licence MRZ line', () {
     final mrz = readMrzFields(['D1NLD11234567890ABCDEFGHIJKLM5'], now: now);
 
     expect(mrz?.type, DocumentType.drivingLicence);
-    expect(mrz?.licenceData, '11234567890ABCDEFGHIJKLM');
   });
 
   test("reads an Estonian licence's MRZ line, which has no version before its number", () {
     final mrz = readMrzFields(['D<ESTET999901<49307039909<<<<9'], now: now);
 
     expect(mrz?.type, DocumentType.drivingLicence);
-    expect(mrz?.licenceData, 'ET99990149307039909');
   });
 
   test('reads a TD2 card MRZ: its name line is no document number', () {
@@ -93,8 +75,6 @@ void main() {
       documentNumber: 'AB1234567',
       dateOfBirth: DateTime(1974, 8, 12),
       dateOfExpiry: DateTime(2030, 1, 1),
-      personalNumber: null,
-      licenceData: null,
     ));
   });
 

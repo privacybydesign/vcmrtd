@@ -22,37 +22,21 @@ final _td1Middle = RegExp(r'^([0-9A-Z]{6})([0-9A-Z])[MFX<]([0-9A-Z]{6})([0-9A-Z]
 final _nameTop = RegExp(r'^([PIACV])[A-Z<][A-Z0-9<]{3}[A-Z<]*<<');
 
 /// TD3 and TD2, line 2: document number, nationality, date of birth, sex,
-/// date of expiry, and what follows: TD3's personal number.
+/// date of expiry.
 final _numberLine = RegExp(
-  r'^([A-Z0-9<]{9})([0-9A-Z])[A-Z0-9<]{3}([0-9A-Z]{6})([0-9A-Z])[MFX<]([0-9A-Z]{6})([0-9A-Z])([A-Z0-9<]*)',
+  r'^([A-Z0-9<]{9})([0-9A-Z])[A-Z0-9<]{3}([0-9A-Z]{6})([0-9A-Z])[MFX<]([0-9A-Z]{6})([0-9A-Z])',
 );
-
-/// TD3's personal number field, before its check digit.
-const _personalNumberLength = 14;
-final _leadingCharacters = RegExp('^[A-Z0-9]{1,$_personalNumberLength}');
 
 /// An EU driving licence's single line, its check digit over all before it.
 final _drivingLicence = RegExp(r'^(D[A-Z0-9<][A-Z<]{3}[A-Z0-9])([A-Z0-9<]{10})([A-Z0-9<]{13})([0-9A-Z])$');
 
-const _licenceDataStart = 5;
-
 final _whitespace = RegExp(r'\s+');
 final _anyDigit = RegExp(r'[0-9]');
 
-/// What of an MRZ text recognition read off a photo, each field checked.
-/// [personalNumber]: a passport's (TD3) optional data, such as the Dutch
-/// BSN, which the other side of its page may print. [licenceData]: all of a
-/// driving licence's line after its country - where its number ends differs
-/// per country ("D1NLD1" and a version, "D<EST" without), so the number
-/// printed on the licence is looked for in it.
-typedef MrzFields = ({
-  DocumentType type,
-  String? documentNumber,
-  DateTime? dateOfBirth,
-  DateTime? dateOfExpiry,
-  String? personalNumber,
-  String? licenceData,
-});
+/// What of an MRZ text recognition read off a photo, each field checked. A
+/// driving licence's line is only recognised: where its number ends differs
+/// per country.
+typedef MrzFields = ({DocumentType type, String? documentNumber, DateTime? dateOfBirth, DateTime? dateOfExpiry});
 
 /// The MRZ fields among [lines], null when none of them holds up. [now]
 /// decides a date of birth's century.
@@ -62,8 +46,6 @@ MrzFields? readMrzFields(Iterable<String> lines, {DateTime? now}) {
   String? number;
   DateTime? birth;
   DateTime? expiry;
-  String? personal;
-  String? licenceData;
   for (final line in lines.map(_normalise)) {
     final nameTop = _nameTop.firstMatch(line);
     if (nameTop != null) type ??= nameTop[1] == 'P' ? DocumentType.passport : DocumentType.identityCard;
@@ -75,7 +57,6 @@ MrzFields? readMrzFields(Iterable<String> lines, {DateTime? now}) {
       number ??= _documentNumber(bottomNumber);
       birth ??= _birthDate(bottomBirth, today);
       expiry ??= _expiryDate(_checkedDate(bottom[5]!, bottom[6]!));
-      personal ??= _personalNumber(bottom[7]!);
       continue;
     }
 
@@ -101,33 +82,14 @@ MrzFields? readMrzFields(Iterable<String> lines, {DateTime? now}) {
     final licence = _drivingLicence.firstMatch(line);
     if (licence != null && _checkDigit(line.substring(0, line.length - 1)) == _digit(licence[4]!)) {
       type = DocumentType.drivingLicence;
-      licenceData ??= _documentNumber(line.substring(_licenceDataStart, line.length - 1));
     }
   }
 
   // A document number line without its first line: most are passports.
   if (type == null && number != null && birth != null) type = DocumentType.passport;
-  if (type == null || (number == null && birth == null && licenceData == null)) return null;
-  return (
-    type: type,
-    documentNumber: number,
-    dateOfBirth: birth,
-    dateOfExpiry: expiry,
-    personalNumber: personal,
-    licenceData: licenceData,
-  );
-}
-
-/// The personal number in [field], what follows a TD3's date of expiry:
-/// checked when all of it and its check digit were read, else what was read
-/// of it before its fillers (text recognition splits the line there) -
-/// enough to tie a side to the document, too little to tell two apart.
-String? _personalNumber(String field) {
-  if (field.length > _personalNumberLength) {
-    final checked = _checked(field.substring(0, _personalNumberLength), field[_personalNumberLength]);
-    if (checked != null) return _documentNumber(checked);
-  }
-  return _leadingCharacters.firstMatch(field)?[0];
+  if (type == null) return null;
+  if (type != DocumentType.drivingLicence && number == null && birth == null) return null;
+  return (type: type, documentNumber: number, dateOfBirth: birth, dateOfExpiry: expiry);
 }
 
 String _normalise(String line) =>

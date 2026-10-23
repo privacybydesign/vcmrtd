@@ -58,7 +58,6 @@
   "docPhotoFrontInstructionsCard": "Leg de voorkant van je document, de kant met je foto, binnen het kader. Gebruik een vlakke ondergrond en goed licht, en vermijd schittering.",
   "docPhotoBackTitle": "Maak nu een foto van de achterkant",
   "docPhotoBackInstructions": "Draai je document om en leg de achterkant binnen het kader.",
-  "docPhotoBackInstructionsPassport": "Leg nu de achterkant van de pagina met je foto binnen het kader.",
   "docPhotoSideFront": "Voorkant",
   "docPhotoSideBack": "Achterkant",
   "docPhotoSideProgress": "{side} · {current} van {total}",

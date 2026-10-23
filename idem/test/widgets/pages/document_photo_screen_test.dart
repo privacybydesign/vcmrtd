@@ -8,8 +8,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/services/document_photo_quality.dart';
-import 'package:idem/services/document_text_reader.dart';
-import 'package:idem/services/document_viz.dart';
 import 'package:idem/theme/app_theme.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:idem/widgets/pages/document_photo_screen.dart';
@@ -111,17 +109,15 @@ Widget _screen(
   _FakeCamera camera, {
   DocumentType? documentType,
   Uint8List? scanned,
-  Future<void> Function(Uint8List front, Uint8List back)? onPhotosTaken,
+  Future<void> Function(Uint8List front, Uint8List? back)? onPhotosTaken,
   VoidCallback? onBack,
-  KnownDocument? known,
-  Future<PhotoText> Function(Uint8List photo)? readPhotoText,
+  Future<List<String>> Function(Uint8List photo)? readPhotoText,
 }) => _app(
   DocumentPhotoScreen(
     camera: camera,
     documentType: documentType,
     scanned: scanned,
-    known: known,
-    readPhotoText: readPhotoText ?? (_) async => (lines: const <String>[], barcodes: const <String>[]),
+    readPhotoText: readPhotoText ?? (_) async => const <String>[],
     stepNumber: 2,
     totalSteps: 3,
     onBack: onBack ?? () {},
@@ -168,7 +164,7 @@ void main() {
       'and both are sent', (tester) async {
     final camera = _FakeCamera();
     final scanned = _scannedPhoto();
-    final sent = <(Uint8List, Uint8List)>[];
+    final sent = <(Uint8List, Uint8List?)>[];
     await tester.pumpWidget(
       _screen(
         camera,
@@ -200,12 +196,12 @@ void main() {
     expect(sent.single.$2, scanned);
   });
 
-  testWidgets('a passport whose photo page the MRZ scan photographed: shown first as the front, then its back', (
+  testWidgets('a passport whose photo page the MRZ scan photographed: shown first as the front, and sent alone', (
     tester,
   ) async {
     final camera = _FakeCamera();
     final scanned = _scannedPhoto();
-    final sent = <(Uint8List, Uint8List)>[];
+    final sent = <(Uint8List, Uint8List?)>[];
     await tester.pumpWidget(
       _screen(
         camera,
@@ -217,22 +213,19 @@ void main() {
     await tester.pump();
 
     expect(find.textContaining('photographed while the MRZ was read'), findsOneWidget);
-    expect(find.text('Front · 1 of 2'), findsOneWidget);
-    await _usePhoto(tester);
-    expect(camera.opens, 1);
-    expect(find.text('Back · 2 of 2'), findsOneWidget);
-    await _takeAndReview(tester);
+    expect(find.text('Front · 1 of 2'), findsNothing);
     await _usePhoto(tester);
 
+    expect(camera.opens, 0);
     expect(sent.single.$1, scanned);
-    expect(sent.single.$2, camera.taken.single);
+    expect(sent.single.$2, isNull);
   });
 
   testWidgets('Retake on the scanned side takes that side again with the camera; back on the front returns to the '
       'scanned back', (tester) async {
     final camera = _FakeCamera();
     final scanned = _scannedPhoto();
-    final sent = <(Uint8List, Uint8List)>[];
+    final sent = <(Uint8List, Uint8List?)>[];
     await tester.pumpWidget(
       _screen(
         camera,
@@ -312,7 +305,7 @@ void main() {
                 home: DocumentPhotoScreen(
                   camera: camera,
                   documentType: type,
-                  readPhotoText: (_) async => (lines: const <String>[], barcodes: const <String>[]),
+                  readPhotoText: (_) async => const <String>[],
                   stepNumber: 2,
                   totalSteps: 3,
                   onBack: () {},
@@ -347,7 +340,7 @@ void main() {
 
   testWidgets('a document of unknown type: front, then back in the card frame, both sent together', (tester) async {
     final camera = _FakeCamera();
-    final sent = <(Uint8List, Uint8List)>[];
+    final sent = <(Uint8List, Uint8List?)>[];
     await tester.pumpWidget(_screen(camera, onPhotosTaken: (front, back) async => sent.add((front, back))));
     await tester.pump();
 
@@ -384,15 +377,15 @@ void main() {
     expect(sent.single.$2, camera.taken[1]);
   });
 
-  testWidgets('a passport: both sides of the photo page, each in the passport-page frame', (tester) async {
+  testWidgets('a passport: only its photo page, in the passport-page frame', (tester) async {
     final camera = _FakeCamera();
-    final sent = <(Uint8List, Uint8List)>[];
+    final sent = <(Uint8List, Uint8List?)>[];
     await tester.pumpWidget(
       _screen(camera, documentType: DocumentType.passport, onPhotosTaken: (f, b) async => sent.add((f, b))),
     );
     await tester.pump();
 
-    expect(find.text('Front · 1 of 2'), findsOneWidget);
+    expect(find.text('Front · 1 of 2'), findsNothing);
     expect(find.textContaining('page with your photo'), findsNothing, reason: 'the instructions are behind a tap');
     await tester.tap(find.text('Photograph the front'));
     await tester.pumpAndSettle();
@@ -400,17 +393,9 @@ void main() {
     await _takeAndReview(tester);
     await _usePhoto(tester);
 
-    expect(find.text('Back · 2 of 2'), findsOneWidget);
-    await tester.tap(find.text('Now photograph the back'));
-    await tester.pumpAndSettle();
-    expect(find.text('Now place the back of the page with your photo inside the frame.'), findsOneWidget);
-    expect(find.text('My document has no back'), findsNothing);
-    await _takeAndReview(tester);
-    await _usePhoto(tester);
-
-    expect(camera.frameRatios, [MRZCameraOverlay.passportFrameRatio, MRZCameraOverlay.passportFrameRatio]);
-    expect(sent.single.$1, camera.taken[0]);
-    expect(sent.single.$2, camera.taken[1]);
+    expect(camera.frameRatios, [MRZCameraOverlay.passportFrameRatio]);
+    expect(sent.single.$1, camera.taken.single);
+    expect(sent.single.$2, isNull);
   });
 
   testWidgets('a back is always asked for: no way to skip it', (tester) async {
@@ -525,8 +510,6 @@ void main() {
     );
     await tester.pump();
     await _takeAndReview(tester);
-    await _usePhoto(tester);
-    await _takeAndReview(tester);
     await tester.tap(find.text('Use photo'));
     await tester.pump();
 
@@ -595,20 +578,15 @@ void main() {
       List<String> frontText = const [],
     }) async {
       final camera = _FakeCamera();
-      await tester.pumpWidget(
-        _screen(camera, documentType: type, readPhotoText: (_) async => (lines: frontText, barcodes: const <String>[])),
-      );
+      await tester.pumpWidget(_screen(camera, documentType: type, readPhotoText: (_) async => frontText));
       await tester.pump();
       await _takeAndReview(tester);
       await _usePhoto(tester);
       return camera.contents;
     }
 
-    testWidgets('a passport: portrait and MRZ on the photo page, neither on its back', (tester) async {
-      expect(await contentsFor(tester, DocumentType.passport), [
-        (portrait: true, mrz: true),
-        (portrait: false, mrz: false),
-      ]);
+    testWidgets('a passport: portrait and MRZ on the photo page', (tester) async {
+      expect(await contentsFor(tester, DocumentType.passport), [(portrait: true, mrz: true)]);
     });
 
     testWidgets('an identity card: portrait on the front, MRZ on the back', (tester) async {
@@ -648,7 +626,7 @@ void main() {
         camera,
         readPhotoText: (photo) async {
           read.add(photo);
-          return (lines: const <String>[], barcodes: const <String>[]);
+          return const <String>[];
         },
       ),
     );
@@ -670,57 +648,6 @@ void main() {
     expect(find.text('Use photo'), findsOneWidget);
     expect(tester.widget<Image>(find.byType(Image)).image, isA<MemoryImage>());
     expect(read, [camera.taken.single]);
-  });
-
-  testWidgets("the last side's review compares the text on both sides with the document the MRZ scan read", (
-    tester,
-  ) async {
-    final camera = _FakeCamera();
-    final scanned = _scannedPhoto();
-    final read = <Uint8List>[];
-    await tester.pumpWidget(
-      _screen(
-        camera,
-        documentType: DocumentType.identityCard,
-        scanned: scanned,
-        known: (documentNumber: 'D23145890', dateOfBirth: DateTime(1974, 8, 12), dateOfExpiry: DateTime(2012, 4, 15)),
-        readPhotoText: (photo) async {
-          read.add(photo);
-          final lines = identical(photo, scanned)
-              ? const [
-                  'I<UTOD231458907<<<<<<<<<<<<<<<',
-                  '7408122F1204159UTO<<<<<<<<<<<6',
-                  'ERIKSSON<<ANNA<MARIA<<<<<<<<<<',
-                ]
-              : const ['Documentnummer', 'D23145890', '12 AUG/AUG 1974', '15.04.2012'];
-          return (lines: lines, barcodes: const <String>[]);
-        },
-      ),
-    );
-    await tester.pump();
-    expect(find.byKey(const Key('viz check')), findsNothing);
-
-    await _usePhoto(tester);
-    await _takeAndReview(tester);
-    await tester.pump();
-
-    expect(read, [scanned, camera.taken.single]);
-    expect(debugVizCheck.value?.match, SidesMatch.same);
-    expect(debugVizCheck.value?.frontLooksLikeDocument, isTrue);
-    expect(find.textContaining('Sides: same'), findsOneWidget);
-  });
-
-  testWidgets('a photo whose text cannot be read leaves the sides unknown', (tester) async {
-    final camera = _FakeCamera();
-    await tester.pumpWidget(_screen(camera, readPhotoText: (_) async => throw Exception('no recognizer')));
-    await tester.pump();
-
-    await _takeAndReview(tester);
-    await _usePhoto(tester);
-    await _takeAndReview(tester);
-    await tester.pump();
-
-    expect(debugVizCheck.value?.match, SidesMatch.unknown);
   });
 
   testWidgets('the hint follows the issue the preview frames agree on', (tester) async {

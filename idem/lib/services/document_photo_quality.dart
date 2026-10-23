@@ -5,6 +5,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:idem/services/document_portrait.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 
@@ -112,6 +113,7 @@ class LumaFrame {
   final int bytesPerRow;
   final bool isBgra;
 
+  @visibleForTesting
   int brightnessAt(int x, int y) {
     if (!isBgra) return bytes[y * bytesPerRow + x];
     final i = y * bytesPerRow + x * _bgraBytesPerPixel;
@@ -244,6 +246,7 @@ typedef FrameInspection = ({Set<DocumentPhotoIssue> issues, DocumentSample? docu
   );
 }
 
+@visibleForTesting
 Set<DocumentPhotoIssue> documentPhotoIssues(DocumentSample sample, {required Rect frame}) =>
     _issues(sample, frame, _findDocument(sample, frame));
 

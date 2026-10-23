@@ -985,20 +985,20 @@ void main() {
           // Part of the document scan: its number, not one of its own.
           expect(screen.stepNumber, 1);
           expect(screen.totalSteps, 1);
+          // The scan says it's a passport: only its front is asked for.
           expect(screen.documentType, DocumentType.passport);
           expect(find.byType(NfcReadingScreen), findsNothing);
           expect(submitRequests, 0);
 
           final photo = _jpeg();
-          final back = Uint8List.fromList([...photo, 0]);
-          unawaited(screen.onPhotosTaken(photo, back));
+          unawaited(screen.onPhotosTaken(photo, null));
           await _pumpStepSubmission(tester);
           await _pumpStepSubmission(tester);
 
-          // Sent without a bsnRegion: nothing locates the printed BSN yet.
+          // Sent without a back or a bsnRegion: nothing locates the printed
+          // BSN yet.
           expect(photoStepBodies.single, {
             'front': {'image': base64Encode(photo), 'mimeType': 'image/jpeg'},
-            'back': {'image': base64Encode(back), 'mimeType': 'image/jpeg'},
           });
           expect(submitRequests, 1);
           expect(events.single, isA<ProofingSessionCompleted>());
@@ -1072,13 +1072,11 @@ void main() {
             expect(screen.documentType, documentType);
             expect(photoStepBodies, isEmpty);
             if (documentType == DocumentType.passport) {
-              // The MRZ is on the photo page, the front: its back follows.
-              final back = Uint8List.fromList([...mrzSide, 0]);
-              unawaited(screen.onPhotosTaken(mrzSide, back));
+              // The MRZ is on the photo page: that is the whole photo.
+              unawaited(screen.onPhotosTaken(mrzSide, null));
               await _pumpStepSubmission(tester);
               expect(photoStepBodies.single, {
                 'front': {'image': base64Encode(mrzSide), 'mimeType': 'image/jpeg'},
-                'back': {'image': base64Encode(back), 'mimeType': 'image/jpeg'},
               });
             } else {
               // A card's MRZ is on its back: the front follows.

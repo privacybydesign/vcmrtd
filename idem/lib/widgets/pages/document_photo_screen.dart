@@ -14,7 +14,7 @@ import 'package:idem/l10n/l10n.dart';
 import 'package:idem/services/document_photo_quality.dart';
 import 'package:idem/services/document_portrait.dart';
 import 'package:idem/services/document_text_reader.dart';
-import 'package:idem/services/document_viz.dart';
+import 'package:idem/services/mrz_fields.dart';
 import 'package:idem/theme/brand_theme.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:vcmrtd/vcmrtd.dart';
@@ -67,11 +67,7 @@ img.Image _fitLongEdge(img.Image image, int maxLongEdge) {
 /// picture takes a while.
 Future<Uint8List> preparePhotoInBackground(DocumentPicture picture) => compute(prepareDocumentPhoto, picture);
 
-final _vizLog = Logger('DocumentViz');
-
-/// What the text on both sides said, shown on the last side's review in
-/// debug builds while the comparison is tuned.
-final debugVizCheck = ValueNotifier<VizCheck?>(null);
+final _textLog = Logger('DocumentPhotoText');
 
 const _deviceRotations = {
   DeviceOrientation.portraitUp: 0,
@@ -438,12 +434,12 @@ const documentPhotoQualityWaiveDelay = Duration(seconds: 5);
 enum DocumentPhotoSide { front, back }
 
 /// The document_photo step: the user photographs the front of their
-/// document and its back (a passport's photo page and the back of that
-/// page), each inside a document-shaped guide, checking every
+/// document and - unless it's a passport, whose back carries nothing - its
+/// back, each inside a document-shaped guide, checking every
 /// photo and either retaking or using it. A side the MRZ scan already
 /// photographed ([scanned]) comes first, straight to its review: the user
-/// always sees what is sent. [onPhotosTaken] gets both prepared JPEGs and
-/// sends them; while it runs the last photo stays on screen, so a send the
+/// always sees what is sent. [onPhotosTaken] gets the prepared JPEGs (back
+/// null for a passport) and sends them; while it runs the last photo stays on screen, so a send the
 /// user gave up on can simply be tried again.
 class DocumentPhotoScreen extends StatefulWidget {
   const DocumentPhotoScreen({
@@ -454,13 +450,12 @@ class DocumentPhotoScreen extends StatefulWidget {
     required this.totalSteps,
     this.documentType,
     this.scanned,
-    this.known,
     this.camera,
     this.readPhotoText,
   });
 
   final VoidCallback onBack;
-  final Future<void> Function(Uint8List front, Uint8List back) onPhotosTaken;
+  final Future<void> Function(Uint8List front, Uint8List? back) onPhotosTaken;
   final int stepNumber;
   final int totalSteps;
 
@@ -472,15 +467,11 @@ class DocumentPhotoScreen extends StatefulWidget {
   /// photo page (its front), a card's back. Needs [documentType] to say which.
   final Uint8List? scanned;
 
-  /// What the MRZ scan or chip read says the document is: both sides' text
-  /// is checked against it.
-  final KnownDocument? known;
-
   /// The device's back camera when null.
   final DocumentPhotoCamera? camera;
 
-  /// The text and barcodes on a photo; ML Kit's when null.
-  final Future<PhotoText> Function(Uint8List photo)? readPhotoText;
+  /// The lines of text on a photo; ML Kit's when null.
+  final Future<List<String>> Function(Uint8List photo)? readPhotoText;
 
   @override
   State<DocumentPhotoScreen> createState() => _DocumentPhotoScreenState();
@@ -490,8 +481,8 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
   late final DocumentPhotoCamera _camera = widget.camera ?? DeviceDocumentPhotoCamera();
   var _state = _PhotoState.opening;
 
-  /// The sides asked for, in order: the scanned side first (a passport's
-  /// front, a card's back), otherwise front, then back.
+  /// The sides asked for, in order: a passport's front alone; a card's
+  /// scanned back before its front; otherwise front, then back.
   late final List<DocumentPhotoSide> _sides = _sidesToCapture();
   var _index = 0;
   final _taken = <DocumentPhotoSide, Uint8List>{};
@@ -505,7 +496,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
   final _quality = DocumentPhotoQuality();
 
   DocumentTextReader? _photoTextReader;
-  final _sideTexts = Map<Uint8List, Future<SideText?>>.identity();
+  final _sideMrz = Map<Uint8List, Future<MrzFields?>>.identity();
 
   var _qualityWaived = false;
   Timer? _waiveTimer;
@@ -513,7 +504,8 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
   bool get _isPassport => widget.documentType == DocumentType.passport;
 
   List<DocumentPhotoSide> _sidesToCapture() {
-    if (widget.scanned != null && !_isPassport) return const [DocumentPhotoSide.back, DocumentPhotoSide.front];
+    if (_isPassport) return const [DocumentPhotoSide.front];
+    if (widget.scanned != null) return const [DocumentPhotoSide.back, DocumentPhotoSide.front];
     return const [DocumentPhotoSide.front, DocumentPhotoSide.back];
   }
 
@@ -529,8 +521,8 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
 
   /// What tells this side of the document: the photo side shows a portrait;
   /// the MRZ is on a passport's photo page (ICAO TD3) and on an identity
-  /// card's or residence permit's back (TD1). Most driving licences have none, and a document of
-  /// unknown type might not.
+  /// card's or residence permit's back (TD1). Most driving licences have
+  /// none, and a document of unknown type might not.
   SideContent get _content => (
     portrait: _side == DocumentPhotoSide.front,
     mrz: switch (widget.documentType) {
@@ -546,12 +538,11 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
     final content = _content;
     final other = _taken[_side == DocumentPhotoSide.front ? DocumentPhotoSide.back : DocumentPhotoSide.front];
     if (!content.mrz || other == null) return content;
-    final text = await _readSide(other);
-    return text?.mrz == null ? content : (portrait: content.portrait, mrz: false);
+    return await _readMrz(other) == null ? content : (portrait: content.portrait, mrz: false);
   }
 
-  /// Both sides of a passport's photo page get the passport-page frame;
-  /// every card side, and a document of unknown type, the ID-1 card frame.
+  /// A passport front gets the passport-page frame; every card side, and a
+  /// document of unknown type, the ID-1 card frame.
   double get _frameRatio => _isPassport ? MRZCameraOverlay.passportFrameRatio : MRZCameraOverlay.cardFrameRatio;
 
   @override
@@ -678,40 +669,23 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
     });
   }
 
-  /// Reads the text on [photo] and, once both sides have one, compares them.
+  /// Reads the MRZ on [photo] ahead of the next side's [_contentToLookFor].
   void _onReview(Uint8List photo) {
-    unawaited(_readSide(photo));
-    final otherSide = _side == DocumentPhotoSide.front ? DocumentPhotoSide.back : DocumentPhotoSide.front;
-    final other = _taken[otherSide];
-    if (other == null) return;
-    final front = _side == DocumentPhotoSide.front;
-    unawaited(_compareSides(front: front ? photo : other, back: front ? other : photo));
+    if (_index + 1 < _sideCount) unawaited(_readMrz(photo));
   }
 
-  Future<SideText?> _readSide(Uint8List photo) => _sideTexts.putIfAbsent(photo, () async {
+  Future<MrzFields?> _readMrz(Uint8List photo) => _sideMrz.putIfAbsent(photo, () async {
     try {
       final read = widget.readPhotoText ?? (_photoTextReader ??= DocumentTextReader()).photoText;
-      final text = await read(photo);
-      return SideText.read(text.lines, barcodes: text.barcodes);
+      return readMrzFields(await read(photo));
     } catch (e) {
-      _vizLog.warning('VIZ text not read: $e');
+      _textLog.warning('photo text not read: $e');
       return null;
     }
   });
 
-  /// Only logged for now, until the text of real documents' sides is
-  /// measured: search the log for `VIZ`.
-  Future<void> _compareSides({required Uint8List front, required Uint8List back}) async {
-    debugVizCheck.value = null;
-    final texts = await Future.wait([_readSide(front), _readSide(back)]);
-    if (!mounted || !(identical(_photo, front) || identical(_photo, back))) return;
-    final check = checkSides(texts[0], texts[1], known: widget.known);
-    _vizLog.info('VIZ ${widget.documentType?.name ?? 'unknown'} known=${widget.known != null} $check');
-    debugVizCheck.value = check;
-  }
-
   void _retake() {
-    _sideTexts.remove(_photo);
+    _sideMrz.remove(_photo);
     setState(() => _photo = null);
     unawaited(_openCamera());
   }
@@ -730,10 +704,10 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
       unawaited(_openCamera());
       return;
     }
-    await _send(_taken[DocumentPhotoSide.front]!, _taken[DocumentPhotoSide.back]!);
+    await _send(_taken[DocumentPhotoSide.front]!, _taken[DocumentPhotoSide.back]);
   }
 
-  Future<void> _send(Uint8List front, Uint8List back) async {
+  Future<void> _send(Uint8List front, Uint8List? back) async {
     if (_sending || !mounted) return;
     setState(() => _sending = true);
     try {
@@ -826,7 +800,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
   }
 
   String _instructions(AppLocalizations l10n, {required bool front}) {
-    if (!front) return _isPassport ? l10n.docPhotoBackInstructionsPassport : l10n.docPhotoBackInstructions;
+    if (!front) return l10n.docPhotoBackInstructions;
     return _isPassport ? l10n.docPhotoFrontInstructionsPassport : l10n.docPhotoFrontInstructionsCard;
   }
 
@@ -1005,11 +979,10 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
     );
   }
 
-  /// Retake and use, and in debug builds what the checks said: only once the photo that is sent is ready.
+  /// Retake and use: only once the photo that is sent is ready.
   List<Widget> _buildReviewActions(BuildContext context) {
     final l10n = context.l10n;
     return [
-      if (kDebugMode && _taken.length + 1 == _sideCount) const _VizCheckBanner(),
       Padding(
         padding: guidedBottomButtonPadding,
         child: Row(
@@ -1116,34 +1089,4 @@ class _CropPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_CropPainter old) => old.image != image || old.crop != crop;
-}
-
-class _VizCheckBanner extends StatelessWidget {
-  const _VizCheckBanner();
-
-  @override
-  Widget build(BuildContext context) => ValueListenableBuilder(
-    valueListenable: debugVizCheck,
-    builder: (context, check, _) {
-      if (check == null) return const SizedBox.shrink();
-      return Container(
-        key: const Key('viz check'),
-        margin: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: switch (check.match) {
-            SidesMatch.same => Colors.green.shade700,
-            SidesMatch.different => Colors.red.shade700,
-            SidesMatch.unknown => Colors.grey.shade700,
-          },
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          'Sides: ${check.match.name} · front document ${check.frontLooksLikeDocument} · '
-          'back document ${check.backLooksLikeDocument} (debug)',
-          style: const TextStyle(color: Colors.white, fontSize: 13),
-        ),
-      );
-    },
-  );
 }

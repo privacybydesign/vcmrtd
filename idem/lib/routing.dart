@@ -22,7 +22,6 @@ import 'package:idem/widgets/pages/nfc_reading_screen.dart';
 import 'package:idem/widgets/pages/passport_data_screen.dart';
 import 'package:idem/providers/branding_provider.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
-import 'package:idem/services/document_viz.dart';
 import 'package:idem/services/face_verification_outcome.dart';
 import 'package:idem/widgets/pages/proofing_session_consent_screen.dart';
 import 'package:idem/services/proofing_chip_evidence.dart';
@@ -1205,7 +1204,6 @@ Widget _buildDocumentPhotoRoute(BuildContext context, GoRouterState state, Docum
       documentType:
           args.collected.documentType ?? providers.read(activeProofingSessionProvider)?.info.chipAccess?.documentType,
       scanned: args.scanned,
-      known: _knownDocument(args.collected.scannedMrz, providers.read(activeProofingSessionProvider)?.info.chipAccess),
       onPhotosTaken: (front, back) async {
         final session = providers.read(activeProofingSessionProvider);
         if (session == null) {
@@ -1219,21 +1217,6 @@ Widget _buildDocumentPhotoRoute(BuildContext context, GoRouterState state, Docum
     ),
   );
 }
-
-KnownDocument? _knownDocument(ScannedMRZ? mrz, ProofingChipAccess? chip) => switch (mrz) {
-  ScannedPassportMRZ() => (
-    documentNumber: mrz.documentNumber,
-    dateOfBirth: mrz.dateOfBirth,
-    dateOfExpiry: mrz.dateOfExpiry,
-  ),
-  ScannedDriverLicenseMRZ() => (documentNumber: mrz.documentNumber, dateOfBirth: null, dateOfExpiry: null),
-  null when chip != null => (
-    documentNumber: chip.documentNumber,
-    dateOfBirth: chip.dateOfBirth,
-    dateOfExpiry: chip.dateOfExpiry,
-  ),
-  null => null,
-};
 
 Widget _buildFaceVerificationRoute(
   BuildContext context,
