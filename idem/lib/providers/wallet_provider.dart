@@ -61,6 +61,7 @@ class WalletCard {
     switch (documentType) {
       case DocumentType.passport:
       case DocumentType.identityCard:
+      case DocumentType.residencePermit:
         final passport = document as PassportData;
         holderName = passport.displayName;
         documentNumber = passport.mrz.documentNumber;

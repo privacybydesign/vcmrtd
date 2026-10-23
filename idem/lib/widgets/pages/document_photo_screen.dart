@@ -529,13 +529,13 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
 
   /// What tells this side of the document: the photo side shows a portrait;
   /// the MRZ is on a passport's photo page (ICAO TD3) and on an identity
-  /// card's back (TD1). Most driving licences have none, and a document of
+  /// card's or residence permit's back (TD1). Most driving licences have none, and a document of
   /// unknown type might not.
   SideContent get _content => (
     portrait: _side == DocumentPhotoSide.front,
     mrz: switch (widget.documentType) {
       DocumentType.passport => _side == DocumentPhotoSide.front,
-      DocumentType.identityCard => _side == DocumentPhotoSide.back,
+      DocumentType.identityCard || DocumentType.residencePermit => _side == DocumentPhotoSide.back,
       DocumentType.drivingLicence || null => false,
     },
   );

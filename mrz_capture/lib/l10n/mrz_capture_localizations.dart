@@ -101,7 +101,7 @@ abstract class MrzCaptureLocalizations {
   /// No description provided for @mrzEnterDetailsLabel.
   ///
   /// In en, this message translates to:
-  /// **'Enter {docType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{document}} details'**
+  /// **'Enter {docType, select, passport{Passport} identityCard{Identity Card} residencePermit{Residence Permit} drivingLicence{Driving Licence} other{document}} details'**
   String mrzEnterDetailsLabel(String docType);
 
   /// No description provided for @mrzWhereToFind.
@@ -122,6 +122,12 @@ abstract class MrzCaptureLocalizations {
   /// **'• Identity Card Number: On the front of the card\n• Date of Birth: Listed as \"Date of birth\" or \"DOB\"\n• Expiry Date: Listed as \"Date of expiry\" or \"Valid until\"'**
   String get mrzHelpIdentityCard;
 
+  /// No description provided for @mrzHelpResidencePermit.
+  ///
+  /// In en, this message translates to:
+  /// **'• Document Number: On the front of the card\n• Date of Birth: Listed as \"Date of birth\" or \"DOB\"\n• Expiry Date: Listed as \"Date of expiry\" or \"Valid until\"'**
+  String get mrzHelpResidencePermit;
+
   /// No description provided for @mrzHelpDrivingLicence.
   ///
   /// In en, this message translates to:
@@ -131,13 +137,13 @@ abstract class MrzCaptureLocalizations {
   /// No description provided for @mrzDocNumberTitle.
   ///
   /// In en, this message translates to:
-  /// **'{docType, select, passport{Passport Number} identityCard{Identity Card Number} drivingLicence{Driving Licence Number} other{Document Number}}'**
+  /// **'{docType, select, passport{Passport Number} identityCard{Identity Card Number} residencePermit{Document Number} drivingLicence{Driving Licence Number} other{Document Number}}'**
   String mrzDocNumberTitle(String docType);
 
   /// No description provided for @mrzDocNumberHint.
   ///
   /// In en, this message translates to:
-  /// **'Enter your {docType, select, passport{passport} identityCard{identity card} drivingLicence{driving licence} other{document}} number'**
+  /// **'Enter your {docType, select, passport{passport} identityCard{identity card} residencePermit{residence permit} drivingLicence{driving licence} other{document}} number'**
   String mrzDocNumberHint(String docType);
 
   /// No description provided for @mrzDocNumberExample.
@@ -149,13 +155,13 @@ abstract class MrzCaptureLocalizations {
   /// No description provided for @mrzDocNumberRequired.
   ///
   /// In en, this message translates to:
-  /// **'{docType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{Document}} number is required'**
+  /// **'{docType, select, passport{Passport} identityCard{Identity Card} residencePermit{Residence Permit} drivingLicence{Driving Licence} other{Document}} number is required'**
   String mrzDocNumberRequired(String docType);
 
   /// No description provided for @mrzDocNumberTooShort.
   ///
   /// In en, this message translates to:
-  /// **'{docType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{Document}} number must be at least 6 characters'**
+  /// **'{docType, select, passport{Passport} identityCard{Identity Card} residencePermit{Residence Permit} drivingLicence{Driving Licence} other{Document}} number must be at least 6 characters'**
   String mrzDocNumberTooShort(String docType);
 
   /// No description provided for @mrzDobTitle.
@@ -197,7 +203,7 @@ abstract class MrzCaptureLocalizations {
   /// No description provided for @mrzExpiryHint.
   ///
   /// In en, this message translates to:
-  /// **'Select {docType, select, passport{passport} identityCard{identity card} drivingLicence{driving licence} other{document}} expiry date'**
+  /// **'Select {docType, select, passport{passport} identityCard{identity card} residencePermit{residence permit} drivingLicence{driving licence} other{document}} expiry date'**
   String mrzExpiryHint(String docType);
 
   /// No description provided for @mrzExpiryRequired.
@@ -209,7 +215,7 @@ abstract class MrzCaptureLocalizations {
   /// No description provided for @mrzDocumentExpired.
   ///
   /// In en, this message translates to:
-  /// **'{docType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{Document}} has expired'**
+  /// **'{docType, select, passport{Passport} identityCard{Identity Card} residencePermit{Residence Permit} drivingLicence{Driving Licence} other{Document}} has expired'**
   String mrzDocumentExpired(String docType);
 
   /// No description provided for @mrzExpiryBeforeDob.
@@ -263,7 +269,7 @@ abstract class MrzCaptureLocalizations {
   /// No description provided for @mrzHeaderTitle.
   ///
   /// In en, this message translates to:
-  /// **'Enter Your {docType, select, passport{Passport} identityCard{Identity Card} drivingLicence{Driving Licence} other{Document}} Information'**
+  /// **'Enter Your {docType, select, passport{Passport} identityCard{Identity Card} residencePermit{Residence Permit} drivingLicence{Driving Licence} other{Document}} Information'**
   String mrzHeaderTitle(String docType);
 
   /// No description provided for @mrzHeaderTitleMrz.
@@ -275,7 +281,7 @@ abstract class MrzCaptureLocalizations {
   /// No description provided for @mrzHeaderSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Please enter the information exactly as it appears on your {docType, select, passport{passport} identityCard{identity card} drivingLicence{driving licence} other{document}}'**
+  /// **'Please enter the information exactly as it appears on your {docType, select, passport{passport} identityCard{identity card} residencePermit{residence permit} drivingLicence{driving licence} other{document}}'**
   String mrzHeaderSubtitle(String docType);
 
   /// No description provided for @mrzHeaderSubtitleMrz.

@@ -16,6 +16,7 @@ MRZScannerState _buildState(WidgetTester tester) {
 Widget _scaffold({
   required DocumentType documentType,
   MrzScannedCallback? onSuccess,
+  ValueChanged<DocumentType>? onWrongDocument,
   bool showOverlay = true,
   OcrEngine engine = OcrEngine.googleMlKit,
   CameraLensDirection initialDirection = CameraLensDirection.back,
@@ -31,6 +32,7 @@ Widget _scaffold({
         initializeCamera: false,
         googleMlKitOcrForTesting: googleMlKitOcrForTesting,
         onSuccess: onSuccess ?? (result, lines, _) {},
+        onWrongDocument: onWrongDocument,
       ),
     ),
   );
@@ -186,6 +188,76 @@ void main() {
       final result = state.debugParseScannedText([_idLine1, _idLine2, _idLine3]);
 
       expect(result, isNotNull);
+    });
+
+    // Nationality is outside the composite check digit, so it can change.
+    String foreignerLine2(String nationality) => _idLine2.replaceFirst('UTO', nationality);
+
+    for (final code in ['IR', 'AR', 'C<']) {
+      testWidgets('reads a residence permit with document code $code', (tester) async {
+        final reads = <ScannedMRZ>[];
+        await tester.pumpWidget(
+          _scaffold(documentType: DocumentType.residencePermit, onSuccess: (mrz, _, _) => reads.add(mrz)),
+        );
+        await tester.pump();
+
+        final line1 = code + _idLine1.substring(2);
+        // An OCR'd O for a 0 in the expiry date, so the TD1 fixer has to step in.
+        final line2 = foreignerLine2('SYR').replaceFirst('120415', '12O415');
+        expect(_buildState(tester).debugTryParseAndNotify([line1, line2, _idLine3]), isTrue);
+
+        final mrz = reads.single as ScannedPassportMRZ;
+        expect(mrz.documentType, DocumentType.residencePermit);
+        expect(mrz.documentNumber, 'D23145890');
+        expect(mrz.dateOfExpiry, DateTime(2012, 4, 15));
+      });
+    }
+
+    testWidgets('refuses a residence permit when an identity card was asked for, and keeps scanning', (tester) async {
+      final reads = <ScannedMRZ>[];
+      final wrong = <DocumentType>[];
+      await tester.pumpWidget(
+        _scaffold(
+          documentType: DocumentType.identityCard,
+          onSuccess: (mrz, _, _) => reads.add(mrz),
+          onWrongDocument: wrong.add,
+        ),
+      );
+      await tester.pump();
+
+      final line1 = 'IR${_idLine1.substring(2)}';
+      expect(_buildState(tester).debugTryParseAndNotify([line1, foreignerLine2('SYR'), _idLine3]), isFalse);
+
+      expect(reads, isEmpty);
+      expect(wrong, [DocumentType.residencePermit]);
+      expect(_buildState(tester).debugCanProcess, isTrue);
+    });
+
+    testWidgets('refuses an identity card when a residence permit was asked for', (tester) async {
+      final reads = <ScannedMRZ>[];
+      final wrong = <DocumentType>[];
+      await tester.pumpWidget(
+        _scaffold(
+          documentType: DocumentType.residencePermit,
+          onSuccess: (mrz, _, _) => reads.add(mrz),
+          onWrongDocument: wrong.add,
+        ),
+      );
+      await tester.pump();
+
+      expect(_buildState(tester).debugTryParseAndNotify([_idLine1, _idLine2, _idLine3]), isFalse);
+
+      expect(reads, isEmpty);
+      expect(wrong, [DocumentType.identityCard]);
+    });
+
+    testWidgets('a foreigner\'s card with an ID code keeps the type picked', (tester) async {
+      await tester.pumpWidget(_scaffold(documentType: DocumentType.residencePermit));
+      await tester.pump();
+
+      final mrz = _buildState(tester).debugParseScannedText([_idLine1, foreignerLine2('MAR'), _idLine3]);
+
+      expect(mrz!.documentType, DocumentType.residencePermit);
     });
 
     testWidgets('returns non-null for valid driving licence MRZ line', (tester) async {

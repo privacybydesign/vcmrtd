@@ -164,7 +164,9 @@ void main() {
           onMrzScanned: (_, [_]) {},
           onManualEntry: () => manualEntries++,
           onBack: () {},
-          scannerBuilder: ({required documentType, required scanPicture, required onSuccess}) => const SizedBox(),
+          scannerBuilder:
+              ({required documentType, required scanPicture, required onSuccess, required onWrongDocument}) =>
+                  const SizedBox(),
         ),
       ),
     );
@@ -255,7 +257,7 @@ void main() {
 
     testWidgets('a session that already got every step offers to keep the document', (tester) async {
       await pump(tester, submittedTo: 'Acme Bank');
-      expect(find.text('Sent to Acme Bank'), findsOneWidget);
+      expect(find.text('Saved for Acme Bank'), findsOneWidget);
       expect(find.text('Save for next time'), findsOneWidget);
     });
 

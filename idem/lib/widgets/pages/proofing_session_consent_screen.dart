@@ -139,6 +139,7 @@ extension on ProofingSessionConsentScreen {
                             for (final (i, (icon, label)) in _requestedAttributes(
                               l10n,
                               info.requestedAttributes,
+                              info.ageOver,
                             ).indexed)
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -161,6 +162,8 @@ extension on ProofingSessionConsentScreen {
                           ],
                         ),
                       ),
+                      const SizedBox(height: 14),
+                      Text(l10n.consentStepByStep(party), style: TextStyle(fontSize: 14, color: g.bodyText)),
                     ],
                   ),
                 ),
@@ -191,12 +194,13 @@ const _attributeIcons = {
   'face_image': Icons.portrait_outlined,
   'chip_checks': Icons.verified_user_outlined,
   'biometrics': Icons.face,
+  'age_over': Icons.cake_outlined,
 };
 
 /// [_requestedAttributeLabels] with an icon per entry, for the guided list.
-List<(IconData, String)> _requestedAttributes(AppLocalizations l10n, List<String> requested) {
-  if (requested.isEmpty) return [(Icons.list_alt, _requestedAttributeLabels(l10n, requested).single)];
-  final attributeLabels = _attributeLabels(l10n);
+List<(IconData, String)> _requestedAttributes(AppLocalizations l10n, List<String> requested, int? ageOver) {
+  if (requested.isEmpty) return [(Icons.list_alt, _requestedAttributeLabels(l10n, requested, ageOver).single)];
+  final attributeLabels = _attributeLabels(l10n, ageOver);
   final seen = <String>{};
   return [
     for (final key in requested)
@@ -205,13 +209,14 @@ List<(IconData, String)> _requestedAttributes(AppLocalizations l10n, List<String
   ];
 }
 
-Map<String, String> _attributeLabels(AppLocalizations l10n) => {
+Map<String, String> _attributeLabels(AppLocalizations l10n, int? ageOver) => {
   'dg1': l10n.proofingAttributeDocumentIdentity,
   'dg11': l10n.proofingAttributeAdditionalDetails,
   'dg2': l10n.proofingAttributeFacePhoto,
   'face_image': l10n.proofingAttributeFacePhoto,
   'chip_checks': l10n.proofingAttributeChipChecks,
   'biometrics': l10n.proofingAttributeBiometrics,
+  'age_over': ageOver != null ? l10n.proofingAttributeAgeOver(ageOver) : l10n.proofingAttributeAgeCheck,
 };
 
 /// Deduplicates aliases (dg2/face_image mean the same thing server-side) and
@@ -219,9 +224,9 @@ Map<String, String> _attributeLabels(AppLocalizations l10n) => {
 /// unrecognised future attribute is still shown rather than silently
 /// dropped. An empty list means the relying party didn't restrict anything —
 /// see identity-proofing-service's attrRequested.
-List<String> _requestedAttributeLabels(AppLocalizations l10n, List<String> requested) {
+List<String> _requestedAttributeLabels(AppLocalizations l10n, List<String> requested, int? ageOver) {
   if (requested.isEmpty) return [l10n.proofingAttributeEverything];
-  final attributeLabels = _attributeLabels(l10n);
+  final attributeLabels = _attributeLabels(l10n, ageOver);
   final labels = <String>{};
   for (final key in requested) {
     labels.add(attributeLabels[key] ?? key);

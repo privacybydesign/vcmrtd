@@ -133,6 +133,7 @@ class _ChooseDocumentScreenState extends State<ChooseDocumentScreen> {
                             for (final (i, (type, icon)) in const [
                               (DocumentType.passport, Icons.portrait_outlined),
                               (DocumentType.identityCard, Icons.badge_outlined),
+                              (DocumentType.residencePermit, Icons.credit_card_outlined),
                               (DocumentType.drivingLicence, Icons.directions_car_outlined),
                             ].indexed) ...[
                               if (i > 0) Divider(height: 1, color: g.subtleBorder),

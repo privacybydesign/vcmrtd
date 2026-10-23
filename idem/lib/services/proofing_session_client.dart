@@ -156,6 +156,10 @@ class ProofingSessionInfo {
   final String id;
   final String relyingParty;
   final List<String> requestedAttributes;
+
+  /// The age "age_over" answers for, so the consent screen can name it; null
+  /// when the flow asks none, or from a server that predates it.
+  final int? ageOver;
   final DateTime expiresAt;
 
   /// The session's Active Authentication challenge (hex-encoded RND.IFD),
@@ -287,6 +291,7 @@ class ProofingSessionInfo {
     required this.id,
     required this.relyingParty,
     required this.requestedAttributes,
+    this.ageOver,
     required this.expiresAt,
     this.aaChallenge,
     this.requiredChecks,
@@ -330,6 +335,7 @@ class ProofingSessionInfo {
     id: json['id'] as String,
     relyingParty: json['relyingParty'] as String,
     requestedAttributes: (json['requestedAttributes'] as List<dynamic>? ?? const []).cast<String>(),
+    ageOver: json['ageOver'] as int?,
     expiresAt: DateTime.parse(json['expiresAt'] as String),
     aaChallenge: json['aaChallenge'] as String?,
     requiredChecks: (json['requiredChecks'] as List<dynamic>?)?.cast<String>(),
@@ -515,6 +521,7 @@ class ProofingChipAccess {
     final type = switch (json['documentType']) {
       'passport' => DocumentType.passport,
       'identity_card' => DocumentType.identityCard,
+      'residence_permit' => DocumentType.residencePermit,
       'drivers_license' => DocumentType.drivingLicence,
       _ => null,
     };
@@ -536,6 +543,7 @@ class ProofingChipAccess {
     'documentType': switch (documentType) {
       DocumentType.passport => 'passport',
       DocumentType.identityCard => 'identity_card',
+      DocumentType.residencePermit => 'residence_permit',
       DocumentType.drivingLicence => 'drivers_license',
     },
     'documentNumber': documentNumber,

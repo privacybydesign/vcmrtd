@@ -458,12 +458,16 @@ class GuidedSheet extends StatefulWidget {
     required this.tip,
     required this.showTip,
     required this.hideTip,
+    this.notice,
     this.footer,
   });
 
   final Widget label;
   final String title;
   final Widget tip;
+
+  /// Shown under the title, open or closed.
+  final Widget? notice;
 
   /// What tapping the closed or the open sheet does, for screen readers.
   final String showTip;
@@ -499,6 +503,7 @@ class _GuidedSheetState extends State<GuidedSheet> {
   @override
   Widget build(BuildContext context) {
     final g = context.guided;
+    final notice = widget.notice;
     final footer = widget.footer;
     return GestureDetector(
       onVerticalDragEnd: (details) {
@@ -547,6 +552,7 @@ class _GuidedSheetState extends State<GuidedSheet> {
                                   widget.label,
                                   const SizedBox(height: 4),
                                   GuidedHeading(widget.title, style: g.heading(18, height: 1.3)),
+                                  if (notice != null) ...[const SizedBox(height: 4), notice],
                                 ],
                               ),
                             ),

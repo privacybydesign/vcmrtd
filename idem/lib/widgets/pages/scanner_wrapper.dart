@@ -22,6 +22,7 @@ typedef ScannerWidgetBuilder =
       required DocumentType documentType,
       required MrzScanPicture scanPicture,
       required MrzScannedWithPicture onSuccess,
+      required ValueChanged<DocumentType> onWrongDocument,
     });
 
 class MrzReaderRouteParams {
@@ -77,6 +78,9 @@ class ScannerWrapper extends StatefulWidget {
 class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
   bool _hasNavigated = false;
 
+  /// What the last MRZ read showed when it was the other card type.
+  DocumentType? _wrongDocument;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -98,6 +102,10 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
 
     _hasNavigated = true;
     widget.onMrzScanned(scannedMrz, picture);
+  }
+
+  void _onWrongDocument(DocumentType found) {
+    if (_wrongDocument != found) setState(() => _wrongDocument = found);
   }
 
   @override
@@ -122,6 +130,7 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
                 documentType: widget.documentType,
                 scanPicture: widget.scanPicture,
                 onSuccess: _onScanned,
+                onWrongDocument: _onWrongDocument,
               ),
             ),
             Positioned.fill(
@@ -165,6 +174,7 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
                   const Spacer(),
                   _GuidedScanSheet(
                     documentType: widget.documentType,
+                    wrongDocument: _wrongDocument,
                     onManualEntry: widget.onManualEntry,
                     stepNumber: widget.stepNumber,
                     totalSteps: widget.totalSteps,
@@ -191,7 +201,7 @@ Rect guidedScanFrame(Size size, DocumentType type) => MRZCameraOverlay.frameRect
 
 int _mrzLineCount(DocumentType type) => switch (type) {
   DocumentType.passport => 2,
-  DocumentType.identityCard => 3,
+  DocumentType.identityCard || DocumentType.residencePermit => 3,
   DocumentType.drivingLicence => 1,
 };
 
@@ -202,12 +212,14 @@ int _mrzLineCount(DocumentType type) => switch (type) {
 class _GuidedScanSheet extends StatelessWidget {
   const _GuidedScanSheet({
     required this.documentType,
+    required this.wrongDocument,
     required this.onManualEntry,
     required this.stepNumber,
     required this.totalSteps,
   });
 
   final DocumentType documentType;
+  final DocumentType? wrongDocument;
   final VoidCallback onManualEntry;
   final int stepNumber;
   final int totalSteps;
@@ -222,6 +234,13 @@ class _GuidedScanSheet extends StatelessWidget {
       title: l10n.scanSheetTitle(docType),
       showTip: l10n.scanShowTips,
       hideTip: l10n.scanHideTips,
+      notice: switch (wrongDocument) {
+        final found? => Text(
+          '${l10n.wrongDocumentTitle(found.name)}. ${l10n.wrongDocumentHint(found.name)}',
+          style: TextStyle(fontSize: 15, height: 1.4, color: g.error),
+        ),
+        null => null,
+      },
       tip: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -242,11 +261,13 @@ Widget _guidedScannerBuilder({
   required DocumentType documentType,
   required MrzScanPicture scanPicture,
   required MrzScannedWithPicture onSuccess,
+  required ValueChanged<DocumentType> onWrongDocument,
 }) {
   return ScannerPage(
     documentType: documentType,
     scanPicture: scanPicture,
     onSuccess: onSuccess,
+    onWrongDocument: onWrongDocument,
     frame: ScanFrame.caller,
   );
 }

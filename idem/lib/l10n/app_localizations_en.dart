@@ -80,6 +80,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get idDocumentIdentityCard => 'Identity card';
 
   @override
+  String get idDocumentResidencePermit => 'Residence permit';
+
+  @override
   String get idDocumentDrivingLicence => 'Driving licence';
 
   @override
@@ -112,6 +115,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'passport',
       'identityCard': 'identity card',
+      'residencePermit': 'residence permit',
       'drivingLicence': 'driving license',
       'other': 'document',
     });
@@ -143,6 +147,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'passport',
       'identityCard': 'identity card',
+      'residencePermit': 'residence permit',
       'drivingLicence': 'driving license',
       'other': 'document',
     });
@@ -540,18 +545,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get proofingAttributeEverything => 'Everything the app reads from your document';
 
   @override
+  String proofingAttributeAgeOver(int age) {
+    return 'Whether you are $age or older';
+  }
+
+  @override
+  String get proofingAttributeAgeCheck => 'Whether you are old enough';
+
+  @override
   String proofingSentTo(String relyingParty) {
-    return 'Sent to $relyingParty';
+    return 'Saved for $relyingParty';
   }
 
   @override
   String proofingSentBrowserFace(String relyingParty) {
-    return 'Your document identity was sent to $relyingParty. Finish face verification in the browser tab where you started this session.';
+    return 'Your document details are saved for this verification. $relyingParty receives them once you finish. Finish face verification in the browser tab where you started this session.';
   }
 
   @override
   String proofingSentEverything(String relyingParty) {
-    return 'Everything this verification needed from this device was sent to $relyingParty.';
+    return 'Everything this verification needed from this device is saved. $relyingParty receives it once the verification is finished.';
   }
 
   @override
@@ -562,7 +575,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String proofingShareBody(String relyingParty) {
-    return 'Your document details were sent to $relyingParty. Finish to complete the verification.';
+    return 'Your document details are saved for this verification. $relyingParty receives them when you finish.';
   }
 
   @override
@@ -586,6 +599,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(docType, {
       'passport': 'passport',
       'identityCard': 'ID card',
+      'residencePermit': 'residence permit',
       'drivingLicence': 'driving licence',
       'other': 'document',
     });
@@ -835,6 +849,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'passport',
       'identityCard': 'identity card',
+      'residencePermit': 'residence permit',
       'drivingLicence': 'driving licence',
       'other': 'document',
     });
@@ -892,6 +907,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get consentTheyWillReceive => 'They will receive';
+
+  @override
+  String consentStepByStep(String party) {
+    return 'Your details go to the verification service step by step, so you can continue on another device. $party only receives them when you finish. If you stop, they are deleted when this request expires.';
+  }
 
   @override
   String get qrScanClose => 'Close';
@@ -966,6 +986,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'passport',
       'identityCard': 'ID card',
+      'residencePermit': 'residence permit',
       'drivingLicence': 'driving licence',
       'other': 'document',
     });
@@ -980,6 +1001,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'Passport',
       'identityCard': 'ID card',
+      'residencePermit': 'Residence permit',
       'drivingLicence': 'Driving licence',
       'other': 'Document',
     });
@@ -1011,6 +1033,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'passport',
       'identityCard': 'ID card',
+      'residencePermit': 'residence permit',
       'drivingLicence': 'driving licence',
       'other': 'document',
     });
@@ -1022,6 +1045,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'passport',
       'identityCard': 'ID card',
+      'residencePermit': 'residence permit',
       'drivingLicence': 'driving licence',
       'other': 'document',
     });
@@ -1033,6 +1057,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'Close the passport and lay it on a flat, non-metal surface.',
       'identityCard': 'Lay the ID card on a flat, non-metal surface.',
+      'residencePermit': 'Lay the residence permit on a flat, non-metal surface.',
       'drivingLicence': 'Lay the driving licence on a flat, non-metal surface.',
       'other': 'Lay the document on a flat, non-metal surface.',
     });
@@ -1068,10 +1093,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nfcReadingFailedTitle => 'Reading failed';
 
   @override
+  String wrongDocumentTitle(String documentType) {
+    String _temp0 = intl.Intl.selectLogic(documentType, {
+      'identityCard': 'This is an ID card',
+      'residencePermit': 'This is a residence permit',
+      'other': 'This is another document',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String wrongDocumentHint(String documentType) {
+    String _temp0 = intl.Intl.selectLogic(documentType, {
+      'identityCard': 'Go back and choose ID card.',
+      'residencePermit': 'Go back and choose residence permit.',
+      'other': 'Go back and choose the right document.',
+    });
+    return '$_temp0';
+  }
+
+  @override
   String nfcReadingFailedSubtitle(String documentType) {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'passport',
       'identityCard': 'ID card',
+      'residencePermit': 'residence permit',
       'drivingLicence': 'driving licence',
       'other': 'document',
     });
@@ -1086,6 +1132,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'passport',
       'identityCard': 'ID card',
+      'residencePermit': 'residence permit',
       'drivingLicence': 'driving licence',
       'other': 'document',
     });
@@ -1100,6 +1147,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'passport',
       'identityCard': 'ID card',
+      'residencePermit': 'residence permit',
       'drivingLicence': 'driving licence',
       'other': 'document',
     });
@@ -1135,6 +1183,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'Passport',
       'identityCard': 'ID card',
+      'residencePermit': 'Residence permit',
       'drivingLicence': 'Driving licence',
       'other': 'Document',
     });
@@ -1146,6 +1195,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(documentType, {
       'passport': 'passport',
       'identityCard': 'ID card',
+      'residencePermit': 'residence permit',
       'drivingLicence': 'driving licence',
       'other': 'document',
     });
@@ -1166,6 +1216,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(docType, {
       'passport': 'Place the photo page in the frame',
       'identityCard': 'Place the back of your ID card in the frame',
+      'residencePermit': 'Place the back of your residence permit in the frame',
       'drivingLicence': 'Place the back of your driving licence in the frame',
       'other': 'Place your document in the frame',
     });
@@ -1177,6 +1228,8 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(docType, {
       'passport': 'Make sure the two lines of text at the bottom are sharp and not covered by your fingers or glare.',
       'identityCard':
+          'Make sure the three lines of text at the bottom are sharp and not covered by your fingers or glare.',
+      'residencePermit':
           'Make sure the three lines of text at the bottom are sharp and not covered by your fingers or glare.',
       'drivingLicence': 'Make sure the line of text at the bottom is sharp and not covered by your fingers or glare.',
       'other': 'Make sure the text at the bottom is sharp and not covered by your fingers or glare.',
@@ -1215,6 +1268,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(docType, {
       'passport': 'passport',
       'identityCard': 'ID card',
+      'residencePermit': 'residence permit',
       'drivingLicence': 'driving licence',
       'other': 'document',
     });
@@ -1235,6 +1289,7 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.selectLogic(docType, {
       'passport': 'Passport number',
       'identityCard': 'Identity card number',
+      'residencePermit': 'Document number',
       'drivingLicence': 'Driving licence number',
       'other': 'Document number',
     });
