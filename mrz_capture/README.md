@@ -55,8 +55,10 @@ Two engines are selectable through `OcrEngine`:
 - `tesseract4android` — Tesseract4Android, the free software engine kept for F-Droid
   interoperability. Android only; on iOS the scanner falls back to ML Kit.
 
-The Tesseract engine and the OpenCV-based MRZ zone detector that feeds it are the Android
-platform code of this package, so no host application has to register them.
+The Tesseract engine is the Android platform code of this package, so no host application has
+to register it. The MRZ it reads is found and cut out in Dart with `opencv_dart`, which compiles
+OpenCV from source in its build hook: building needs CMake on the `PATH`, and the application's
+`pubspec.yaml` limits it to the `imgproc` module (see this package's own `hooks:` section).
 
 ## Licence
 

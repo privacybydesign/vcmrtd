@@ -219,7 +219,10 @@ Future<void> _afterDocumentCaptured(
 
   // A flow that doesn't scan a document (only document_photo, say): the
   // scan has no step of its own, so the flow goes on where the server says.
-  if (steps != null && _resumeAtServerStep(context, activeSession)) return;
+  if (steps != null &&
+      _resumeAtServerStep(context, activeSession, collected: CollectedStepData(documentType: documentType))) {
+    return;
+  }
 
   // No flow (or none with a document step): vcmrtd's own sequence.
   if (steps == null || steps.contains(stepNfcRead)) {
@@ -348,6 +351,11 @@ void _continueAtServerStep(
   }
 
   if (currentStep == stepDocumentPhoto) {
+    if (_needsDocumentChoice(session, collected)) {
+      context.go(_chooseDocumentPath);
+      return;
+    }
+
     // Always this app's step; whatever this device collected so far rides
     // along to the step after it.
     final args = DocumentPhotoRouteArgs(collected: collected);
@@ -501,12 +509,12 @@ void _afterConsent(BuildContext context, ActiveProofingSession session) {
     return;
   }
 
-  // document_photo needs nothing before it: it goes first unless the flow
-  // lists a face step before it.
+  // document_photo needs only the choice of document before it: it goes
+  // first unless the flow lists a face step before it.
   final photoAt = steps.indexOf(stepDocumentPhoto);
   final faceAt = steps.indexWhere(faceSteps.contains);
   if (photoAt >= 0 && (faceAt < 0 || photoAt < faceAt)) {
-    context.go(_documentPhotoPath, extra: const DocumentPhotoRouteArgs());
+    context.go(_chooseDocumentPath);
     return;
   }
 
@@ -522,13 +530,44 @@ void _afterConsent(BuildContext context, ActiveProofingSession session) {
 
 bool _isFaceStep(String step) => faceSteps.contains(step);
 
+/// Whether [steps] photograph a document without scanning its MRZ: the photo
+/// then has no document type unless the user picks one.
+bool _photoWithoutScan(List<String>? steps) =>
+    steps != null && steps.contains(stepDocumentPhoto) && !steps.contains(stepDocumentCapture);
+
+/// Whether the document_photo step of [session] still needs the user to pick
+/// which document: neither this device nor the server knows it.
+bool _needsDocumentChoice(ActiveProofingSession session, CollectedStepData collected) =>
+    _photoWithoutScan(session.info.steps) &&
+    collected.documentType == null &&
+    session.info.chipAccess?.documentType == null;
+
+/// The document [type] the user picked: its MRZ scan, or straight to its
+/// photo in a flow that doesn't scan one.
+void _startDocument(BuildContext context, DocumentType type) {
+  final session = ProviderScope.containerOf(context).read(activeProofingSessionProvider);
+  if (_photoWithoutScan(session?.info.steps)) {
+    context.push(
+      _documentPhotoPath,
+      extra: DocumentPhotoRouteArgs(collected: CollectedStepData(documentType: type)),
+    );
+    return;
+  }
+
+  context.pushMrzReaderScreen(MrzReaderRouteParams(documentType: type));
+}
+
 Uint8List? _photoBytes(ProofingPhotoInfo? photo) => photo == null ? null : base64Decode(photo.imageBase64);
 
 /// Continues [session] where the server says it stands, when that's
 /// somewhere other than the start of this app's own part - returns whether
 /// it did. A device that took the session over after the MRZ step goes
 /// straight to the chip read, with the access key the server kept.
-bool _resumeAtServerStep(BuildContext context, ActiveProofingSession session) {
+bool _resumeAtServerStep(
+  BuildContext context,
+  ActiveProofingSession session, {
+  CollectedStepData collected = const CollectedStepData(),
+}) {
   final info = session.info;
   // Every step already has a result: submit it.
   if (info.readyToSubmit && info.lifecycle != proofingLifecycleComplete) {
@@ -549,7 +588,14 @@ bool _resumeAtServerStep(BuildContext context, ActiveProofingSession session) {
     return true;
   }
   if (current.isEmpty || current == stepDocumentCapture) return false;
-  _continueAtServerStep(context, session, lifecycle: info.lifecycle, currentStep: current, resume: true);
+  _continueAtServerStep(
+    context,
+    session,
+    lifecycle: info.lifecycle,
+    currentStep: current,
+    resume: true,
+    collected: collected,
+  );
   return true;
 }
 
@@ -963,7 +1009,7 @@ GoRouter createRouter({
               relyingParty: session?.info.relyingParty ?? context.brand.name,
               savedDocuments: saved,
               onBack: () => context.go(selectDocTypePath),
-              onAddNew: (type) => context.pushMrzReaderScreen(MrzReaderRouteParams(documentType: type)),
+              onAddNew: (type) => _startDocument(context, type),
               onUseSaved: (card) async {
                 // A session gets the saved chip read as its NFC step, exactly
                 // as a fresh read would, and continues where the server says.

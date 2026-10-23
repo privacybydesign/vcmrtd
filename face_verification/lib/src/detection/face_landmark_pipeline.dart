@@ -1,6 +1,7 @@
 ﻿import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
+import 'dart:ui' show Rect;
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_litert/flutter_litert.dart';
@@ -447,6 +448,14 @@ class FaceLandmarkPipeline {
     if (box == null) return null;
     final crop = _cropRegion(box, bitmap.width, bitmap.height, mode);
     return DetectorStageOutput(cropX1: crop[0], cropY1: crop[1], cropW: crop[2], cropH: crop[3], angle: crop[4]);
+  }
+
+  /// The most confident face in [bitmap] and its score, the box in fractions
+  /// of [bitmap]; null when there is none.
+  ({Rect box, double score})? detectFaceBox(img.Image bitmap) {
+    final box = _detectFace(bitmap, mode: FaceAlignmentMode.selfie);
+    if (box == null) return null;
+    return (box: Rect.fromLTRB(box[0], box[1], box[2], box[3]), score: box[4]);
   }
 
   FaceLandmarkerResult? runLandmarkStage(img.Image bitmap, DetectorStageOutput crop, {bool runBlendshapes = true}) {

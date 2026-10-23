@@ -23,6 +23,7 @@ dependencies:
     git:
       url: https://github.com/privacybydesign/mrz_parser.git
       ref: v3.0.0
+  opencv_dart: ^2.2.2
 
 dev_dependencies:
   camera_platform_interface: ^2.13.1
@@ -42,3 +43,11 @@ flutter:
       android:
         package: foundation.privacybydesign.mrzcapture
         pluginClass: TesseractOcrPlugin
+
+# opencv_dart compiles OpenCV from source in its build hook (CMake needed);
+# only imgproc is used, so the rest is left out of the app.
+hooks:
+  user_defines:
+    dartcv4:
+      include_modules:
+        - imgproc
