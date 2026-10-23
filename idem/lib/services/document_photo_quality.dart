@@ -96,6 +96,7 @@ const _brightnessLevels = 256;
 const _lumaBlue = 29;
 const _lumaGreen = 150;
 const _lumaRed = 77;
+const _lumaShift = 8;
 
 const _bgraBytesPerPixel = 4;
 
@@ -117,7 +118,7 @@ class LumaFrame {
   int brightnessAt(int x, int y) {
     if (!isBgra) return bytes[y * bytesPerRow + x];
     final i = y * bytesPerRow + x * _bgraBytesPerPixel;
-    return (bytes[i] * _lumaBlue + bytes[i + 1] * _lumaGreen + bytes[i + 2] * _lumaRed) >> 8;
+    return (bytes[i] * _lumaBlue + bytes[i + 1] * _lumaGreen + bytes[i + 2] * _lumaRed) >> _lumaShift;
   }
 }
 
@@ -194,7 +195,7 @@ int _averageTaps(
     for (var tx = 0; tx < taps; tx++) {
       final i = columnOffsets[firstColumn + tx] + rowOffset;
       sum += frame.isBgra
-          ? (bytes[i] * _lumaBlue + bytes[i + 1] * _lumaGreen + bytes[i + 2] * _lumaRed) >> 8
+          ? (bytes[i] * _lumaBlue + bytes[i + 1] * _lumaGreen + bytes[i + 2] * _lumaRed) >> _lumaShift
           : bytes[i];
     }
   }
@@ -218,6 +219,7 @@ Int32List _tapPositions(int count, int taps, double origin, double step, int siz
     270 => ((x) => x * row, (y) => (frame.width - 1 - y) * pixel),
     _ => ((x) => x * pixel, (y) => y * row),
   };
+
   return (
     Int32List.fromList([for (final x in columns) column(x)]),
     Int32List.fromList([for (final y in rows) upright(y)]),
@@ -316,13 +318,14 @@ List<Rect> _rows(List<Rect> lines) {
       rows.add(line);
     }
   }
+
   return rows;
 }
 
-bool mrzLayout(List<Rect> lines, Rect region) => isMrzLayout(mrzLines(lines, region));
+bool mrzLayout(List<Rect> lines, Rect region) => _isMrzLayout(mrzLines(lines, region));
 
 /// Whether [mrzLines] counted enough lines for an MRZ.
-bool isMrzLayout(int mrzLines) => mrzLines >= _minMrzLines;
+bool _isMrzLayout(int mrzLines) => mrzLines >= _minMrzLines;
 
 /// What a side of the document shows that tells it's that side of an identity document.
 typedef SideContent = ({bool portrait, bool mrz});
@@ -699,6 +702,7 @@ class DocumentFrameChecker {
       died.close();
       rethrow;
     }
+
     return ready.future;
   }
 
@@ -770,6 +774,7 @@ class DocumentFrameChecker {
     for (final port in _ports) {
       port.close();
     }
+
     while (_pending.isNotEmpty) {
       _pending.removeFirst().completeError(reason);
     }
@@ -988,6 +993,7 @@ class DocumentPhotoQuality {
     for (final check in _documentChecks) {
       if (_failing.contains(check)) return check;
     }
+
     return null;
   }
 

@@ -51,6 +51,7 @@ DocumentPortrait? findPortrait(FaceLandmarkPipeline finder, Uint8List document, 
     rgb[o + 1] = grey;
     rgb[o + 2] = grey;
   }
+
   return finder.detectFaceBox(image);
 }
 

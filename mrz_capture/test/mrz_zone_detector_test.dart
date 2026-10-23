@@ -14,6 +14,7 @@ cv.Mat _document({required int top, int lines = 2}) {
       mat.region(cv.Rect(x, y, 8, 20)).setTo(cv.Scalar.all(30));
     }
   }
+
   return mat;
 }
 

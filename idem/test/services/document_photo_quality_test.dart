@@ -358,6 +358,7 @@ void main() {
       final results = await Future.wait([
         for (final f in [withCard, without, withCard, without]) checker.check(f, rotation: 90, region: region).issues,
       ]);
+
       expect(results, [
         for (final f in [withCard, without, withCard, without]) checkFrame(f, rotation: 90, region: region),
       ]);
@@ -424,6 +425,7 @@ void main() {
           bytesPerRow: width * 4 + 8,
         ),
       ];
+
       for (final frame in frames) {
         for (final rotation in [0, 90, 180, 270]) {
           for (final maxWidth in [10, 20, 40, 640]) {

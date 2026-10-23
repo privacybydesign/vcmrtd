@@ -6,7 +6,8 @@ import 'package:vcmrtd/vcmrtd.dart' show DocumentType;
 
 const _checkWeights = [7, 3, 1];
 const _letterValueOffset = 55;
-const _expiryCentury = 2000;
+const _lastCentury = 1900;
+const _thisCentury = 2000;
 
 /// Letters text recognition reads for digits, in a field of digits.
 const _digitLookalikes = {'O': '0', 'Q': '0', 'D': '0', 'I': '1', 'L': '1', 'Z': '2', 'S': '5', 'B': '8', 'G': '6'};
@@ -144,6 +145,7 @@ int _checkDigit(String field) {
     };
     sum += value * _checkWeights[i % _checkWeights.length];
   }
+
   return sum % 10;
 }
 
@@ -154,12 +156,12 @@ String? _documentNumber(String field) {
 
 DateTime? _birthDate(String yymmdd, DateTime today) {
   final year = int.parse(yymmdd.substring(0, 2));
-  final century = year > today.year % 100 ? 1900 : 2000;
+  final century = year > today.year % 100 ? _lastCentury : _thisCentury;
   return _date(century + year, yymmdd);
 }
 
 DateTime? _expiryDate(String? yymmdd) =>
-    yymmdd == null ? null : _date(_expiryCentury + int.parse(yymmdd.substring(0, 2)), yymmdd);
+    yymmdd == null ? null : _date(_thisCentury + int.parse(yymmdd.substring(0, 2)), yymmdd);
 
 /// Null for a day the month doesn't have.
 DateTime? _date(int year, String yymmdd) {

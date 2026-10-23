@@ -10,9 +10,11 @@ const _bandHeight = 70;
 const _minBandDensity = 0.10;
 const _bandCutoff = 0.25;
 const _smoothing = 5;
+const _zoneLeft = 0.02;
+const _zoneWidth = 0.96;
 
 /// The bottom of the crop, where the MRZ is when it can't be found.
-const MrzZone _fallbackZone = (left: 0.02, top: 0.70, width: 0.96, height: 0.28);
+const MrzZone _fallbackZone = (left: _zoneLeft, top: 0.70, width: _zoneWidth, height: 0.28);
 
 /// Finds the MRZ in [gray] (8-bit, one channel) by its dense band of dark
 /// characters, first as the densest band of rows, then as a wide contour.
@@ -68,6 +70,7 @@ MrzZone? _densestBand(cv.Mat thresh) {
       total += density[yy];
       count++;
     }
+
     return total / count;
   });
 
@@ -84,6 +87,7 @@ MrzZone? _densestBand(cv.Mat thresh) {
       bestStart = y;
     }
   }
+
   if (bestScore < _minBandDensity) return null;
 
   final (bandTop, bandBottom) = _expandBand(smoothed, bestStart, bestScore * _bandCutoff);
@@ -93,7 +97,7 @@ MrzZone? _densestBand(cv.Mat thresh) {
   final height = (bottomRow - top) / h;
   if (height < 0.08 || height > 0.45) return null;
 
-  return (left: 0.02, top: top / h, width: 0.96, height: height);
+  return (left: _zoneLeft, top: top / h, width: _zoneWidth, height: height);
 }
 
 (int, int) _expandBand(List<double> smoothed, int start, double cutoff) {
@@ -103,6 +107,7 @@ MrzZone? _densestBand(cv.Mat thresh) {
     if (smoothed[y] < cutoff) break;
     top = y;
   }
+
   for (var y = start + _bandHeight; y < smoothed.length; y++) {
     if (smoothed[y] < cutoff) break;
     bottom = y;

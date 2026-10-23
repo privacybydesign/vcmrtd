@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -356,6 +355,7 @@ void _continueAtServerStep(
       context.go(_chooseDocumentPath);
       return;
     }
+
     // Always this app's step; whatever this device collected so far rides
     // along to the step after it.
     final args = DocumentPhotoRouteArgs(collected: collected);
@@ -553,6 +553,7 @@ void _startDocument(BuildContext context, DocumentType type) {
     );
     return;
   }
+
   context.pushMrzReaderScreen(MrzReaderRouteParams(documentType: type));
 }
 

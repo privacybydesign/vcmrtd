@@ -7,9 +7,11 @@ import 'package:mrz_capture/src/tesseract_image.dart';
 const _width = 600;
 const _height = 400;
 
+enum _Sensor { upright, sideways }
+
 /// NV21 of a document with two MRZ lines at the bottom, in [paper] and [ink];
-/// with [sideways] the sensor holds it turned a quarter anticlockwise.
-OcrFrame _frame({int paper = 230, int ink = 30, bool sideways = false}) {
+/// on a [_Sensor.sideways] sensor it is turned a quarter anticlockwise.
+OcrFrame _frame({int paper = 230, int ink = 30, _Sensor sensor = _Sensor.upright}) {
   final upright = Uint8List(_width * _height)..fillRange(0, _width * _height, paper);
   for (final top in [300, 330]) {
     for (var y = top; y < top + 20; y++) {
@@ -18,6 +20,8 @@ OcrFrame _frame({int paper = 230, int ink = 30, bool sideways = false}) {
       }
     }
   }
+
+  final sideways = sensor == _Sensor.sideways;
   final (width, height) = sideways ? (_height, _width) : (_width, _height);
   final bytes = Uint8List(width * height * 3 ~/ 2)..fillRange(width * height, width * height * 3 ~/ 2, 128);
   for (var y = 0; y < _height; y++) {
@@ -26,6 +30,7 @@ OcrFrame _frame({int paper = 230, int ink = 30, bool sideways = false}) {
       bytes[i] = upright[y * _width + x];
     }
   }
+
   return OcrFrame(
     bytes: bytes,
     width: width,
@@ -60,7 +65,7 @@ void main() {
 
   test('turns a sideways frame upright', () {
     final upright = tesseractImage(_frame());
-    final sideways = tesseractImage(_frame(sideways: true));
+    final sideways = tesseractImage(_frame(sensor: _Sensor.sideways));
 
     expect((sideways.width, sideways.height), (upright.width, upright.height));
     expect(sideways.pixels, upright.pixels);

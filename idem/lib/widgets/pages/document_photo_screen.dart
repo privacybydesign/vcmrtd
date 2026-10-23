@@ -366,6 +366,7 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
       await closing;
       rethrow;
     }
+
     final photo = preparePhotoInBackground(shot);
     return (shot: shot, photo: photo.whenComplete(() => closing));
   }
@@ -619,6 +620,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
       _waiveTimer = Timer(documentPhotoQualityWaiveDelay, () {
         if (mounted) setState(() => _qualityWaived = true);
       });
+
       unawaited(
         toLookFor.then((found) {
           if (mounted && attempt == _openAttempt && _state == _PhotoState.preview && found != content) {
@@ -654,6 +656,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
         taken.photo.ignore();
         return;
       }
+
       shot = taken.shot;
       setState(() {
         _shot = shot;
@@ -876,18 +879,17 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
 
   /// Like the MRZ scanner's (ScannerWrapper): what to do in a sheet under the
   /// frame, the instructions behind a tap, so no text lies over the document.
-  Widget _buildSheet(BuildContext context, {required bool front}) {
+  Widget _buildSheet(BuildContext context) {
     final l10n = context.l10n;
     final g = context.guided;
+    final front = _side == DocumentPhotoSide.front;
     final issue = _state == _PhotoState.preview ? _quality.issue : null;
     final error = _error;
     return GuidedSheet(
-      label: _sideCount < 2
-          ? GuidedStepLabel(step: widget.stepNumber, total: widget.totalSteps)
-          : Text(
-              l10n.docPhotoSideProgress(front ? l10n.docPhotoSideFront : l10n.docPhotoSideBack, _index + 1, _sideCount),
-              style: TextStyle(color: g.stepLabel, fontSize: 13, fontWeight: FontWeight.w700),
-            ),
+      label: Text(
+        l10n.docPhotoSideProgress(front ? l10n.docPhotoSideFront : l10n.docPhotoSideBack, _index + 1, _sideCount),
+        style: TextStyle(color: g.stepLabel, fontSize: 13, fontWeight: FontWeight.w700),
+      ),
       title: front ? l10n.docPhotoFrontTitle : l10n.docPhotoBackTitle,
       showTip: l10n.docPhotoShowTips,
       hideTip: l10n.scanHideTips,
@@ -912,7 +914,6 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
 
   Widget _buildCamera(BuildContext context) {
     final g = context.guided;
-    final front = _side == DocumentPhotoSide.front;
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -940,7 +941,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
           children: [
             SafeArea(bottom: false, child: _buildTopBar(context)),
             const Spacer(),
-            _buildSheet(context, front: front),
+            _buildSheet(context),
           ],
         ),
       ],

@@ -9,7 +9,6 @@ import 'package:idem/widgets/guided/guided_widgets.dart';
 
 import '../../routing.dart';
 import 'scan_screen.dart';
-
 import 'package:vcmrtd/vcmrtd.dart';
 import 'package:idem/services/flow_step_plan.dart';
 
