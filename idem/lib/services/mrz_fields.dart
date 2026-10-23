@@ -57,65 +57,92 @@ typedef MrzFields = ({
 /// The MRZ fields among [lines], null when none of them holds up. [now]
 /// decides a date of birth's century.
 MrzFields? readMrzFields(Iterable<String> lines, {DateTime? now}) {
-  final today = now ?? DateTime.now();
+  final reading = _MrzReading(now ?? DateTime.now());
+  for (final line in lines.map(_normalise)) {
+    reading.nameTop(line);
+    if (reading.numberLine(line) || reading.td1Top(line) || reading.td1Middle(line)) continue;
+    reading.licenceLine(line);
+  }
+
+  return reading.fields;
+}
+
+/// The fields read so far: each line kind fills what it holds, the first
+/// reading of a field wins.
+class _MrzReading {
+  _MrzReading(this.today);
+
+  final DateTime today;
   DocumentType? type;
   String? number;
   DateTime? birth;
   DateTime? expiry;
   String? personal;
   String? licenceData;
-  for (final line in lines.map(_normalise)) {
-    final nameTop = _nameTop.firstMatch(line);
-    if (nameTop != null) type ??= nameTop[1] == 'P' ? DocumentType.passport : DocumentType.identityCard;
 
-    final bottom = _numberLine.firstMatch(line);
-    final bottomNumber = bottom == null ? null : _checked(bottom[1]!, bottom[2]!);
-    final bottomBirth = bottom == null ? null : _checkedDate(bottom[3]!, bottom[4]!);
-    if (bottom != null && bottomNumber != null && bottomBirth != null) {
-      number ??= _documentNumber(bottomNumber);
-      birth ??= _birthDate(bottomBirth, today);
-      expiry ??= _expiryDate(_checkedDate(bottom[5]!, bottom[6]!));
-      personal ??= _personalNumber(bottom[7]!);
-      continue;
-    }
+  void nameTop(String line) {
+    final match = _nameTop.firstMatch(line);
+    if (match != null) type ??= match[1] == 'P' ? DocumentType.passport : DocumentType.identityCard;
+  }
 
-    final top = _td1Top.firstMatch(line);
+  bool numberLine(String line) {
+    final match = _numberLine.firstMatch(line);
+    if (match == null) return false;
+    final checkedNumber = _checked(match[1]!, match[2]!);
+    final checkedBirth = _checkedDate(match[3]!, match[4]!);
+    if (checkedNumber == null || checkedBirth == null) return false;
+    number ??= _documentNumber(checkedNumber);
+    birth ??= _birthDate(checkedBirth, today);
+    expiry ??= _expiryDate(_checkedDate(match[5]!, match[6]!));
+    personal ??= _personalNumber(match[7]!);
+    return true;
+  }
+
+  bool td1Top(String line) {
+    final match = _td1Top.firstMatch(line);
     // A name the check digit happens to fit has no digits.
-    final topNumber = top == null || !_anyDigit.hasMatch(top[1]!) ? null : _checked(top[1]!, top[2]!);
-    if (topNumber != null) {
-      type ??= DocumentType.identityCard;
-      number ??= _documentNumber(topNumber);
-      continue;
-    }
+    if (match == null || !_anyDigit.hasMatch(match[1]!)) return false;
+    final checkedNumber = _checked(match[1]!, match[2]!);
+    if (checkedNumber == null) return false;
+    type ??= DocumentType.identityCard;
+    number ??= _documentNumber(checkedNumber);
+    return true;
+  }
 
-    final middle = _td1Middle.firstMatch(line);
-    final middleBirth = middle == null ? null : _checkedDate(middle[1]!, middle[2]!);
-    final middleExpiry = middle == null ? null : _checkedDate(middle[3]!, middle[4]!);
-    if (middleBirth != null && middleExpiry != null) {
-      type ??= DocumentType.identityCard;
-      birth ??= _birthDate(middleBirth, today);
-      expiry ??= _expiryDate(middleExpiry);
-      continue;
-    }
+  bool td1Middle(String line) {
+    final match = _td1Middle.firstMatch(line);
+    if (match == null) return false;
+    final checkedBirth = _checkedDate(match[1]!, match[2]!);
+    final checkedExpiry = _checkedDate(match[3]!, match[4]!);
+    if (checkedBirth == null || checkedExpiry == null) return false;
+    type ??= DocumentType.identityCard;
+    birth ??= _birthDate(checkedBirth, today);
+    expiry ??= _expiryDate(checkedExpiry);
+    return true;
+  }
 
-    final licence = _drivingLicence.firstMatch(line);
-    if (licence != null && _checkDigit(line.substring(0, line.length - 1)) == _digit(licence[4]!)) {
+  void licenceLine(String line) {
+    final match = _drivingLicence.firstMatch(line);
+    if (match != null && _checkDigit(line.substring(0, line.length - 1)) == _digit(match[4]!)) {
       type = DocumentType.drivingLicence;
       licenceData ??= _documentNumber(line.substring(_licenceDataStart, line.length - 1));
     }
   }
 
-  // A document number line without its first line: most are passports.
-  if (type == null && number != null && birth != null) type = DocumentType.passport;
-  if (type == null || (number == null && birth == null && licenceData == null)) return null;
-  return (
-    type: type,
-    documentNumber: number,
-    dateOfBirth: birth,
-    dateOfExpiry: expiry,
-    personalNumber: personal,
-    licenceData: licenceData,
-  );
+  MrzFields? get fields {
+    // A document number line without its first line: most are passports.
+    final type = this.type ?? (number != null && birth != null ? DocumentType.passport : null);
+    if (type == null) return null;
+    if (number == null && birth == null && licenceData == null) return null;
+    return (
+      type: type,
+      documentNumber: number,
+      dateOfBirth: birth,
+      dateOfExpiry: expiry,
+      personalNumber: personal,
+      licenceData: licenceData,
+    );
+  }
 }
 
 /// The personal number in [field], what follows a TD3's date of expiry:

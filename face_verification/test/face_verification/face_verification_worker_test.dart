@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:isolate';
 import 'dart:typed_data';
 import 'dart:ui' show Offset, Rect;
@@ -1522,7 +1522,7 @@ void main() {
       expect(result['ok'], isFalse);
     });
 
-    test('pipeline worker rejects malformed encoded crop input without model initialization', () async {
+    test('pipeline worker rejects malformed encoded crop input', () async {
       final harness = await _DebugWorkerHarness.spawn(FaceVerificationWorker.debugPipelineWorkerEntry);
       addTearDown(harness.dispose);
 

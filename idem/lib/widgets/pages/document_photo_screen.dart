@@ -253,11 +253,7 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
       controller.value.deviceOrientation,
       defaultTargetPlatform,
     );
-    final plane = image.planes.first;
-    final frame = Platform.isAndroid
-        ? LumaFrame.luma(bytes: plane.bytes, width: image.width, height: image.height, bytesPerRow: plane.bytesPerRow)
-        : LumaFrame.bgra(bytes: plane.bytes, width: image.width, height: image.height, bytesPerRow: plane.bytesPerRow);
-
+    final frame = _lumaFrame(image);
     final region = DocumentPicture.frameInPreview(
       MRZCameraOverlay.frameRect(viewSize, _frameRatio),
       _previewRect(viewSize, controller.value.aspectRatio),
@@ -282,13 +278,31 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
       check.issues.then((frameIssues) {
         final lines = _lines;
         if (generation != _generation || _onFrameChecked != onFrameChecked || lines == null) return;
-        var issues = frameIssues;
-        if (!textReadable(lines, region)) issues = withUnreadable(issues);
-        if (content.mrz && !mrzLayout(lines, region)) issues = withoutMrz(issues);
-        if (content.portrait && _portraitInPlace == false) issues = withoutPortrait(issues);
-        onFrameChecked(issues);
+        onFrameChecked(_withContentIssues(frameIssues, lines, region, content));
       }, onError: (_) {}),
     );
+  }
+
+  /// The camera's first plane: brightness on Android, BGRA on iOS.
+  static LumaFrame _lumaFrame(CameraImage image) {
+    final plane = image.planes.first;
+    return Platform.isAndroid
+        ? LumaFrame.luma(bytes: plane.bytes, width: image.width, height: image.height, bytesPerRow: plane.bytesPerRow)
+        : LumaFrame.bgra(bytes: plane.bytes, width: image.width, height: image.height, bytesPerRow: plane.bytesPerRow);
+  }
+
+  /// [issues] plus what the text [lines] and the portrait say about [content].
+  Set<DocumentPhotoIssue> _withContentIssues(
+    Set<DocumentPhotoIssue> issues,
+    List<Rect> lines,
+    Rect region,
+    SideContent content,
+  ) {
+    var result = issues;
+    if (!textReadable(lines, region)) result = withUnreadable(result);
+    if (content.mrz && !mrzLayout(lines, region)) result = withoutMrz(result);
+    if (content.portrait && _portraitInPlace == false) result = withoutPortrait(result);
+    return result;
   }
 
   void _readText(LumaFrame frame, {required int rotation}) {
