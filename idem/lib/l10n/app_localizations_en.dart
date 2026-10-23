@@ -216,6 +216,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get docPhotoBackInstructions => 'Turn your document over and place the back inside the frame.';
 
   @override
+  String get docPhotoBackInstructionsPassport => 'Now place the back of the page with your photo inside the frame.';
+
+  @override
   String get docPhotoSideFront => 'Front';
 
   @override

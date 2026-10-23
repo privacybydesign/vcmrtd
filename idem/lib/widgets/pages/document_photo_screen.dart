@@ -434,12 +434,12 @@ const documentPhotoQualityWaiveDelay = Duration(seconds: 5);
 enum DocumentPhotoSide { front, back }
 
 /// The document_photo step: the user photographs the front of their
-/// document and - unless it's a passport, whose back carries nothing - its
-/// back, each inside a document-shaped guide, checking every
+/// document and its back (a passport's photo page and the back of that
+/// page), each inside a document-shaped guide, checking every
 /// photo and either retaking or using it. A side the MRZ scan already
 /// photographed ([scanned]) comes first, straight to its review: the user
-/// always sees what is sent. [onPhotosTaken] gets the prepared JPEGs (back
-/// null for a passport) and sends them; while it runs the last photo stays on screen, so a send the
+/// always sees what is sent. [onPhotosTaken] gets both prepared JPEGs and
+/// sends them; while it runs the last photo stays on screen, so a send the
 /// user gave up on can simply be tried again.
 class DocumentPhotoScreen extends StatefulWidget {
   const DocumentPhotoScreen({
@@ -455,7 +455,7 @@ class DocumentPhotoScreen extends StatefulWidget {
   });
 
   final VoidCallback onBack;
-  final Future<void> Function(Uint8List front, Uint8List? back) onPhotosTaken;
+  final Future<void> Function(Uint8List front, Uint8List back) onPhotosTaken;
   final int stepNumber;
   final int totalSteps;
 
@@ -481,8 +481,8 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
   late final DocumentPhotoCamera _camera = widget.camera ?? DeviceDocumentPhotoCamera();
   var _state = _PhotoState.opening;
 
-  /// The sides asked for, in order: a passport's front alone; a card's
-  /// scanned back before its front; otherwise front, then back.
+  /// The sides asked for, in order: the scanned side first (a passport's
+  /// front, a card's back), otherwise front, then back.
   late final List<DocumentPhotoSide> _sides = _sidesToCapture();
   var _index = 0;
   final _taken = <DocumentPhotoSide, Uint8List>{};
@@ -504,8 +504,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
   bool get _isPassport => widget.documentType == DocumentType.passport;
 
   List<DocumentPhotoSide> _sidesToCapture() {
-    if (_isPassport) return const [DocumentPhotoSide.front];
-    if (widget.scanned != null) return const [DocumentPhotoSide.back, DocumentPhotoSide.front];
+    if (widget.scanned != null && !_isPassport) return const [DocumentPhotoSide.back, DocumentPhotoSide.front];
     return const [DocumentPhotoSide.front, DocumentPhotoSide.back];
   }
 
@@ -541,8 +540,8 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
     return await _readMrz(other) == null ? content : (portrait: content.portrait, mrz: false);
   }
 
-  /// A passport front gets the passport-page frame; every card side, and a
-  /// document of unknown type, the ID-1 card frame.
+  /// Both sides of a passport's photo page get the passport-page frame;
+  /// every card side, and a document of unknown type, the ID-1 card frame.
   double get _frameRatio => _isPassport ? MRZCameraOverlay.passportFrameRatio : MRZCameraOverlay.cardFrameRatio;
 
   @override
@@ -704,10 +703,10 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
       unawaited(_openCamera());
       return;
     }
-    await _send(_taken[DocumentPhotoSide.front]!, _taken[DocumentPhotoSide.back]);
+    await _send(_taken[DocumentPhotoSide.front]!, _taken[DocumentPhotoSide.back]!);
   }
 
-  Future<void> _send(Uint8List front, Uint8List? back) async {
+  Future<void> _send(Uint8List front, Uint8List back) async {
     if (_sending || !mounted) return;
     setState(() => _sending = true);
     try {
@@ -800,7 +799,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
   }
 
   String _instructions(AppLocalizations l10n, {required bool front}) {
-    if (!front) return l10n.docPhotoBackInstructions;
+    if (!front) return _isPassport ? l10n.docPhotoBackInstructionsPassport : l10n.docPhotoBackInstructions;
     return _isPassport ? l10n.docPhotoFrontInstructionsPassport : l10n.docPhotoFrontInstructionsCard;
   }
 
