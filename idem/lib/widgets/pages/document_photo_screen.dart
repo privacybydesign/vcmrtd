@@ -113,23 +113,29 @@ var _photosInspected = 0;
 Future<Uint8List> preparePhotoInBackground(
   DocumentPicture picture, {
   String? side,
-  LivenessSignals? liveness,
+  Future<LivenessSignals>? liveness,
   String? timings,
 }) async {
   final watch = Stopwatch()..start();
   final prepared = await compute(prepareAndInspectDocumentPhoto, picture);
   final prepareMs = watch.elapsedMilliseconds;
+  LivenessSignals? signals;
+  try {
+    signals = await liveness;
+  } catch (e) {
+    _materialLog.warning('the liveness signals failed: $e');
+  }
   final number = ++_photosInspected;
   final error = prepared.inspectionError;
   final material = prepared.material;
   // Not the still photo's moiré: the fine security print of real Dutch driving
   // licences, ID cards and passports scored like a screen (10.9 to 37.3).
-  final reproduction = liveness?.screenLike == true;
+  final reproduction = signals?.screenLike == true;
   final line = [
     'ANTISPOOF #$number ${defaultTargetPlatform.name}',
     if (error == null) 'verdict=${reproduction ? 'reproduction' : 'physical'}' else 'failed: $error',
     ?side,
-    ?liveness,
+    ?signals,
     ?material,
     ?timings,
     '${prepared.timings} prepareMs=$prepareMs',
@@ -139,11 +145,18 @@ Future<Uint8List> preparePhotoInBackground(
   } else {
     _materialLog.info(line);
   }
-  if (liveness != null) {
+  if (signals != null) {
     debugAntiSpoofVerdict.value = (
       reproduction: reproduction,
-      flashGlare: liveness.flashGlare,
-      flashResponse: liveness.flashResponse,
+      flashGlare: signals.flashGlare,
+      flashResponse: signals.flashResponse,
+      flashBrightening: signals.flashBrightening,
+      flashExposure: signals.flashExposure,
+      flashFrames: signals.flashFrames,
+      flicker: signals.flicker,
+      torchTracking: signals.torchTracking,
+      glareEdge: signals.glareEdge,
+      inkLevel: signals.inkLevel,
     );
   }
   return prepared.photo;
@@ -151,7 +164,18 @@ Future<Uint8List> preparePhotoInBackground(
 
 /// The anti-spoof verdict on the last picture the photo step took itself,
 /// shown on its review in debug builds while the checks are tuned.
-typedef AntiSpoofVerdict = ({bool reproduction, double? flashGlare, double? flashResponse});
+typedef AntiSpoofVerdict = ({
+  bool reproduction,
+  double? flashGlare,
+  double? flashResponse,
+  double? flashBrightening,
+  double? flashExposure,
+  (int, int) flashFrames,
+  double? flicker,
+  double? torchTracking,
+  double? glareEdge,
+  double? inkLevel,
+});
 
 final debugAntiSpoofVerdict = ValueNotifier<AntiSpoofVerdict?>(null);
 
@@ -232,6 +256,24 @@ typedef TakenPicture = ({DocumentPicture shot, Future<Uint8List> photo});
 
 final _cameraLog = Logger('DocumentPhotoCamera');
 
+/// Average and longest of the durations [add]ed, logged with the picture.
+class _Durations {
+  var _count = 0;
+  var _totalUs = 0;
+  var _maxUs = 0;
+
+  void add(int microseconds) {
+    _count++;
+    _totalUs += microseconds;
+    _maxUs = math.max(_maxUs, microseconds);
+  }
+
+  void reset() => _count = _totalUs = _maxUs = 0;
+
+  @override
+  String toString() => _count == 0 ? '-' : '${_totalUs ~/ _count ~/ 1000}/${_maxUs ~/ 1000}x$_count';
+}
+
 /// [DocumentPhotoCamera] on the device's back camera.
 class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
   CameraController? _controller;
@@ -295,6 +337,7 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
     _mrzLines = null;
     _onFrameChecked = onFrameChecked;
     _liveness.reset();
+    _resetStreamTimings();
     final open = _controller;
     if (open != null) {
       // Still open after a picture that failed: its preview frames stopped.
@@ -345,6 +388,34 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
   /// The size of the preview frames, logged with the picture.
   String? _streamSize;
 
+  /// Since the first preview frame of this [open]: how fast frames reach
+  /// Dart, how long each holds the UI isolate, and how long its checks take.
+  final _streaming = Stopwatch();
+  var _streamedFrames = 0;
+  int? _lastFrameUs;
+  final _frameGaps = _Durations();
+  final _frameWork = _Durations();
+  final _checks = _Durations();
+  final _reads = _Durations();
+
+  String get _streamTimings {
+    final seconds = _streaming.elapsedMicroseconds / Duration.microsecondsPerSecond;
+    final fps = seconds == 0 ? '-' : (_streamedFrames / seconds).toStringAsFixed(1);
+    // Average/longest milliseconds x how many.
+    return 'fps=$fps gapMs=$_frameGaps frameMs=$_frameWork checkMs=$_checks readMs=$_reads';
+  }
+
+  void _resetStreamTimings() {
+    _streaming
+      ..stop()
+      ..reset();
+    _streamedFrames = 0;
+    _lastFrameUs = null;
+    for (final durations in [_frameGaps, _frameWork, _checks, _reads]) {
+      durations.reset();
+    }
+  }
+
   /// The checker [open] started before, unless it stopped; a start that
   /// failed is tried again. Without the face models it still checks the
   /// rest.
@@ -369,6 +440,17 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
   }
 
   void _checkFrame(CameraImage image) {
+    _streaming.start();
+    final arrived = _streaming.elapsedMicroseconds;
+    final last = _lastFrameUs;
+    if (last != null) _frameGaps.add(arrived - last);
+    _lastFrameUs = arrived;
+    _streamedFrames++;
+    _handleFrame(image);
+    _frameWork.add(_streaming.elapsedMicroseconds - arrived);
+  }
+
+  void _handleFrame(CameraImage image) {
     final controller = _controller;
     final viewSize = _viewSize;
     final checker = _checker;
@@ -411,6 +493,7 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
       _liveness
         ..add(frameSignature(frame, rotation: rotation, region: region), phase)
         ..exposure(phase, time: image.sensorExposureTime, iso: image.sensorSensitivity);
+      if (_liveness.needsView(phase)) _liveness.view(torchView(frame, rotation: rotation, region: region), phase);
       if (++_phaseFrames == _minPhaseFrames) _phaseFilled?.complete();
     }
     final content = _content;
@@ -422,6 +505,7 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
     if (!_reading) _readText(checked, rotation: rotation);
     if (!checkFrame) return;
 
+    final sent = _streaming.elapsedMicroseconds;
     final check = checker.check(checked, rotation: rotation, region: region, portrait: lookForPortrait);
     if (lookForPortrait) _liveness.portraitChecked();
     unawaited(
@@ -434,6 +518,7 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
 
     unawaited(
       check.issues.then((frameIssues) {
+        if (generation == _generation) _checks.add(_streaming.elapsedMicroseconds - sent);
         final lines = _lines;
         if (generation != _generation || _onFrameChecked != onFrameChecked || lines == null) return;
         _liveness.qualityChecked();
@@ -450,13 +535,16 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
   void _readText(LumaFrame frame, {required int rotation}) {
     final generation = _generation;
     _reading = true;
+    final started = _streaming.elapsedMicroseconds;
     unawaited(
       (_textReader ??= DocumentTextReader())
           .lines(frame, rotation: rotation)
           // A failed read counts as no text, so the other checks still run.
           .catchError((_) => const <Rect>[])
           .then((lines) {
-            if (generation == _generation) _lines = lines;
+            if (generation != _generation) return;
+            _lines = lines;
+            _reads.add(_streaming.elapsedMicroseconds - started);
           })
           .whenComplete(() {
             if (generation == _generation) _reading = false;
@@ -495,7 +583,10 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
     final watch = Stopwatch()..start();
     if (controller.value.isStreamingImages) await _testFlash(controller);
     final flashMs = watch.elapsedMilliseconds;
-    final liveness = _liveness.signals;
+    // Copied as it is now: the frames still coming in don't count. Left
+    // unawaited when the picture fails, so its own failure isn't uncaught.
+    final liveness = compute(livenessSignals, _liveness)..ignore();
+    final streamTimings = _streamTimings;
     // Not every platform takes a picture while it streams preview frames.
     if (controller.value.isStreamingImages) await controller.stopImageStream();
     final file = await controller.takePicture();
@@ -518,7 +609,7 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
       rethrow;
     }
     final timings =
-        'stream=${_streamSize ?? '-'} openMs=${_openMs ?? '-'} flashMs=$flashMs shotMs=${watch.elapsedMilliseconds - flashMs}';
+        'stream=${_streamSize ?? '-'} $streamTimings openMs=${_openMs ?? '-'} flashMs=$flashMs shotMs=${watch.elapsedMilliseconds - flashMs}';
     final photo = preparePhotoInBackground(shot, side: side, liveness: liveness, timings: timings);
     return (shot: shot, photo: photo.whenComplete(() => closing));
   }
@@ -986,6 +1077,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
   Widget build(BuildContext context) {
     return GuidedStatusBar(
       backdrop: Backdrop.dark,
+      bottomBackdrop: _state == _PhotoState.review ? Backdrop.dark : Backdrop.light,
       child: Scaffold(
         backgroundColor: context.guided.header,
         body: switch (_state) {
@@ -1062,93 +1154,120 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
     DocumentPhotoIssue.unreadable => l10n.docPhotoHintUnreadable,
   };
 
-  Widget _buildCameraActions(BuildContext context, {required bool front}) {
-    final l10n = context.l10n;
-    final ready = _state == _PhotoState.preview && (_quality.clear || _qualityWaived);
-    final issue = _state == _PhotoState.preview ? _quality.issue : null;
-    // The main action on the dark header, so it stands out whatever the primary.
-    final style = context.guided.heroButtonStyle;
+  Widget _buildHint(BuildContext context, DocumentPhotoIssue issue) {
+    final g = context.guided;
     return Padding(
-      padding: guidedBottomButtonPadding.copyWith(top: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (issue != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(8)),
-                child: Row(
-                  children: [
-                    const Icon(Icons.info_outline, color: Colors.white, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Semantics(
-                        liveRegion: true,
-                        child: Text(
-                          _qualityHint(l10n, issue),
-                          style: const TextStyle(color: Colors.white, fontSize: 14),
-                        ),
-                      ),
-                    ),
-                  ],
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(color: g.actionTint, borderRadius: BorderRadius.circular(8)),
+        child: Row(
+          children: [
+            Icon(Icons.info_outline, color: g.action, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Semantics(
+                liveRegion: true,
+                child: Text(
+                  _qualityHint(context.l10n, issue),
+                  style: TextStyle(fontSize: 14, height: 1.4, color: g.bodyText),
                 ),
               ),
             ),
-          if (_state == _PhotoState.error)
-            ElevatedButton(style: style, onPressed: _openCamera, child: Text(l10n.faceTryAgain))
-          else
-            ElevatedButton.icon(
-              style: style,
-              onPressed: ready && !_sending ? _capture : null,
-              icon: _state == _PhotoState.capturing
-                  ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.camera_alt),
-              label: Text(l10n.docPhotoTake),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCameraActions(BuildContext context) {
+    final l10n = context.l10n;
+    final ready = _state == _PhotoState.preview && (_quality.clear || _qualityWaived);
+    final style = context.guided.primaryButtonStyle.copyWith(
+      minimumSize: const WidgetStatePropertyAll(Size.fromHeight(52)),
+    );
+    if (_state == _PhotoState.error) {
+      return ElevatedButton(style: style, onPressed: _openCamera, child: Text(l10n.faceTryAgain));
+    }
+
+    return ElevatedButton.icon(
+      style: style,
+      onPressed: ready && !_sending ? _capture : null,
+      icon: _state == _PhotoState.capturing
+          ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
+          : const Icon(Icons.camera_alt),
+      label: Text(l10n.docPhotoTake),
+    );
+  }
+
+  /// Like the MRZ scanner's (ScannerWrapper): what to do in a sheet under the
+  /// frame, the instructions behind a tap, so no text lies over the document.
+  Widget _buildSheet(BuildContext context, {required bool front}) {
+    final l10n = context.l10n;
+    final g = context.guided;
+    final issue = _state == _PhotoState.preview ? _quality.issue : null;
+    final error = _error;
+    return GuidedSheet(
+      label: _sideCount < 2
+          ? GuidedStepLabel(step: widget.stepNumber, total: widget.totalSteps)
+          : Text(
+              l10n.docPhotoSideProgress(front ? l10n.docPhotoSideFront : l10n.docPhotoSideBack, _index + 1, _sideCount),
+              style: TextStyle(color: g.stepLabel, fontSize: 13, fontWeight: FontWeight.w700),
             ),
+      title: front ? l10n.docPhotoFrontTitle : l10n.docPhotoBackTitle,
+      showTip: l10n.docPhotoShowTips,
+      hideTip: l10n.scanHideTips,
+      tip: Text(
+        _instructions(l10n, front: front),
+        style: TextStyle(fontSize: 15, height: 1.5, color: g.bodyText),
+      ),
+      footer: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (issue != null) _buildHint(context, issue),
+          if (error != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(error, style: TextStyle(color: g.error)),
+            ),
+          _buildCameraActions(context),
         ],
       ),
     );
   }
 
   Widget _buildCamera(BuildContext context) {
-    final l10n = context.l10n;
+    final g = context.guided;
     final front = _side == DocumentPhotoSide.front;
     return Stack(
       fit: StackFit.expand,
       children: [
-        MRZCameraOverlay(
-          frameRatio: _frameRatio,
-          child: SizedBox.expand(
-            child: _state == _PhotoState.opening || _state == _PhotoState.error
-                ? ColoredBox(color: context.guided.header)
-                : _camera.buildPreview(context),
+        SizedBox.expand(
+          child: _state == _PhotoState.opening || _state == _PhotoState.error
+              ? ColoredBox(color: g.header)
+              : _camera.buildPreview(context),
+        ),
+        // The frame the checks and the photo's crop use too (DocumentPicture.frameInPreview).
+        Positioned.fill(
+          child: IgnorePointer(
+            child: LayoutBuilder(
+              builder: (context, box) => CustomPaint(
+                painter: GuidedScanFramePainter(
+                  frame: MRZCameraOverlay.frameRect(box.biggest, _frameRatio),
+                  scrim: g.ink.withValues(alpha: 0.8),
+                  highlight: g.heroAccent,
+                ),
+              ),
+            ),
           ),
         ),
-        SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildTopBar(context),
-              _buildHeader(
-                context,
-                title: front ? l10n.docPhotoFrontTitle : l10n.docPhotoBackTitle,
-                message: _instructions(l10n, front: front),
-              ),
-              const Spacer(),
-              if (_error != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  child: Text(
-                    _error!,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-              _buildCameraActions(context, front: front),
-            ],
-          ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SafeArea(bottom: false, child: _buildTopBar(context)),
+            const Spacer(),
+            _buildSheet(context, front: front),
+          ],
         ),
       ],
     );
@@ -1332,7 +1451,13 @@ class _AntiSpoofVerdictBanner extends StatelessWidget {
         ),
         child: Text(
           '${verdict.reproduction ? 'FAKE: looks like a screen' : 'REAL: looks like a physical document'}\n'
-          'flashGlare ${format(verdict.flashGlare)} · flashResponse ${format(verdict.flashResponse)} (debug)',
+          'flashGlare ${format(verdict.flashGlare)} (real from $minDocumentGlare) · '
+          'flashResponse ${format(verdict.flashResponse)} (real from $minDocumentResponse)\n'
+          '= brightening ${format(verdict.flashBrightening)} × exposure ${format(verdict.flashExposure)} · '
+          'frames ${verdict.flashFrames.$1}/${verdict.flashFrames.$2} · '
+          'flicker ${verdict.flicker?.toStringAsFixed(1) ?? '-'}\n'
+          'torchTracking ${format(verdict.torchTracking)} · glareEdge ${verdict.glareEdge?.toStringAsFixed(0) ?? '-'} · '
+          'inkLevel ${format(verdict.inkLevel)} (debug)',
           style: const TextStyle(color: Colors.white, fontSize: 13),
         ),
       );

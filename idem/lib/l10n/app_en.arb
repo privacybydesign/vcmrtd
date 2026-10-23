@@ -117,6 +117,7 @@
     }
   },
   "docPhotoTake": "Take photo",
+  "docPhotoShowTips": "Show tips",
   "docPhotoHintNoDocument": "Place the whole document inside the frame, on a plain surface.",
   "docPhotoHintNoPortrait": "Place the side with your photo inside the frame.",
   "docPhotoHintNoMrz": "Place the side with the machine-readable lines (<<<) inside the frame.",

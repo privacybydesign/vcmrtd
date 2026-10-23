@@ -228,6 +228,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get docPhotoTake => 'Take photo';
 
   @override
+  String get docPhotoShowTips => 'Show tips';
+
+  @override
   String get docPhotoHintNoDocument => 'Place the whole document inside the frame, on a plain surface.';
 
   @override

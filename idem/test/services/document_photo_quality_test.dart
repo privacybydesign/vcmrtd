@@ -494,6 +494,62 @@ void main() {
     });
   });
 
+  group('sensorBands', () {
+    test('reads the region where it lies in the sensor frame, in every rotation', () {
+      const uprightWidth = 40;
+      const uprightHeight = 30;
+      // Off-centre, so a frame read turned or mirrored the wrong way misses it.
+      const lit = Rect.fromLTRB(4, 3, 22, 14);
+      for (final rotation in [0, 90, 180, 270]) {
+        final sideways = rotation % 180 != 0;
+        final width = sideways ? uprightHeight : uprightWidth;
+        final height = sideways ? uprightWidth : uprightHeight;
+        final bytes = Uint8List(width * height);
+        for (var uy = 0; uy < uprightHeight; uy++) {
+          for (var ux = 0; ux < uprightWidth; ux++) {
+            if (!lit.contains(Offset(ux + 0.5, uy + 0.5))) continue;
+            final (x, y) = switch (rotation) {
+              90 => (uy, height - 1 - ux),
+              180 => (width - 1 - ux, height - 1 - uy),
+              270 => (width - 1 - uy, ux),
+              _ => (ux, uy),
+            };
+            bytes[y * width + x] = 200;
+          }
+        }
+        final frame = LumaFrame.luma(bytes: bytes, width: width, height: height, bytesPerRow: width);
+
+        final bands = sensorBands(
+          frame,
+          rotation: rotation,
+          region: Rect.fromLTRB(
+            lit.left / uprightWidth,
+            lit.top / uprightHeight,
+            lit.right / uprightWidth,
+            lit.bottom / uprightHeight,
+          ),
+        );
+
+        expect([...bands.rows, ...bands.columns], everyElement(200), reason: 'rotation $rotation');
+      }
+    });
+
+    test("stripes across the sensor's rows show in its rows, not its columns", () {
+      const width = 40;
+      const height = 30;
+      final bytes = Uint8List.fromList([
+        for (var y = 0; y < height; y++)
+          for (var x = 0; x < width; x++) y.isEven ? 200 : 100,
+      ]);
+      final frame = LumaFrame.luma(bytes: bytes, width: width, height: height, bytesPerRow: width);
+
+      final bands = sensorBands(frame, rotation: 90, region: const Rect.fromLTRB(0, 0, 1, 1));
+
+      expect(bands.rows, [for (var y = 0; y < height; y++) y.isEven ? 200 : 100]);
+      expect(bands.columns, everyElement(150));
+    });
+  });
+
   group('sampleDocument', () {
     test('averages the same frame pixels as reading them one by one, in every rotation and format', () {
       final random = math.Random(7);

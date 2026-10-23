@@ -362,8 +362,70 @@ FrameSignature frameSignature(LumaFrame frame, {required int rotation, required 
     }
   }
 
-  return FrameSignature(luma: luma, cb: cb, cr: cr);
+  return FrameSignature(
+    luma: luma,
+    cb: cb,
+    cr: cr,
+    bands: sensorBands(frame, rotation: rotation, region: inner),
+  );
 }
+
+const _torchViewWidth = 240;
+
+/// The document in [region] (fractions of the upright frame), grey and
+/// small: what the torch test compares before and with the torch on.
+DocumentView torchView(LumaFrame frame, {required int rotation, required Rect region}) {
+  final inner = region.deflateBy(region.width * _signatureInset, region.height * _signatureInset);
+  final sample = sampleDocument(frame, rotation: rotation, region: inner, maxWidth: _torchViewWidth);
+  return (pixels: sample.pixels, width: sample.width, height: sample.height);
+}
+
+const _bandLength = 384;
+const _bandTaps = 24;
+
+/// The brightness of [region] (fractions of the upright frame) along the
+/// frame's rows and along its columns as the sensor read them, not turned
+/// upright: a rolling shutter reads the rows one after another, so a
+/// flickering light shows as stripes along one of them (iOS's frames come
+/// turned already, so it's the columns there).
+SensorBands sensorBands(LumaFrame frame, {required int rotation, required Rect region}) {
+  final sensor = _sensorRect(region, rotation);
+  final left = (sensor.left * frame.width).floor().clamp(0, frame.width - 1);
+  final right = (sensor.right * frame.width).ceil().clamp(left + 1, frame.width);
+  final top = (sensor.top * frame.height).floor().clamp(0, frame.height - 1);
+  final bottom = (sensor.bottom * frame.height).ceil().clamp(top + 1, frame.height);
+
+  Float32List along(int from, int to, int acrossFrom, int acrossTo, int Function(int along, int across) brightnessAt) {
+    final length = math.min(_bandLength, to - from);
+    final band = Float32List(length);
+    for (var i = 0; i < length; i++) {
+      final start = from + (to - from) * i ~/ length;
+      final end = math.max(start + 1, from + (to - from) * (i + 1) ~/ length);
+      var sum = 0;
+      for (var a = start; a < end; a++) {
+        for (var t = 0; t < _bandTaps; t++) {
+          sum += brightnessAt(a, acrossFrom + (acrossTo - acrossFrom) * (2 * t + 1) ~/ (2 * _bandTaps));
+        }
+      }
+      band[i] = sum / ((end - start) * _bandTaps);
+    }
+    return band;
+  }
+
+  return (
+    rows: along(top, bottom, left, right, (y, x) => frame.brightnessAt(x, y)),
+    columns: along(left, right, top, bottom, frame.brightnessAt),
+  );
+}
+
+/// [upright] (fractions of the upright frame) in fractions of the frame as
+/// it came from the sensor, which [rotation] turns upright.
+Rect _sensorRect(Rect upright, int rotation) => switch (rotation) {
+  90 => Rect.fromLTRB(upright.top, 1 - upright.right, upright.bottom, 1 - upright.left),
+  180 => Rect.fromLTRB(1 - upright.right, 1 - upright.bottom, 1 - upright.left, 1 - upright.top),
+  270 => Rect.fromLTRB(1 - upright.bottom, upright.left, 1 - upright.top, upright.right),
+  _ => upright,
+};
 
 Set<DocumentPhotoIssue> documentPhotoIssues(DocumentSample sample, {required Rect frame}) =>
     _issues(sample, frame, _findDocument(sample, frame));

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import 'package:idem/l10n/l10n.dart';
 import 'package:idem/services/document_photo_quality.dart';
 import 'package:idem/services/document_text_reader.dart';
 import 'package:idem/services/document_viz.dart';
+import 'package:idem/theme/app_theme.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:idem/widgets/pages/document_photo_screen.dart';
 import 'package:mrz_capture/mrz_capture.dart';
@@ -153,7 +155,13 @@ bool _takePhotoEnabled(WidgetTester tester) => tester
     )
     .enabled;
 
-double _frameRatio(WidgetTester tester) => tester.widget<MRZCameraOverlay>(find.byType(MRZCameraOverlay)).frameRatio;
+double _frameRatio(WidgetTester tester) {
+  final paint = tester.widget<CustomPaint>(
+    find.byWidgetPredicate((w) => w is CustomPaint && w.painter is GuidedScanFramePainter),
+  );
+  final frame = (paint.painter! as GuidedScanFramePainter).frame;
+  return frame.width / frame.height;
+}
 
 void main() {
   testWidgets('a card whose back the MRZ scan photographed: that back is shown first, then the front is taken, '
@@ -264,6 +272,79 @@ void main() {
     expect(camera.disposes, 1);
   });
 
+  testWidgets('no text lies over the frame, on small phones too, in either language, with or without a hint', (
+    tester,
+  ) async {
+    addTearDown(tester.view.reset);
+    // Idem draws with the platform's font: Android's Roboto, from the Flutter
+    // SDK, so the text is as wide as on a phone, not the test font's squares.
+    await tester.runAsync(() async {
+      final fonts = '${Platform.environment['FLUTTER_ROOT']}/bin/cache/artifacts/material_fonts';
+      final roboto = FontLoader('Roboto');
+      for (final weight in ['Regular', 'Medium', 'Bold']) {
+        roboto.addFont(File('$fonts/Roboto-$weight.ttf').readAsBytes().then(ByteData.sublistView));
+      }
+      await roboto.load();
+    });
+    // Galaxy S9, iPhone SE, iPhone 15: logical size, status bar, navigation bar.
+    const phones = [(Size(360, 740), 24.0, 48.0), (Size(375, 667), 20.0, 0.0), (Size(390, 844), 47.0, 34.0)];
+    for (final (size, top, bottom) in phones) {
+      for (final locale in AppLocalizations.supportedLocales) {
+        for (final type in [DocumentType.passport, DocumentType.identityCard]) {
+          for (final frames in [
+            const [<DocumentPhotoIssue>{}],
+            const [
+              {DocumentPhotoIssue.unreadable},
+            ],
+          ]) {
+            tester.view
+              ..devicePixelRatio = 3
+              ..physicalSize = size * 3
+              ..padding = FakeViewPadding(top: top * 3, bottom: bottom * 3)
+              ..viewPadding = FakeViewPadding(top: top * 3, bottom: bottom * 3);
+            final camera = _FakeCamera()..frames = frames;
+            await tester.pumpWidget(
+              MaterialApp(
+                theme: appTheme(),
+                locale: locale,
+                localizationsDelegates: AppLocalizations.localizationsDelegates,
+                supportedLocales: AppLocalizations.supportedLocales,
+                home: DocumentPhotoScreen(
+                  camera: camera,
+                  documentType: type,
+                  readPhotoText: (_) async => (lines: const <String>[], barcodes: const <String>[]),
+                  stepNumber: 2,
+                  totalSteps: 3,
+                  onBack: () {},
+                  onPhotosTaken: (_, _) async {},
+                ),
+              ),
+            );
+            await tester.pump();
+
+            final painter = tester
+                .widget<CustomPaint>(
+                  find.byWidgetPredicate((w) => w is CustomPaint && w.painter is GuidedScanFramePainter),
+                )
+                .painter!;
+            final frame = (painter as GuidedScanFramePainter).frame;
+            final sheet = find.ancestor(
+              of: find.byType(ElevatedButton),
+              matching: find.byWidgetPredicate((w) => w is Material && w.color == Colors.white),
+            );
+            final what = '$size $locale ${type.name} ${frames.single}';
+            expect(tester.getRect(find.byType(GuidedStepBar)).bottom, lessThanOrEqualTo(frame.top), reason: what);
+            expect(tester.getRect(sheet).top, greaterThanOrEqualTo(frame.bottom), reason: what);
+            if (frames.single.isNotEmpty) {
+              expect(find.textContaining(RegExp('text|tekst')), findsOneWidget, reason: 'the hint shows: $what');
+            }
+            await tester.pumpWidget(const SizedBox());
+          }
+        }
+      }
+    }
+  });
+
   testWidgets('a document of unknown type: front, then back in the card frame, both sent together', (tester) async {
     final camera = _FakeCamera();
     final sent = <(Uint8List, Uint8List)>[];
@@ -312,11 +393,16 @@ void main() {
     await tester.pump();
 
     expect(find.text('Front · 1 of 2'), findsOneWidget);
+    expect(find.textContaining('page with your photo'), findsNothing, reason: 'the instructions are behind a tap');
+    await tester.tap(find.text('Photograph the front'));
+    await tester.pumpAndSettle();
     expect(find.textContaining('page with your photo'), findsOneWidget);
     await _takeAndReview(tester);
     await _usePhoto(tester);
 
     expect(find.text('Back · 2 of 2'), findsOneWidget);
+    await tester.tap(find.text('Now photograph the back'));
+    await tester.pumpAndSettle();
     expect(find.text('Now place the back of the page with your photo inside the frame.'), findsOneWidget);
     expect(find.text('My document has no back'), findsNothing);
     await _takeAndReview(tester);
@@ -562,11 +648,33 @@ void main() {
     await _takeAndReview(tester);
     expect(find.byKey(const Key('anti-spoof verdict')), findsNothing, reason: 'none yet');
 
-    debugAntiSpoofVerdict.value = (reproduction: true, flashGlare: 0.04, flashResponse: 0.92);
+    debugAntiSpoofVerdict.value = (
+      reproduction: true,
+      flashGlare: 0.04,
+      flashResponse: 0.92,
+      flashBrightening: 0.92,
+      flashExposure: 1.0,
+      flashFrames: (4, 4),
+      flicker: null,
+      torchTracking: null,
+      glareEdge: null,
+      inkLevel: null,
+    );
     await tester.pump();
     expect(find.textContaining('FAKE: looks like a screen'), findsOneWidget);
 
-    debugAntiSpoofVerdict.value = (reproduction: false, flashGlare: 0.31, flashResponse: 1.2);
+    debugAntiSpoofVerdict.value = (
+      reproduction: false,
+      flashGlare: 0.31,
+      flashResponse: 1.2,
+      flashBrightening: 1.2,
+      flashExposure: 1.0,
+      flashFrames: (4, 4),
+      flicker: null,
+      torchTracking: null,
+      glareEdge: null,
+      inkLevel: null,
+    );
     await tester.pump();
     expect(find.textContaining('REAL: looks like a physical document'), findsOneWidget);
     expect(find.textContaining('flashGlare 0.310'), findsOneWidget);
@@ -590,7 +698,18 @@ void main() {
     await tester.pump();
 
     await _takeAndReview(tester);
-    debugAntiSpoofVerdict.value = (reproduction: false, flashGlare: 0.3, flashResponse: 1.2);
+    debugAntiSpoofVerdict.value = (
+      reproduction: false,
+      flashGlare: 0.3,
+      flashResponse: 1.2,
+      flashBrightening: 1.2,
+      flashExposure: 1.0,
+      flashFrames: (4, 4),
+      flicker: null,
+      torchTracking: null,
+      glareEdge: null,
+      inkLevel: null,
+    );
     await tester.pump();
     expect(find.text('Check the photo'), findsOneWidget);
     expect(find.text('Preparing the photo…'), findsOneWidget);

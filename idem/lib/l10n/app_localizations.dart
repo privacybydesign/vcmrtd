@@ -464,6 +464,12 @@ abstract class AppLocalizations {
   /// **'Take photo'**
   String get docPhotoTake;
 
+  /// No description provided for @docPhotoShowTips.
+  ///
+  /// In en, this message translates to:
+  /// **'Show tips'**
+  String get docPhotoShowTips;
+
   /// No description provided for @docPhotoHintNoDocument.
   ///
   /// In en, this message translates to:
