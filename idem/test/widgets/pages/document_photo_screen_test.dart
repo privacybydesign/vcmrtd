@@ -8,6 +8,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/services/document_photo_quality.dart';
+import 'package:idem/services/document_text_reader.dart';
+import 'package:idem/services/document_viz.dart';
 import 'package:idem/theme/app_theme.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:idem/widgets/pages/document_photo_screen.dart';
@@ -114,13 +116,15 @@ Widget _screen(
   Uint8List? scanned,
   Future<void> Function(Uint8List front, Uint8List back)? onPhotosTaken,
   VoidCallback? onBack,
-  Future<List<String>> Function(Uint8List photo)? readPhotoText,
+  KnownDocument? known,
+  Future<PhotoText> Function(Uint8List photo)? readPhotoText,
 }) => _app(
   DocumentPhotoScreen(
     camera: camera,
     documentType: documentType,
     scanned: scanned,
-    readPhotoText: readPhotoText ?? (_) async => const <String>[],
+    known: known,
+    readPhotoText: readPhotoText ?? (_) async => (lines: const <String>[], barcodes: const <String>[]),
     stepNumber: 2,
     totalSteps: 3,
     onBack: onBack ?? () {},
@@ -306,7 +310,7 @@ void main() {
                 home: DocumentPhotoScreen(
                   camera: camera,
                   documentType: type,
-                  readPhotoText: (_) async => const <String>[],
+                  readPhotoText: (_) async => (lines: const <String>[], barcodes: const <String>[]),
                   stepNumber: 2,
                   totalSteps: 3,
                   onBack: () {},
@@ -589,7 +593,9 @@ void main() {
       _FakeCamera? camera,
     }) async {
       camera ??= _FakeCamera();
-      await tester.pumpWidget(_screen(camera, documentType: type, readPhotoText: (_) async => frontText));
+      await tester.pumpWidget(
+        _screen(camera, documentType: type, readPhotoText: (_) async => (lines: frontText, barcodes: const <String>[])),
+      );
       await tester.pump();
       await _takeAndReview(tester);
       await _usePhoto(tester);
@@ -656,7 +662,7 @@ void main() {
         camera,
         readPhotoText: (photo) async {
           read.add(photo);
-          return const <String>[];
+          return (lines: const <String>[], barcodes: const <String>[]);
         },
       ),
     );
@@ -678,6 +684,57 @@ void main() {
     expect(find.text('Use photo'), findsOneWidget);
     expect(tester.widget<Image>(find.byType(Image)).image, isA<MemoryImage>());
     expect(read, [camera.taken.single]);
+  });
+
+  testWidgets("the last side's review compares the text on both sides with the document the MRZ scan read", (
+    tester,
+  ) async {
+    final camera = _FakeCamera();
+    final scanned = _scannedPhoto();
+    final read = <Uint8List>[];
+    await tester.pumpWidget(
+      _screen(
+        camera,
+        documentType: DocumentType.identityCard,
+        scanned: scanned,
+        known: (documentNumber: 'D23145890', dateOfBirth: DateTime(1974, 8, 12), dateOfExpiry: DateTime(2012, 4, 15)),
+        readPhotoText: (photo) async {
+          read.add(photo);
+          final lines = identical(photo, scanned)
+              ? const [
+                  'I<UTOD231458907<<<<<<<<<<<<<<<',
+                  '7408122F1204159UTO<<<<<<<<<<<6',
+                  'ERIKSSON<<ANNA<MARIA<<<<<<<<<<',
+                ]
+              : const ['Documentnummer', 'D23145890', '12 AUG/AUG 1974', '15.04.2012'];
+          return (lines: lines, barcodes: const <String>[]);
+        },
+      ),
+    );
+    await tester.pump();
+    expect(find.byKey(const Key('viz check')), findsNothing);
+
+    await _usePhoto(tester);
+    await _takeAndReview(tester);
+    await tester.pump();
+
+    expect(read, [scanned, camera.taken.single]);
+    expect(debugVizCheck.value?.match, SidesMatch.same);
+    expect(debugVizCheck.value?.frontLooksLikeDocument, isTrue);
+    expect(find.textContaining('Sides: same'), findsOneWidget);
+  });
+
+  testWidgets('a photo whose text cannot be read leaves the sides unknown', (tester) async {
+    final camera = _FakeCamera();
+    await tester.pumpWidget(_screen(camera, readPhotoText: (_) async => throw Exception('no recognizer')));
+    await tester.pump();
+
+    await _takeAndReview(tester);
+    await _usePhoto(tester);
+    await _takeAndReview(tester);
+    await tester.pump();
+
+    expect(debugVizCheck.value?.match, SidesMatch.unknown);
   });
 
   testWidgets('the hint follows the issue the preview frames agree on', (tester) async {

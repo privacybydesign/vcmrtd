@@ -2,11 +2,16 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
+import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:idem/services/document_photo_quality.dart';
+import 'package:image/image.dart' as img;
 
 const _neutralChroma = 128;
 const _photoDirPrefix = 'document_photo';
+
+/// What [DocumentTextReader.photoText] read off a photo.
+typedef PhotoText = ({List<String> lines, List<String> barcodes});
 
 /// Finds, with ML Kit's text recognition, where a camera frame's lines of
 /// text are, and what a photo's say.
@@ -16,6 +21,7 @@ class DocumentTextReader {
   static Future<void>? _staleSwept;
 
   TextRecognizer? _recognizer;
+  BarcodeScanner? _barcodeScanner;
   var _closed = false;
 
   /// Deletes the photos an earlier run left behind; the first photo of this
@@ -34,29 +40,52 @@ class DocumentTextReader {
     return fractionsOfUpright(boxes, width: frame.width, height: frame.height, rotation: rotation);
   }
 
-  /// The lines of text on a photo the step took (a JPEG), block by block.
-  Future<List<String>> photoText(Uint8List jpeg) async {
+  /// The lines of text on a photo the step took (a JPEG), block by block,
+  /// and the PDF417 barcodes on it (a North American licence's back).
+  /// Text recognition reads text the right way up only, and documents print
+  /// some sideways (a Dutch passport's BSN, on the back of its photo page):
+  /// the photo is read turned a quarter both ways too, an empty line between
+  /// the readings.
+  Future<PhotoText> photoText(Uint8List jpeg) async {
     // ML Kit reads an encoded image only from a file.
     await sweepStalePhotos();
     final dir = await Directory.systemTemp.createTemp(_photoDirPrefix);
     try {
-      final file = File('${dir.path}/photo.jpg');
-      await file.writeAsBytes(jpeg, flush: true);
-      final text = await _openRecognizer.processImage(InputImage.fromFilePath(file.path));
-      return [
-        for (final block in text.blocks)
-          for (final line in block.lines) line.text,
-      ];
+      final turned = compute(quarterTurns, jpeg);
+      final upright = await _file(dir, 'photo.jpg', jpeg);
+      final text = await _openRecognizer.processImage(upright);
+      final barcodes = await _openBarcodeScanner.processImage(upright);
+      final lines = _lines(text);
+      for (final (i, photo) in (await turned).indexed) {
+        lines
+          ..add('')
+          ..addAll(_lines(await _openRecognizer.processImage(await _file(dir, 'turned$i.jpg', photo))));
+      }
+      return (lines: lines, barcodes: [for (final barcode in barcodes) ?barcode.rawValue]);
     } finally {
       await dir.delete(recursive: true);
     }
   }
 
+  static Future<InputImage> _file(Directory dir, String name, Uint8List jpeg) async {
+    final file = File('${dir.path}/$name');
+    await file.writeAsBytes(jpeg, flush: true);
+    return InputImage.fromFilePath(file.path);
+  }
+
+  static List<String> _lines(RecognizedText text) => [
+    for (final block in text.blocks)
+      for (final line in block.lines) line.text,
+  ];
+
   Future<void> close() async {
     _closed = true;
     final recognizer = _recognizer;
+    final barcodeScanner = _barcodeScanner;
     _recognizer = null;
+    _barcodeScanner = null;
     await recognizer?.close();
+    await barcodeScanner?.close();
   }
 
   /// ML Kit makes a recognizer for an image processed after [close], one
@@ -64,6 +93,11 @@ class DocumentTextReader {
   TextRecognizer get _openRecognizer {
     if (_closed) throw StateError('the text reader is closed');
     return _recognizer ??= TextRecognizer();
+  }
+
+  BarcodeScanner get _openBarcodeScanner {
+    if (_closed) throw StateError('the text reader is closed');
+    return _barcodeScanner ??= BarcodeScanner(formats: [BarcodeFormat.pdf417]);
   }
 
   static InputImage _input(LumaFrame frame, int rotation) {
@@ -110,6 +144,19 @@ List<Rect> fractionsOfUpright(Iterable<Rect> boxes, {required int width, require
       ),
   ];
 }
+
+/// [jpeg] turned a quarter clockwise and a quarter anticlockwise.
+@visibleForTesting
+List<Uint8List> quarterTurns(Uint8List jpeg) {
+  final image = img.decodeJpg(jpeg);
+  if (image == null) return const [];
+  return [
+    for (final angle in [90, -90]) img.encodeJpg(img.copyRotate(image, angle: angle), quality: _turnedQuality),
+  ];
+}
+
+/// High enough that the turned photo reads like the photo itself.
+const _turnedQuality = 90;
 
 /// The luma plane plus neutral chroma makes NV21, without the plane's row padding.
 @visibleForTesting
