@@ -230,6 +230,7 @@ const _licenceCategories = {'AM', 'A1', 'A2', 'B1', 'BE', 'C1', 'C1E', 'CE', 'D1
 
 final _token = RegExp(r'[A-Z0-9]+');
 final _digit = RegExp(r'\d');
+final _alphanumeric = RegExp(r'^[A-Z0-9]+$');
 final _mrzLine = RegExp('[<«]');
 
 /// What the MRZ scan or the chip read says the document is.
@@ -485,7 +486,7 @@ SidesMatch _matchWithoutReference(SideText front, SideText back) {
   if (licenceExpiry != null && back._licenceBack && back.shows(licenceExpiry)) return SidesMatch.same;
 
   final sharesNumber = front.vizNumbers.intersection(back.vizNumbers).isNotEmpty;
-  final sharedDates = {for (final date in front.vizDates.where(back.shows)) _dayKey(date)};
+  final sharedDates = {for (final date in front.vizDates.where(back.shows)) _eitherOrderKey(date)};
   final sharesDates = sharedDates.length >= _minSharedDates;
   return sharesNumber || sharesDates ? SidesMatch.same : SidesMatch.unknown;
 }
@@ -495,6 +496,12 @@ SidesMatch _matchWithoutReference(SideText front, SideText back) {
 bool _sameDay(DateTime a, DateTime b) => _dayKey(a) == _dayKey(b);
 
 int _dayKey(DateTime date) => (date.year % 100) * 10000 + date.month * 100 + date.day;
+
+/// One printed date read day first and month first is still one date.
+int _eitherOrderKey(DateTime date) {
+  final (low, high) = date.month < date.day ? (date.month, date.day) : (date.day, date.month);
+  return (date.year % 100) * 10000 + low * 100 + high;
+}
 
 bool _shows(Set<DateTime> dates, DateTime date) => dates.any((shown) => _sameDay(shown, date));
 
@@ -556,7 +563,10 @@ LicenceFields? _licenceFieldsIn(List<String> lines) {
 }
 
 bool _looksLikeNumber(String token) =>
-    token.length >= _minNumberLength && token.length <= _maxNumberLength && _digit.hasMatch(token);
+    token.length >= _minNumberLength &&
+    token.length <= _maxNumberLength &&
+    _digit.hasMatch(token) &&
+    _alphanumeric.hasMatch(token);
 
 String _matchKey(String number) =>
     number.toUpperCase().replaceAll('<', '').split('').map((c) => _lookalikes[c] ?? c).join();

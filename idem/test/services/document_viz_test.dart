@@ -406,6 +406,18 @@ void main() {
       expect(check.match, SidesMatch.same);
     });
 
+    test('without an MRZ, one date read day or month first is one shared date', () {
+      final check = checkSides(SideText.read(['RIJBEWIJS', '05.03.1985']), SideText.read(['Supermarkt 05.03.1985']));
+
+      expect(check.match, SidesMatch.unknown);
+    });
+
+    test('without an MRZ, a date line is no shared number', () {
+      final check = checkSides(SideText.read(['RIJBEWIJS', '25.03.1985']), SideText.read(['25.03.1985']));
+
+      expect(check.match, SidesMatch.unknown);
+    });
+
     test('a side with nothing to tie it is unknown', () {
       final check = checkSides(SideText.read(_cardFront), SideText.read(['Supermarkt']));
 
