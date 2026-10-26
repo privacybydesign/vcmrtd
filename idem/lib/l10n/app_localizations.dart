@@ -440,11 +440,11 @@ abstract class AppLocalizations {
   /// **'Turn your document over and place the back inside the frame.'**
   String get docPhotoBackInstructions;
 
-  /// No description provided for @docPhotoBackInstructionsPassport.
+  /// No description provided for @docPhotoBackPassport.
   ///
   /// In en, this message translates to:
   /// **'Now place the back of the page with your photo inside the frame.'**
-  String get docPhotoBackInstructionsPassport;
+  String get docPhotoBackPassport;
 
   /// No description provided for @docPhotoSideFront.
   ///

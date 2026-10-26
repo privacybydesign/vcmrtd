@@ -8,6 +8,8 @@ const _checkWeights = [7, 3, 1];
 const _letterValueOffset = 55;
 const _lastCentury = 1900;
 const _thisCentury = 2000;
+const _filler = '<';
+const _passportType = 'P';
 
 /// Letters text recognition reads for digits, in a field of digits.
 const _digitLookalikes = {'O': '0', 'Q': '0', 'D': '0', 'I': '1', 'L': '1', 'Z': '2', 'S': '5', 'B': '8', 'G': '6'};
@@ -65,7 +67,7 @@ class _MrzReading {
 
   void nameTop(String line) {
     final match = _nameTop.firstMatch(line);
-    if (match != null) type ??= match[1] == 'P' ? DocumentType.passport : DocumentType.identityCard;
+    if (match != null) type ??= match[1] == _passportType ? DocumentType.passport : DocumentType.identityCard;
   }
 
   bool numberLine(String line) {
@@ -119,8 +121,12 @@ class _MrzReading {
   }
 }
 
-String _normalise(String line) =>
-    line.toUpperCase().replaceAll(_whitespace, '').replaceAll('«', '<<').replaceAll('‹', '<').replaceAll('|', '');
+String _normalise(String line) => line
+    .toUpperCase()
+    .replaceAll(_whitespace, '')
+    .replaceAll('«', '$_filler$_filler')
+    .replaceAll('‹', _filler)
+    .replaceAll('|', '');
 
 /// [field], when [check] is its check digit.
 String? _checked(String field, String check) => _checkDigit(field) == _digit(check) ? field : null;
@@ -150,7 +156,7 @@ int _checkDigit(String field) {
 }
 
 String? _documentNumber(String field) {
-  final number = field.replaceAll('<', '');
+  final number = field.replaceAll(_filler, '');
   return number.isEmpty ? null : number;
 }
 

@@ -147,6 +147,7 @@ class DocumentSample {
 /// [rotation] turns the frame upright (clockwise degrees); [region] is in
 /// fractions of the upright frame. Each pixel averages up to 3x3 frame pixels
 /// so sensor noise doesn't pass for sharpness.
+@visibleForTesting
 DocumentSample sampleDocument(
   LumaFrame frame, {
   required int rotation,
@@ -232,6 +233,7 @@ Set<DocumentPhotoIssue> checkFrame(LumaFrame frame, {required int rotation, requ
     inspectFrame(frame, rotation: rotation, region: region).issues;
 
 /// [checkFrame], and the document found, for the portrait to be looked for on.
+@visibleForTesting
 FrameInspection inspectFrame(LumaFrame frame, {required int rotation, required Rect region}) {
   final (sample, inSample) = _sampleFrame(frame, rotation: rotation, region: region);
   final outline = _findDocument(sample, inSample);
@@ -299,6 +301,7 @@ bool textReadable(List<Rect> lines, Rect region) =>
 
 /// The lines of text, in fractions of the upright frame, that lie across
 /// [region] in its lower part: an MRZ's, found by where they are, not read.
+@visibleForTesting
 int mrzLines(List<Rect> lines, Rect region) => _rows(lines)
     .where(
       (row) =>
@@ -1080,7 +1083,7 @@ class MrzSightings {
 
   bool get shown => _frames.where((shown) => shown).length >= DocumentPhotoQuality.framesToAgree;
 
-  void add(bool shown) => DocumentPhotoQuality._push(_frames, shown);
+  void add({required bool shown}) => DocumentPhotoQuality._push(_frames, shown);
 
   void reset() => _frames.clear();
 }

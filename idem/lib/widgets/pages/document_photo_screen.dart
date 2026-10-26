@@ -30,24 +30,19 @@ const documentPhotoJpegQuality = 85;
 /// of the camera's view), no longer than [documentPhotoMaxLongEdge] on its
 /// longest side, without the camera's EXIF (location, device) - the relying
 /// party gets this image as it is.
-Uint8List prepareDocumentPhoto(DocumentPicture picture) => _encode(_uprightDocument(picture));
-
-img.Image _uprightDocument(DocumentPicture picture) {
+Uint8List prepareDocumentPhoto(DocumentPicture picture) {
   // The camera plugin takes its pictures as JPEG on both platforms.
   final decoded = img.decodeJpg(picture.jpeg);
   if (decoded == null) throw const FormatException('the camera returned no readable JPEG');
   final oriented = img.bakeOrientation(decoded);
   final crop = picture.cropIn(oriented.width, oriented.height);
-  return img.copyCrop(
+  final upright = img.copyCrop(
     oriented,
     x: crop.left.toInt(),
     y: crop.top.toInt(),
     width: crop.width.toInt(),
     height: crop.height.toInt(),
   );
-}
-
-Uint8List _encode(img.Image upright) {
   final resized = _fitLongEdge(upright, documentPhotoMaxLongEdge);
   resized.exif = img.ExifData();
   return img.encodeJpg(resized, quality: documentPhotoJpegQuality);
@@ -203,7 +198,13 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
       imageFormatGroup: Platform.isAndroid ? ImageFormatGroup.yuv420 : ImageFormatGroup.bgra8888,
     );
     try {
-      final checker = _startChecker();
+      final checker = _startChecker().then<DocumentFrameChecker?>(
+        (started) => started,
+        onError: (Object e) {
+          _cameraLog.warning('no frame checks, the checker did not start: $e');
+          return null;
+        },
+      );
       await Future.wait([controller.initialize(), checker]);
       if (generation == _generation) {
         _checker = await checker;
@@ -288,7 +289,7 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
       check.issues.then((frameIssues) {
         final lines = _lines;
         if (generation != _generation || _onFrameChecked != onFrameChecked || lines == null) return;
-        _mrzSightings.add(mrzLayout(lines, region));
+        _mrzSightings.add(shown: mrzLayout(lines, region));
         onFrameChecked(_withContentIssues(frameIssues, lines, region, content));
       }, onError: (_) {}),
     );
@@ -841,7 +842,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
   }
 
   String _instructions(AppLocalizations l10n, {required bool front}) {
-    if (!front) return _isPassport ? l10n.docPhotoBackInstructionsPassport : l10n.docPhotoBackInstructions;
+    if (!front) return _isPassport ? l10n.docPhotoBackPassport : l10n.docPhotoBackInstructions;
     return _isPassport ? l10n.docPhotoFrontInstructionsPassport : l10n.docPhotoFrontInstructionsCard;
   }
 

@@ -6,10 +6,15 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import 'package:idem/services/document_photo_quality.dart';
 
 const _neutralChroma = 128;
+const _photoDirPrefix = 'document_photo';
 
 /// Finds, with ML Kit's text recognition, where a camera frame's lines of
 /// text are, and what a photo's say.
 class DocumentTextReader {
+  /// Photos an earlier run left behind when it was killed mid-read, deleted
+  /// once before the first photo of this run is written.
+  static Future<void>? _staleSwept;
+
   TextRecognizer? _recognizer;
 
   /// The lines of text in the frame, in fractions of the upright frame;
@@ -27,7 +32,8 @@ class DocumentTextReader {
   /// The lines of text on a photo the step took (a JPEG), block by block.
   Future<List<String>> photoText(Uint8List jpeg) async {
     // ML Kit reads an encoded image only from a file.
-    final dir = await Directory.systemTemp.createTemp('document_photo');
+    await (_staleSwept ??= deleteStalePhotos(Directory.systemTemp));
+    final dir = await Directory.systemTemp.createTemp(_photoDirPrefix);
     try {
       final file = File('${dir.path}/photo.jpg');
       await file.writeAsBytes(jpeg, flush: true);
@@ -59,6 +65,18 @@ class DocumentTextReader {
         bytesPerRow: frame.isBgra ? frame.bytesPerRow : frame.width,
       ),
     );
+  }
+}
+
+@visibleForTesting
+Future<void> deleteStalePhotos(Directory temp) async {
+  try {
+    await for (final entry in temp.list()) {
+      final name = entry.path.split(Platform.pathSeparator).last;
+      if (entry is Directory && name.startsWith(_photoDirPrefix)) await entry.delete(recursive: true);
+    }
+  } on FileSystemException catch (_) {
+    // Left for the next run.
   }
 }
 

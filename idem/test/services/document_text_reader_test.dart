@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui';
 
@@ -30,5 +31,20 @@ void main() {
   test('nv21FromLuma drops the row padding and adds neutral chroma', () {
     final luma = Uint8List.fromList([1, 2, 0, 3, 4, 0]);
     expect(nv21FromLuma(luma, width: 2, height: 2, bytesPerRow: 3), [1, 2, 3, 4, 128, 128]);
+  });
+
+  test('deleteStalePhotos deletes only the photo directories an earlier run left', () async {
+    final temp = await Directory.systemTemp.createTemp('text_reader_test');
+    addTearDown(() => temp.delete(recursive: true));
+    final stale = await Directory('${temp.path}/document_photoAbc').create();
+    await File('${stale.path}/photo.jpg').writeAsBytes([1]);
+    final other = await Directory('${temp.path}/other').create();
+    final file = await File('${temp.path}/document_photo.txt').create();
+
+    await deleteStalePhotos(temp);
+
+    expect(stale.existsSync(), isFalse);
+    expect(other.existsSync(), isTrue);
+    expect(file.existsSync(), isTrue);
   });
 }

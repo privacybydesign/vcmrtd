@@ -216,7 +216,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get docPhotoBackInstructions => 'Draai je document om en leg de achterkant binnen het kader.';
 
   @override
-  String get docPhotoBackInstructionsPassport => 'Leg nu de achterkant van de pagina met je foto binnen het kader.';
+  String get docPhotoBackPassport => 'Leg nu de achterkant van de pagina met je foto binnen het kader.';
 
   @override
   String get docPhotoSideFront => 'Voorkant';

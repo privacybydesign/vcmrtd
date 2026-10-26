@@ -13,6 +13,33 @@ const _smoothing = 5;
 const _zoneLeft = 0.02;
 const _zoneWidth = 0.96;
 
+/// Contrast is the grey levels' standard deviation: the lower, the harder
+/// CLAHE has to bring out the text.
+const _lowContrast = 20;
+const _mediumContrast = 35;
+const _lowContrastClipLimit = 10.0;
+const _mediumContrastClipLimit = 6.0;
+const _clipLimit = 3.0;
+const _claheTiles = (4, 4);
+
+/// The band is looked for below this share of the crop's height.
+const _bandSearchStart = 0.45;
+const _bandPad = 0.15;
+const _minZoneHeight = 0.08;
+const _maxZoneHeight = 0.45;
+
+/// The bounds a merged block of characters keeps to, to be the MRZ.
+const _maxBlockArea = 0.40;
+const _minBlockArea = 0.05;
+const _maxBlockHeight = 0.35;
+const _minBlockHeightPixels = 15;
+const _minBlockCenterY = 0.4;
+const _minBlockAspect = 2.5;
+const _minBlockWidth = 0.25;
+const _blockBorder = 0.05;
+const _blockPadX = 0.08;
+const _blockPadY = 0.20;
+
 /// The bottom of the crop, where the MRZ is when it can't be found.
 const MrzZone _fallbackZone = (left: _zoneLeft, top: 0.70, width: _zoneWidth, height: 0.28);
 
@@ -25,11 +52,11 @@ MrzZone detectMrzZone(cv.Mat gray) {
   final contrast = stddev.val1;
   cv.normalize(resized, resized, alpha: 0, beta: 255, normType: cv.NORM_MINMAX, dtype: cv.MatType.CV_8U);
   final clipLimit = switch (contrast) {
-    < 20 => 10.0,
-    < 35 => 6.0,
-    _ => 3.0,
+    < _lowContrast => _lowContrastClipLimit,
+    < _mediumContrast => _mediumContrastClipLimit,
+    _ => _clipLimit,
   };
-  final equalized = cv.CLAHE(clipLimit, (4, 4)).apply(resized);
+  final equalized = cv.CLAHE(clipLimit, _claheTiles).apply(resized);
   final blurred = cv.gaussianBlur(equalized, (3, 3), 0);
 
   // Dark text on a bright background, then the vertical edges of its letters.
@@ -55,7 +82,7 @@ MrzZone detectMrzZone(cv.Mat gray) {
 /// The densest band of rows in the bottom half, about an MRZ's height.
 MrzZone? _densestBand(cv.Mat thresh) {
   final h = thresh.rows;
-  final searchStart = (h * 0.45).toInt();
+  final searchStart = (h * _bandSearchStart).toInt();
   final bottom = thresh.rowRange(searchStart, h);
   final rowSums = cv.reduce(bottom, 1, cv.REDUCE_AVG, dtype: cv.MatType.CV_64F);
   final bh = bottom.rows;
@@ -91,11 +118,11 @@ MrzZone? _densestBand(cv.Mat thresh) {
   if (bestScore < _minBandDensity) return null;
 
   final (bandTop, bandBottom) = _expandBand(smoothed, bestStart, bestScore * _bandCutoff);
-  final pad = ((bandBottom - bandTop) * 0.15).toInt();
+  final pad = ((bandBottom - bandTop) * _bandPad).toInt();
   final top = math.max(0, bandTop + searchStart - pad);
   final bottomRow = math.min(h - 1, bandBottom + searchStart + pad);
   final height = (bottomRow - top) / h;
-  if (height < 0.08 || height > 0.45) return null;
+  if (height < _minZoneHeight || height > _maxZoneHeight) return null;
 
   return (left: _zoneLeft, top: top / h, width: _zoneWidth, height: height);
 }
@@ -136,7 +163,7 @@ MrzZone? _widestContour(cv.Mat thresh) {
   apply((src, k) => cv.morphologyEx(src, cv.MORPH_CLOSE, k), (1, 21));
   apply((src, k) => cv.dilate(src, k, iterations: 4), (31, 5));
 
-  final border = (w * 0.05).toInt();
+  final border = (w * _blockBorder).toInt();
   if (border > 0) {
     for (final side in [cv.Rect(0, 0, border, h), cv.Rect(w - border, 0, border, h)]) {
       blocks.region(side).setTo(cv.Scalar.all(0));
@@ -155,13 +182,14 @@ MrzZone? _widestContour(cv.Mat thresh) {
     final aspect = rect.width / rect.height;
     final areaShare = rect.width * rect.height / (w * h);
     final centerY = (rect.y + rect.height / 2) / h;
-    if (areaShare > 0.40 || rect.height / h > 0.35 || centerY < 0.4) continue;
-    if (!(aspect > 2.5 && rect.width / w > 0.25 && rect.height > 15 && areaShare > 0.05 && centerY > bestCenterY)) {
+    if (areaShare > _maxBlockArea || rect.height / h > _maxBlockHeight || centerY < _minBlockCenterY) continue;
+    final wideBlock = aspect > _minBlockAspect && rect.width / w > _minBlockWidth;
+    if (!(wideBlock && rect.height > _minBlockHeightPixels && areaShare > _minBlockArea && centerY > bestCenterY)) {
       continue;
     }
 
-    final padX = (rect.width * 0.08).toInt();
-    final padY = (rect.height * 0.20).toInt();
+    final padX = (rect.width * _blockPadX).toInt();
+    final padY = (rect.height * _blockPadY).toInt();
     final left = math.max(rect.x - padX, 0) / w;
     final top = math.max(rect.y - padY, 0) / h;
     final right = math.min(rect.x + rect.width + padX, w) / w;

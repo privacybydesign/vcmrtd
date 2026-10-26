@@ -100,7 +100,7 @@
   "docPhotoFrontInstructionsCard": "Place the front of your document, the side with your photo, inside the frame. Use a flat surface and good light, and avoid glare.",
   "docPhotoBackTitle": "Now photograph the back",
   "docPhotoBackInstructions": "Turn your document over and place the back inside the frame.",
-  "docPhotoBackInstructionsPassport": "Now place the back of the page with your photo inside the frame.",
+  "docPhotoBackPassport": "Now place the back of the page with your photo inside the frame.",
   "docPhotoSideFront": "Front",
   "docPhotoSideBack": "Back",
   "docPhotoSideProgress": "{side} · {current} of {total}",
