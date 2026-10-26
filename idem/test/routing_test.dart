@@ -33,6 +33,7 @@ import 'package:idem/widgets/pages/nfc_reading_screen.dart';
 import 'package:idem/widgets/pages/proofing_session_consent_screen.dart';
 import 'package:idem/widgets/pages/settings_screen.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
+import 'package:idem/providers/wallet_provider.dart';
 import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/services/proofing_session_watcher.dart';
 
@@ -213,8 +214,9 @@ ScannerWidgetBuilder _scannerBuilder() {
   };
 }
 
-Widget _routerApp(GoRouter router) {
+Widget _routerApp(GoRouter router, {List<WalletCard> saved = const []}) {
   return ProviderScope(
+    overrides: [walletProvider.overrideWith(() => _SeededWallet(saved))],
     child: MaterialApp.router(
       routerConfig: router,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -222,6 +224,25 @@ Widget _routerApp(GoRouter router) {
     ),
   );
 }
+
+class _SeededWallet extends WalletNotifier {
+  _SeededWallet(this.seed);
+  final List<WalletCard> seed;
+  @override
+  List<WalletCard> build() => seed;
+}
+
+WalletCard _savedPassport() => WalletCard(
+  id: 'saved',
+  documentType: DocumentType.passport,
+  holderName: 'Anna Maria Eriksson',
+  documentNumber: 'L898902C3',
+  photoImageData: _jpeg(),
+  photoImageType: ImageType.jpeg,
+  addedAt: DateTime(2026, 9, 12),
+  document: _passportData(),
+  rawData: _rawDocument(),
+);
 
 class _RouteExtensionHarness extends StatelessWidget {
   const _RouteExtensionHarness();
@@ -1397,7 +1418,7 @@ void main() {
         expiresAt: DateTime.now().add(const Duration(minutes: 10)),
       );
 
-      await tester.pumpWidget(_routerApp(router));
+      await tester.pumpWidget(_routerApp(router, saved: [_savedPassport()]));
       router.push('/proofing_consent', extra: {'ref': sessionRef, 'info': info});
       await tester.pump();
       await tester.pump();
@@ -1414,10 +1435,11 @@ void main() {
       expect(pinned, isNotNull);
       expect(pinned!.ref.token, 'tok');
       expect(pinned.info.relyingParty, 'acme-tenant');
+      expect(tester.widget<ChooseDocumentScreen>(find.byType(ChooseDocumentScreen)).savedDocuments, hasLength(1));
     });
 
     testWidgets('proofing consent route: Continue on a flow that only takes a document photo asks which '
-        'document first, and photographs the one picked', (tester) async {
+        'document first, offers no saved document, and photographs the one picked', (tester) async {
       final router = createRouter(scannerBuilder: _scannerBuilder(), documentPhotoCamera: _FakeDocumentPhotoCamera());
       addTearDown(router.dispose);
       final sessionRef = const ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok');
@@ -1430,7 +1452,7 @@ void main() {
         currentStep: stepDocumentPhoto,
       );
 
-      await tester.pumpWidget(_routerApp(router));
+      await tester.pumpWidget(_routerApp(router, saved: [_savedPassport()]));
       router.push('/proofing_consent', extra: {'ref': sessionRef, 'info': info});
       await tester.pump();
       await tester.pump();
@@ -1439,6 +1461,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(DocumentPhotoScreen), findsNothing);
+      expect(tester.widget<ChooseDocumentScreen>(find.byType(ChooseDocumentScreen)).savedDocuments, isEmpty);
       tester.widget<ChooseDocumentScreen>(find.byType(ChooseDocumentScreen)).onAddNew(DocumentType.passport);
       await tester.pump();
       await tester.pump();

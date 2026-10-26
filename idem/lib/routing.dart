@@ -1004,7 +1004,10 @@ GoRouter createRouter({
         builder: (context, state) => Consumer(
           builder: (context, ref, _) {
             final session = ref.watch(activeProofingSessionProvider);
-            final saved = ref.watch(walletProvider).where((c) => c.canBeReused).toList().reversed.toList();
+            // A saved document is shared as an nfc_read step, which a photo-only flow doesn't have.
+            final saved = _photoWithoutScan(session?.info.steps)
+                ? <WalletCard>[]
+                : ref.watch(walletProvider).where((c) => c.canBeReused).toList().reversed.toList();
             return ChooseDocumentScreen(
               relyingParty: session?.info.relyingParty ?? context.brand.name,
               savedDocuments: saved,
