@@ -1,15 +1,20 @@
-# Workflow to check whether changes to master fulfill all requirements.
+# Status checks, using the shared workflows from privacybydesign/github-workflows.
+# The gate job "Status checks passed" is the one check to require.
+#
+# There is no shared Flutter workflow, so the Flutter lint, tests, SonarQube
+# scan and the development-signed app builds stay local jobs here.
 name: Status checks
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]
   pull_request:
+  merge_group:
   schedule:
-    # Run every monday on 9:00 in the morning (UTC).
-    - cron: "0 9 * * 1"
-  # Make it possible to trigger the checks manually.
+    - cron: "17 6 * * 1" # Mondays 06:17 UTC
   workflow_dispatch:
+
+permissions: {}
 
 env:
   PROOFING_TRUSTED_SERVERS: ${{ vars.PROOFING_TRUSTED_SERVERS }}
@@ -17,12 +22,17 @@ env:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: ./idem
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - name: Setup build environment
         uses: ./.github/actions/setup-build-environment
       - run: bundle exec fastlane lint
@@ -30,9 +40,14 @@ jobs:
   unit-test:
     runs-on: ubuntu-latest
     needs: lint
+    timeout-minutes: 45
+    permissions:
+      contents: read
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - name: Setup build environment
         uses: ./.github/actions/setup-build-environment
       - name: Run vcmrtd tests with coverage
@@ -73,10 +88,15 @@ jobs:
     name: SonarQube
     runs-on: ubuntu-latest
     needs: lint
+    timeout-minutes: 45
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Setup build environment
         uses: ./.github/actions/setup-build-environment
       - name: Run vcmrtd tests with coverage
@@ -94,12 +114,14 @@ jobs:
       - name: Merge coverage reports
         run: |
           mkdir -p coverage
-          sed 's|SF:lib/|SF:vcmrtd/lib/|g' vcmrtd/coverage/lcov.info > coverage/lcov.info
-          sed 's|SF:lib/|SF:idem/lib/|g' idem/coverage/lcov.info >> coverage/lcov.info
-          sed 's|SF:lib/|SF:face_verification/lib/|g' face_verification/coverage/lcov.info >> coverage/lcov.info
-          sed 's|SF:lib/|SF:mrz_capture/lib/|g' mrz_capture/coverage/lcov.info >> coverage/lcov.info
+          {
+            sed 's|SF:lib/|SF:vcmrtd/lib/|g' vcmrtd/coverage/lcov.info
+            sed 's|SF:lib/|SF:idem/lib/|g' idem/coverage/lcov.info
+            sed 's|SF:lib/|SF:face_verification/lib/|g' face_verification/coverage/lcov.info
+            sed 's|SF:lib/|SF:mrz_capture/lib/|g' mrz_capture/coverage/lcov.info
+          } > coverage/lcov.info
       - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602 # v6
+        uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602 # v6.0.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
@@ -114,6 +136,9 @@ jobs:
   build-app-android:
     runs-on: ubuntu-latest
     needs: lint
+    timeout-minutes: 60
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: ./idem
@@ -123,8 +148,9 @@ jobs:
         type: [apk, appbundle]
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           submodules: true
       - name: Setup build environment
         uses: ./.github/actions/setup-build-environment
@@ -133,7 +159,7 @@ jobs:
           ANDROID_DEVELOPMENT_SIGNING_KEYSTORE: ${{ secrets.ANDROID_DEVELOPMENT_SIGNING_KEYSTORE }}
         run: |
           mkdir -p ./fastlane/profiles
-          echo $ANDROID_DEVELOPMENT_SIGNING_KEYSTORE | base64 --decode > ./fastlane/profiles/keystore.jks
+          echo "$ANDROID_DEVELOPMENT_SIGNING_KEYSTORE" | base64 --decode > ./fastlane/profiles/keystore.jks
       - name: Build
         run: >
           bundle exec fastlane android_build_${{ matrix.type }}
@@ -142,10 +168,11 @@ jobs:
           key_alias:idem-development
           keystore_password:${{ secrets.ANDROID_DEVELOPMENT_SIGNING_KEYSTORE_PASSWORD }}
           key_password:${{ secrets.ANDROID_DEVELOPMENT_SIGNING_KEYSTORE_PASSWORD }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: app-dev-android-${{ matrix.flavor }}-${{ matrix.type }}
           path: ./idem/fastlane/build/*
+
   # Catches iOS compile and signing breakage on every pull request, which
   # nothing did before: the iOS build only ever ran on master, if at all.
   # A development identity makes ios_build_app export with the development
@@ -153,13 +180,17 @@ jobs:
   build-app-ios:
     runs-on: macos-15 # MacOS version is pinned, because it determines which XCode version is used.
     needs: lint
+    timeout-minutes: 60
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: ./idem
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           submodules: true
       - name: Setup build environment
         uses: ./.github/actions/setup-build-environment
@@ -169,8 +200,8 @@ jobs:
           APPLE_DEVELOPMENT_PROVISIONING_PROFILE: ${{ secrets.APPLE_DEVELOPMENT_PROVISIONING_PROFILE }}
         run: |
           mkdir -p ./fastlane/profiles
-          echo $APPLE_DEVELOPMENT_CERTIFICATE | base64 --decode > ./fastlane/profiles/ios_development.p12
-          echo $APPLE_DEVELOPMENT_PROVISIONING_PROFILE | base64 --decode > ./fastlane/profiles/development.mobileprovision
+          echo "$APPLE_DEVELOPMENT_CERTIFICATE" | base64 --decode > ./fastlane/profiles/ios_development.p12
+          echo "$APPLE_DEVELOPMENT_PROVISIONING_PROFILE" | base64 --decode > ./fastlane/profiles/development.mobileprovision
       - name: Build
         run: >
           bundle exec fastlane ios_build_app
@@ -179,7 +210,44 @@ jobs:
           certificate_password:${{ secrets.APPLE_DEVELOPMENT_CERTIFICATE_PASSWORD }}
           provisioning_profile_path:profiles/development.mobileprovision
           code_signing_identity:"iPhone Developer"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: app-dev-ios
           path: ./idem/fastlane/build/*.ipa
+
+  # Docusaurus site published to GitHub Pages (privacybydesign.github.io/vcmrtd).
+  docs:
+    uses: privacybydesign/github-workflows/.github/workflows/node-checks.yml@v1
+    permissions:
+      contents: read
+    with:
+      working-directory: vcmrtd/docs
+      scripts: typecheck build
+      ignore-scripts: true
+
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    uses: privacybydesign/github-workflows/.github/workflows/dependency-review.yml@v1
+    permissions:
+      contents: read
+      pull-requests: write
+
+  workflow-lint:
+    uses: privacybydesign/github-workflows/.github/workflows/workflow-lint.yml@v1
+    permissions:
+      contents: read
+
+  passed:
+    name: Status checks passed
+    if: always()
+    needs: [lint, unit-test, sonarqube, build-app-android, build-app-ios, docs, dependency-review, workflow-lint]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: All required jobs succeeded
+        env:
+          RESULTS: ${{ toJSON(needs.*.result) }}
+        run: |
+          echo "$RESULTS"
+          if grep -qE '"(failure|cancelled)"' <<< "$RESULTS"; then exit 1; fi
