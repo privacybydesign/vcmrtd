@@ -248,12 +248,14 @@ class SideText {
     required this.vizDates,
     required this.printedDates,
     required this.mrz,
-    required this.barcode,
+    required MrzFields? barcode,
     required this.title,
     required this.licence,
-    required this.licenceCategories,
-    required this.licenceBackFields,
-  });
+    required int licenceCategories,
+    required int licenceBackFields,
+  }) : _barcode = barcode,
+       _licenceCategoryCount = licenceCategories,
+       _licenceBackFieldCount = licenceBackFields;
 
   /// [lines] of text, top to bottom, and the [barcodes] scanned off the same photo.
   factory SideText.read(List<String> lines, {List<String> barcodes = const []}) {
@@ -311,7 +313,7 @@ class SideText {
   final MrzFields? mrz;
 
   /// What a North American licence's barcode on this side says.
-  final MrzFields? barcode;
+  final MrzFields? _barcode;
 
   /// The kind of document the side's printed title names.
   final DocumentType? title;
@@ -320,25 +322,26 @@ class SideText {
   final LicenceFields? licence;
 
   /// How many of the categories a licence's back lists this side shows.
-  final int licenceCategories;
+  final int _licenceCategoryCount;
 
   /// How many of a licence back's numbered fields (9 to 14) this side shows.
-  final int licenceBackFields;
+  final int _licenceBackFieldCount;
 
-  bool get _licenceBack => licenceCategories >= _minLicenceCategories || licenceBackFields >= _minLicenceBackFields;
+  bool get _licenceBack =>
+      _licenceCategoryCount >= _minLicenceCategories || _licenceBackFieldCount >= _minLicenceBackFields;
 
   /// What this side has of the document that a machine reads.
-  List<MrzFields> get machineReadable => [?mrz, ?barcode];
+  List<MrzFields> get _machineReadable => [?mrz, ?_barcode];
 
-  Set<String> get numbers => {
+  Set<String> get _numbers => {
     ...vizNumbers,
-    for (final zone in machineReadable)
+    for (final zone in _machineReadable)
       if (zone.documentNumber case final number?) _matchKey(number),
   };
 
   Set<DateTime> get dates => {
     ...vizDates,
-    for (final zone in machineReadable) ...[?zone.dateOfBirth, ?zone.dateOfExpiry],
+    for (final zone in _machineReadable) ...[?zone.dateOfBirth, ?zone.dateOfExpiry],
   };
 
   bool get _licenceLayout => (licence?.labels ?? 0) >= _minLicenceFieldLabels || _licenceBack;
@@ -346,12 +349,12 @@ class SideText {
   /// The kind of document the side shows it is: by what a machine reads,
   /// else its title, else a licence's numbered fields or categories.
   DocumentType? get documentType =>
-      machineReadable.firstOrNull?.type ?? title ?? (_licenceLayout ? DocumentType.drivingLicence : null);
+      _machineReadable.firstOrNull?.type ?? title ?? (_licenceLayout ? DocumentType.drivingLicence : null);
 
   /// Whether this side shows what an identity document does: an MRZ or a
   /// licence's barcode, a document title, a licence's layout, or a date of
   /// birth and of expiry.
-  bool get looksLikeDocument => documentType != null || printedDates >= _minSharedDates || machineReadable.isNotEmpty;
+  bool get looksLikeDocument => documentType != null || printedDates >= _minSharedDates || _machineReadable.isNotEmpty;
 
   /// Whether this side's printed text agrees with its own MRZ - a passport's
   /// photo page shows both: the same number or dates, or neither date.
@@ -364,24 +367,24 @@ class SideText {
     final expiry = mrz.dateOfExpiry;
     if (birth == null || expiry == null) return SidesMatch.unknown;
     if (_shows(vizDates, birth) && _shows(vizDates, expiry)) return SidesMatch.same;
-    if (contradicts(birth, expiry)) return SidesMatch.different;
+    if (_contradicts(birth, expiry)) return SidesMatch.different;
     return SidesMatch.unknown;
   }
 
-  bool carries(String documentNumber) => numbers.contains(_matchKey(documentNumber));
+  bool carries(String documentNumber) => _numbers.contains(_matchKey(documentNumber));
 
   /// Whether this side prints a number that is part of a licence MRZ's
   /// [licenceData] (see [MrzFields]).
-  bool printsPartOf(String licenceData) {
+  bool _printsPartOf(String licenceData) {
     final data = _matchKey(licenceData);
     return vizNumbers.any(data.contains);
   }
 
-  bool carriesDates(DateTime? birth, DateTime? expiry) =>
+  bool _carriesDates(DateTime? birth, DateTime? expiry) =>
       birth != null && expiry != null && _shows(dates, birth) && _shows(dates, expiry);
 
   /// Whether this side prints dates, but neither of these.
-  bool contradicts(DateTime? birth, DateTime? expiry) =>
+  bool _contradicts(DateTime? birth, DateTime? expiry) =>
       birth != null &&
       expiry != null &&
       printedDates >= _minSharedDates &&
@@ -396,13 +399,13 @@ class SideText {
   String toString() => [
     'type=${documentType?.name ?? 'none'}',
     'mrz=${mrz == null ? 'no' : _zoneSummary(mrz!)}',
-    if (barcode != null) 'barcode=${_zoneSummary(barcode!)}',
+    if (_barcode != null) 'barcode=${_zoneSummary(_barcode)}',
     'title=${title?.name ?? 'no'}',
     if (licence != null) 'licenceFields=${licence!.labels}',
-    if (licenceCategories > 0) 'licenceCategories=$licenceCategories',
+    if (_licenceCategoryCount > 0) 'licenceCategories=$_licenceCategoryCount',
     'numbers=${vizNumbers.length}',
     'dates=$printedDates',
-    if (licenceBackFields > 0) 'licenceBackFields=$licenceBackFields',
+    if (_licenceBackFieldCount > 0) 'licenceBackFields=$_licenceBackFieldCount',
     if (mrz != null) 'printedMatchesMrz=${printedMatchesMrz.name}',
   ].join(' ');
 }
@@ -445,7 +448,7 @@ VizCheck checkSides(SideText? front, SideText? back, {KnownDocument? known}) {
   VizCheck result(SidesMatch match) => VizCheck(match: match, front: front, back: back);
   if (front == null || back == null) return result(SidesMatch.unknown);
 
-  final zones = [...front.machineReadable, ...back.machineReadable];
+  final zones = [...front._machineReadable, ...back._machineReadable];
   T? fromZones<T extends Object>(T? Function(MrzFields zone) field) => zones.map(field).nonNulls.firstOrNull;
   final number = known?.documentNumber ?? fromZones((zone) => zone.documentNumber);
   final birth = known?.dateOfBirth ?? fromZones((zone) => zone.dateOfBirth);
@@ -468,18 +471,18 @@ VizCheck checkSides(SideText? front, SideText? back, {KnownDocument? known}) {
   bool tied(SideText side) =>
       (number != null && side.carries(number)) ||
       (personalNumber != null && side.carries(personalNumber)) ||
-      licenceData.any(side.printsPartOf) ||
-      side.carriesDates(birth, expiry);
+      licenceData.any(side._printsPartOf) ||
+      side._carriesDates(birth, expiry);
   if (tied(front) && tied(back)) return result(SidesMatch.same);
   // Only the front: a back's dates are often others (issued, categories).
-  if (front.contradicts(birth, expiry)) return result(SidesMatch.different);
+  if (front._contradicts(birth, expiry)) return result(SidesMatch.different);
   return result(SidesMatch.unknown);
 }
 
 SidesMatch _matchWithoutReference(SideText front, SideText back) {
   // A licence MRZ on one side, its number printed on the other: the Dutch
   // licence's back and front.
-  bool printsOthersLicence(SideText side, SideText other) => [?other.mrz?.licenceData].any(side.printsPartOf);
+  bool printsOthersLicence(SideText side, SideText other) => [?other.mrz?.licenceData].any(side._printsPartOf);
   if (printsOthersLicence(front, back) || printsOthersLicence(back, front)) return SidesMatch.same;
 
   final licenceExpiry = front.licence?.dateOfExpiry;
