@@ -12,15 +12,20 @@ const _photoDirPrefix = 'document_photo';
 /// text are, and what a photo's say.
 class DocumentTextReader {
   /// Photos an earlier run left behind when it was killed mid-read, deleted
-  /// once before the first photo of this run is written.
+  /// once, from the app's start.
   static Future<void>? _staleSwept;
 
   TextRecognizer? _recognizer;
+  var _closed = false;
+
+  /// Deletes the photos an earlier run left behind; the first photo of this
+  /// run is written once they're gone.
+  static Future<void> sweepStalePhotos() => _staleSwept ??= deleteStalePhotos(Directory.systemTemp);
 
   /// The lines of text in the frame, in fractions of the upright frame;
   /// [rotation] turns the frame upright (clockwise degrees).
   Future<List<Rect>> lines(LumaFrame frame, {required int rotation}) async {
-    final text = await (_recognizer ??= TextRecognizer()).processImage(_input(frame, rotation));
+    final text = await _openRecognizer.processImage(_input(frame, rotation));
     final boxes = [
       for (final block in text.blocks)
         for (final line in block.lines) line.boundingBox,
@@ -32,12 +37,12 @@ class DocumentTextReader {
   /// The lines of text on a photo the step took (a JPEG), block by block.
   Future<List<String>> photoText(Uint8List jpeg) async {
     // ML Kit reads an encoded image only from a file.
-    await (_staleSwept ??= deleteStalePhotos(Directory.systemTemp));
+    await sweepStalePhotos();
     final dir = await Directory.systemTemp.createTemp(_photoDirPrefix);
     try {
       final file = File('${dir.path}/photo.jpg');
       await file.writeAsBytes(jpeg, flush: true);
-      final text = await (_recognizer ??= TextRecognizer()).processImage(InputImage.fromFilePath(file.path));
+      final text = await _openRecognizer.processImage(InputImage.fromFilePath(file.path));
       return [
         for (final block in text.blocks)
           for (final line in block.lines) line.text,
@@ -48,9 +53,17 @@ class DocumentTextReader {
   }
 
   Future<void> close() async {
+    _closed = true;
     final recognizer = _recognizer;
     _recognizer = null;
     await recognizer?.close();
+  }
+
+  /// ML Kit makes a recognizer for an image processed after [close], one
+  /// nothing closes: a read still waiting on the file then fails instead.
+  TextRecognizer get _openRecognizer {
+    if (_closed) throw StateError('the text reader is closed');
+    return _recognizer ??= TextRecognizer();
   }
 
   static InputImage _input(LumaFrame frame, int rotation) {

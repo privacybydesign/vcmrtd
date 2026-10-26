@@ -277,6 +277,7 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
       frame,
       rotation: rotation,
       region: region,
+      text: _lines ?? const [],
       portraitLookup: lookForPortrait ? PortraitLookup.find : PortraitLookup.skip,
     );
     unawaited(
@@ -431,6 +432,12 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
     final previous = _closing;
     return _closing = () async {
       await previous;
+      // Disposing the camera doesn't stop its preview frames: their subscription would outlive it.
+      try {
+        if (controller != null && controller.value.isStreamingImages) await controller.stopImageStream();
+      } catch (e) {
+        _cameraLog.warning('the preview frames did not stop: $e');
+      }
       try {
         await controller?.dispose();
         await textReader?.close();
@@ -461,16 +468,21 @@ class DocumentPhotoNoCameraException implements Exception {
 
 enum _PhotoState { opening, preview, capturing, review, error }
 
-/// After this the photo can be taken whatever the checks say.
-const documentPhotoQualityWaiveDelay = Duration(seconds: 5);
+/// The preview shows at least this long before the photo is taken by itself,
+/// so the document can still be set right after the camera opens.
+const documentPhotoMinPreview = Duration(seconds: 1);
+
+/// After this the photo can be taken whatever the checks say, so the session
+/// never gets stuck; its review then asks for a retake first.
+const documentPhotoQualityWaiveDelay = Duration(seconds: 20);
 
 /// Which side of the document is being photographed.
 enum DocumentPhotoSide { front, back }
 
 /// The document_photo step: the user photographs the front of their
 /// document and its back (a passport's photo page and the back of that
-/// page), each inside a document-shaped guide, checking every
-/// photo and either retaking or using it. A side the MRZ scan already
+/// page), each inside a document-shaped guide, taken by itself once the checks
+/// on the preview are clear, then retaken or used. A side the MRZ scan already
 /// photographed ([scanned]) comes first, straight to its review: the user
 /// always sees what is sent. [onPhotosTaken] gets both prepared JPEGs and
 /// sends them; while it runs the last photo stays on screen, so a send the
@@ -535,8 +547,16 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
   /// The photos whose preview showed the MRZ ([DocumentPhotoCamera.mrzShown]).
   final _mrzPreviewed = Set<Uint8List>.identity();
 
+  /// The photos taken anyway, the checks not clear: what they still saw, when
+  /// they agreed on it. Their review asks for a retake first.
+  final _takenAnyway = Map<Uint8List, DocumentPhotoIssue?>.identity();
+
   var _qualityWaived = false;
   Timer? _waiveTimer;
+
+  /// Whether the preview has shown for [documentPhotoMinPreview].
+  var _previewSettled = false;
+  Timer? _settleTimer;
 
   bool get _isPassport => widget.documentType == DocumentType.passport;
 
@@ -600,21 +620,28 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _waiveTimer?.cancel();
+    _settleTimer?.cancel();
     unawaited(_camera.dispose());
     unawaited(_photoTextReader?.close());
     super.dispose();
   }
 
+  /// Whether the camera was released in the background: only then is it reopened on return.
+  var _releasedInBackground = false;
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // The camera is released in the background and reopened on return, but
     // only while it's actually in use - not on the review. Not on inactive:
-    // the camera permission prompt alone makes the app inactive.
+    // the camera permission prompt, the control center or the notification
+    // shade alone make the app inactive, and the preview keeps running.
     if (_state != _PhotoState.preview && _state != _PhotoState.opening) return;
     if (state == AppLifecycleState.paused) {
+      _releasedInBackground = true;
       unawaited(_camera.close());
       setState(() => _state = _PhotoState.opening);
-    } else if (state == AppLifecycleState.resumed) {
+    } else if (state == AppLifecycleState.resumed && _releasedInBackground) {
+      _releasedInBackground = false;
       unawaited(_openCamera());
     }
   }
@@ -625,11 +652,13 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
   Future<void> _openCamera() async {
     final attempt = ++_openAttempt;
     _waiveTimer?.cancel();
+    _settleTimer?.cancel();
     _quality.reset();
     setState(() {
       _state = _PhotoState.opening;
       _error = null;
       _qualityWaived = false;
+      _previewSettled = false;
     });
     // Back, or a later open, overtook this one while the camera opened.
     bool overtaken() => attempt != _openAttempt || _state != _PhotoState.opening;
@@ -642,6 +671,11 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
       setState(() => _state = _PhotoState.preview);
       _waiveTimer = Timer(documentPhotoQualityWaiveDelay, () {
         if (mounted) setState(() => _qualityWaived = true);
+      });
+      _settleTimer = Timer(documentPhotoMinPreview, () {
+        if (!mounted) return;
+        setState(() => _previewSettled = true);
+        _captureWhenClear();
       });
 
       unawaited(
@@ -664,11 +698,20 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
   void _onFrameChecked(Set<DocumentPhotoIssue> issues) {
     if (!mounted || (_state != _PhotoState.opening && _state != _PhotoState.preview)) return;
     if (_quality.update(issues)) setState(() {});
+    _captureWhenClear();
+  }
+
+  /// Takes the photo once every check is clear: no tap that shakes the phone.
+  void _captureWhenClear() {
+    if (_state == _PhotoState.preview && _previewSettled && _quality.clear) unawaited(_capture());
   }
 
   Future<void> _capture() async {
     final index = _index;
+    final takenAnyway = !_quality.clear;
+    final openIssue = _quality.issue;
     _waiveTimer?.cancel();
+    _settleTimer?.cancel();
     setState(() => _state = _PhotoState.capturing);
     // Only the side it was taken for gets the picture.
     bool overtaken() => _index != index || _state != _PhotoState.capturing;
@@ -691,6 +734,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
       if (!mounted || !identical(_shot, shot)) return;
       final photo = prepared.first! as Uint8List;
       if (mrzShown) _mrzPreviewed.add(photo);
+      if (takenAnyway) _takenAnyway[photo] = openIssue;
       setState(() {
         _photo = photo;
         _shot = null;
@@ -728,6 +772,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
   void _retake() {
     _sideMrz.remove(_photo);
     _mrzPreviewed.remove(_photo);
+    _takenAnyway.remove(_photo);
     setState(() => _photo = null);
     unawaited(_openCamera());
   }
@@ -857,7 +902,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
     DocumentPhotoIssue.unreadable => l10n.docPhotoHintUnreadable,
   };
 
-  Widget _buildHint(BuildContext context, DocumentPhotoIssue issue) {
+  Widget _buildHint(BuildContext context, String hint) {
     final g = context.guided;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -871,10 +916,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
             Expanded(
               child: Semantics(
                 liveRegion: true,
-                child: Text(
-                  _qualityHint(context.l10n, issue),
-                  style: TextStyle(fontSize: 14, height: 1.4, color: g.bodyText),
-                ),
+                child: Text(hint, style: TextStyle(fontSize: 14, height: 1.4, color: g.bodyText)),
               ),
             ),
           ],
@@ -885,21 +927,21 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
 
   Widget _buildCameraActions(BuildContext context) {
     final l10n = context.l10n;
-    final ready = _state == _PhotoState.preview && (_quality.clear || _qualityWaived);
     final style = context.guided.primaryButtonStyle.copyWith(
       minimumSize: const WidgetStatePropertyAll(Size.fromHeight(52)),
     );
     if (_state == _PhotoState.error) {
       return ElevatedButton(style: style, onPressed: _openCamera, child: Text(l10n.faceTryAgain));
     }
+    // The photo is taken by itself once the checks are clear: this is the way
+    // out when they haven't been for a while.
+    if (_state != _PhotoState.preview || !_qualityWaived || _quality.clear) return const SizedBox.shrink();
 
     return ElevatedButton.icon(
       style: style,
-      onPressed: ready && !_sending ? _capture : null,
-      icon: _state == _PhotoState.capturing
-          ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
-          : const Icon(Icons.camera_alt),
-      label: Text(l10n.docPhotoTake),
+      onPressed: _capture,
+      icon: const Icon(Icons.camera_alt),
+      label: Text(l10n.docPhotoTakeAnyway),
     );
   }
 
@@ -910,6 +952,8 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
     final g = context.guided;
     final front = _side == DocumentPhotoSide.front;
     final issue = _state == _PhotoState.preview ? _quality.issue : null;
+    // The photo is about to be taken, or being taken.
+    final holdStill = _state == _PhotoState.capturing || (_state == _PhotoState.preview && _quality.clear);
     final error = _error;
     return GuidedSheet(
       label: Text(
@@ -926,7 +970,10 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
       footer: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (issue != null) _buildHint(context, issue),
+          if (issue != null)
+            _buildHint(context, _qualityHint(l10n, issue))
+          else if (holdStill)
+            _buildHint(context, l10n.docPhotoHoldStill),
           if (error != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
@@ -974,8 +1021,12 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
     );
   }
 
+  /// Whether the photo on review was taken anyway, the checks not clear.
+  bool get _reviewingTakenAnyway => _photo != null && _takenAnyway.containsKey(_photo);
+
   Widget _buildReview(BuildContext context) {
     final l10n = context.l10n;
+    final openIssue = _reviewingTakenAnyway ? _takenAnyway[_photo] : null;
     return SafeArea(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -984,8 +1035,17 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
           _buildHeader(
             context,
             title: l10n.docPhotoReviewTitle,
-            message: _reviewingScanned ? l10n.docPhotoReviewScannedMessage : l10n.docPhotoReviewMessage,
+            message: _reviewingTakenAnyway
+                ? l10n.docPhotoReviewAnywayMessage
+                : _reviewingScanned
+                ? l10n.docPhotoReviewScannedMessage
+                : l10n.docPhotoReviewMessage,
           ),
+          if (openIssue != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+              child: _buildHint(context, _qualityHint(l10n, openIssue)),
+            ),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(20),
@@ -1019,32 +1079,33 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
     );
   }
 
-  /// Retake and use: only once the photo that is sent is ready.
+  /// Retake and use: only once the photo that is sent is ready. A photo
+  /// taken anyway leads with retake, one the checks passed with use.
   List<Widget> _buildReviewActions(BuildContext context) {
     final l10n = context.l10n;
+    Widget primary(String label, VoidCallback? onPressed) =>
+        ElevatedButton(style: context.guided.heroButtonStyle, onPressed: onPressed, child: Text(label));
+    Widget secondary(String label, VoidCallback? onPressed) => OutlinedButton(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Colors.white,
+        side: const BorderSide(color: Colors.white, width: 2),
+      ),
+      onPressed: onPressed,
+      child: Text(label),
+    );
+    final retake = _sending ? null : _retake;
+    final use = _sending ? null : _usePhoto;
+    final retakeFirst = _reviewingTakenAnyway;
     return [
       Padding(
         padding: guidedBottomButtonPadding,
         child: Row(
           children: [
             Expanded(
-              child: OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: const BorderSide(color: Colors.white, width: 2),
-                ),
-                onPressed: _sending ? null : _retake,
-                child: Text(l10n.docPhotoRetake),
-              ),
+              child: retakeFirst ? primary(l10n.docPhotoRetake, retake) : secondary(l10n.docPhotoRetake, retake),
             ),
             const SizedBox(width: 16),
-            Expanded(
-              child: ElevatedButton(
-                style: context.guided.heroButtonStyle,
-                onPressed: _sending ? null : _usePhoto,
-                child: Text(l10n.docPhotoUse),
-              ),
-            ),
+            Expanded(child: retakeFirst ? secondary(l10n.docPhotoUse, use) : primary(l10n.docPhotoUse, use)),
           ],
         ),
       ),

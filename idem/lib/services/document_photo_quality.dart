@@ -74,6 +74,9 @@ const _glareRows = 10;
 /// reflection 21% to 57%.
 const _glareTileShare = 0.05;
 
+/// Over a line of text, glare is anything past a speck: it can hide a character.
+const _glareTextShare = 0.01;
+
 /// For reflections that don't clip (iPhones keep highlights).
 const _nearClippedBrightness = 240;
 const _reflectionContrast = 15;
@@ -229,20 +232,37 @@ Int32List _tapPositions(int count, int taps, double origin, double step, int siz
 }
 
 @visibleForTesting
-Set<DocumentPhotoIssue> checkFrame(LumaFrame frame, {required int rotation, required Rect region}) =>
-    inspectFrame(frame, rotation: rotation, region: region).issues;
+Set<DocumentPhotoIssue> checkFrame(
+  LumaFrame frame, {
+  required int rotation,
+  required Rect region,
+  List<Rect> text = const [],
+}) => inspectFrame(frame, rotation: rotation, region: region, text: text).issues;
 
 /// [checkFrame], and the document found, for the portrait to be looked for on.
+/// [text] is where lines of text were read, in fractions of the upright frame
+/// like [region]: glare only counts over them.
 @visibleForTesting
-FrameInspection inspectFrame(LumaFrame frame, {required int rotation, required Rect region}) {
-  final (sample, inSample) = _sampleFrame(frame, rotation: rotation, region: region);
+FrameInspection inspectFrame(
+  LumaFrame frame, {
+  required int rotation,
+  required Rect region,
+  List<Rect> text = const [],
+}) {
+  final (sample, toSample) = _sampleFrame(frame, rotation: rotation, region: region);
+  final inSample = toSample(region);
   final outline = _findDocument(sample, inSample);
-  return (issues: _issues(sample, inSample, outline), document: outline == null ? null : sample.crop(outline.area));
+  return (
+    issues: _issues(sample, inSample, outline, text: [for (final line in text) toSample(line)]),
+    document: outline == null ? null : sample.crop(outline.area),
+  );
 }
 
 typedef FrameInspection = ({Set<DocumentPhotoIssue> issues, DocumentSample? document});
 
-(DocumentSample, Rect) _sampleFrame(LumaFrame frame, {required int rotation, required Rect region}) {
+/// The sample of [region] and a margin around it, and what turns a rect in
+/// fractions of the upright frame into the sample's pixels.
+(DocumentSample, Rect Function(Rect)) _sampleFrame(LumaFrame frame, {required int rotation, required Rect region}) {
   const margin = _edgeSearchFar;
   final sampled = Rect.fromLTRB(
     (region.left - region.width * margin).clamp(0.0, 1.0),
@@ -255,26 +275,32 @@ typedef FrameInspection = ({Set<DocumentPhotoIssue> issues, DocumentSample? docu
   final scaleY = sample.height / sampled.height;
   return (
     sample,
-    Rect.fromLTRB(
-      (region.left - sampled.left) * scaleX,
-      (region.top - sampled.top) * scaleY,
-      (region.right - sampled.left) * scaleX,
-      (region.bottom - sampled.top) * scaleY,
+    (rect) => Rect.fromLTRB(
+      (rect.left - sampled.left) * scaleX,
+      (rect.top - sampled.top) * scaleY,
+      (rect.right - sampled.left) * scaleX,
+      (rect.bottom - sampled.top) * scaleY,
     ),
   );
 }
 
 @visibleForTesting
-Set<DocumentPhotoIssue> documentPhotoIssues(DocumentSample sample, {required Rect frame}) =>
-    _issues(sample, frame, _findDocument(sample, frame));
+Set<DocumentPhotoIssue> documentPhotoIssues(DocumentSample sample, {required Rect frame, List<Rect> text = const []}) =>
+    _issues(sample, frame, _findDocument(sample, frame), text: text);
 
-Set<DocumentPhotoIssue> _issues(DocumentSample sample, Rect frame, _DocumentOutline? outline) {
+/// [text]: the lines of text read, in [sample]'s pixels.
+Set<DocumentPhotoIssue> _issues(
+  DocumentSample sample,
+  Rect frame,
+  _DocumentOutline? outline, {
+  List<Rect> text = const [],
+}) {
   if (outline == null) {
     final inFrame = _tileHistograms(
       sample.crop(frame.deflateBy(frame.width * _documentInset, frame.height * _documentInset)),
     );
     if (_hasGlare(inFrame)) return {DocumentPhotoIssue.noDocument, DocumentPhotoIssue.glare};
-    if (_hasReflection(inFrame)) return {DocumentPhotoIssue.noDocument, DocumentPhotoIssue.reflection};
+    if (_hasReflection(inFrame, inFrame)) return {DocumentPhotoIssue.noDocument, DocumentPhotoIssue.reflection};
     // The whole sample, not only the frame: a dark room, not a dark document.
     return {
       _paperBrightness([_histogram(sample)]) < _tooDarkPaperBrightness
@@ -285,12 +311,14 @@ Set<DocumentPhotoIssue> _issues(DocumentSample sample, Rect frame, _DocumentOutl
 
   final area = outline.area;
   final document = sample.crop(area.deflateBy(area.width * _documentInset, area.height * _documentInset));
-  // One pass over the document's pixels for the darkness, glare and reflection checks.
+  // One pass over the document's pixels for its paper: dark, or lit brightly all over.
   final tiles = _tileHistograms(document);
   if (_paperBrightness(tiles) < _tooDarkPaperBrightness) return {DocumentPhotoIssue.tooDark};
+  // Glare matters where it can hide text: a security feature's glints elsewhere don't.
+  final lines = _textHistograms(sample, text, area);
   return {
-    if (_hasGlare(tiles)) DocumentPhotoIssue.glare,
-    if (_hasReflection(tiles)) DocumentPhotoIssue.reflection,
+    if (_hasGlare(lines, share: _glareTextShare)) DocumentPhotoIssue.glare,
+    if (_hasReflection(tiles, lines, share: _glareTextShare)) DocumentPhotoIssue.reflection,
     if (outline.tilted) DocumentPhotoIssue.tilted,
     if (_sharpness(document) < _minSharpness) DocumentPhotoIssue.blurry,
   };
@@ -746,11 +774,12 @@ class DocumentFrameChecker {
   }
 
   /// [PortraitLookup.find] for the side with the photo, which needs its
-  /// portrait; only while [portraitFree].
+  /// portrait; only while [portraitFree]. [text]: as for [inspectFrame].
   FrameCheck check(
     LumaFrame frame, {
     required int rotation,
     required Rect region,
+    List<Rect> text = const [],
     PortraitLookup portraitLookup = PortraitLookup.skip,
   }) {
     final portrait = portraitLookup == PortraitLookup.find;
@@ -769,6 +798,7 @@ class DocumentFrameChecker {
       bgra: frame.isBgra,
       rotation: rotation,
       region: (region.left, region.top, region.right, region.bottom),
+      text: [for (final line in text) (line.left, line.top, line.right, line.bottom)],
       portrait: portrait,
     ));
 
@@ -812,6 +842,7 @@ class DocumentFrameChecker {
               _frameOf(r),
               rotation: r.rotation,
               region: Rect.fromLTRB(r.region.$1, r.region.$2, r.region.$3, r.region.$4),
+              text: [for (final line in r.text) Rect.fromLTRB(line.$1, line.$2, line.$3, line.$4)],
             );
             document = inspection.document;
             replies.send(inspection.issues);
@@ -875,6 +906,7 @@ typedef _FrameRequest = ({
   bool bgra,
   int rotation,
   (double, double, double, double) region,
+  List<(double, double, double, double)> text,
   bool portrait,
 });
 
@@ -932,22 +964,35 @@ int _percentile(List<int> histogram, double share) {
   return _brightnessLevels - 1;
 }
 
-bool _glaring(List<int> histogram, [int brightness = _clippedBrightness]) {
+/// A histogram of each line of [text] where it lies on the document [area].
+List<List<int>> _textHistograms(DocumentSample sample, List<Rect> text, Rect area) => [
+  for (final line in text)
+    if (line.intersect(area) case final onDocument when onDocument.width >= 1 && onDocument.height >= 1)
+      _histogram(sample.crop(onDocument)),
+];
+
+bool _glaring(List<int> histogram, {int brightness = _clippedBrightness, double share = _glareTileShare}) {
   var bright = 0;
   for (var b = brightness; b < _brightnessLevels; b++) {
     bright += histogram[b];
   }
 
-  return bright / histogram.reduce((a, b) => a + b) > _glareTileShare;
+  return bright / histogram.reduce((a, b) => a + b) > share;
 }
 
-bool _hasGlare(List<List<int>> histograms) => histograms.any(_glaring);
+bool _hasGlare(List<List<int>> histograms, {double share = _glareTileShare}) =>
+    histograms.any((histogram) => _glaring(histogram, share: share));
 
-bool _hasReflection(List<List<int>> histograms) {
-  if (histograms.isEmpty) return false;
-  final papers = [for (final histogram in histograms) _percentile(histogram, _paperPercentile)]..sort();
+/// A reflection that doesn't clip in one of [where], unless the [paper] is
+/// near white all over: then the document is lit brightly, not reflecting.
+bool _hasReflection(List<List<int>> paper, List<List<int>> where, {double share = _glareTileShare}) {
+  if (paper.isEmpty) return false;
+  final papers = [for (final histogram in paper) _percentile(histogram, _paperPercentile)]..sort();
   if (papers[papers.length ~/ 2] > _nearClippedBrightness - _reflectionContrast) return false;
-  return histograms.any((histogram) => !_glaring(histogram) && _glaring(histogram, _nearClippedBrightness));
+  return where.any(
+    (histogram) =>
+        !_glaring(histogram, share: share) && _glaring(histogram, brightness: _nearClippedBrightness, share: share),
+  );
 }
 
 /// Laplacian variance over the sharpest quarter of tiles. Pixels next to

@@ -56,7 +56,6 @@ dependencies:
   flutter_face_core_basic: ^8.2.461
   google_mlkit_barcode_scanning: ^0.16.1
   google_mlkit_text_recognition: ^0.17.1
-  opencv_dart: ^2.2.2
 
 dev_dependencies:
   flutter_lints: ^6.0.0
@@ -158,7 +157,7 @@ flutter:
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
 
-# opencv_dart compiles OpenCV from source in its build hook (CMake needed);
+# mrz_capture's opencv_dart compiles OpenCV from source in its build hook (CMake needed);
 # only imgproc is used, so the rest is left out of the app.
 hooks:
   user_defines:

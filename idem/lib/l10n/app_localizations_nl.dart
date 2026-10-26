@@ -230,7 +230,7 @@ class AppLocalizationsNl extends AppLocalizations {
   }
 
   @override
-  String get docPhotoTake => 'Foto maken';
+  String get docPhotoTakeAnyway => 'Toch foto maken';
 
   @override
   String get docPhotoShowTips => 'Tips tonen';
@@ -260,11 +260,18 @@ class AppLocalizationsNl extends AppLocalizations {
   String get docPhotoHintBlurry => 'Nog niet scherp. Houd je telefoon stil.';
 
   @override
+  String get docPhotoHoldStill => 'Even stilhouden…';
+
+  @override
   String get docPhotoReviewTitle => 'Controleer de foto';
 
   @override
   String get docPhotoReviewMessage =>
       'Zijn alle gegevens scherp en leesbaar, zonder schittering en zonder dat er iets voor zit?';
+
+  @override
+  String get docPhotoReviewAnywayMessage =>
+      'Deze foto kwam niet door de controle. Maak hem opnieuw, of gebruik hem als alle gegevens scherp en leesbaar zijn.';
 
   @override
   String get docPhotoReviewScannedMessage =>

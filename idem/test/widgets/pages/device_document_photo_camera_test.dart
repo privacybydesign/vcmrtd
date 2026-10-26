@@ -97,12 +97,13 @@ void main() {
     onFrameChecked: (_) {},
   );
 
-  testWidgets('opening streams the preview frames; closing releases the camera', (tester) async {
+  testWidgets('opening streams the preview frames; closing stops them and releases the camera', (tester) async {
     await tester.runAsync(open);
     expect(platform.created, 1);
     expect(platform.streaming, isTrue);
 
     await tester.runAsync(camera.close);
+    expect(platform.streaming, isFalse);
     expect(platform.disposed, [1]);
   });
 

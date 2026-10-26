@@ -230,7 +230,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get docPhotoTake => 'Take photo';
+  String get docPhotoTakeAnyway => 'Take photo anyway';
 
   @override
   String get docPhotoShowTips => 'Show tips';
@@ -260,10 +260,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get docPhotoHintBlurry => 'Not sharp yet. Hold your phone still.';
 
   @override
+  String get docPhotoHoldStill => 'Hold still…';
+
+  @override
   String get docPhotoReviewTitle => 'Check the photo';
 
   @override
   String get docPhotoReviewMessage => 'Are all details sharp and readable, without glare or anything covering them?';
+
+  @override
+  String get docPhotoReviewAnywayMessage =>
+      'This photo didn\'t pass the checks. Retake it, or use it if all details are sharp and readable.';
 
   @override
   String get docPhotoReviewScannedMessage =>

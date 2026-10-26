@@ -2,10 +2,13 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui';
 
+import 'package:flutter/services.dart' show MethodChannel;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:idem/services/document_text_reader.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('fractionsOfUpright', () {
     test('divides by the frame as it is when it needs no quarter turn', () {
       final fractions = fractionsOfUpright(
@@ -46,5 +49,23 @@ void main() {
     expect(stale.existsSync(), isFalse);
     expect(other.existsSync(), isTrue);
     expect(file.existsSync(), isTrue);
+  });
+
+  test('a photo still being written when the reader closes is not read', () async {
+    const mlKit = MethodChannel('google_mlkit_text_recognizer');
+    final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    final calls = <String>[];
+    messenger.setMockMethodCallHandler(mlKit, (call) async {
+      calls.add(call.method);
+      return null;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(mlKit, null));
+    final reader = DocumentTextReader();
+
+    final read = reader.photoText(Uint8List.fromList([1]));
+    await reader.close();
+
+    await expectLater(read, throwsStateError);
+    expect(calls, isEmpty, reason: 'ML Kit would make a recognizer nothing closes');
   });
 }

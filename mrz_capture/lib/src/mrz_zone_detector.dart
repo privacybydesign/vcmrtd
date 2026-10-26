@@ -40,6 +40,10 @@ const _blockBorder = 0.05;
 const _blockPadX = 0.08;
 const _blockPadY = 0.20;
 
+/// OpenCV's own default, which dartcv4 doesn't use: the image's border takes
+/// no part in erosion or dilation.
+final _neutralBorder = cv.morphologyDefaultBorderValue();
+
 /// The bottom of the crop, where the MRZ is when it can't be found.
 const MrzZone _fallbackZone = (left: _zoneLeft, top: 0.70, width: _zoneWidth, height: 0.28);
 
@@ -61,11 +65,11 @@ MrzZone detectMrzZone(cv.Mat gray) {
 
   // Dark text on a bright background, then the vertical edges of its letters.
   final kernel = cv.getStructuringElement(cv.MORPH_RECT, (15, 7));
-  final blackhat = cv.morphologyEx(blurred, cv.MORPH_BLACKHAT, kernel);
+  final blackhat = cv.morphologyEx(blurred, cv.MORPH_BLACKHAT, kernel, borderValue: _neutralBorder);
   final gradient = cv.sobel(blackhat, cv.MatType.CV_32F, 1, 0, ksize: -1);
   final edges = cv.convertScaleAbs(gradient);
   cv.normalize(edges, edges, alpha: 0, beta: 255, normType: cv.NORM_MINMAX, dtype: cv.MatType.CV_8U);
-  final lines = cv.morphologyEx(edges, cv.MORPH_CLOSE, kernel);
+  final lines = cv.morphologyEx(edges, cv.MORPH_CLOSE, kernel, borderValue: _neutralBorder);
   final (_, thresh) = cv.threshold(lines, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU);
 
   for (final mat in [resized, equalized, blurred, kernel, blackhat, gradient, edges, lines]) {
@@ -156,12 +160,12 @@ MrzZone? _widestContour(cv.Mat thresh) {
     blocks = next;
   }
 
-  apply((src, k) => cv.morphologyEx(src, cv.MORPH_CLOSE, k), (9, 9));
-  apply((src, k) => cv.erode(src, k, iterations: 2), (1, 15));
-  apply((src, k) => cv.erode(src, k), (5, 1));
-  apply((src, k) => cv.morphologyEx(src, cv.MORPH_CLOSE, k), (31, 1));
-  apply((src, k) => cv.morphologyEx(src, cv.MORPH_CLOSE, k), (1, 21));
-  apply((src, k) => cv.dilate(src, k, iterations: 4), (31, 5));
+  apply((src, k) => cv.morphologyEx(src, cv.MORPH_CLOSE, k, borderValue: _neutralBorder), (9, 9));
+  apply((src, k) => cv.erode(src, k, iterations: 2, borderValue: _neutralBorder), (1, 15));
+  apply((src, k) => cv.erode(src, k, borderValue: _neutralBorder), (5, 1));
+  apply((src, k) => cv.morphologyEx(src, cv.MORPH_CLOSE, k, borderValue: _neutralBorder), (31, 1));
+  apply((src, k) => cv.morphologyEx(src, cv.MORPH_CLOSE, k, borderValue: _neutralBorder), (1, 21));
+  apply((src, k) => cv.dilate(src, k, iterations: 4, borderValue: _neutralBorder), (31, 5));
 
   final border = (w * _blockBorder).toInt();
   if (border > 0) {

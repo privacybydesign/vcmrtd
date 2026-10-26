@@ -136,8 +136,9 @@ Uint8List _scannedPhoto() => Uint8List.fromList(img.encodeJpg(img.Image(width: 2
 DocumentPicture _whole(Uint8List jpeg, double aspectRatio) =>
     DocumentPicture(jpeg: jpeg, frame: const Rect.fromLTRB(0, 0, 1, 1), previewAspectRatio: aspectRatio);
 
+/// Lets the preview show long enough for the photo, its checks clear, to be taken by itself.
 Future<void> _takeAndReview(WidgetTester tester) async {
-  await tester.tap(find.text('Take photo'));
+  await tester.pump(documentPhotoMinPreview);
   await tester.pump();
   await tester.pump();
 }
@@ -147,12 +148,6 @@ Future<void> _usePhoto(WidgetTester tester) async {
   await tester.pump();
   await tester.pump();
 }
-
-bool _takePhotoEnabled(WidgetTester tester) => tester
-    .widget<ElevatedButton>(
-      find.ancestor(of: find.text('Take photo'), matching: find.byWidgetPredicate((w) => w is ElevatedButton)),
-    )
-    .enabled;
 
 double _frameRatio(WidgetTester tester) {
   final paint = tester.widget<CustomPaint>(
@@ -271,7 +266,7 @@ void main() {
     expect(camera.disposes, 1);
   });
 
-  testWidgets('no text lies over the frame, on small phones too, in either language, with or without a hint', (
+  testWidgets('no text lies over the frame, on small phones too, in either language, with a hint and the way out', (
     tester,
   ) async {
     addTearDown(tester.view.reset);
@@ -320,6 +315,8 @@ void main() {
               ),
             );
             await tester.pump();
+            // An issue that stays: its hint and the way out, the tallest sheet.
+            if (frames.single.isNotEmpty) await tester.pump(documentPhotoQualityWaiveDelay);
 
             final painter = tester
                 .widget<CustomPaint>(
@@ -327,15 +324,12 @@ void main() {
                 )
                 .painter!;
             final frame = (painter as GuidedScanFramePainter).frame;
-            final sheet = find.ancestor(
-              of: find.byType(ElevatedButton),
-              matching: find.byWidgetPredicate((w) => w is Material && w.color == Colors.white),
-            );
             final what = '$size $locale ${type.name} ${frames.single}';
             expect(tester.getRect(find.byType(GuidedStepBar)).bottom, lessThanOrEqualTo(frame.top), reason: what);
-            expect(tester.getRect(sheet).top, greaterThanOrEqualTo(frame.bottom), reason: what);
+            expect(tester.getRect(find.byType(GuidedSheet)).top, greaterThanOrEqualTo(frame.bottom), reason: what);
             if (frames.single.isNotEmpty) {
               expect(find.textContaining(RegExp('text|tekst')), findsOneWidget, reason: 'the hint shows: $what');
+              expect(find.byType(ElevatedButton), findsOneWidget, reason: 'the way out shows: $what');
             }
             await tester.pumpWidget(const SizedBox());
           }
@@ -462,7 +456,7 @@ void main() {
     // Not the camera preview the overtaken open would have switched to.
     expect(find.text('Check the photo'), findsOneWidget);
     expect(find.text('Front · 1 of 2'), findsOneWidget);
-    expect(find.text('Take photo'), findsNothing);
+    expect(find.byKey(const Key('fake preview')), findsNothing);
   });
 
   testWidgets('back is ignored while a picture is being taken, so it lands on the side it was taken for', (
@@ -486,8 +480,7 @@ void main() {
     expect(find.text('Back · 2 of 2'), findsOneWidget);
 
     camera.pictureGate = Completer<void>();
-    await tester.tap(find.text('Take photo'));
-    await tester.pump();
+    await tester.pump(documentPhotoMinPreview);
     await tester.tap(find.byTooltip('Back'));
     await tester.pump();
     camera.pictureGate!.complete();
@@ -513,7 +506,7 @@ void main() {
     expect(camera.opens, 2);
     expect(find.text('Check the photo'), findsNothing);
     expect(find.text('Front · 1 of 2'), findsOneWidget);
-    expect(find.text('Take photo'), findsOneWidget);
+    expect(find.byKey(const Key('fake preview')), findsOneWidget);
   });
 
   testWidgets('the photo stays on screen, buttons disabled, while it is being sent', (tester) async {
@@ -538,7 +531,7 @@ void main() {
     expect(tester.widget<ElevatedButton>(find.widgetWithText(ElevatedButton, 'Use photo')).onPressed, isNotNull);
   });
 
-  testWidgets('the photo cannot be taken while the preview shows the document unreadable; a hint says why', (
+  testWidgets('no photo is taken while the preview shows glare, a hint says why; once it is gone the photo is taken', (
     tester,
   ) async {
     final camera = _FakeCamera()
@@ -546,15 +539,16 @@ void main() {
         {DocumentPhotoIssue.glare},
       ];
     await tester.pumpWidget(_screen(camera));
-    await tester.pump();
+    await tester.pump(documentPhotoMinPreview);
 
-    expect(_takePhotoEnabled(tester), isFalse);
+    expect(camera.taken, isEmpty);
     expect(find.text('Reflection on the document. Tilt it slightly.'), findsOneWidget);
 
     camera.report(const {});
     await tester.pump();
-    expect(_takePhotoEnabled(tester), isTrue);
+    await tester.pump();
     expect(find.text('Reflection on the document. Tilt it slightly.'), findsNothing);
+    expect(camera.taken, hasLength(1));
   });
 
   testWidgets('the front is the side with the photo: no portrait there holds the photo back, with a hint', (
@@ -565,14 +559,14 @@ void main() {
         {DocumentPhotoIssue.noPortrait},
       ];
     await tester.pumpWidget(_screen(camera, documentType: DocumentType.identityCard));
-    await tester.pump();
+    await tester.pump(documentPhotoMinPreview);
 
-    expect(_takePhotoEnabled(tester), isFalse);
+    expect(camera.taken, isEmpty);
     expect(find.text('Place the side with your photo inside the frame.'), findsOneWidget);
 
     camera.report(const {});
     await tester.pump();
-    expect(_takePhotoEnabled(tester), isTrue);
+    expect(camera.taken, hasLength(1));
   });
 
   testWidgets('no MRZ on the side that has one holds the photo back, with a hint', (tester) async {
@@ -581,9 +575,9 @@ void main() {
         {DocumentPhotoIssue.noMrz},
       ];
     await tester.pumpWidget(_screen(camera, documentType: DocumentType.passport));
-    await tester.pump();
+    await tester.pump(documentPhotoMinPreview);
 
-    expect(_takePhotoEnabled(tester), isFalse);
+    expect(camera.taken, isEmpty);
     expect(find.text('Place the side with the machine-readable lines (<<<) inside the frame.'), findsOneWidget);
   });
 
@@ -611,6 +605,15 @@ void main() {
 
     testWidgets('an identity card: portrait on the front, MRZ on the back', (tester) async {
       expect(await contentsFor(tester, DocumentType.identityCard), [
+        (portrait: true, mrz: false),
+        (portrait: false, mrz: true),
+      ]);
+    });
+
+    testWidgets('a residence permit, a card like an identity card: portrait on the front, MRZ on the back', (
+      tester,
+    ) async {
+      expect(await contentsFor(tester, DocumentType.residencePermit), [
         (portrait: true, mrz: false),
         (portrait: false, mrz: true),
       ]);
@@ -687,39 +690,77 @@ void main() {
     expect(find.text('Too dark. Move to a place with more light.'), findsOneWidget);
 
     camera.report({DocumentPhotoIssue.blurry});
-    await tester.pump();
+    await tester.pump(documentPhotoMinPreview);
     expect(find.text('Not sharp yet. Hold your phone still.'), findsOneWidget);
-    expect(_takePhotoEnabled(tester), isFalse);
+    expect(camera.taken, isEmpty);
   });
 
-  testWidgets('the photo can be taken anyway once the preview showed for a while, so the session never gets stuck', (
-    tester,
-  ) async {
+  testWidgets('the photo is taken by itself once every check is clear, after the preview showed a moment; '
+      'its review leads with use', (tester) async {
+    final camera = _FakeCamera();
+    await tester.pumpWidget(_screen(camera));
+    await tester.pump();
+    expect(find.text('Hold still…'), findsOneWidget);
+    expect(find.byType(ElevatedButton), findsNothing, reason: 'no button to tap, and shake the phone with');
+
+    await tester.pump(documentPhotoMinPreview - const Duration(milliseconds: 1));
+    expect(camera.taken, isEmpty, reason: 'the document can still be set right');
+    await tester.pump(const Duration(milliseconds: 1));
+    await tester.pump();
+    await tester.pump();
+
+    expect(camera.taken, hasLength(1));
+    expect(find.text('Are all details sharp and readable, without glare or anything covering them?'), findsOneWidget);
+    expect(find.widgetWithText(ElevatedButton, 'Use photo'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Retake'), findsOneWidget);
+  });
+
+  testWidgets('the photo can be taken anyway once the preview showed for a while, so the session never gets stuck; '
+      'its review says what the checks saw and leads with retake', (tester) async {
     final camera = _FakeCamera()
       ..frames = const [
         {DocumentPhotoIssue.blurry},
       ];
     await tester.pumpWidget(_screen(camera));
     await tester.pump();
-    expect(_takePhotoEnabled(tester), isFalse);
+    expect(find.text('Take photo anyway'), findsNothing);
 
     await tester.pump(documentPhotoQualityWaiveDelay);
-    expect(_takePhotoEnabled(tester), isTrue);
+    expect(camera.taken, isEmpty, reason: 'not by itself');
     // Still says what the frames show.
     expect(find.text('Not sharp yet. Hold your phone still.'), findsOneWidget);
 
-    await _takeAndReview(tester);
+    await tester.tap(find.text('Take photo anyway'));
+    await tester.pump();
+    await tester.pump();
+    expect(camera.taken, hasLength(1));
     expect(find.text('Check the photo'), findsOneWidget);
+    expect(find.textContaining("didn't pass the checks"), findsOneWidget);
+    expect(find.text('Not sharp yet. Hold your phone still.'), findsOneWidget);
+    expect(find.widgetWithText(ElevatedButton, 'Retake'), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Use photo'), findsOneWidget);
+
+    // The retake the checks pass is an ordinary one.
+    camera.frames = const [{}];
+    await tester.tap(find.text('Retake'));
+    await tester.pump();
+    await tester.pump();
+    await _takeAndReview(tester);
+    expect(find.textContaining("didn't pass the checks"), findsNothing);
+    expect(find.widgetWithText(ElevatedButton, 'Use photo'), findsOneWidget);
   });
 
-  testWidgets('the photo cannot be taken while any issue stays, until the preview showed for a while', (tester) async {
-    final camera = _FakeCamera();
+  testWidgets('no photo is taken by itself while any issue stays', (tester) async {
+    final camera = _FakeCamera()
+      ..frames = const [
+        {DocumentPhotoIssue.blurry},
+      ];
     await tester.pumpWidget(_screen(camera));
     await tester.pump();
     for (final issue in DocumentPhotoIssue.values) {
       camera.report({issue});
-      await tester.pump();
-      expect(_takePhotoEnabled(tester), isFalse, reason: '$issue');
+      await tester.pump(documentPhotoMinPreview);
+      expect(camera.taken, isEmpty, reason: '$issue');
     }
   });
 
@@ -735,7 +776,40 @@ void main() {
     await tester.tap(find.text('Retake'));
     await tester.pump();
     await tester.pump();
-    expect(_takePhotoEnabled(tester), isFalse);
+    await tester.pump(documentPhotoMinPreview);
+    expect(camera.taken, hasLength(1));
+    expect(find.text('Reflection on the document. Tilt it slightly.'), findsOneWidget);
+  });
+
+  testWidgets('a moment without focus leaves the preview and its waiting be; back from the background reopens it', (
+    tester,
+  ) async {
+    final camera = _FakeCamera()
+      ..frames = const [
+        {DocumentPhotoIssue.blurry},
+      ];
+    await tester.pumpWidget(_screen(camera));
+    await tester.pump();
+
+    // The control center or the notification shade: inactive, then back.
+    await tester.pump(documentPhotoQualityWaiveDelay - const Duration(seconds: 1));
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump(const Duration(seconds: 1));
+    expect(camera.opens, 1);
+    expect(find.text('Take photo anyway'), findsOneWidget);
+
+    for (final state in [AppLifecycleState.inactive, AppLifecycleState.hidden, AppLifecycleState.paused]) {
+      tester.binding.handleAppLifecycleStateChanged(state);
+    }
+    await tester.pump();
+    expect(camera.closes, 1);
+    for (final state in [AppLifecycleState.hidden, AppLifecycleState.inactive, AppLifecycleState.resumed]) {
+      tester.binding.handleAppLifecycleStateChanged(state);
+    }
+    await tester.pump();
+    expect(camera.opens, 2);
+    expect(find.text('Take photo anyway'), findsNothing, reason: 'a reopened camera checks its frames afresh');
   });
 
   testWidgets('a camera that cannot be opened says so and offers to try again', (tester) async {

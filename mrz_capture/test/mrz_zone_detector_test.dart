@@ -43,6 +43,14 @@ void main() {
     expect(zone.top, greaterThan(0.70), reason: 'not the fallback zone');
   });
 
+  test('finds a block against the bottom of the crop: the border takes no part', () {
+    final zone = detectMrzZone(_document(top: 370, lines: 1, glyphWidth: 2, glyphHeight: 30, glyphStep: 70));
+
+    expect(zone.left, isNot(0.02), reason: 'a block, not the fallback zone');
+    expect(zone.top, lessThanOrEqualTo(370 / _height));
+    expect(zone.top + zone.height, greaterThanOrEqualTo(0.99));
+  });
+
   test('falls back to the bottom of a blank document', () {
     final zone = detectMrzZone(cv.Mat.fromScalar(_height, _width, cv.MatType.CV_8UC1, cv.Scalar.all(230)));
 

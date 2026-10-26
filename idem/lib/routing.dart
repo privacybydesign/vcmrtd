@@ -728,15 +728,15 @@ Future<ProofingStepResponse?> _submitNfcStep(
 }
 
 /// Sends the document photos to the pinned flow session once the user
-/// accepted the last one (`POST .../steps/document_photo`) - the [back] left
-/// out when there is none. No bsnRegion: nothing on this device locates the
-/// printed BSN reliably yet, and a guessed box would blur the wrong part.
-/// Returns the server's response, or null when it wasn't stored.
+/// accepted the last one (`POST .../steps/document_photo`). No bsnRegion:
+/// nothing on this device locates the printed BSN reliably yet, and a
+/// guessed box would blur the wrong part. Returns the server's response, or
+/// null when it wasn't stored.
 Future<ProofingStepResponse?> _submitDocumentPhotoStep(
   BuildContext context,
   ActiveProofingSession session,
   Uint8List front,
-  Uint8List? back,
+  Uint8List back,
 ) {
   ProofingDocumentPhotoSide side(Uint8List jpeg) => ProofingDocumentPhotoSide(
     photo: ProofingPhotoInfo(imageBase64: base64Encode(jpeg), mimeType: 'image/jpeg'),
@@ -747,8 +747,7 @@ Future<ProofingStepResponse?> _submitDocumentPhotoStep(
     context,
     session: session,
     what: context.l10n.proofingWhatDocumentPhoto,
-    submit: () =>
-        client.submitDocumentPhotoStep(session.ref, front: side(front), back: back == null ? null : side(back)),
+    submit: () => client.submitDocumentPhotoStep(session.ref, front: side(front), back: side(back)),
   );
 }
 
@@ -1202,9 +1201,9 @@ Widget _buildDocumentPhotoRoute(BuildContext context, GoRouterState state, Docum
       stepNumber: plan.documentPhotoStepNumber ?? plan.totalSteps,
       totalSteps: plan.totalSteps,
       camera: documentPhotoCamera,
-      // What decides whether a back is asked for: the document type the
-      // MRZ scan / chip read on this device found, or the chip access
-      // key the server kept; unknown otherwise.
+      // What decides the frame, the order of the sides and what each shows:
+      // the document type the MRZ scan / chip read on this device found, or
+      // the one picked, or the chip access key the server kept; unknown otherwise.
       documentType:
           args.collected.documentType ?? providers.read(activeProofingSessionProvider)?.info.chipAccess?.documentType,
       scanned: args.scanned,

@@ -1,11 +1,9 @@
-import 'package:vcmrtd/vcmrtd.dart' show DocumentType;
+import 'package:vcmrtd/vcmrtd.dart' show DocumentType, PassportMRZ;
 
 // Text recognition on a still photo splits an MRZ line at its runs of '<'
 // and miscounts them, so whole lines rarely parse: only the fields at the
 // start of each line are read, and only kept when their check digits hold.
 
-const _checkWeights = [7, 3, 1];
-const _letterValueOffset = 55;
 const _lastCentury = 1900;
 const _thisCentury = 2000;
 const _filler = '<';
@@ -107,7 +105,7 @@ class _MrzReading {
 
   void licenceLine(String line) {
     final match = _drivingLicence.firstMatch(line);
-    if (match != null && _checkDigit(line.substring(0, line.length - 1)) == _digit(match[4]!)) {
+    if (match != null && PassportMRZ.calculateCheckDigit(line.substring(0, line.length - 1)) == _digit(match[4]!)) {
       type = DocumentType.drivingLicence;
     }
   }
@@ -129,7 +127,7 @@ String _normalise(String line) => line
     .replaceAll('|', '');
 
 /// [field], when [check] is its check digit.
-String? _checked(String field, String check) => _checkDigit(field) == _digit(check) ? field : null;
+String? _checked(String field, String check) => PassportMRZ.calculateCheckDigit(field) == _digit(check) ? field : null;
 
 /// [field] of six digits, when [check] is its check digit.
 String? _checkedDate(String field, String check) {
@@ -139,21 +137,6 @@ String? _checkedDate(String field, String check) {
 }
 
 int? _digit(String c) => int.tryParse(_digitLookalikes[c] ?? c);
-
-int _checkDigit(String field) {
-  var sum = 0;
-  for (var i = 0; i < field.length; i++) {
-    final c = field.codeUnitAt(i);
-    final value = switch (c) {
-      >= 0x30 && <= 0x39 => c - 0x30,
-      >= 0x41 && <= 0x5A => c - _letterValueOffset,
-      _ => 0,
-    };
-    sum += value * _checkWeights[i % _checkWeights.length];
-  }
-
-  return sum % 10;
-}
 
 String? _documentNumber(String field) {
   final number = field.replaceAll(_filler, '');

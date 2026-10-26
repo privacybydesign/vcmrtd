@@ -464,11 +464,11 @@ abstract class AppLocalizations {
   /// **'{side} · {current} of {total}'**
   String docPhotoSideProgress(String side, int current, int total);
 
-  /// No description provided for @docPhotoTake.
+  /// No description provided for @docPhotoTakeAnyway.
   ///
   /// In en, this message translates to:
-  /// **'Take photo'**
-  String get docPhotoTake;
+  /// **'Take photo anyway'**
+  String get docPhotoTakeAnyway;
 
   /// No description provided for @docPhotoShowTips.
   ///
@@ -524,6 +524,12 @@ abstract class AppLocalizations {
   /// **'Not sharp yet. Hold your phone still.'**
   String get docPhotoHintBlurry;
 
+  /// No description provided for @docPhotoHoldStill.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold still…'**
+  String get docPhotoHoldStill;
+
   /// No description provided for @docPhotoReviewTitle.
   ///
   /// In en, this message translates to:
@@ -535,6 +541,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Are all details sharp and readable, without glare or anything covering them?'**
   String get docPhotoReviewMessage;
+
+  /// No description provided for @docPhotoReviewAnywayMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This photo didn\'t pass the checks. Retake it, or use it if all details are sharp and readable.'**
+  String get docPhotoReviewAnywayMessage;
 
   /// No description provided for @docPhotoReviewScannedMessage.
   ///

@@ -10,12 +10,26 @@ const _frame = Rect.fromLTWH(26, 17, 320, 202);
 const _sceneWidth = 372;
 const _sceneHeight = 236;
 
+const _lineTops = [0.15, 0.35, 0.55, 0.75];
+const _lineHeight = 0.06;
+
 int _printed(int x, int y) {
   final u = (x - _frame.left) / _frame.width;
   final v = (y - _frame.top) / _frame.height;
-  final onLine = u >= 0.08 && u < 0.92 && [0.15, 0.35, 0.55, 0.75].any((top) => v >= top && v < top + 0.06);
+  final onLine = u >= 0.08 && u < 0.92 && _lineTops.any((top) => v >= top && v < top + _lineHeight);
   return onLine && (x ~/ 2 + y ~/ 3).isEven ? 40 : 200;
 }
+
+/// The lines of text [_printed] draws, as text recognition finds them.
+final _text = [
+  for (final top in _lineTops)
+    Rect.fromLTRB(
+      _frame.left + _frame.width * 0.08,
+      _frame.top + _frame.height * top,
+      _frame.left + _frame.width * 0.92,
+      _frame.top + _frame.height * (top + _lineHeight),
+    ),
+];
 
 DocumentSample _scene({
   bool Function(int x, int y)? onCard,
@@ -34,7 +48,7 @@ DocumentSample _scene({
   return DocumentSample(pixels, _sceneWidth, _sceneHeight);
 }
 
-Set<DocumentPhotoIssue> _issues(DocumentSample sample) => documentPhotoIssues(sample, frame: _frame);
+Set<DocumentPhotoIssue> _issues(DocumentSample sample) => documentPhotoIssues(sample, frame: _frame, text: _text);
 
 int _hazed(int pixel) => pixel + ((255 - pixel) * 0.85).round();
 
@@ -165,8 +179,20 @@ void main() {
     });
 
     test('a streak of reflection across the document is glare', () {
-      // 4 of a tile's 19 pixels across: over 10% of it.
+      // 4 of a line of text's 269 pixels across: over 1% of it.
       expect(_issues(_scene(card: (x, y, printed) => x >= 150 && x < 154 ? 255 : printed)), {DocumentPhotoIssue.glare});
+    });
+
+    test('glints off a security feature between the lines of text are not glare', () {
+      // Specks two rows high over the card, each a third of a tile across: glare
+      // in every tile they're in, but none on the text.
+      bool glint(int x, int y) => x % 8 < 3 && (y >= 64 && y < 66 || y >= 76 && y < 78);
+      expect(_issues(_scene(card: (x, y, printed) => glint(x, y) ? 255 : printed)), isEmpty);
+    });
+
+    test('glare over the text is none without the text read: too little text to read is its own issue', () {
+      final glare = _scene(card: (x, y, printed) => x >= 100 && x < 140 && y >= 80 && y < 110 ? 255 : printed);
+      expect(documentPhotoIssues(glare, frame: _frame), isEmpty);
     });
 
     test('a few clipped pixels are not glare', () {
