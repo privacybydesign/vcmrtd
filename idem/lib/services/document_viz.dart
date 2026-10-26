@@ -259,43 +259,35 @@ class SideText {
 
   /// [lines] of text, top to bottom, and the [barcodes] scanned off the same photo.
   factory SideText.read(List<String> lines, {List<String> barcodes = const []}) {
-    final vizNumbers = <String>{};
-    final vizDates = <DateTime>{};
-    var printedDates = 0;
-    final categories = <String>{};
-    final backFields = <String>{};
-    DocumentType? title;
     final printed = [
       for (final line in lines)
         if (!_mrzLine.hasMatch(line)) _plain(line),
     ];
-    for (final line in printed) {
-      title ??= _titleIn(line);
-      final dates = _datesIn(line).toList();
-      printedDates += dates.length;
-      vizDates.addAll(dates.expand((readings) => readings));
-      if (dates.isEmpty) {
-        if (_licenceBackField.firstMatch(line.trim())?[1] case final field?) backFields.add(field);
-      }
-      for (final token in [..._token.allMatches(line).map((m) => m[0]!), line.replaceAll(' ', '')]) {
-        if (_looksLikeNumber(token)) vizNumbers.add(_matchKey(token));
-        if (_licenceCategories.contains(token)) categories.add(token);
-      }
-    }
+    final datesPerLine = [for (final line in printed) _datesIn(line).toList()];
+    final undatedLines = [
+      for (final (i, line) in printed.indexed)
+        if (datesPerLine[i].isEmpty) line,
+    ];
+    final tokens = printed.expand(_tokensIn);
+    final vizNumbers = {for (final token in tokens.where(_looksLikeNumber)) _matchKey(token)};
 
     final licence = _licenceFieldsIn(printed);
     final licenceNumber = licence?.number;
     if (licenceNumber != null) vizNumbers.add(_matchKey(licenceNumber));
     return SideText._(
       vizNumbers: vizNumbers,
-      vizDates: vizDates,
-      printedDates: printedDates,
+      vizDates: {for (final dates in datesPerLine) ...dates.expand((readings) => readings)},
+      printedDates: datesPerLine.fold(0, (count, dates) => count + dates.length),
       mrz: readMrzFields(lines),
       barcode: barcodes.map(readAamvaBarcode).nonNulls.firstOrNull,
-      title: title,
+      title: printed.map(_titleIn).nonNulls.firstOrNull,
       licence: licence,
-      licenceCategories: categories.length,
-      licenceBackFields: backFields.length,
+      licenceCategories: tokens.where(_licenceCategories.contains).toSet().length,
+      licenceBackFields: undatedLines
+          .map((line) => _licenceBackField.firstMatch(line.trim())?[1])
+          .nonNulls
+          .toSet()
+          .length,
     );
   }
 
@@ -455,13 +447,7 @@ VizCheck checkSides(SideText? front, SideText? back, {KnownDocument? known}) {
   final expiry = known?.dateOfExpiry ?? fromZones((zone) => zone.dateOfExpiry);
   if (number == null && (birth == null || expiry == null)) return result(_matchWithoutReference(front, back));
 
-  bool differs(DateTime? a, DateTime? b) => a != null && b != null && !_sameDay(a, b);
-  final namesAnother = zones.any(
-    (zone) =>
-        (number != null && zone.documentNumber != null && _matchKey(zone.documentNumber!) != _matchKey(number)) ||
-        differs(zone.dateOfBirth, birth) ||
-        differs(zone.dateOfExpiry, expiry),
-  );
+  final namesAnother = zones.any((zone) => _namesAnother(zone, number, birth, expiry));
   if (namesAnother || front.printedMatchesMrz == SidesMatch.different) return result(SidesMatch.different);
 
   // Only ever ties: text recognition reads it on one side at most, often only partly.
@@ -477,6 +463,14 @@ VizCheck checkSides(SideText? front, SideText? back, {KnownDocument? known}) {
   // Only the front: a back's dates are often others (issued, categories).
   if (front._contradicts(birth, expiry)) return result(SidesMatch.different);
   return result(SidesMatch.unknown);
+}
+
+bool _namesAnother(MrzFields zone, String? number, DateTime? birth, DateTime? expiry) {
+  bool differs(DateTime? a, DateTime? b) => a != null && b != null && !_sameDay(a, b);
+  final zoneNumber = zone.documentNumber;
+  return (number != null && zoneNumber != null && _matchKey(zoneNumber) != _matchKey(number)) ||
+      differs(zone.dateOfBirth, birth) ||
+      differs(zone.dateOfExpiry, expiry);
 }
 
 SidesMatch _matchWithoutReference(SideText front, SideText back) {
@@ -522,48 +516,54 @@ DocumentType? _titleIn(String line) {
   return null;
 }
 
-/// A field's value runs to the next label on its line or, when it has
-/// none there, is the next line.
 LicenceFields? _licenceFieldsIn(List<String> lines) {
   String? number;
   DateTime? birth;
   DateTime? expiry;
   final labels = <String>{};
-  for (var i = 0; i < lines.length; i++) {
-    final line = lines[i].trim();
-    final fields = _licenceField.allMatches(line).toList();
-    for (var f = 0; f < fields.length; f++) {
-      final label = fields[f][1]!.replaceAll(RegExp(r'[()]'), '');
-      final end = f + 1 < fields.length ? fields[f + 1].start : line.length;
-      var value = line.substring(fields[f].end, end).trim();
-      if (value.isEmpty && f + 1 == fields.length && i + 1 < lines.length) value = lines[i + 1].trim();
-      if (value.isEmpty) continue;
-
-      switch (label) {
-        case '3':
-          final date = _datesIn(value).firstOrNull?.firstOrNull;
-          if (date == null) continue;
-          birth ??= date;
-        case '4B':
-          final date = _datesIn(value).firstOrNull?.firstOrNull;
-          if (date == null) continue;
-          expiry ??= date;
-        case '4D' || '5':
-          if (_datesIn(value).isNotEmpty) continue;
-          final candidate = [
-            ..._token.allMatches(value).map((m) => m[0]!),
-            value.replaceAll(' ', ''),
-          ].where(_looksLikeNumber).firstOrNull;
-          if (candidate == null) continue;
-          number ??= candidate;
-      }
-      if (label.startsWith('4')) labels.add(label);
+  for (final (label, value) in _licenceFieldValues(lines)) {
+    switch (label) {
+      case '3':
+        birth ??= _firstDateIn(value);
+      case '4B':
+        final date = _firstDateIn(value);
+        if (date == null) continue;
+        expiry ??= date;
+      case '4D' || '5':
+        final candidate = _licenceNumberIn(value);
+        if (candidate == null) continue;
+        number ??= candidate;
     }
+    if (label.startsWith('4')) labels.add(label);
   }
 
   if (number == null && birth == null && expiry == null && labels.isEmpty) return null;
   return (number: number, dateOfBirth: birth, dateOfExpiry: expiry, labels: labels.length);
 }
+
+/// A field's value runs to the next label on its line or, when it has
+/// none there, is the next line.
+Iterable<(String label, String value)> _licenceFieldValues(List<String> lines) sync* {
+  for (var i = 0; i < lines.length; i++) {
+    final line = lines[i].trim();
+    final fields = _licenceField.allMatches(line).toList();
+    for (var f = 0; f < fields.length; f++) {
+      final last = f + 1 == fields.length;
+      var value = line.substring(fields[f].end, last ? line.length : fields[f + 1].start).trim();
+      if (value.isEmpty && last && i + 1 < lines.length) value = lines[i + 1].trim();
+      if (value.isNotEmpty) yield (fields[f][1]!.replaceAll(RegExp(r'[()]'), ''), value);
+    }
+  }
+}
+
+DateTime? _firstDateIn(String value) => _datesIn(value).firstOrNull?.firstOrNull;
+
+String? _licenceNumberIn(String value) =>
+    _datesIn(value).isNotEmpty ? null : _tokensIn(value).where(_looksLikeNumber).firstOrNull;
+
+/// The words in [line], and the whole line without its spaces: text
+/// recognition can put a space in a number.
+List<String> _tokensIn(String line) => [..._token.allMatches(line).map((m) => m[0]!), line.replaceAll(' ', '')];
 
 bool _looksLikeNumber(String token) =>
     token.length >= _minNumberLength &&
@@ -577,12 +577,20 @@ String _matchKey(String number) =>
 /// The dates printed in [line], each as all its readings: day or month
 /// first, either century of a two-digit year. Matching against the
 /// document's dates picks the one.
-Iterable<List<DateTime>> _datesIn(String line) sync* {
+Iterable<List<DateTime>> _datesIn(String line) => [
+  ..._yearFirstDatesIn(line),
+  ..._dayFirstDatesIn(line),
+  ..._namedMonthDatesIn(line),
+];
+
+Iterable<List<DateTime>> _yearFirstDatesIn(String line) sync* {
   for (final m in _yearFirstDate.allMatches(line)) {
     final date = _date(int.parse(m[1]!), int.parse(m[2]!), int.parse(m[3]!));
     if (date != null) yield [date];
   }
+}
 
+Iterable<List<DateTime>> _dayFirstDatesIn(String line) sync* {
   for (final m in _dayFirstDate.allMatches(line)) {
     final (first, firstGap, second, secondGap, year) = (m[1]!, m[2]!, m[3]!, m[4]!, m[5]!);
     // One gap may be lost, between two digits each: "1505 1975", not "12345678".
@@ -596,7 +604,9 @@ Iterable<List<DateTime>> _datesIn(String line) sync* {
     };
     if (readings.isNotEmpty) yield readings.toList();
   }
+}
 
+Iterable<List<DateTime>> _namedMonthDatesIn(String line) sync* {
   for (final m in _namedMonthDate.allMatches(line)) {
     final month = m[2]!.split(_monthSeparator).map(_month).nonNulls.firstOrNull;
     if (month == null) continue;
