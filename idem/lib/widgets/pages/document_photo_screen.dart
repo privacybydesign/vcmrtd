@@ -79,6 +79,7 @@ const _deviceRotations = {
 /// The clockwise degrees that turn a preview frame from [camera] upright.
 /// iOS turns stream frames to the device's orientation itself, and ML Kit
 /// there ignores the rotation it's given.
+@visibleForTesting
 int streamFrameRotation(CameraDescription camera, DeviceOrientation deviceOrientation, TargetPlatform platform) {
   if (platform == TargetPlatform.iOS) return 0;
   final deviceRotation = _deviceRotations[deviceOrientation] ?? 0;
@@ -180,6 +181,7 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
     _portraitInPlace = null;
     _mrzSightings.reset();
     _onFrameChecked = onFrameChecked;
+
     final open = _controller;
     if (open != null) {
       // Still open after a picture that failed: its preview frames stopped.

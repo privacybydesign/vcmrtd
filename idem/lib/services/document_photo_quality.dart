@@ -60,6 +60,7 @@ const _edgeWindow = 6;
 const _edgeGap = 3;
 const _minEdgeInliers = 0.5;
 const _edgeTolerance = 3.0;
+const _edgeClusterWidth = 2 * _edgeTolerance;
 const _maxEdgeSlope = 0.25;
 const _edgeSlopeStep = 0.01;
 const _maxShapeError = 0.1;
@@ -226,6 +227,7 @@ Int32List _tapPositions(int count, int taps, double origin, double step, int siz
   );
 }
 
+@visibleForTesting
 Set<DocumentPhotoIssue> checkFrame(LumaFrame frame, {required int rotation, required Rect region}) =>
     inspectFrame(frame, rotation: rotation, region: region).issues;
 
@@ -551,7 +553,7 @@ _Line? _outermostLine(List<_EdgePoint> candidates, double slope, int needed, _Li
     ..sort((a, b) => a.$1.compareTo(b.$1));
   var from = 0;
   for (var to = 0; to < offsets.length; to++) {
-    while (offsets[to].$1 - offsets[from].$1 > 2 * _edgeTolerance) {
+    while (offsets[to].$1 - offsets[from].$1 > _edgeClusterWidth) {
       from++;
     }
     final profiles = {for (var i = from; i <= to; i++) offsets[i].$2}.length;
@@ -564,8 +566,8 @@ _Line? _outermostLine(List<_EdgePoint> candidates, double slope, int needed, _Li
 
 bool _beats(double offset, int support, _Line? best) =>
     best == null ||
-    offset < best.offset - 2 * _edgeTolerance ||
-    (offset <= best.offset + 2 * _edgeTolerance && support > best.support);
+    offset < best.offset - _edgeClusterWidth ||
+    (offset <= best.offset + _edgeClusterWidth && support > best.support);
 
 _Edge? _refit(List<_EdgePoint> points, _Edge edge, int needed) {
   var fit = edge;

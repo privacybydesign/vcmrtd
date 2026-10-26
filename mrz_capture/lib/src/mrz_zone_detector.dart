@@ -156,16 +156,18 @@ MrzZone? _widestContour(cv.Mat thresh) {
     final areaShare = rect.width * rect.height / (w * h);
     final centerY = (rect.y + rect.height / 2) / h;
     if (areaShare > 0.40 || rect.height / h > 0.35 || centerY < 0.4) continue;
-    if (aspect > 2.5 && rect.width / w > 0.25 && rect.height > 15 && areaShare > 0.05 && centerY > bestCenterY) {
-      final padX = (rect.width * 0.08).toInt();
-      final padY = (rect.height * 0.20).toInt();
-      final left = math.max(rect.x - padX, 0) / w;
-      final top = math.max(rect.y - padY, 0) / h;
-      final right = math.min(rect.x + rect.width + padX, w) / w;
-      final bottom = math.min(rect.y + rect.height + padY, h) / h;
-      best = (left: left, top: top, width: right - left, height: bottom - top);
-      bestCenterY = centerY;
+    if (!(aspect > 2.5 && rect.width / w > 0.25 && rect.height > 15 && areaShare > 0.05 && centerY > bestCenterY)) {
+      continue;
     }
+
+    final padX = (rect.width * 0.08).toInt();
+    final padY = (rect.height * 0.20).toInt();
+    final left = math.max(rect.x - padX, 0) / w;
+    final top = math.max(rect.y - padY, 0) / h;
+    final right = math.min(rect.x + rect.width + padX, w) / w;
+    final bottom = math.min(rect.y + rect.height + padY, h) / h;
+    best = (left: left, top: top, width: right - left, height: bottom - top);
+    bestCenterY = centerY;
   }
   contours.dispose();
 
