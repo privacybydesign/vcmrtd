@@ -14,6 +14,9 @@ on:
   push:
     branches: [master]
 
+permissions:
+  contents: read
+
 concurrency: ${{ github.ref }}
 
 env:
@@ -28,8 +31,9 @@ jobs:
     environment: app-store-ad-hoc
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           submodules: true
       - name: Setup build environment
         uses: ./.github/actions/setup-build-environment
@@ -39,8 +43,8 @@ jobs:
           APPLE_PROVISIONING_PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
         run: |
           mkdir -p ./fastlane/profiles
-          echo $APPLE_DISTRIBUTION_CERTIFICATE | base64 --decode > ./fastlane/profiles/apple_distribution.p12
-          echo $APPLE_PROVISIONING_PROFILE | base64 --decode > ./fastlane/profiles/ad_hoc_alpha.mobileprovision
+          echo "$APPLE_DISTRIBUTION_CERTIFICATE" | base64 --decode > ./fastlane/profiles/apple_distribution.p12
+          echo "$APPLE_PROVISIONING_PROFILE" | base64 --decode > ./fastlane/profiles/ad_hoc_alpha.mobileprovision
       - name: Build app
         run: >
           bundle exec fastlane ios_build_app
@@ -49,7 +53,7 @@ jobs:
           certificate_path:profiles/apple_distribution.p12
           certificate_password:${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD }}
           provisioning_profile_path:profiles/ad_hoc_alpha.mobileprovision
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: app-alpha-ios
           path: ./idem/fastlane/build/*.ipa
@@ -64,8 +68,9 @@ jobs:
         type: [apk, appbundle]
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           submodules: true
       - name: Setup build environment
         uses: ./.github/actions/setup-build-environment
@@ -74,7 +79,7 @@ jobs:
           ANDROID_SIGNING_KEYSTORE: ${{ secrets.ANDROID_SIGNING_KEYSTORE }}
         run: |
           mkdir -p ./fastlane/profiles
-          echo $ANDROID_SIGNING_KEYSTORE | base64 --decode > ./fastlane/profiles/keystore.jks
+          echo "$ANDROID_SIGNING_KEYSTORE" | base64 --decode > ./fastlane/profiles/keystore.jks
       - name: Build app
         run: >
           bundle exec fastlane android_build_${{ matrix.type }}
@@ -83,7 +88,7 @@ jobs:
           key_alias:${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
           keystore_password:${{ secrets.ANDROID_SIGNING_KEYSTORE_PASSWORD }}
           key_password:${{ secrets.ANDROID_SIGNING_KEYSTORE_PASSWORD }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: app-alpha-android-${{ matrix.type }}
           path: |
@@ -96,19 +101,19 @@ jobs:
       - build-app-android-alpha
     steps:
       - name: Download app-alpha-ios artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: app-alpha-ios
       - name: Download app-alpha-android-apk artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: app-alpha-android-apk
       - name: Download app-alpha-android-appbundle artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: app-alpha-android-appbundle
       - name: Bundle all artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: app-bundle-alpha
           path: .
@@ -119,8 +124,9 @@ jobs:
       version-changed: ${{ steps.detection.outcome == 'success' }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           fetch-depth: 0
       # The stores key a release on the build number (the +N suffix), and reject
       # one they have already seen. So the beta track triggers on that number
@@ -128,11 +134,13 @@ jobs:
       # semver would otherwise produce a build that both stores refuse.
       - name: Detect build number increase
         id: detection
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
         run: |
           build_number() {
             sed -n 's/^version: [0-9]*\.[0-9]*\.[0-9]*+\([0-9]*\)$/\1/p' | head -n1
           }
-          before=$(git show "${{ github.event.before }}:idem/pubspec.yaml" 2>/dev/null | build_number)
+          before=$(git show "$BEFORE_SHA:idem/pubspec.yaml" 2>/dev/null | build_number)
           after=$(build_number < ./idem/pubspec.yaml)
 
           echo "before=${before:-<none>} after=${after:-<none>}"
@@ -158,7 +166,19 @@ jobs:
     needs: version-check
     if: needs.version-check.outputs.version-changed != 'true'
     uses: ./.github/workflows/dry-run-distribution.yml
-    secrets: inherit
+    # The dry-run jobs run in the app-store-beta and android-beta environments,
+    # whose secrets take precedence over the ones passed here.
+    secrets:
+      APPLE_DISTRIBUTION_CERTIFICATE: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE }}
+      APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+      APPLE_PROVISIONING_PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
+      APP_STORE_CONNECT_KEY: ${{ secrets.APP_STORE_CONNECT_KEY }}
+      APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      ANDROID_SIGNING_KEYSTORE: ${{ secrets.ANDROID_SIGNING_KEYSTORE }}
+      ANDROID_SIGNING_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEYSTORE_PASSWORD }}
+      ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
+      GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
   build-app-ios-beta:
     runs-on: macos-15 # MacOS version is pinned, because it determines which XCode version is used.
     defaults:
@@ -169,8 +189,9 @@ jobs:
     environment: app-store-beta
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           submodules: true
       - name: Setup build environment
         uses: ./.github/actions/setup-build-environment
@@ -180,8 +201,8 @@ jobs:
           APPLE_PROVISIONING_PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
         run: |
           mkdir -p ./fastlane/profiles
-          echo $APPLE_DISTRIBUTION_CERTIFICATE | base64 --decode > ./fastlane/profiles/apple_distribution.p12
-          echo $APPLE_PROVISIONING_PROFILE | base64 --decode > ./fastlane/profiles/app_store_beta.mobileprovision
+          echo "$APPLE_DISTRIBUTION_CERTIFICATE" | base64 --decode > ./fastlane/profiles/apple_distribution.p12
+          echo "$APPLE_PROVISIONING_PROFILE" | base64 --decode > ./fastlane/profiles/app_store_beta.mobileprovision
       - name: Build app
         run: >
           bundle exec fastlane ios_build_app
@@ -190,7 +211,7 @@ jobs:
           certificate_path:profiles/apple_distribution.p12
           certificate_password:${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD }}
           provisioning_profile_path:profiles/app_store_beta.mobileprovision
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: app-beta-ios
           path: ./idem/fastlane/build/*.ipa
@@ -199,7 +220,7 @@ jobs:
       - name: Decode App Store Connect API key
         env:
           APP_STORE_CONNECT_KEY: ${{ secrets.APP_STORE_CONNECT_KEY }}
-        run: echo $APP_STORE_CONNECT_KEY | base64 --decode > ./fastlane/profiles/app_store_connect_key.p8
+        run: echo "$APP_STORE_CONNECT_KEY" | base64 --decode > ./fastlane/profiles/app_store_connect_key.p8
       - name: Upload to TestFlight
         run: >
           bundle exec fastlane ios_upload_testflight
@@ -216,8 +237,9 @@ jobs:
     environment: android-beta
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           submodules: true
       - name: Setup build environment
         uses: ./.github/actions/setup-build-environment
@@ -226,7 +248,7 @@ jobs:
           ANDROID_SIGNING_KEYSTORE: ${{ secrets.ANDROID_SIGNING_KEYSTORE }}
         run: |
           mkdir -p ./fastlane/profiles
-          echo $ANDROID_SIGNING_KEYSTORE | base64 --decode > ./fastlane/profiles/keystore.jks
+          echo "$ANDROID_SIGNING_KEYSTORE" | base64 --decode > ./fastlane/profiles/keystore.jks
       - name: Build app
         run: >
           bundle exec fastlane android_build_appbundle
@@ -235,7 +257,7 @@ jobs:
           key_alias:${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
           keystore_password:${{ secrets.ANDROID_SIGNING_KEYSTORE_PASSWORD }}
           key_password:${{ secrets.ANDROID_SIGNING_KEYSTORE_PASSWORD }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: app-beta-android
           path: |
@@ -245,7 +267,7 @@ jobs:
       - name: Decode Play service account key
         env:
           GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
-        run: echo $GOOGLE_PLAY_SERVICE_ACCOUNT_JSON | base64 --decode > ./fastlane/profiles/play_service_account.json
+        run: echo "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" | base64 --decode > ./fastlane/profiles/play_service_account.json
       - name: Upload to the Play Store
         run: >
           bundle exec fastlane android_upload_play_store
@@ -257,15 +279,15 @@ jobs:
       - build-app-android-beta
     steps:
       - name: Download app-beta-ios artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: app-beta-ios
       - name: Download app-beta-android artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: app-beta-android
       - name: Bundle all artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: app-bundle-beta
           path: .
