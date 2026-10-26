@@ -598,6 +598,8 @@ _Edge _leastSquares(List<_EdgePoint> points) {
   return (slope: slope, offset: meanD - slope * meanA);
 }
 
+enum PortraitLookup { skip, find }
+
 /// What [DocumentFrameChecker.check] found: the frame's issues, and - when
 /// asked - the portrait on the document, which takes longer.
 typedef FrameCheck = ({Future<Set<DocumentPhotoIssue>> issues, Future<DocumentPortrait?>? portrait});
@@ -738,9 +740,15 @@ class DocumentFrameChecker {
     }
   }
 
-  /// [portrait]: the side with the photo, which needs its portrait; only
-  /// while [portraitFree].
-  FrameCheck check(LumaFrame frame, {required int rotation, required Rect region, bool portrait = false}) {
+  /// [PortraitLookup.find] for the side with the photo, which needs its
+  /// portrait; only while [portraitFree].
+  FrameCheck check(
+    LumaFrame frame, {
+    required int rotation,
+    required Rect region,
+    PortraitLookup portraitLookup = PortraitLookup.skip,
+  }) {
+    final portrait = portraitLookup == PortraitLookup.find;
     final stopped = _stopped;
     if (stopped != null) return (issues: Future.error(stopped), portrait: null);
     if (portrait && !portraitFree) throw StateError('the portrait is still being looked for');

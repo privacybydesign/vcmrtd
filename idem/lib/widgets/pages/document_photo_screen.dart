@@ -263,7 +263,12 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
     if (!_reading) _readText(frame, rotation: rotation);
     if (!checkFrame) return;
 
-    final check = checker.check(frame, rotation: rotation, region: region, portrait: lookForPortrait);
+    final check = checker.check(
+      frame,
+      rotation: rotation,
+      region: region,
+      portraitLookup: lookForPortrait ? PortraitLookup.find : PortraitLookup.skip,
+    );
     unawaited(
       check.portrait?.then((portrait) {
         if (generation == _generation) _portraitInPlace = portraitInPlace(portrait);

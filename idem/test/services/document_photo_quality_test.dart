@@ -379,13 +379,13 @@ void main() {
       addTearDown(checker.close);
       expect(checker.portraitFree, isTrue);
 
-      final withCard = checker.check(cardFrame(), rotation: 90, region: region, portrait: true);
+      final withCard = checker.check(cardFrame(), rotation: 90, region: region, portraitLookup: PortraitLookup.find);
       expect(checker.portraitFree, isFalse);
       expect(await withCard.issues, checkFrame(cardFrame(), rotation: 90, region: region));
       expect(await withCard.portrait, isNull);
       expect(checker.portraitFree, isTrue);
 
-      final without = checker.check(emptyFrame(), rotation: 90, region: region, portrait: true);
+      final without = checker.check(emptyFrame(), rotation: 90, region: region, portraitLookup: PortraitLookup.find);
       await without.issues;
       expect(await without.portrait, isNull, reason: 'no document, no portrait looked for');
     });
