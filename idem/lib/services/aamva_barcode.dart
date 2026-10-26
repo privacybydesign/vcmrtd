@@ -8,8 +8,13 @@ import 'package:vcmrtd/vcmrtd.dart' show DocumentType;
 const _minYear = 1900;
 const _maxYear = 2100;
 
+/// The data elements read: licence number, date of birth, date of expiry.
+const _numberId = 'DAQ';
+const _birthId = 'DBB';
+const _expiryId = 'DBA';
+
 /// The first element follows the header on its line, after its subfile's type.
-final _element = RegExp(r'(?:^|DL|ID)(DAQ|DBB|DBA)(.+)$');
+final _element = RegExp('(?:^|DL|ID)($_numberId|$_birthId|$_expiryId)(.+)\$');
 
 /// The header: issuer, versions and entry count, then the first subfile's type.
 final _subfile = RegExp(r'ANSI ?\d{12}(DL|ID)');
@@ -28,11 +33,11 @@ MrzFields? readAamvaBarcode(String raw) {
     if (element == null) continue;
     final value = element[2]!.trim();
     switch (element[1]) {
-      case 'DAQ':
+      case _numberId:
         number ??= value.replaceAll(' ', '');
-      case 'DBB':
+      case _birthId:
         birth ??= _date(value);
-      case 'DBA':
+      case _expiryId:
         expiry ??= _date(value);
     }
   }
