@@ -149,6 +149,9 @@ class _FakeDocumentPhotoCamera implements DocumentPhotoCamera {
   void lookFor(SideContent content) {}
 
   @override
+  bool get mrzShown => false;
+
+  @override
   Future<void> close() async {}
 
   @override

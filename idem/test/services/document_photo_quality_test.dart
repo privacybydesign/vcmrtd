@@ -473,6 +473,38 @@ void main() {
     });
   });
 
+  group('MrzSightings', () {
+    const agree = DocumentPhotoQuality.framesToAgree;
+    const window = DocumentPhotoQuality.windowFrames;
+
+    test('shows the MRZ once most of the latest frames showed it', () {
+      final sightings = MrzSightings();
+      for (var i = 0; i < agree - 1; i++) {
+        sightings.add(true);
+      }
+      expect(sightings.shown, isFalse);
+      sightings.add(true);
+      expect(sightings.shown, isTrue);
+    });
+
+    test('forgets frames older than the window, and all of them on reset', () {
+      final sightings = MrzSightings();
+      for (var i = 0; i < agree; i++) {
+        sightings.add(true);
+      }
+      for (var i = 0; i < window - agree + 1; i++) {
+        sightings.add(false);
+      }
+      expect(sightings.shown, isFalse);
+
+      for (var i = 0; i < agree; i++) {
+        sightings.add(true);
+      }
+      sightings.reset();
+      expect(sightings.shown, isFalse);
+    });
+  });
+
   group('DocumentPhotoQuality', () {
     const none = <DocumentPhotoIssue>{};
     const agree = DocumentPhotoQuality.framesToAgree;

@@ -104,6 +104,10 @@ abstract class DocumentPhotoCamera {
   /// Looks for [content] from now on instead of what [open] was given.
   void lookFor(SideContent content);
 
+  /// Whether most of the latest preview frames showed an MRZ's lines, on
+  /// any side: a card can have its MRZ on the front (ICAO TD2) or the back (TD1).
+  bool get mrzShown;
+
   /// Takes a picture: the camera's own, to show at once, and the photo
   /// prepared for sending from it ([prepareDocumentPhoto]), cut to the frame
   /// of [frameRatio] drawn over the preview - ready once the camera is
@@ -157,6 +161,8 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
   /// Null until the portrait checker has looked at a frame of this side.
   bool? _portraitInPlace;
 
+  final _mrzSightings = MrzSightings();
+
   DocumentTextReader? _textReader;
 
   /// Text recognition is slower than a frame: one read at a time, frames use the latest lines.
@@ -172,6 +178,7 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
     _frameRatio = frameRatio;
     _content = content;
     _portraitInPlace = null;
+    _mrzSightings.reset();
     _onFrameChecked = onFrameChecked;
     final open = _controller;
     if (open != null) {
@@ -279,6 +286,7 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
       check.issues.then((frameIssues) {
         final lines = _lines;
         if (generation != _generation || _onFrameChecked != onFrameChecked || lines == null) return;
+        _mrzSightings.add(mrzLayout(lines, region));
         onFrameChecked(_withContentIssues(frameIssues, lines, region, content));
       }, onError: (_) {}),
     );
@@ -378,6 +386,9 @@ class DeviceDocumentPhotoCamera implements DocumentPhotoCamera {
 
   @override
   void lookFor(SideContent content) => _content = content;
+
+  @override
+  bool get mrzShown => _mrzSightings.shown;
 
   @override
   Future<Uint8List> prepare(DocumentPicture picture) => preparePhotoInBackground(picture);
@@ -518,6 +529,9 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
   DocumentTextReader? _photoTextReader;
   final _sideMrz = Map<Uint8List, Future<MrzFields?>>.identity();
 
+  /// The photos whose preview showed the MRZ ([DocumentPhotoCamera.mrzShown]).
+  final _mrzPreviewed = Set<Uint8List>.identity();
+
   var _qualityWaived = false;
   Timer? _waiveTimer;
 
@@ -551,13 +565,14 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
     },
   );
 
-  /// [_content], without the MRZ when the other side's photo already showed
-  /// it: some cards have theirs on the front.
+  /// [_content], without the MRZ when the other side already showed it, in
+  /// its preview or on its photo: a TD2 card has its MRZ on the front.
   Future<SideContent> _contentToLookFor() async {
     final content = _content;
     final other = _taken[_side == DocumentPhotoSide.front ? DocumentPhotoSide.back : DocumentPhotoSide.front];
     if (!content.mrz || other == null) return content;
-    return await _readMrz(other) == null ? content : (portrait: content.portrait, mrz: false);
+    final shown = _mrzPreviewed.contains(other) || await _readMrz(other) != null;
+    return shown ? (portrait: content.portrait, mrz: false) : content;
   }
 
   /// Both sides of a passport's photo page get the passport-page frame;
@@ -656,6 +671,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
     bool overtaken() => _index != index || _state != _PhotoState.capturing;
     DocumentPicture? shot;
     try {
+      final mrzShown = _camera.mrzShown;
       final taken = await _camera.takePicture(frameRatio: _frameRatio);
       if (!mounted || overtaken()) {
         taken.photo.ignore();
@@ -671,6 +687,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
       final prepared = await Future.wait<Object?>([taken.photo, _camera.close()]);
       if (!mounted || !identical(_shot, shot)) return;
       final photo = prepared.first! as Uint8List;
+      if (mrzShown) _mrzPreviewed.add(photo);
       setState(() {
         _photo = photo;
         _shot = null;
@@ -707,6 +724,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
 
   void _retake() {
     _sideMrz.remove(_photo);
+    _mrzPreviewed.remove(_photo);
     setState(() => _photo = null);
     unawaited(_openCamera());
   }

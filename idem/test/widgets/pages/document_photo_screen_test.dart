@@ -93,6 +93,9 @@ class _FakeCamera implements DocumentPhotoCamera {
   void lookFor(SideContent content) => contents.add(content);
 
   @override
+  bool mrzShown = false;
+
+  @override
   Future<void> close() async => closes++;
 
   @override
@@ -589,8 +592,9 @@ void main() {
       WidgetTester tester,
       DocumentType? type, {
       List<String> frontText = const [],
+      bool frontPreviewShowsMrz = false,
     }) async {
-      final camera = _FakeCamera();
+      final camera = _FakeCamera()..mrzShown = frontPreviewShowsMrz;
       await tester.pumpWidget(_screen(camera, documentType: type, readPhotoText: (_) async => frontText));
       await tester.pump();
       await _takeAndReview(tester);
@@ -618,6 +622,13 @@ void main() {
         DocumentType.identityCard,
         frontText: const ['I<UTOD231458907<<<<<<<<<<<<<<<', '7408122F1204159UTO<<<<<<<<<<<6'],
       );
+
+      expect(contents.last, (portrait: false, mrz: false));
+    });
+
+    testWidgets("an identity card whose front's preview showed the MRZ, unreadable on its photo: none looked for on "
+        'its back', (tester) async {
+      final contents = await contentsFor(tester, DocumentType.identityCard, frontPreviewShowsMrz: true);
 
       expect(contents.last, (portrait: false, mrz: false));
     });

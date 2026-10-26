@@ -1071,3 +1071,14 @@ class DocumentPhotoQuality {
     _clearChecks();
   }
 }
+
+/// Whether most of the latest frames showed an MRZ's lines ([mrzLayout]).
+class MrzSightings {
+  final _frames = <bool>[];
+
+  bool get shown => _frames.where((shown) => shown).length >= DocumentPhotoQuality.framesToAgree;
+
+  void add(bool shown) => DocumentPhotoQuality._push(_frames, shown);
+
+  void reset() => _frames.clear();
+}
