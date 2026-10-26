@@ -23,6 +23,30 @@ on:
       platform:
         type: string
         default: both
+    secrets:
+      APPLE_DISTRIBUTION_CERTIFICATE:
+        required: false
+      APPLE_DISTRIBUTION_CERTIFICATE_PASSWORD:
+        required: false
+      APPLE_PROVISIONING_PROFILE:
+        required: false
+      APP_STORE_CONNECT_KEY:
+        required: false
+      APP_STORE_CONNECT_KEY_ID:
+        required: false
+      APP_STORE_CONNECT_ISSUER_ID:
+        required: false
+      ANDROID_SIGNING_KEYSTORE:
+        required: false
+      ANDROID_SIGNING_KEYSTORE_PASSWORD:
+        required: false
+      ANDROID_SIGNING_KEY_ALIAS:
+        required: false
+      GOOGLE_PLAY_SERVICE_ACCOUNT_JSON:
+        required: false
+
+permissions:
+  contents: read
 
 concurrency: dry-run-${{ github.ref }}
 
@@ -39,8 +63,9 @@ jobs:
     environment: app-store-beta
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           submodules: true
       - name: Setup build environment
         uses: ./.github/actions/setup-build-environment
@@ -51,9 +76,9 @@ jobs:
           APP_STORE_CONNECT_KEY: ${{ secrets.APP_STORE_CONNECT_KEY }}
         run: |
           mkdir -p ./fastlane/profiles
-          echo $APPLE_DISTRIBUTION_CERTIFICATE | base64 --decode > ./fastlane/profiles/apple_distribution.p12
-          echo $APPLE_PROVISIONING_PROFILE | base64 --decode > ./fastlane/profiles/app_store_beta.mobileprovision
-          echo $APP_STORE_CONNECT_KEY | base64 --decode > ./fastlane/profiles/app_store_connect_key.p8
+          echo "$APPLE_DISTRIBUTION_CERTIFICATE" | base64 --decode > ./fastlane/profiles/apple_distribution.p12
+          echo "$APPLE_PROVISIONING_PROFILE" | base64 --decode > ./fastlane/profiles/app_store_beta.mobileprovision
+          echo "$APP_STORE_CONNECT_KEY" | base64 --decode > ./fastlane/profiles/app_store_connect_key.p8
       - name: Build app
         run: >
           bundle exec fastlane ios_build_app
@@ -68,7 +93,7 @@ jobs:
           key_id:${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           issuer_id:${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           key_filepath:profiles/app_store_connect_key.p8
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
           name: dry-run-ios
@@ -82,8 +107,9 @@ jobs:
     environment: android-beta
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: false
           submodules: true
       - name: Setup build environment
         uses: ./.github/actions/setup-build-environment
@@ -93,8 +119,8 @@ jobs:
           GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
         run: |
           mkdir -p ./fastlane/profiles
-          echo $ANDROID_SIGNING_KEYSTORE | base64 --decode > ./fastlane/profiles/keystore.jks
-          echo $GOOGLE_PLAY_SERVICE_ACCOUNT_JSON | base64 --decode > ./fastlane/profiles/play_service_account.json
+          echo "$ANDROID_SIGNING_KEYSTORE" | base64 --decode > ./fastlane/profiles/keystore.jks
+          echo "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" | base64 --decode > ./fastlane/profiles/play_service_account.json
       - name: Build app
         run: >
           bundle exec fastlane android_build_appbundle
@@ -108,7 +134,7 @@ jobs:
           bundle exec fastlane android_upload_play_store
           json_key_path:profiles/play_service_account.json
           validate_only:true
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
           name: dry-run-android
