@@ -71,6 +71,7 @@ jobs:
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           files: vcmrtd/coverage/lcov.info
+          disable_search: true
           flags: vcmrtd
           fail_ci_if_error: true
         env:
@@ -79,6 +80,7 @@ jobs:
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           files: face_verification/coverage/lcov.info
+          disable_search: true
           flags: face_verification
           fail_ci_if_error: true
         env:
@@ -87,6 +89,7 @@ jobs:
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           files: mrz_capture/coverage/lcov.info
+          disable_search: true
           flags: mrz_capture
           fail_ci_if_error: true
         env:
