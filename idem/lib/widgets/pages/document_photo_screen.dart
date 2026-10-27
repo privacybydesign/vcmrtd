@@ -669,14 +669,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
       await _camera.open(frameRatio: _frameRatio, content: content, onFrameChecked: _onFrameChecked);
       if (!mounted || overtaken()) return;
       setState(() => _state = _PhotoState.preview);
-      _waiveTimer = Timer(documentPhotoQualityWaiveDelay, () {
-        if (mounted) setState(() => _qualityWaived = true);
-      });
-      _settleTimer = Timer(documentPhotoMinPreview, () {
-        if (!mounted) return;
-        setState(() => _previewSettled = true);
-        _captureWhenClear();
-      });
+      _startPreviewTimers();
 
       unawaited(
         toLookFor.then((found) {
@@ -693,6 +686,17 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
             : context.l10n.docPhotoErrorCamera('$e'),
       );
     }
+  }
+
+  void _startPreviewTimers() {
+    _waiveTimer = Timer(documentPhotoQualityWaiveDelay, () {
+      if (mounted) setState(() => _qualityWaived = true);
+    });
+    _settleTimer = Timer(documentPhotoMinPreview, () {
+      if (!mounted) return;
+      setState(() => _previewSettled = true);
+      _captureWhenClear();
+    });
   }
 
   void _onFrameChecked(Set<DocumentPhotoIssue> issues) {
