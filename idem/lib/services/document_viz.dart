@@ -242,9 +242,15 @@ final _digit = RegExp(r'\d');
 final _alphanumeric = RegExp(r'^[A-Z0-9]+$');
 final _mrzLine = RegExp('[<«]');
 
-/// What the MRZ scan or the chip read says the document is; the [surname]
-/// only the chip has.
-typedef KnownDocument = ({String documentNumber, DateTime? dateOfBirth, DateTime? dateOfExpiry, String? surname});
+/// What the MRZ scan or the chip read says the document is; the names only
+/// the chip has.
+typedef KnownDocument = ({
+  String documentNumber,
+  DateTime? dateOfBirth,
+  DateTime? dateOfExpiry,
+  String? surname,
+  String? givenNames,
+});
 
 /// A driving licence's numbered fields (see [_licenceField]).
 typedef LicenceFields = ({String? number, DateTime? dateOfBirth, DateTime? dateOfExpiry, int labels});
@@ -439,8 +445,9 @@ class VizCheck {
 
   final SidesMatch match;
 
-  /// Whether the front prints the document's surname, when it prints its
-  /// number or dates. Only logged: text recognition can miss a name.
+  /// Whether the front prints the document's surname and given names, when
+  /// it prints its number or dates. Only logged: text recognition can
+  /// miss a name.
   final SidesMatch name;
 
   /// Null when the side's text couldn't be read.
@@ -462,7 +469,7 @@ class VizCheck {
 /// machine reads off either side (an MRZ, a licence's barcode). Both sides
 /// must carry the number, both dates, or the personal number a passport's
 /// MRZ holds (the Dutch BSN, which the back of its page prints); different when a machine-readable
-/// zone names another number, other dates or another surname, or the front
+/// zone names another number, other dates or other names, or the front
 /// prints dates but neither of them. Without any, a licence whose back lists its
 /// categories until the front's expiry; else a number or two dates the sides share.
 VizCheck checkSides(SideText? front, SideText? back, {KnownDocument? known}) {
@@ -477,9 +484,9 @@ VizCheck checkSides(SideText? front, SideText? back, {KnownDocument? known}) {
   final expiry = known?.dateOfExpiry ?? fromZones((zone) => zone.dateOfExpiry);
   if (number == null && (birth == null || expiry == null)) return result(_matchWithoutReference(front, back));
 
-  final surnameRead = known?.surname ?? fromZones((zone) => zone.surname);
-  final surname = surnameRead != null && _nameKey(surnameRead).length >= _minNameLength ? surnameRead : null;
-  final namesAnother = zones.any((zone) => _namesAnother(zone, number, birth, expiry, surname));
+  final surname = _longEnough(known?.surname ?? fromZones((zone) => zone.surname));
+  final givenNames = _longEnough(known?.givenNames ?? fromZones((zone) => zone.givenNames));
+  final namesAnother = zones.any((zone) => _namesAnother(zone, number, birth, expiry, surname, givenNames));
   if (namesAnother || front.printedMatchesMrz == SidesMatch.different) return result(SidesMatch.different);
 
   // Only ever ties: text recognition reads it on one side at most, often only partly.
@@ -496,21 +503,34 @@ VizCheck checkSides(SideText? front, SideText? back, {KnownDocument? known}) {
       (number != null && front.vizNumbers.contains(_matchKey(number))) || front._printsDates(birth, expiry);
   final name = surname == null || !printedTied
       ? SidesMatch.unknown
-      : (front._printsName(surname) ? SidesMatch.same : SidesMatch.different);
+      : (front._printsName(surname) && (givenNames == null || front._printsName(givenNames))
+            ? SidesMatch.same
+            : SidesMatch.different);
   if (tied(front) && tied(back)) return result(SidesMatch.same, name);
   // Only the front: a back's dates are often others (issued, categories).
   if (front._contradicts(birth, expiry)) return result(SidesMatch.different, name);
   return result(SidesMatch.unknown, name);
 }
 
-bool _namesAnother(MrzFields zone, String? number, DateTime? birth, DateTime? expiry, String? surname) {
+/// [name], when it has letters enough to tell it from another.
+String? _longEnough(String? name) => name != null && _nameKey(name).length >= _minNameLength ? name : null;
+
+bool _namesAnother(
+  MrzFields zone,
+  String? number,
+  DateTime? birth,
+  DateTime? expiry,
+  String? surname,
+  String? givenNames,
+) {
   bool differs(DateTime? a, DateTime? b) => a != null && b != null && !_sameDay(a, b);
+  bool otherName(String? a, String? b) => a != null && b != null && !_sameName(a, b);
   final zoneNumber = zone.documentNumber;
-  final zoneSurname = zone.surname;
   return (number != null && zoneNumber != null && _matchKey(zoneNumber) != _matchKey(number)) ||
       differs(zone.dateOfBirth, birth) ||
       differs(zone.dateOfExpiry, expiry) ||
-      (surname != null && zoneSurname != null && !_sameName(zoneSurname, surname));
+      otherName(zone.surname, surname) ||
+      otherName(zone.givenNames, givenNames);
 }
 
 /// An MRZ cuts a long name short, and text recognition can misread a letter.

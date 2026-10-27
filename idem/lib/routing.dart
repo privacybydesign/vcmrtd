@@ -1231,32 +1231,47 @@ Widget _buildDocumentPhotoRoute(BuildContext context, GoRouterState state, Docum
   );
 }
 
+/// The chip's DG1 when the chip was read on this device - the issuer
+/// signed it - else the MRZ scan's or the chip access key's, without names.
 KnownDocument? _knownDocument(ScannedMRZ? mrz, ProofingChipAccess? chip, DocumentData? read) {
-  final surname = switch (read) {
-    PassportData() => read.mrz.lastName,
-    DrivingLicenceData() => read.holderSurname,
-    _ => null,
-  };
-  return switch (mrz) {
-    ScannedPassportMRZ() => (
+  String? name(String value) => value.trim().isEmpty ? null : value.trim();
+  return switch ((read, mrz)) {
+    (PassportData(:final mrz), _) => (
       documentNumber: mrz.documentNumber,
       dateOfBirth: mrz.dateOfBirth,
       dateOfExpiry: mrz.dateOfExpiry,
-      surname: surname,
+      surname: name(mrz.lastName),
+      givenNames: name(mrz.firstName),
     ),
-    ScannedDriverLicenseMRZ() => (
+    (final DrivingLicenceData licence, _) => (
+      documentNumber: licence.documentNumber,
+      dateOfBirth: parseDrivingLicenceDate(licence.dateOfBirth),
+      dateOfExpiry: parseDrivingLicenceDate(licence.dateOfExpiry),
+      surname: name(licence.holderSurname),
+      givenNames: name(licence.holderOtherName),
+    ),
+    (_, final ScannedPassportMRZ mrz) => (
+      documentNumber: mrz.documentNumber,
+      dateOfBirth: mrz.dateOfBirth,
+      dateOfExpiry: mrz.dateOfExpiry,
+      surname: null,
+      givenNames: null,
+    ),
+    (_, final ScannedDriverLicenseMRZ mrz) => (
       documentNumber: mrz.documentNumber,
       dateOfBirth: null,
       dateOfExpiry: null,
-      surname: surname,
+      surname: null,
+      givenNames: null,
     ),
-    null when chip != null => (
+    _ when chip != null => (
       documentNumber: chip.documentNumber,
       dateOfBirth: chip.dateOfBirth,
       dateOfExpiry: chip.dateOfExpiry,
-      surname: surname,
+      surname: null,
+      givenNames: null,
     ),
-    null => null,
+    _ => null,
   };
 }
 

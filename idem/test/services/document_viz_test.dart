@@ -7,6 +7,8 @@ const _cardFront = [
   'IDENTITEITSKAART',
   'Naam / Surname',
   'Eriksson',
+  'Voornamen / Given names',
+  'Anna Maria',
   'Documentnummer',
   'D23I45890',
   'Geboortedatum / Date of birth',
@@ -324,6 +326,7 @@ void main() {
         dateOfBirth: DateTime(1974, 8, 12),
         dateOfExpiry: DateTime(2012, 4, 15),
         surname: null,
+        givenNames: null,
       );
 
       expect(checkSides(front, back, known: known).match, SidesMatch.same);
@@ -350,6 +353,7 @@ void main() {
           dateOfBirth: DateTime(1974, 8, 12),
           dateOfExpiry: DateTime(2012, 4, 15),
           surname: null,
+          givenNames: null,
         ),
       );
 
@@ -371,6 +375,7 @@ void main() {
           dateOfBirth: DateTime(1974, 8, 12),
           dateOfExpiry: DateTime(2012, 4, 15),
           surname: null,
+          givenNames: null,
         ),
       );
 
@@ -394,6 +399,7 @@ void main() {
           dateOfBirth: DateTime(1974, 8, 12),
           dateOfExpiry: DateTime(2012, 4, 15),
           surname: null,
+          givenNames: null,
         ),
       );
 
@@ -404,7 +410,7 @@ void main() {
       final check = checkSides(
         SideText.read(_cardFront),
         SideText.read(_cardBack),
-        known: (documentNumber: 'XR9876543', dateOfBirth: null, dateOfExpiry: null, surname: null),
+        known: (documentNumber: 'XR9876543', dateOfBirth: null, dateOfExpiry: null, surname: null, givenNames: null),
       );
 
       expect(check.match, SidesMatch.different);
@@ -434,6 +440,7 @@ void main() {
         dateOfBirth: DateTime(1974, 8, 12),
         dateOfExpiry: DateTime(2012, 4, 15),
         surname: 'MUELLER',
+        givenNames: null,
       );
       final front = SideText.read(['Müiler', '12 AUG/AUG 1974', '15.04.2012']);
 
@@ -449,10 +456,49 @@ void main() {
           dateOfBirth: DateTime(1974, 8, 12),
           dateOfExpiry: DateTime(2012, 4, 15),
           surname: 'JANSEN',
+          givenNames: null,
         ),
       );
 
       expect(check.match, SidesMatch.different);
+    });
+
+    test("a front that prints the surname under other given names has another name", () {
+      final front = SideText.read([..._cardFront.map((line) => line == 'Anna Maria' ? 'Eva' : line)]);
+
+      expect(checkSides(front, SideText.read(_cardBack)).name, SidesMatch.different);
+    });
+
+    test("a back whose MRZ names other given names than the chip is a different document", () {
+      final check = checkSides(
+        SideText.read(_cardFront),
+        SideText.read(_cardBack),
+        known: (
+          documentNumber: 'D23145890',
+          dateOfBirth: DateTime(1974, 8, 12),
+          dateOfExpiry: DateTime(2012, 4, 15),
+          surname: 'ERIKSSON',
+          givenNames: 'JOHANNA',
+        ),
+      );
+
+      expect(check.match, SidesMatch.different);
+    });
+
+    test("the given names an MRZ cuts short, or a barcode's first name only, are the same", () {
+      final check = checkSides(
+        SideText.read(_cardFront),
+        SideText.read(_cardBack),
+        known: (
+          documentNumber: 'D23145890',
+          dateOfBirth: DateTime(1974, 8, 12),
+          dateOfExpiry: DateTime(2012, 4, 15),
+          surname: 'ERIKSSON',
+          givenNames: 'ANNA MARIA LOUISE',
+        ),
+      );
+
+      expect(check.match, SidesMatch.same);
     });
 
     test('a front that prints neither number nor dates says nothing of its name', () {

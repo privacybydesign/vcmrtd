@@ -19,11 +19,12 @@ final _td1Top = RegExp(r'^[IAC][A-Z0-9<][A-Z0-9<]{3}([A-Z0-9<]{9})([0-9A-Z])');
 final _td1Middle = RegExp(r'^([0-9A-Z]{6})([0-9A-Z])[MFX<]([0-9A-Z]{6})([0-9A-Z])');
 
 /// The first line of a passport (TD3), or of a card (TD2) or visa that
-/// starts with the holder's name: type, country, then the name's '<<'.
-final _nameTop = RegExp(r'^([PIACV])[A-Z<][A-Z0-9<]{3}([A-Z<]*?)<<');
+/// starts with the holder's name: type, country, the surname, '<<', the
+/// given names.
+final _nameTop = RegExp(r'^([PIACV])[A-Z<][A-Z0-9<]{3}([A-Z<]*?)<<([A-Z<]*)');
 
 /// TD1, line 3: the holder's surname, '<<', the given names.
-final _td1Name = RegExp(r'^([A-Z]+(?:<[A-Z]+)*)<<[A-Z<]*$');
+final _td1Name = RegExp(r'^([A-Z]+(?:<[A-Z]+)*)<<([A-Z<]*)$');
 
 /// TD3 and TD2, line 2: document number, nationality, date of birth, sex,
 /// date of expiry, and what follows: TD3's personal number.
@@ -48,8 +49,8 @@ final _anyDigit = RegExp(r'[0-9]');
 /// BSN, which the other side of its page may print. [licenceData]: all of a
 /// driving licence's line after its country - where its number ends differs
 /// per country ("D1NLD1" and a version, "D<EST" without), so the number
-/// printed on the licence is looked for in it. [surname]: its name line's,
-/// which has no check digit.
+/// printed on the licence is looked for in it. [surname] and [givenNames]:
+/// its name line's, which has no check digit.
 typedef MrzFields = ({
   DocumentType type,
   String? documentNumber,
@@ -58,6 +59,7 @@ typedef MrzFields = ({
   String? personalNumber,
   String? licenceData,
   String? surname,
+  String? givenNames,
 });
 
 /// The MRZ fields among [lines], null when none of them holds up. [now]
@@ -86,20 +88,25 @@ class _MrzReading {
   String? personal;
   String? licenceData;
   String? surname;
+  String? givenNames;
   String? td1Surname;
+  String? td1GivenNames;
 
   bool nameTop(String line) {
     final match = _nameTop.firstMatch(line);
     if (match == null) return false;
     type ??= match[1] == _passportType ? DocumentType.passport : DocumentType.identityCard;
     surname ??= _name(match[2]!);
+    givenNames ??= _name(match[3]!);
     return true;
   }
 
   /// Kept only for a TD1, once its other lines have shown it is one.
   void td1Name(String line) {
     final match = _td1Name.firstMatch(line);
-    if (match != null) td1Surname ??= _name(match[1]!);
+    if (match == null) return;
+    td1Surname ??= _name(match[1]!);
+    td1GivenNames ??= _name(match[2]!);
   }
 
   bool numberLine(String line) {
@@ -159,6 +166,7 @@ class _MrzReading {
       personalNumber: personal,
       licenceData: licenceData,
       surname: surname ?? (type == DocumentType.identityCard ? td1Surname : null),
+      givenNames: givenNames ?? (type == DocumentType.identityCard ? td1GivenNames : null),
     );
   }
 }

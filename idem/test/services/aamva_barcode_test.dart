@@ -7,7 +7,7 @@ const _usLicence =
     'DBB08121974\nDBA08122030\nDAJCA\n';
 
 void main() {
-  test('reads a United States licence: its number, its MMDDCCYY dates and its surname', () {
+  test('reads a United States licence: its number, its MMDDCCYY dates and its names', () {
     expect(readAamvaBarcode(_usLicence), (
       type: DocumentType.drivingLicence,
       documentNumber: 'D1234562',
@@ -16,7 +16,15 @@ void main() {
       personalNumber: null,
       licenceData: null,
       surname: 'ERIKSSON',
+      givenNames: 'ANNA',
     ));
+  });
+
+  test("reads the given names an older licence lists, comma separated", () {
+    const raw =
+        '@\n\x1e\rANSI 636014030102DL00410278ZC03190024DLDAQD1234562\nDCSERIKSSON\nDCTANNA,MARIA\nDBB08121974\n';
+
+    expect(readAamvaBarcode(raw)?.givenNames, 'ANNA MARIA');
   });
 
   test('reads a Canadian identity card: its CCYYMMDD dates', () {

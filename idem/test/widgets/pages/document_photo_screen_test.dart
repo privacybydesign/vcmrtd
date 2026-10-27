@@ -704,6 +704,7 @@ void main() {
           dateOfBirth: DateTime(1974, 8, 12),
           dateOfExpiry: DateTime(2012, 4, 15),
           surname: null,
+          givenNames: null,
         ),
         readPhotoText: (photo) async {
           read.add(photo);

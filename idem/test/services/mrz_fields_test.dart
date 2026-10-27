@@ -4,6 +4,8 @@ import 'package:vcmrtd/vcmrtd.dart';
 
 // The lines ML Kit read off rendered documents on an Android emulator.
 
+const _passportNumberLine = 'L898902C36UTO7408122F1204159ZE184226B<<<<<10';
+
 void main() {
   final now = DateTime(2026, 10, 16);
 
@@ -26,6 +28,7 @@ void main() {
       personalNumber: null,
       licenceData: null,
       surname: 'ERIKSSON',
+      givenNames: 'ANNA MARIA',
     ));
   });
 
@@ -55,6 +58,7 @@ void main() {
       personalNumber: 'ZE184226B',
       licenceData: null,
       surname: 'ERIKSSON',
+      givenNames: 'ANNA MARIA',
     ));
   });
 
@@ -98,6 +102,7 @@ void main() {
       personalNumber: null,
       licenceData: null,
       surname: 'ERIKSSON',
+      givenNames: 'ANNA MARIA',
     ));
   });
 
@@ -110,6 +115,22 @@ void main() {
       readMrzFields(['P<D<<MUSTERMANN<<ERIKA', 'L898902C36D<<7408122F1204159<<<<<<<<<<<<<<04'], now: now)?.surname,
       'MUSTERMANN',
     );
+  });
+
+  test('reads the given names after the surname, on a passport and a card', () {
+    expect(readMrzFields(['P<UTOERIKSSON<<ANNA<MARIA<<<<<', _passportNumberLine], now: now)?.givenNames, 'ANNA MARIA');
+    expect(
+      readMrzFields([
+        'I<UTOD231458907<<',
+        '7408122F1204159UTO<<',
+        'DE<BRUIJN<<WILLEKE<LISELOTTE<<',
+      ], now: now)?.givenNames,
+      'WILLEKE LISELOTTE',
+    );
+  });
+
+  test('a surname without given names has none', () {
+    expect(readMrzFields(['P<UTOERIKSSON<<<<<<<<<', _passportNumberLine], now: now)?.givenNames, isNull);
   });
 
   test('a name line without the lines of a card has no surname', () {
