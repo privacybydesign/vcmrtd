@@ -1,8 +1,8 @@
 # Status checks, using the shared workflows from privacybydesign/github-workflows.
 # The gate job "Status checks passed" is the one check to require.
 #
-# There is no shared Flutter workflow, so the Flutter lint, tests, SonarQube
-# scan and the development-signed app builds stay local jobs here.
+# There is no shared Flutter workflow, so the Flutter lint, the tests with the
+# SonarQube scan, and the development-signed app builds stay local jobs here.
 name: Status checks
 
 on:
@@ -37,7 +37,11 @@ jobs:
         uses: ./.github/actions/setup-build-environment
       - run: bundle exec fastlane lint
 
-  unit-test:
+  # One job runs every test suite once and feeds the coverage to both Codecov
+  # and SonarQube, rather than a separate unit-test job running the same suites
+  # a second time.
+  quality:
+    name: Quality
     runs-on: ubuntu-latest
     needs: lint
     timeout-minutes: 45
@@ -47,11 +51,15 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          fetch-depth: 0
           persist-credentials: false
       - name: Setup build environment
         uses: ./.github/actions/setup-build-environment
       - name: Run vcmrtd tests with coverage
         working-directory: ./vcmrtd
+        run: flutter test --coverage
+      - name: Run app tests with coverage
+        working-directory: ./idem
         run: flutter test --coverage
       - name: Run face_verification tests with coverage
         working-directory: ./face_verification
@@ -83,34 +91,6 @@ jobs:
           fail_ci_if_error: true
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
-  sonarqube:
-    name: SonarQube
-    runs-on: ubuntu-latest
-    needs: lint
-    timeout-minutes: 45
-    permissions:
-      contents: read
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Setup build environment
-        uses: ./.github/actions/setup-build-environment
-      - name: Run vcmrtd tests with coverage
-        working-directory: ./vcmrtd
-        run: flutter test --coverage
-      - name: Run app tests with coverage
-        working-directory: ./idem
-        run: flutter test --coverage
-      - name: Run face_verification tests with coverage
-        working-directory: ./face_verification
-        run: flutter test --coverage
-      - name: Run mrz_capture tests with coverage
-        working-directory: ./mrz_capture
-        run: flutter test --coverage
       - name: Merge coverage reports
         run: |
           mkdir -p coverage
@@ -240,7 +220,7 @@ jobs:
   passed:
     name: Status checks passed
     if: always()
-    needs: [lint, unit-test, sonarqube, build-app-android, build-app-ios, docs, dependency-review, workflow-lint]
+    needs: [lint, quality, build-app-android, build-app-ios, docs, dependency-review, workflow-lint]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions: {}
