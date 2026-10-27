@@ -263,6 +263,10 @@ class AppLocalizationsNl extends AppLocalizations {
   String get docPhotoHoldStill => 'Even stilhouden…';
 
   @override
+  String get docPhotoSidesMismatch =>
+      'De kanten lijken niet van hetzelfde document te zijn. Maak de foto\'s opnieuw, van één document.';
+
+  @override
   String get docPhotoReviewTitle => 'Controleer de foto';
 
   @override

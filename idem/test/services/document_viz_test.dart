@@ -323,6 +323,7 @@ void main() {
         documentNumber: 'L898902C3',
         dateOfBirth: DateTime(1974, 8, 12),
         dateOfExpiry: DateTime(2012, 4, 15),
+        surname: null,
       );
 
       expect(checkSides(front, back, known: known).match, SidesMatch.same);
@@ -344,7 +345,12 @@ void main() {
       final check = checkSides(
         SideText.read(_cardFront),
         SideText.read(_cardBack),
-        known: (documentNumber: 'D23145890', dateOfBirth: DateTime(1974, 8, 12), dateOfExpiry: DateTime(2012, 4, 15)),
+        known: (
+          documentNumber: 'D23145890',
+          dateOfBirth: DateTime(1974, 8, 12),
+          dateOfExpiry: DateTime(2012, 4, 15),
+          surname: null,
+        ),
       );
 
       expect(check.match, SidesMatch.same);
@@ -360,7 +366,12 @@ void main() {
       final check = checkSides(
         SideText.read(_cardFront),
         SideText.read(_otherCardBack),
-        known: (documentNumber: 'D23145890', dateOfBirth: DateTime(1974, 8, 12), dateOfExpiry: DateTime(2012, 4, 15)),
+        known: (
+          documentNumber: 'D23145890',
+          dateOfBirth: DateTime(1974, 8, 12),
+          dateOfExpiry: DateTime(2012, 4, 15),
+          surname: null,
+        ),
       );
 
       expect(check.match, SidesMatch.different);
@@ -378,7 +389,12 @@ void main() {
       final check = checkSides(
         SideText.read(_cardFront),
         SideText.read(['8503013F3001019UTO<<']),
-        known: (documentNumber: 'D23145890', dateOfBirth: DateTime(1974, 8, 12), dateOfExpiry: DateTime(2012, 4, 15)),
+        known: (
+          documentNumber: 'D23145890',
+          dateOfBirth: DateTime(1974, 8, 12),
+          dateOfExpiry: DateTime(2012, 4, 15),
+          surname: null,
+        ),
       );
 
       expect(check.match, SidesMatch.different);
@@ -388,7 +404,7 @@ void main() {
       final check = checkSides(
         SideText.read(_cardFront),
         SideText.read(_cardBack),
-        known: (documentNumber: 'XR9876543', dateOfBirth: null, dateOfExpiry: null),
+        known: (documentNumber: 'XR9876543', dateOfBirth: null, dateOfExpiry: null, surname: null),
       );
 
       expect(check.match, SidesMatch.different);
@@ -398,6 +414,49 @@ void main() {
       final check = checkSides(SideText.read(['12 AUG/AUG 1974', '15.04.2012']), SideText.read(_cardBack));
 
       expect(check.match, SidesMatch.same);
+    });
+
+    test("a front that prints the back MRZ's surname has its name", () {
+      expect(checkSides(SideText.read(_cardFront), SideText.read(_cardBackAsRead)).name, SidesMatch.same);
+    });
+
+    test("a front that prints the document's number and dates under another surname has another name", () {
+      final front = SideText.read([..._cardFront.map((line) => line == 'Eriksson' ? 'Jansen' : line)]);
+      final check = checkSides(front, SideText.read(_cardBack));
+
+      expect(check.name, SidesMatch.different);
+      expect(check.match, SidesMatch.same, reason: 'text recognition can miss a name');
+    });
+
+    test('a surname read with a letter misread, or with its umlaut, is the same', () {
+      final known = (
+        documentNumber: 'D23145890',
+        dateOfBirth: DateTime(1974, 8, 12),
+        dateOfExpiry: DateTime(2012, 4, 15),
+        surname: 'MUELLER',
+      );
+      final front = SideText.read(['Müiler', '12 AUG/AUG 1974', '15.04.2012']);
+
+      expect(checkSides(front, SideText.read(['7408122F1204159UTO<<']), known: known).name, SidesMatch.same);
+    });
+
+    test("a back whose MRZ names another surname than the chip is a different document", () {
+      final check = checkSides(
+        SideText.read(_cardFront),
+        SideText.read(_cardBack),
+        known: (
+          documentNumber: 'D23145890',
+          dateOfBirth: DateTime(1974, 8, 12),
+          dateOfExpiry: DateTime(2012, 4, 15),
+          surname: 'JANSEN',
+        ),
+      );
+
+      expect(check.match, SidesMatch.different);
+    });
+
+    test('a front that prints neither number nor dates says nothing of its name', () {
+      expect(checkSides(SideText.read(['IDENTITEITSKAART']), SideText.read(_cardBack)).name, SidesMatch.unknown);
     });
 
     test('without an MRZ, a number on both sides ties them', () {
@@ -434,6 +493,7 @@ void main() {
 
       expect('$check', isNot(contains('D23')));
       expect('$check', isNot(contains('1974')));
+      expect('$check'.toUpperCase(), isNot(contains('ERIKSSON')));
     });
   });
 }

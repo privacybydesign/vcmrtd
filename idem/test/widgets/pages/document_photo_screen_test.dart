@@ -117,6 +117,7 @@ Widget _screen(
   Future<void> Function(Uint8List front, Uint8List back)? onPhotosTaken,
   VoidCallback? onBack,
   KnownDocument? known,
+  bool retakeOnMismatch = false,
   Future<PhotoText> Function(Uint8List photo)? readPhotoText,
 }) => _app(
   DocumentPhotoScreen(
@@ -124,6 +125,7 @@ Widget _screen(
     documentType: documentType,
     scanned: scanned,
     known: known,
+    retakeOnMismatch: retakeOnMismatch,
     readPhotoText: readPhotoText ?? (_) async => (lines: const <String>[], barcodes: const <String>[]),
     stepNumber: 2,
     totalSteps: 3,
@@ -697,7 +699,12 @@ void main() {
         camera,
         documentType: DocumentType.identityCard,
         scanned: scanned,
-        known: (documentNumber: 'D23145890', dateOfBirth: DateTime(1974, 8, 12), dateOfExpiry: DateTime(2012, 4, 15)),
+        known: (
+          documentNumber: 'D23145890',
+          dateOfBirth: DateTime(1974, 8, 12),
+          dateOfExpiry: DateTime(2012, 4, 15),
+          surname: null,
+        ),
         readPhotoText: (photo) async {
           read.add(photo);
           final lines = identical(photo, scanned)
@@ -722,6 +729,80 @@ void main() {
     expect(debugVizCheck.value?.match, SidesMatch.same);
     expect(debugVizCheck.value?.frontLooksLikeDocument, isTrue);
     expect(find.textContaining('Sides: same'), findsOneWidget);
+  });
+
+  testWidgets('sides of different documents are taken again once, then sent', (tester) async {
+    final camera = _FakeCamera();
+    final sent = <(Uint8List, Uint8List)>[];
+    await tester.pumpWidget(
+      _screen(
+        camera,
+        documentType: DocumentType.identityCard,
+        retakeOnMismatch: true,
+        onPhotosTaken: (front, back) async => sent.add((front, back)),
+        readPhotoText: (photo) async {
+          final front = camera.taken.indexWhere((taken) => identical(taken, photo)).isEven;
+          final lines = front
+              ? const ['Eriksson', 'D23145890', '12 AUG/AUG 1974', '15.04.2012']
+              : const [
+                  'I<UTOXR98765434<<<<<<<<<<<<<<<',
+                  '8503013F3001019UTO<<<<<<<<<<<2',
+                  'JANSEN<<EVA<<<<<<<<<<<<<<<<<<<',
+                ];
+          return (lines: lines, barcodes: const <String>[]);
+        },
+      ),
+    );
+    await tester.pump();
+
+    await _takeAndReview(tester);
+    await _usePhoto(tester);
+    await _takeAndReview(tester);
+    await _usePhoto(tester);
+
+    expect(sent, isEmpty);
+    expect(debugVizCheck.value?.match, SidesMatch.different);
+    expect(find.text('Front · 1 of 2'), findsOneWidget);
+    expect(find.textContaining("The sides don't seem to be of the same document"), findsOneWidget);
+
+    await _takeAndReview(tester);
+    await _usePhoto(tester);
+    expect(find.textContaining("The sides don't seem to be of the same document"), findsNothing);
+    await _takeAndReview(tester);
+    await _usePhoto(tester);
+
+    expect(sent, [(camera.taken[2], camera.taken[3])]);
+  });
+
+  testWidgets('without retakeOnMismatch, sides of different documents are sent', (tester) async {
+    final camera = _FakeCamera();
+    final sent = <(Uint8List, Uint8List)>[];
+    await tester.pumpWidget(
+      _screen(
+        camera,
+        documentType: DocumentType.identityCard,
+        onPhotosTaken: (front, back) async => sent.add((front, back)),
+        readPhotoText: (photo) async {
+          final front = identical(camera.taken.first, photo);
+          final lines = front
+              ? const ['Eriksson', 'D23145890', '12 AUG/AUG 1974', '15.04.2012']
+              : const [
+                  'I<UTOXR98765434<<<<<<<<<<<<<<<',
+                  '8503013F3001019UTO<<<<<<<<<<<2',
+                  'JANSEN<<EVA<<<<<<<<<<<<<<<<<<<',
+                ];
+          return (lines: lines, barcodes: const <String>[]);
+        },
+      ),
+    );
+    await tester.pump();
+
+    await _takeAndReview(tester);
+    await _usePhoto(tester);
+    await _takeAndReview(tester);
+    await _usePhoto(tester);
+
+    expect(sent, hasLength(1));
   });
 
   testWidgets('a photo whose text cannot be read leaves the sides unknown', (tester) async {

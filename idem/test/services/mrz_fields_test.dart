@@ -25,6 +25,7 @@ void main() {
       dateOfExpiry: DateTime(2012, 4, 15),
       personalNumber: null,
       licenceData: null,
+      surname: 'ERIKSSON',
     ));
   });
 
@@ -53,6 +54,7 @@ void main() {
       dateOfExpiry: DateTime(2012, 4, 15),
       personalNumber: 'ZE184226B',
       licenceData: null,
+      surname: 'ERIKSSON',
     ));
   });
 
@@ -95,7 +97,23 @@ void main() {
       dateOfExpiry: DateTime(2030, 1, 1),
       personalNumber: null,
       licenceData: null,
+      surname: 'ERIKSSON',
     ));
+  });
+
+  test("reads a surname of more words, and a passport's from a country with fillers in its code", () {
+    expect(
+      readMrzFields(['I<UTOD231458907<<', '7408122F1204159UTO<<', 'DE<BRUIJN<<WILLEKE'], now: now)?.surname,
+      'DE BRUIJN',
+    );
+    expect(
+      readMrzFields(['P<D<<MUSTERMANN<<ERIKA', 'L898902C36D<<7408122F1204159<<<<<<<<<<<<<<04'], now: now)?.surname,
+      'MUSTERMANN',
+    );
+  });
+
+  test('a name line without the lines of a card has no surname', () {
+    expect(readMrzFields(['D1NLD11234567890ABCDEFGHIJKLM5', 'ERIKSSON<<ANNA'], now: now)?.surname, isNull);
   });
 
   test('a number line without its first line is a passport', () {

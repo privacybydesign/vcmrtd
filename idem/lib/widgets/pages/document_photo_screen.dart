@@ -520,6 +520,7 @@ class DocumentPhotoScreen extends StatefulWidget {
     this.documentType,
     this.scanned,
     this.known,
+    this.retakeOnMismatch = false,
     this.camera,
     this.readPhotoText,
   });
@@ -540,6 +541,10 @@ class DocumentPhotoScreen extends StatefulWidget {
   /// What the MRZ scan or chip read says the document is: both sides' text
   /// is checked against it.
   final KnownDocument? known;
+
+  /// Whether sides whose text says they're of different documents are taken
+  /// again, once, before they're sent.
+  final bool retakeOnMismatch;
 
   /// The device's back camera when null.
   final DocumentPhotoCamera? camera;
@@ -571,6 +576,9 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
 
   DocumentTextReader? _photoTextReader;
   final _sideTexts = Map<Uint8List, Future<SideText?>>.identity();
+  Future<VizCheck?>? _comparison;
+  var _retookMismatch = false;
+  var _showMismatch = false;
 
   /// The photos whose preview showed the MRZ ([DocumentPhotoCamera.mrzShown]).
   final _mrzPreviewed = Set<Uint8List>.identity();
@@ -793,7 +801,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
     final other = _taken[otherSide];
     if (other == null) return;
     final front = _side == DocumentPhotoSide.front;
-    unawaited(_compareSides(front: front ? photo : other, back: front ? other : photo));
+    _comparison = _compareSides(front: front ? photo : other, back: front ? other : photo);
   }
 
   Future<SideText?> _readSide(Uint8List photo) => _sideTexts.putIfAbsent(photo, () async {
@@ -807,15 +815,43 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
     }
   });
 
-  /// Only logged for now, until the text of real documents' sides is
-  /// measured: search the log for `VIZ`.
-  Future<void> _compareSides({required Uint8List front, required Uint8List back}) async {
+  /// Logged, search the log for `VIZ`; null when the photos changed meanwhile.
+  Future<VizCheck?> _compareSides({required Uint8List front, required Uint8List back}) async {
     debugVizCheck.value = null;
     final texts = await Future.wait([_readSide(front), _readSide(back)]);
-    if (!mounted || !(identical(_photo, front) || identical(_photo, back))) return;
+    if (!mounted || !(identical(_photo, front) || identical(_photo, back))) return null;
     final check = checkSides(texts[0], texts[1], known: widget.known);
     _vizLog.info('VIZ ${widget.documentType?.name ?? 'unknown'} known=${widget.known != null} $check');
     debugVizCheck.value = check;
+    return check;
+  }
+
+  /// Whether to retake the sides: [DocumentPhotoScreen.retakeOnMismatch], and
+  /// not retaken yet.
+  Future<bool> _sidesDisagree() async {
+    final comparison = _comparison;
+    if (!widget.retakeOnMismatch || _retookMismatch || comparison == null) return false;
+    setState(() => _sending = true);
+    final check = await comparison;
+    if (mounted) setState(() => _sending = false);
+    return check?.match == SidesMatch.different;
+  }
+
+  /// Every side again but the one the MRZ scan photographed, which shows the
+  /// document it read.
+  void _retakeSides() {
+    final keep = widget.scanned == null ? 0 : 1;
+    for (final side in _sides.skip(keep)) {
+      final photo = _taken.remove(side);
+      if (photo != null) _sideTexts.remove(photo);
+    }
+    _retookMismatch = true;
+    setState(() {
+      _photo = null;
+      _index = keep;
+      _showMismatch = true;
+    });
+    unawaited(_openCamera());
   }
 
   void _retake() {
@@ -832,12 +868,17 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
     final photo = _photo;
     if (photo == null || _sending) return;
     _taken[_side] = photo;
+    _showMismatch = false;
     if (_index + 1 < _sideCount) {
       setState(() {
         _photo = null;
         _index++;
       });
       unawaited(_openCamera());
+      return;
+    }
+    if (await _sidesDisagree()) {
+      if (mounted) _retakeSides();
       return;
     }
     await _send(_taken[DocumentPhotoSide.front]!, _taken[DocumentPhotoSide.back]!);
@@ -1019,6 +1060,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
       footer: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (_showMismatch && error == null) _buildHint(context, l10n.docPhotoSidesMismatch),
           if (issue != null)
             _buildHint(context, _qualityHint(l10n, issue))
           else if (holdStill)

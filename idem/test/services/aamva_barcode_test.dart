@@ -7,7 +7,7 @@ const _usLicence =
     'DBB08121974\nDBA08122030\nDAJCA\n';
 
 void main() {
-  test('reads a United States licence: its number and its MMDDCCYY dates', () {
+  test('reads a United States licence: its number, its MMDDCCYY dates and its surname', () {
     expect(readAamvaBarcode(_usLicence), (
       type: DocumentType.drivingLicence,
       documentNumber: 'D1234562',
@@ -15,6 +15,7 @@ void main() {
       dateOfExpiry: DateTime(2030, 8, 12),
       personalNumber: null,
       licenceData: null,
+      surname: 'ERIKSSON',
     ));
   });
 

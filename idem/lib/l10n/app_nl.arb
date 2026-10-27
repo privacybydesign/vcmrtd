@@ -73,6 +73,7 @@
   "docPhotoHintTooDark": "Te donker. Ga naar een plek met meer licht.",
   "docPhotoHintBlurry": "Nog niet scherp. Houd je telefoon stil.",
   "docPhotoHoldStill": "Even stilhouden…",
+  "docPhotoSidesMismatch": "De kanten lijken niet van hetzelfde document te zijn. Maak de foto's opnieuw, van één document.",
   "docPhotoReviewTitle": "Controleer de foto",
   "docPhotoReviewMessage": "Zijn alle gegevens scherp en leesbaar, zonder schittering en zonder dat er iets voor zit?",
   "docPhotoReviewAnywayMessage": "Deze foto kwam niet door de controle. Maak hem opnieuw, of gebruik hem als alle gegevens scherp en leesbaar zijn.",

@@ -263,6 +263,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get docPhotoHoldStill => 'Hold still…';
 
   @override
+  String get docPhotoSidesMismatch =>
+      'The sides don\'t seem to be of the same document. Take the photos again, of one document.';
+
+  @override
   String get docPhotoReviewTitle => 'Check the photo';
 
   @override

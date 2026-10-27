@@ -20,7 +20,10 @@ final _td1Middle = RegExp(r'^([0-9A-Z]{6})([0-9A-Z])[MFX<]([0-9A-Z]{6})([0-9A-Z]
 
 /// The first line of a passport (TD3), or of a card (TD2) or visa that
 /// starts with the holder's name: type, country, then the name's '<<'.
-final _nameTop = RegExp(r'^([PIACV])[A-Z<][A-Z0-9<]{3}[A-Z<]*<<');
+final _nameTop = RegExp(r'^([PIACV])[A-Z<][A-Z0-9<]{3}([A-Z<]*?)<<');
+
+/// TD1, line 3: the holder's surname, '<<', the given names.
+final _td1Name = RegExp(r'^([A-Z]+(?:<[A-Z]+)*)<<[A-Z<]*$');
 
 /// TD3 and TD2, line 2: document number, nationality, date of birth, sex,
 /// date of expiry, and what follows: TD3's personal number.
@@ -45,7 +48,8 @@ final _anyDigit = RegExp(r'[0-9]');
 /// BSN, which the other side of its page may print. [licenceData]: all of a
 /// driving licence's line after its country - where its number ends differs
 /// per country ("D1NLD1" and a version, "D<EST" without), so the number
-/// printed on the licence is looked for in it.
+/// printed on the licence is looked for in it. [surname]: its name line's,
+/// which has no check digit.
 typedef MrzFields = ({
   DocumentType type,
   String? documentNumber,
@@ -53,6 +57,7 @@ typedef MrzFields = ({
   DateTime? dateOfExpiry,
   String? personalNumber,
   String? licenceData,
+  String? surname,
 });
 
 /// The MRZ fields among [lines], null when none of them holds up. [now]
@@ -60,7 +65,7 @@ typedef MrzFields = ({
 MrzFields? readMrzFields(Iterable<String> lines, {DateTime? now}) {
   final reading = _MrzReading(now ?? DateTime.now());
   for (final line in lines.map(_normalise)) {
-    reading.nameTop(line);
+    if (!reading.nameTop(line)) reading.td1Name(line);
     if (reading.numberLine(line) || reading.td1Top(line) || reading.td1Middle(line)) continue;
     reading.licenceLine(line);
   }
@@ -80,10 +85,21 @@ class _MrzReading {
   DateTime? expiry;
   String? personal;
   String? licenceData;
+  String? surname;
+  String? td1Surname;
 
-  void nameTop(String line) {
+  bool nameTop(String line) {
     final match = _nameTop.firstMatch(line);
-    if (match != null) type ??= match[1] == _passportType ? DocumentType.passport : DocumentType.identityCard;
+    if (match == null) return false;
+    type ??= match[1] == _passportType ? DocumentType.passport : DocumentType.identityCard;
+    surname ??= _name(match[2]!);
+    return true;
+  }
+
+  /// Kept only for a TD1, once its other lines have shown it is one.
+  void td1Name(String line) {
+    final match = _td1Name.firstMatch(line);
+    if (match != null) td1Surname ??= _name(match[1]!);
   }
 
   bool numberLine(String line) {
@@ -142,8 +158,14 @@ class _MrzReading {
       dateOfExpiry: expiry,
       personalNumber: personal,
       licenceData: licenceData,
+      surname: surname ?? (type == DocumentType.identityCard ? td1Surname : null),
     );
   }
+}
+
+String? _name(String field) {
+  final name = field.split('<').where((word) => word.isNotEmpty).join(' ');
+  return name.isEmpty ? null : name;
 }
 
 /// The personal number in [field], what follows a TD3's date of expiry:

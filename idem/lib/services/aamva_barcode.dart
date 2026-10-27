@@ -8,19 +8,20 @@ import 'package:vcmrtd/vcmrtd.dart' show DocumentType;
 const _minYear = 1900;
 const _maxYear = 2100;
 
-/// The data elements read: licence number, date of birth, date of expiry.
+/// The data elements read: licence number, date of birth, date of expiry, surname.
 const _numberId = 'DAQ';
 const _birthId = 'DBB';
 const _expiryId = 'DBA';
+const _surnameId = 'DCS';
 
 /// The first element follows the header on its line, after its subfile's type.
-final _element = RegExp('(?:^|DL|ID)($_numberId|$_birthId|$_expiryId)(.+)\$');
+final _element = RegExp('(?:^|DL|ID)($_numberId|$_birthId|$_expiryId|$_surnameId)(.+)\$');
 
 /// The header: issuer, versions and entry count, then the first subfile's type.
 final _subfile = RegExp(r'ANSI ?\d{12}(DL|ID)');
 final _lineBreak = RegExp(r'[\n\r\x1e]+');
 
-/// The licence number and dates in a scanned barcode's [raw] text; null
+/// The licence number, dates and surname in a scanned barcode's [raw] text; null
 /// when it isn't an AAMVA one.
 MrzFields? readAamvaBarcode(String raw) {
   if (!raw.contains('ANSI ') && !raw.contains('AAMVA')) return null;
@@ -28,6 +29,7 @@ MrzFields? readAamvaBarcode(String raw) {
   String? number;
   DateTime? birth;
   DateTime? expiry;
+  String? surname;
   for (final line in raw.split(_lineBreak)) {
     final element = _element.firstMatch(line.trim());
     if (element == null) continue;
@@ -39,6 +41,8 @@ MrzFields? readAamvaBarcode(String raw) {
         birth ??= _date(value);
       case _expiryId:
         expiry ??= _date(value);
+      case _surnameId:
+        surname ??= value;
     }
   }
 
@@ -51,6 +55,7 @@ MrzFields? readAamvaBarcode(String raw) {
     dateOfExpiry: expiry,
     personalNumber: null,
     licenceData: null,
+    surname: surname,
   );
 }
 

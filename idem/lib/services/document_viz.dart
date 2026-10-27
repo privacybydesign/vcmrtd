@@ -10,12 +10,21 @@ const _maxNumberLength = 12;
 const _minSharedDates = 2;
 const _minLicenceFieldLabels = 2;
 const _minLicenceCategories = 3;
+const _minNameLength = 4;
 const _minYear = 1900;
 const _maxYear = 2100;
 const _twoDigitYearCenturies = [1900, 2000];
 
 /// Letters text recognition reads for digits: matching ignores which it read.
 const _lookalikes = {'O': '0', 'Q': '0', 'I': '1', 'L': '1', 'Z': '2', 'S': '5', 'B': '8'};
+
+/// Digits text recognition reads for letters, in a name.
+const _letterLookalikes = {'0': 'O', '1': 'I', '5': 'S', '8': 'B'};
+
+/// An MRZ writes Ä, Ö and Ü as AE, OE and UE (ICAO 9303), the printed name
+/// has them as A, O and U once [_plain]: both are matched without the E.
+final _transliteratedUmlaut = RegExp('(?<=[AOU])E');
+final _nonLetter = RegExp('[^A-Z]');
 
 /// Month names as documents in the EU's languages abbreviate them, without
 /// their accents; looked up whole, then by their first four and three letters.
@@ -233,8 +242,9 @@ final _digit = RegExp(r'\d');
 final _alphanumeric = RegExp(r'^[A-Z0-9]+$');
 final _mrzLine = RegExp('[<«]');
 
-/// What the MRZ scan or the chip read says the document is.
-typedef KnownDocument = ({String documentNumber, DateTime? dateOfBirth, DateTime? dateOfExpiry});
+/// What the MRZ scan or the chip read says the document is; the [surname]
+/// only the chip has.
+typedef KnownDocument = ({String documentNumber, DateTime? dateOfBirth, DateTime? dateOfExpiry, String? surname});
 
 /// A driving licence's numbered fields (see [_licenceField]).
 typedef LicenceFields = ({String? number, DateTime? dateOfBirth, DateTime? dateOfExpiry, int labels});
@@ -253,7 +263,9 @@ class SideText {
     required this.licence,
     required int licenceCategories,
     required int licenceBackFields,
+    required List<String> nameLines,
   }) : _barcode = barcode,
+       _nameLines = nameLines,
        _licenceCategoryCount = licenceCategories,
        _licenceBackFieldCount = licenceBackFields;
 
@@ -288,6 +300,7 @@ class SideText {
           .nonNulls
           .toSet()
           .length,
+      nameLines: printed.map(_nameKey).toList(),
     );
   }
 
@@ -318,6 +331,9 @@ class SideText {
 
   /// How many of a licence back's numbered fields (9 to 14) this side shows.
   final int _licenceBackFieldCount;
+
+  /// The printed lines in [_nameKey] form.
+  final List<String> _nameLines;
 
   bool get _licenceBack =>
       _licenceCategoryCount >= _minLicenceCategories || _licenceBackFieldCount >= _minLicenceBackFields;
@@ -375,6 +391,9 @@ class SideText {
   bool _carriesDates(DateTime? birth, DateTime? expiry) =>
       birth != null && expiry != null && _shows(dates, birth) && _shows(dates, expiry);
 
+  bool _printsDates(DateTime? birth, DateTime? expiry) =>
+      birth != null && expiry != null && _shows(vizDates, birth) && _shows(vizDates, expiry);
+
   /// Whether this side prints dates, but neither of these.
   bool _contradicts(DateTime? birth, DateTime? expiry) =>
       birth != null &&
@@ -385,6 +404,12 @@ class SideText {
 
   /// Whether [date] is among the printed dates.
   bool shows(DateTime date) => _shows(vizDates, date);
+
+  /// Whether a printed line has [surname] in it, a letter of it misread at most.
+  bool _printsName(String surname) {
+    final name = _nameKey(surname);
+    return _nameLines.any((line) => _containsNearly(line, name));
+  }
 
   /// No document data: it's logged.
   @override
@@ -410,9 +435,13 @@ enum SidesMatch { same, different, unknown }
 /// What the text on both sides says: whether each looks like an identity
 /// document, and whether they are of the same one.
 class VizCheck {
-  const VizCheck({required this.match, required this.front, required this.back});
+  const VizCheck({required this.match, required this.front, required this.back, this.name = SidesMatch.unknown});
 
   final SidesMatch match;
+
+  /// Whether the front prints the document's surname, when it prints its
+  /// number or dates. Only logged: text recognition can miss a name.
+  final SidesMatch name;
 
   /// Null when the side's text couldn't be read.
   final SideText? front;
@@ -424,7 +453,7 @@ class VizCheck {
   /// No document data: it's logged.
   @override
   String toString() =>
-      'match=${match.name} frontDocument=$frontLooksLikeDocument backDocument=$backLooksLikeDocument '
+      'match=${match.name} name=${name.name} frontDocument=$frontLooksLikeDocument backDocument=$backLooksLikeDocument '
       'front=[${front ?? 'unread'}] back=[${back ?? 'unread'}]';
 }
 
@@ -433,11 +462,12 @@ class VizCheck {
 /// machine reads off either side (an MRZ, a licence's barcode). Both sides
 /// must carry the number, both dates, or the personal number a passport's
 /// MRZ holds (the Dutch BSN, which the back of its page prints); different when a machine-readable
-/// zone names another number or other dates, or the front prints dates but
-/// neither of them. Without any, a licence whose back lists its categories
-/// until the front's expiry; else a number or two dates the sides share.
+/// zone names another number, other dates or another surname, or the front
+/// prints dates but neither of them. Without any, a licence whose back lists its
+/// categories until the front's expiry; else a number or two dates the sides share.
 VizCheck checkSides(SideText? front, SideText? back, {KnownDocument? known}) {
-  VizCheck result(SidesMatch match) => VizCheck(match: match, front: front, back: back);
+  VizCheck result(SidesMatch match, [SidesMatch name = SidesMatch.unknown]) =>
+      VizCheck(match: match, front: front, back: back, name: name);
   if (front == null || back == null) return result(SidesMatch.unknown);
 
   final zones = [...front._machineReadable, ...back._machineReadable];
@@ -447,7 +477,9 @@ VizCheck checkSides(SideText? front, SideText? back, {KnownDocument? known}) {
   final expiry = known?.dateOfExpiry ?? fromZones((zone) => zone.dateOfExpiry);
   if (number == null && (birth == null || expiry == null)) return result(_matchWithoutReference(front, back));
 
-  final namesAnother = zones.any((zone) => _namesAnother(zone, number, birth, expiry));
+  final surnameRead = known?.surname ?? fromZones((zone) => zone.surname);
+  final surname = surnameRead != null && _nameKey(surnameRead).length >= _minNameLength ? surnameRead : null;
+  final namesAnother = zones.any((zone) => _namesAnother(zone, number, birth, expiry, surname));
   if (namesAnother || front.printedMatchesMrz == SidesMatch.different) return result(SidesMatch.different);
 
   // Only ever ties: text recognition reads it on one side at most, often only partly.
@@ -459,19 +491,53 @@ VizCheck checkSides(SideText? front, SideText? back, {KnownDocument? known}) {
       (personalNumber != null && side.carries(personalNumber)) ||
       licenceData.any(side._printsPartOf) ||
       side._carriesDates(birth, expiry);
-  if (tied(front) && tied(back)) return result(SidesMatch.same);
+  // Every document prints its holder's name on its front, next to the number or dates.
+  final printedTied =
+      (number != null && front.vizNumbers.contains(_matchKey(number))) || front._printsDates(birth, expiry);
+  final name = surname == null || !printedTied
+      ? SidesMatch.unknown
+      : (front._printsName(surname) ? SidesMatch.same : SidesMatch.different);
+  if (tied(front) && tied(back)) return result(SidesMatch.same, name);
   // Only the front: a back's dates are often others (issued, categories).
-  if (front._contradicts(birth, expiry)) return result(SidesMatch.different);
-  return result(SidesMatch.unknown);
+  if (front._contradicts(birth, expiry)) return result(SidesMatch.different, name);
+  return result(SidesMatch.unknown, name);
 }
 
-bool _namesAnother(MrzFields zone, String? number, DateTime? birth, DateTime? expiry) {
+bool _namesAnother(MrzFields zone, String? number, DateTime? birth, DateTime? expiry, String? surname) {
   bool differs(DateTime? a, DateTime? b) => a != null && b != null && !_sameDay(a, b);
   final zoneNumber = zone.documentNumber;
+  final zoneSurname = zone.surname;
   return (number != null && zoneNumber != null && _matchKey(zoneNumber) != _matchKey(number)) ||
       differs(zone.dateOfBirth, birth) ||
-      differs(zone.dateOfExpiry, expiry);
+      differs(zone.dateOfExpiry, expiry) ||
+      (surname != null && zoneSurname != null && !_sameName(zoneSurname, surname));
 }
+
+/// An MRZ cuts a long name short, and text recognition can misread a letter.
+bool _sameName(String a, String b) {
+  final (keyA, keyB) = (_nameKey(a), _nameKey(b));
+  return _containsNearly(keyA, keyB) || _containsNearly(keyB, keyA);
+}
+
+/// Whether [text] has [part] in it, with one letter different at most.
+bool _containsNearly(String text, String part) {
+  for (var start = 0; start + part.length <= text.length; start++) {
+    var misread = 0;
+    for (var i = 0; i < part.length && misread <= 1; i++) {
+      if (text[start + i] != part[i]) misread++;
+    }
+    if (misread <= 1) return true;
+  }
+  return false;
+}
+
+/// [name]'s letters only, as an MRZ and the printed text both have them.
+String _nameKey(String name) => _plain(name)
+    .split('')
+    .map((c) => _letterLookalikes[c] ?? c)
+    .join()
+    .replaceAll(_nonLetter, '')
+    .replaceAll(_transliteratedUmlaut, '');
 
 SidesMatch _matchWithoutReference(SideText front, SideText back) {
   // A licence MRZ on one side, its number printed on the other: the Dutch

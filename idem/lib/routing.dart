@@ -1208,7 +1208,15 @@ Widget _buildDocumentPhotoRoute(BuildContext context, GoRouterState state, Docum
       documentType:
           args.collected.documentType ?? providers.read(activeProofingSessionProvider)?.info.chipAccess?.documentType,
       scanned: args.scanned,
-      known: _knownDocument(args.collected.scannedMrz, providers.read(activeProofingSessionProvider)?.info.chipAccess),
+      known: _knownDocument(
+        args.collected.scannedMrz,
+        providers.read(activeProofingSessionProvider)?.info.chipAccess,
+        args.collected.document,
+      ),
+      // With the chip read, the chip shows which document it is.
+      retakeOnMismatch: !(providers.read(activeProofingSessionProvider)?.info.steps ?? _flowlessSteps).contains(
+        stepNfcRead,
+      ),
       onPhotosTaken: (front, back) async {
         final session = providers.read(activeProofingSessionProvider);
         if (session == null) {
@@ -1223,20 +1231,34 @@ Widget _buildDocumentPhotoRoute(BuildContext context, GoRouterState state, Docum
   );
 }
 
-KnownDocument? _knownDocument(ScannedMRZ? mrz, ProofingChipAccess? chip) => switch (mrz) {
-  ScannedPassportMRZ() => (
-    documentNumber: mrz.documentNumber,
-    dateOfBirth: mrz.dateOfBirth,
-    dateOfExpiry: mrz.dateOfExpiry,
-  ),
-  ScannedDriverLicenseMRZ() => (documentNumber: mrz.documentNumber, dateOfBirth: null, dateOfExpiry: null),
-  null when chip != null => (
-    documentNumber: chip.documentNumber,
-    dateOfBirth: chip.dateOfBirth,
-    dateOfExpiry: chip.dateOfExpiry,
-  ),
-  null => null,
-};
+KnownDocument? _knownDocument(ScannedMRZ? mrz, ProofingChipAccess? chip, DocumentData? read) {
+  final surname = switch (read) {
+    PassportData() => read.mrz.lastName,
+    DrivingLicenceData() => read.holderSurname,
+    _ => null,
+  };
+  return switch (mrz) {
+    ScannedPassportMRZ() => (
+      documentNumber: mrz.documentNumber,
+      dateOfBirth: mrz.dateOfBirth,
+      dateOfExpiry: mrz.dateOfExpiry,
+      surname: surname,
+    ),
+    ScannedDriverLicenseMRZ() => (
+      documentNumber: mrz.documentNumber,
+      dateOfBirth: null,
+      dateOfExpiry: null,
+      surname: surname,
+    ),
+    null when chip != null => (
+      documentNumber: chip.documentNumber,
+      dateOfBirth: chip.dateOfBirth,
+      dateOfExpiry: chip.dateOfExpiry,
+      surname: surname,
+    ),
+    null => null,
+  };
+}
 
 Widget _buildFaceVerificationRoute(
   BuildContext context,
