@@ -58,6 +58,16 @@ void main() {
       expect(mrz.optionalData2, null);
     });
 
+    test('a holder with a surname only has no given names', () {
+      final mrz = PassportMRZ(
+        Uint8List.fromList(
+          "I<UTOD231458907<<<<<<<<<<<<<<<7408122F1204159UTO<<<<<<<<<<<6ERIKSSON<<<<<<<<<<<<<<<<<<<<<<".codeUnits,
+        ),
+      );
+      expect(mrz.lastName, 'ERIKSSON');
+      expect(mrz.firstName, '');
+    });
+
     test('parsing TD2', () {
       // Test vector from: https://www.icao.int/publications/Documents/9303_p6_cons_en.pdf Appendix A to Part 6
       PassportMRZ mrz = PassportMRZ(
