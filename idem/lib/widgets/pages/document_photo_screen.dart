@@ -30,7 +30,16 @@ const documentPhotoJpegQuality = 85;
 /// of the camera's view), no longer than [documentPhotoMaxLongEdge] on its
 /// longest side, without the camera's EXIF (location, device) - the relying
 /// party gets this image as it is.
-Uint8List prepareDocumentPhoto(DocumentPicture picture) {
+Uint8List prepareDocumentPhoto(DocumentPicture picture) => _encode(_sized(_uprightDocument(picture)));
+
+/// [prepareDocumentPhoto], and the brightness of the same pixels for reading
+/// the text on them.
+({Uint8List jpeg, GreyPhoto grey}) _prepareWithGrey(DocumentPicture picture) {
+  final sized = _sized(_uprightDocument(picture));
+  return (jpeg: _encode(sized), grey: greyPhoto(sized));
+}
+
+img.Image _uprightDocument(DocumentPicture picture) {
   // The camera plugin takes its pictures as JPEG on both platforms.
   final decoded = img.decodeJpg(picture.jpeg);
   if (decoded == null) throw const FormatException('the camera returned no readable JPEG');
@@ -43,9 +52,14 @@ Uint8List prepareDocumentPhoto(DocumentPicture picture) {
     width: crop.width.toInt(),
     height: crop.height.toInt(),
   );
-  final resized = _fitLongEdge(upright, documentPhotoMaxLongEdge);
-  resized.exif = img.ExifData();
-  return img.encodeJpg(resized, quality: documentPhotoJpegQuality);
+  return upright;
+}
+
+img.Image _sized(img.Image upright) => _fitLongEdge(upright, documentPhotoMaxLongEdge);
+
+Uint8List _encode(img.Image sized) {
+  sized.exif = img.ExifData();
+  return img.encodeJpg(sized, quality: documentPhotoJpegQuality);
 }
 
 /// Scales [image] down so its longer side is at most [maxLongEdge]; returns
@@ -59,8 +73,13 @@ img.Image _fitLongEdge(img.Image image, int maxLongEdge) {
 }
 
 /// [prepareDocumentPhoto] off the UI isolate: decoding a full-resolution
-/// picture takes a while.
-Future<Uint8List> preparePhotoInBackground(DocumentPicture picture) => compute(prepareDocumentPhoto, picture);
+/// picture takes a while. Its grey copy goes to the text reading, which then
+/// doesn't decode the photo again.
+Future<Uint8List> preparePhotoInBackground(DocumentPicture picture) async {
+  final prepared = await compute(_prepareWithGrey, picture);
+  rememberGrey(prepared.jpeg, prepared.grey);
+  return prepared.jpeg;
+}
 
 final _vizLog = Logger('DocumentViz');
 

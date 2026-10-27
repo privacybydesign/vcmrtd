@@ -889,6 +889,18 @@ void main() {
       expect(prepared.height, 1000);
     });
 
+    test('in the background, keeps a grey copy of the same pixels for reading their text', () async {
+      final picture = Uint8List.fromList(img.encodeJpg(img.Image(width: 3200, height: 2000)));
+
+      final jpeg = await preparePhotoInBackground(_whole(picture, 3200 / 2000));
+
+      final grey = rememberedGrey(jpeg)!;
+      expect(
+        (grey.width, grey.height, grey.pixels.length),
+        (documentPhotoMaxLongEdge, 1000, documentPhotoMaxLongEdge * 1000),
+      );
+    });
+
     test('bakes in the EXIF orientation and drops the EXIF', () {
       final source = img.Image(width: 400, height: 200);
       source.exif.imageIfd.orientation = 6; // rotate 90° clockwise

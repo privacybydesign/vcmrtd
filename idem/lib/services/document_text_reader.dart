@@ -1,11 +1,14 @@
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:idem/services/document_photo_quality.dart';
+import 'package:idem/services/text_skew.dart';
 import 'package:image/image.dart' as img;
+import 'package:opencv_dart/opencv_dart.dart' as cv;
 
 const _neutralChroma = 128;
 const _photoDirPrefix = 'document_photo';
@@ -16,16 +19,15 @@ typedef PhotoText = ({List<String> lines, List<String> barcodes});
 /// Finds, with ML Kit's text recognition, where a camera frame's lines of
 /// text are, and what a photo's say.
 class DocumentTextReader {
-  /// Photos an earlier run left behind when it was killed mid-read, deleted
-  /// once, from the app's start.
+  /// Photos a build that read them from files left behind when it was killed
+  /// mid-read, deleted once, from the app's start.
   static Future<void>? _staleSwept;
 
   TextRecognizer? _recognizer;
   BarcodeScanner? _barcodeScanner;
   var _closed = false;
 
-  /// Deletes the photos an earlier run left behind; the first photo of this
-  /// run is written once they're gone.
+  /// Deletes the photos an earlier build left behind.
   static Future<void> sweepStalePhotos() => _staleSwept ??= deleteStalePhotos(Directory.systemTemp);
 
   /// The lines of text in the frame, in fractions of the upright frame;
@@ -42,35 +44,25 @@ class DocumentTextReader {
 
   /// The lines of text on a photo the step took (a JPEG), block by block,
   /// and the PDF417 barcodes on it (a North American licence's back).
-  /// Text recognition reads text the right way up only, and documents print
-  /// some sideways (a Dutch passport's BSN, on the back of its photo page):
-  /// the photo is read turned a quarter both ways too, an empty line between
-  /// the readings.
+  /// Text recognition reads level text the right way up only, and documents
+  /// print some sideways (a Dutch passport's BSN, on the back of its photo
+  /// page) and get photographed tilted or upside down: the photo is levelled
+  /// and read in all four quarter turns, an empty line between the readings.
+  /// Each turn is read as soon as it is made, alongside the others.
   Future<PhotoText> photoText(Uint8List jpeg) async {
-    // ML Kit reads an encoded image only from a file.
-    await sweepStalePhotos();
-    final dir = await Directory.systemTemp.createTemp(_photoDirPrefix);
-    try {
-      final turned = compute(quarterTurns, jpeg);
-      final upright = await _file(dir, 'photo.jpg', jpeg);
-      final text = await _openRecognizer.processImage(upright);
-      final barcodes = await _openBarcodeScanner.processImage(upright);
-      final lines = _lines(text);
-      for (final (i, photo) in (await turned).indexed) {
-        lines
-          ..add('')
-          ..addAll(_lines(await _openRecognizer.processImage(await _file(dir, 'turned$i.jpg', photo))));
-      }
-      return (lines: lines, barcodes: [for (final barcode in barcodes) ?barcode.rawValue]);
-    } finally {
-      await dir.delete(recursive: true);
+    final readings = <Future<List<String>>>[];
+    Future<List<Barcode>>? barcodes;
+    await for (final turn in levelledTurnsInBackground(jpeg)) {
+      final input = _turnInput(turn);
+      // Handled once every turn is out; ignore() keeps a failure until then from going unhandled.
+      barcodes ??= _openBarcodeScanner.processImage(input)..ignore();
+      readings.add(_openRecognizer.processImage(input).then(_lines)..ignore());
     }
-  }
 
-  static Future<InputImage> _file(Directory dir, String name, Uint8List jpeg) async {
-    final file = File('${dir.path}/$name');
-    await file.writeAsBytes(jpeg, flush: true);
-    return InputImage.fromFilePath(file.path);
+    final lines = [
+      for (final (i, reading) in (await Future.wait(readings)).indexed) ...[if (i > 0) '', ...reading],
+    ];
+    return (lines: lines, barcodes: [for (final barcode in await barcodes ?? const <Barcode>[]) ?barcode.rawValue]);
   }
 
   static List<String> _lines(RecognizedText text) => [
@@ -145,18 +137,132 @@ List<Rect> fractionsOfUpright(Iterable<Rect> boxes, {required int width, require
   ];
 }
 
-/// [jpeg] turned a quarter clockwise and a quarter anticlockwise.
+/// A photo's brightness, one byte a pixel, rows without padding.
+typedef GreyPhoto = ({Uint8List pixels, int width, int height});
+
+/// One turn of a photo as ML Kit takes it: NV21 on Android, [bgra] on iOS.
+typedef PhotoTurn = ({Uint8List bytes, int width, int height, bool bgra});
+
+/// The grey copies photos' preparation made of them.
+final _greys = Expando<GreyPhoto>('grey');
+
+/// Has [DocumentTextReader.photoText] read [grey], the photo's preparation
+/// already made, rather than decode [jpeg] again.
+void rememberGrey(Uint8List jpeg, GreyPhoto grey) => _greys[jpeg] = grey;
+
 @visibleForTesting
-List<Uint8List> quarterTurns(Uint8List jpeg) {
-  final image = img.decodeJpg(jpeg);
-  if (image == null) return const [];
-  return [
-    for (final angle in [90, -90]) img.encodeJpg(img.copyRotate(image, angle: angle), quality: _turnedQuality),
-  ];
+GreyPhoto? rememberedGrey(Uint8List jpeg) => _greys[jpeg];
+
+/// [image]'s brightness.
+GreyPhoto greyPhoto(img.Image image) {
+  final grey = greyMat(image);
+  try {
+    return (pixels: Uint8List.fromList(grey.data), width: grey.cols, height: grey.rows);
+  } finally {
+    grey.dispose();
+  }
 }
 
-/// High enough that the turned photo reads like the photo itself.
-const _turnedQuality = 90;
+/// [levelledTurns] off the UI isolate, each as soon as it is made, so
+/// reading one doesn't wait for the rest.
+@visibleForTesting
+Stream<PhotoTurn> levelledTurnsInBackground(Uint8List jpeg) async* {
+  final port = ReceivePort();
+  try {
+    await Isolate.spawn(
+      _sendLevelledTurns,
+      (jpeg: jpeg, grey: _greys[jpeg], bgra: Platform.isIOS, to: port.sendPort),
+      onError: port.sendPort,
+      onExit: port.sendPort,
+    );
+    await for (final message in port) {
+      switch (message) {
+        case final PhotoTurn turn:
+          yield turn;
+        case [final error, final stack]:
+          throw RemoteError('$error', '$stack');
+        default:
+          return;
+      }
+    }
+  } finally {
+    port.close();
+  }
+}
+
+void _sendLevelledTurns(({Uint8List jpeg, GreyPhoto? grey, bool bgra, SendPort to}) job) {
+  final grey = job.grey ?? _decodedGrey(job.jpeg);
+  if (grey == null) return;
+  for (final turn in levelledTurns(grey, bgra: job.bgra)) {
+    job.to.send(turn);
+  }
+}
+
+GreyPhoto? _decodedGrey(Uint8List jpeg) {
+  final image = img.decodeJpg(jpeg);
+  return image == null ? null : greyPhoto(image);
+}
+
+/// [photo] with its lines of text levelled, then that turned a quarter
+/// clockwise, half round and a quarter anticlockwise.
+@visibleForTesting
+Iterable<PhotoTurn> levelledTurns(GreyPhoto photo, {required bool bgra}) sync* {
+  final grey = cv.Mat.create(rows: photo.height, cols: photo.width, type: cv.MatType.CV_8UC1);
+  grey.data.setAll(0, photo.pixels);
+  final skew = textSkew(grey);
+  final level = skew.abs() < _minSkew ? grey : levelled(grey, skew);
+  // NV21 halves both sides for its colour.
+  final even = level.region(cv.Rect(0, 0, level.cols & ~1, level.rows & ~1)).clone();
+  if (!identical(level, grey)) level.dispose();
+  grey.dispose();
+
+  try {
+    yield _turn(even, bgra: bgra);
+    for (final code in [cv.ROTATE_90_CLOCKWISE, cv.ROTATE_180, cv.ROTATE_90_COUNTERCLOCKWISE]) {
+      final turned = cv.rotate(even, code);
+      try {
+        yield _turn(turned, bgra: bgra);
+      } finally {
+        turned.dispose();
+      }
+    }
+  } finally {
+    even.dispose();
+  }
+}
+
+PhotoTurn _turn(cv.Mat grey, {required bool bgra}) {
+  final (width, height) = (grey.cols, grey.rows);
+  if (!bgra) {
+    return (
+      bytes: nv21FromLuma(grey.data, width: width, height: height, bytesPerRow: width),
+      width: width,
+      height: height,
+      bgra: false,
+    );
+  }
+  final colour = cv.cvtColor(grey, cv.COLOR_GRAY2BGRA);
+  try {
+    return (bytes: Uint8List.fromList(colour.data), width: width, height: height, bgra: true);
+  } finally {
+    colour.dispose();
+  }
+}
+
+InputImage _turnInput(PhotoTurn turn) => InputImage.fromBytes(
+  bytes: turn.bytes,
+  metadata: InputImageMetadata(
+    size: Size(turn.width.toDouble(), turn.height.toDouble()),
+    rotation: InputImageRotation.rotation0deg,
+    format: turn.bgra ? InputImageFormat.bgra8888 : InputImageFormat.nv21,
+    bytesPerRow: turn.bgra ? turn.width * _bgraBytesPerPixel : turn.width,
+  ),
+);
+
+/// Text recognition copes with this much tilt itself.
+const _minSkew = 1.0;
+
+const _bgraBytesPerPixel = 4;
 
 /// The luma plane plus neutral chroma makes NV21, without the plane's row padding.
 @visibleForTesting
