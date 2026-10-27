@@ -136,7 +136,7 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
               child: IgnorePointer(
                 child: LayoutBuilder(
                   builder: (context, box) => CustomPaint(
-                    painter: _GuidedScanFramePainter(
+                    painter: GuidedScanFramePainter(
                       frame: guidedScanFrame(box.biggest, widget.documentType),
                       mrzLines: _mrzLineCount(widget.documentType),
                       scrim: g.ink.withValues(alpha: 0.8),
@@ -208,7 +208,7 @@ int _mrzLineCount(DocumentType type) => switch (type) {
 /// and what to do, and opens (tap, or swipe up) to the tip and manual entry.
 /// Kept closed it leaves the whole frame, and the text read along its bottom,
 /// in view on smaller phones.
-class _GuidedScanSheet extends StatefulWidget {
+class _GuidedScanSheet extends StatelessWidget {
   const _GuidedScanSheet({
     required this.documentType,
     required this.wrongDocument,
@@ -224,222 +224,36 @@ class _GuidedScanSheet extends StatefulWidget {
   final int totalSteps;
 
   @override
-  State<_GuidedScanSheet> createState() => _GuidedScanSheetState();
-}
-
-class _GuidedScanSheetState extends State<_GuidedScanSheet> {
-  static const _duration = Duration(milliseconds: 280);
-
-  bool _expanded = false;
-
-  /// Stays true while the tip collapses, so it shrinks with its content.
-  bool _tipMounted = false;
-
-  void _expand() {
-    if (_expanded) return;
-
-    setState(() {
-      _expanded = true;
-      _tipMounted = true;
-    });
-  }
-
-  void _collapse() {
-    if (_expanded) setState(() => _expanded = false);
-  }
-
-  @override
   Widget build(BuildContext context) {
     final g = context.guided;
     final l10n = context.l10n;
-    final docType = widget.documentType.name;
-    final (title, tip) = (l10n.scanSheetTitle(docType), l10n.scanSheetTip(docType));
-    return GestureDetector(
-      onVerticalDragEnd: (details) {
-        final velocity = details.primaryVelocity ?? 0;
-        if (velocity < -100) _expand();
-        if (velocity > 100) _collapse();
-      },
-      child: Material(
-        color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        clipBehavior: Clip.antiAlias,
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Semantics(
-                button: true,
-                expanded: _expanded,
-                hint: _expanded ? l10n.scanHideTips : l10n.scanShowTips,
-                child: InkWell(
-                  onTap: _expanded ? _collapse : _expand,
-                  // The arrow turning is the feedback; a highlight greys half the card.
-                  splashFactory: NoSplash.splashFactory,
-                  highlightColor: Colors.transparent,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Center(
-                          child: Container(
-                            width: 36,
-                            height: 4,
-                            decoration: BoxDecoration(color: g.border, borderRadius: BorderRadius.circular(2)),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  GuidedStepLabel(step: widget.stepNumber, total: widget.totalSteps),
-                                  const SizedBox(height: 4),
-                                  GuidedHeading(title, style: g.heading(18, height: 1.3)),
-                                  if (widget.wrongDocument case final found?) ...[
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '${l10n.wrongDocumentTitle(found.name)}. ${l10n.wrongDocumentHint(found.name)}',
-                                      style: TextStyle(fontSize: 15, height: 1.4, color: g.error),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            AnimatedRotation(
-                              turns: _expanded ? 0.5 : 0,
-                              duration: _duration,
-                              curve: Curves.easeOutCubic,
-                              child: Icon(Icons.keyboard_arrow_up, color: g.muted),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              ClipRect(
-                child: AnimatedAlign(
-                  duration: _duration,
-                  curve: Curves.easeOutCubic,
-                  alignment: Alignment.topCenter,
-                  heightFactor: _expanded ? 1 : 0,
-                  onEnd: () {
-                    if (!_expanded && _tipMounted) setState(() => _tipMounted = false);
-                  },
-                  child: AnimatedOpacity(
-                    opacity: _expanded ? 1 : 0,
-                    duration: _duration,
-                    child: _tipMounted
-                        ? Padding(
-                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Text(tip, style: TextStyle(fontSize: 15, height: 1.5, color: g.bodyText)),
-                                const SizedBox(height: 16),
-                                GuidedButton(
-                                  label: l10n.scanEnterDetailsManually,
-                                  kind: GuidedButtonKind.secondary,
-                                  onPressed: widget.onManualEntry,
-                                ),
-                              ],
-                            ),
-                          )
-                        : const SizedBox(width: double.infinity),
-                  ),
-                ),
-              ),
-            ],
-          ),
+    final docType = documentType.name;
+    return GuidedSheet(
+      label: GuidedStepLabel(step: stepNumber, total: totalSteps),
+      title: l10n.scanSheetTitle(docType),
+      showTip: l10n.scanShowTips,
+      hideTip: l10n.scanHideTips,
+      notice: switch (wrongDocument) {
+        final found? => Text(
+          '${l10n.wrongDocumentTitle(found.name)}. ${l10n.wrongDocumentHint(found.name)}',
+          style: TextStyle(fontSize: 15, height: 1.4, color: g.error),
         ),
+        null => null,
+      },
+      tip: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(l10n.scanSheetTip(docType), style: TextStyle(fontSize: 15, height: 1.5, color: g.bodyText)),
+          const SizedBox(height: 16),
+          GuidedButton(
+            label: l10n.scanEnterDetailsManually,
+            kind: GuidedButtonKind.secondary,
+            onPressed: onManualEntry,
+          ),
+        ],
       ),
     );
   }
-}
-
-class _GuidedScanFramePainter extends CustomPainter {
-  _GuidedScanFramePainter({required this.frame, required this.mrzLines, required this.scrim, required this.highlight});
-
-  final Rect frame;
-  final int mrzLines;
-  final Color scrim;
-  final Color highlight;
-
-  static const _radius = 16.0;
-  static const _cornerLength = 28.0;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cutout = RRect.fromRectAndRadius(frame, const Radius.circular(_radius));
-    canvas.drawPath(
-      Path()
-        ..fillType = PathFillType.evenOdd
-        ..addRect(Offset.zero & size)
-        ..addRRect(cutout),
-      Paint()..color = scrim,
-    );
-
-    final corner = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4
-      ..strokeCap = StrokeCap.round;
-    const r = Radius.circular(_radius);
-    final l = frame.left, t = frame.top, rt = frame.right, b = frame.bottom;
-    canvas.drawPath(
-      Path()
-        ..moveTo(l, t + _cornerLength)
-        ..lineTo(l, t + _radius)
-        ..arcToPoint(Offset(l + _radius, t), radius: r)
-        ..lineTo(l + _cornerLength, t)
-        ..moveTo(rt - _cornerLength, t)
-        ..lineTo(rt - _radius, t)
-        ..arcToPoint(Offset(rt, t + _radius), radius: r)
-        ..lineTo(rt, t + _cornerLength)
-        ..moveTo(rt, b - _cornerLength)
-        ..lineTo(rt, b - _radius)
-        ..arcToPoint(Offset(rt - _radius, b), radius: r)
-        ..lineTo(rt - _cornerLength, b)
-        ..moveTo(l + _cornerLength, b)
-        ..lineTo(l + _radius, b)
-        ..arcToPoint(Offset(l, b - _radius), radius: r)
-        ..lineTo(l, b - _cornerLength),
-      corner,
-    );
-
-    // The machine-readable lines sit along the bottom of every supported document.
-    final inset = frame.width * 0.044;
-    final zoneHeight = frame.height * (0.08 + 0.08 * mrzLines);
-    final zone = RRect.fromRectAndRadius(
-      Rect.fromLTRB(
-        frame.left + inset,
-        frame.bottom - frame.height * 0.08 - zoneHeight,
-        frame.right - inset,
-        frame.bottom - frame.height * 0.08,
-      ),
-      const Radius.circular(10),
-    );
-    canvas.drawRRect(zone, Paint()..color = highlight.withValues(alpha: 0.12));
-    canvas.drawRRect(
-      zone,
-      Paint()
-        ..color = highlight
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_GuidedScanFramePainter old) =>
-      old.frame != frame || old.mrzLines != mrzLines || old.scrim != scrim || old.highlight != highlight;
 }
 
 Widget _guidedScannerBuilder({

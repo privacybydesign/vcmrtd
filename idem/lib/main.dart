@@ -16,6 +16,7 @@ import 'package:idem/providers/branding_provider.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
 import 'package:idem/providers/session_settings.dart';
 import 'package:idem/routing.dart';
+import 'package:idem/services/document_text_reader.dart';
 import 'package:idem/services/proofing_deeplink_channel.dart';
 import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/theme/app_theme.dart';
@@ -33,6 +34,7 @@ void main() async {
   });
 
   WidgetsFlutterBinding.ensureInitialized();
+  unawaited(DocumentTextReader.sweepStalePhotos());
   await enableGuidedEdgeToEdge();
   _registerFontLicenses();
   runApp(ProviderScope(child: VcMrtdApp()));

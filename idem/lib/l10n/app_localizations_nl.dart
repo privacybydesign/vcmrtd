@@ -216,6 +216,9 @@ class AppLocalizationsNl extends AppLocalizations {
   String get docPhotoBackInstructions => 'Draai je document om en leg de achterkant binnen het kader.';
 
   @override
+  String get docPhotoBackPassport => 'Leg nu de achterkant van de pagina met je foto binnen het kader.';
+
+  @override
   String get docPhotoSideFront => 'Voorkant';
 
   @override
@@ -227,10 +230,37 @@ class AppLocalizationsNl extends AppLocalizations {
   }
 
   @override
-  String get docPhotoNoBack => 'Mijn document heeft geen achterkant';
+  String get docPhotoTakeAnyway => 'Toch foto maken';
 
   @override
-  String get docPhotoTake => 'Foto maken';
+  String get docPhotoShowTips => 'Tips tonen';
+
+  @override
+  String get docPhotoHintNoDocument => 'Leg het hele document binnen het kader, op een egale ondergrond.';
+
+  @override
+  String get docPhotoHintNoPortrait => 'Leg de kant met je foto binnen het kader.';
+
+  @override
+  String get docPhotoHintNoMrz => 'Leg de kant met de machineleesbare regels (<<<) binnen het kader.';
+
+  @override
+  String get docPhotoHintGlare => 'Reflectie op het document. Kantel het een beetje.';
+
+  @override
+  String get docPhotoHintTilted => 'Houd je telefoon recht boven het document.';
+
+  @override
+  String get docPhotoHintUnreadable => 'De tekst op het document is nog niet leesbaar. Houd het stil, in goed licht.';
+
+  @override
+  String get docPhotoHintTooDark => 'Te donker. Ga naar een plek met meer licht.';
+
+  @override
+  String get docPhotoHintBlurry => 'Nog niet scherp. Houd je telefoon stil.';
+
+  @override
+  String get docPhotoHoldStill => 'Even stilhouden…';
 
   @override
   String get docPhotoReviewTitle => 'Controleer de foto';
@@ -238,6 +268,10 @@ class AppLocalizationsNl extends AppLocalizations {
   @override
   String get docPhotoReviewMessage =>
       'Zijn alle gegevens scherp en leesbaar, zonder schittering en zonder dat er iets voor zit?';
+
+  @override
+  String get docPhotoReviewAnywayMessage =>
+      'Deze foto kwam niet door de controle. Maak hem opnieuw, of gebruik hem als alle gegevens scherp en leesbaar zijn.';
 
   @override
   String get docPhotoReviewScannedMessage =>
@@ -248,6 +282,9 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get docPhotoUse => 'Foto gebruiken';
+
+  @override
+  String get docPhotoPreparing => 'De foto wordt voorbereid…';
 
   @override
   String get docPhotoErrorNoCamera => 'Geen camera beschikbaar';

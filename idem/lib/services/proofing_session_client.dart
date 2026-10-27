@@ -1416,7 +1416,7 @@ class ProofingSessionClient {
   }
 
   /// Submits the document_photo step - the photos of the document's
-  /// [front] and, unless it has none worth taking (a passport), its [back],
+  /// [front] and its [back],
   /// released to the relying party as the result's documentImage - in one
   /// request once both are taken. The back is left out entirely without one.
   Future<ProofingStepResponse> submitDocumentPhotoStep(

@@ -366,3 +366,233 @@ class GuidedBottomInset extends StatelessWidget {
     );
   }
 }
+
+/// A camera screen's scrim with a cut-out for the document at [frame], white
+/// corners around it, and with [mrzLines] the zone they're read from.
+class GuidedScanFramePainter extends CustomPainter {
+  GuidedScanFramePainter({required this.frame, this.mrzLines = 0, required this.scrim, required this.highlight});
+
+  final Rect frame;
+  final int mrzLines;
+  final Color scrim;
+  final Color highlight;
+
+  static const _radius = 16.0;
+  static const _cornerLength = 28.0;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cutout = RRect.fromRectAndRadius(frame, const Radius.circular(_radius));
+    canvas.drawPath(
+      Path()
+        ..fillType = PathFillType.evenOdd
+        ..addRect(Offset.zero & size)
+        ..addRRect(cutout),
+      Paint()..color = scrim,
+    );
+
+    final corner = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round;
+    const r = Radius.circular(_radius);
+    final l = frame.left, t = frame.top, rt = frame.right, b = frame.bottom;
+    canvas.drawPath(
+      Path()
+        ..moveTo(l, t + _cornerLength)
+        ..lineTo(l, t + _radius)
+        ..arcToPoint(Offset(l + _radius, t), radius: r)
+        ..lineTo(l + _cornerLength, t)
+        ..moveTo(rt - _cornerLength, t)
+        ..lineTo(rt - _radius, t)
+        ..arcToPoint(Offset(rt, t + _radius), radius: r)
+        ..lineTo(rt, t + _cornerLength)
+        ..moveTo(rt, b - _cornerLength)
+        ..lineTo(rt, b - _radius)
+        ..arcToPoint(Offset(rt - _radius, b), radius: r)
+        ..lineTo(rt - _cornerLength, b)
+        ..moveTo(l + _cornerLength, b)
+        ..lineTo(l + _radius, b)
+        ..arcToPoint(Offset(l, b - _radius), radius: r)
+        ..lineTo(l, b - _cornerLength),
+      corner,
+    );
+    if (mrzLines == 0) return;
+
+    // The machine-readable lines sit along the bottom of every supported document.
+    final inset = frame.width * 0.044;
+    final zoneHeight = frame.height * (0.08 + 0.08 * mrzLines);
+    final zone = RRect.fromRectAndRadius(
+      Rect.fromLTRB(
+        frame.left + inset,
+        frame.bottom - frame.height * 0.08 - zoneHeight,
+        frame.right - inset,
+        frame.bottom - frame.height * 0.08,
+      ),
+      const Radius.circular(10),
+    );
+    canvas.drawRRect(zone, Paint()..color = highlight.withValues(alpha: 0.12));
+    canvas.drawRRect(
+      zone,
+      Paint()
+        ..color = highlight
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
+  }
+
+  @override
+  bool shouldRepaint(GuidedScanFramePainter old) =>
+      old.frame != frame || old.mrzLines != mrzLines || old.scrim != scrim || old.highlight != highlight;
+}
+
+/// The white sheet under a camera screen's frame: [label] and [title], and
+/// [footer] when given, with [tip] behind a tap (or swipe up) so the sheet
+/// stays clear of the frame on smaller phones.
+class GuidedSheet extends StatefulWidget {
+  const GuidedSheet({
+    super.key,
+    required this.label,
+    required this.title,
+    required this.tip,
+    required this.showTip,
+    required this.hideTip,
+    this.notice,
+    this.footer,
+  });
+
+  final Widget label;
+  final String title;
+  final Widget tip;
+
+  /// Shown under the title, open or closed.
+  final Widget? notice;
+
+  /// What tapping the closed or the open sheet does, for screen readers.
+  final String showTip;
+  final String hideTip;
+
+  final Widget? footer;
+
+  @override
+  State<GuidedSheet> createState() => _GuidedSheetState();
+}
+
+class _GuidedSheetState extends State<GuidedSheet> {
+  static const _duration = Duration(milliseconds: 280);
+
+  bool _expanded = false;
+
+  /// Stays true while the tip collapses, so it shrinks with its content.
+  bool _tipMounted = false;
+
+  void _expand() {
+    if (_expanded) return;
+
+    setState(() {
+      _expanded = true;
+      _tipMounted = true;
+    });
+  }
+
+  void _collapse() {
+    if (_expanded) setState(() => _expanded = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final g = context.guided;
+    final notice = widget.notice;
+    final footer = widget.footer;
+    return GestureDetector(
+      onVerticalDragEnd: (details) {
+        final velocity = details.primaryVelocity ?? 0;
+        if (velocity < -100) _expand();
+        if (velocity > 100) _collapse();
+      },
+      child: Material(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        clipBehavior: Clip.antiAlias,
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Semantics(
+                button: true,
+                expanded: _expanded,
+                hint: _expanded ? widget.hideTip : widget.showTip,
+                child: InkWell(
+                  onTap: _expanded ? _collapse : _expand,
+                  // The arrow turning is the feedback; a highlight greys half the card.
+                  splashFactory: NoSplash.splashFactory,
+                  highlightColor: Colors.transparent,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 36,
+                            height: 4,
+                            decoration: BoxDecoration(color: g.border, borderRadius: BorderRadius.circular(2)),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  widget.label,
+                                  const SizedBox(height: 4),
+                                  GuidedHeading(widget.title, style: g.heading(18, height: 1.3)),
+                                  if (notice != null) ...[const SizedBox(height: 4), notice],
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            AnimatedRotation(
+                              turns: _expanded ? 0.5 : 0,
+                              duration: _duration,
+                              curve: Curves.easeOutCubic,
+                              child: Icon(Icons.keyboard_arrow_up, color: g.muted),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              ClipRect(
+                child: AnimatedAlign(
+                  duration: _duration,
+                  curve: Curves.easeOutCubic,
+                  alignment: Alignment.topCenter,
+                  heightFactor: _expanded ? 1 : 0,
+                  onEnd: () {
+                    if (!_expanded && _tipMounted) setState(() => _tipMounted = false);
+                  },
+                  child: AnimatedOpacity(
+                    opacity: _expanded ? 1 : 0,
+                    duration: _duration,
+                    child: _tipMounted
+                        ? Padding(padding: const EdgeInsets.fromLTRB(20, 0, 20, 20), child: widget.tip)
+                        : const SizedBox(width: double.infinity),
+                  ),
+                ),
+              ),
+              if (footer != null) Padding(padding: const EdgeInsets.fromLTRB(20, 0, 20, 16), child: footer),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

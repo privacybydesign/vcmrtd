@@ -56,6 +56,10 @@ runs:
       # Xcode 26 or later. 16.4 is the image default, so this must be explicit.
       run: sudo xcode-select --switch /Applications/Xcode_26.3.app
       shell: bash
+    - name: Use prebuilt OpenCV for iOS
+      if: runner.os == 'macOS'
+      run: ./ci_scripts/install_opencv_ios.sh
+      shell: bash
     - name: Check Cocoapods cache
       id: cocoapods-cache
       if: runner.os == 'macOS'

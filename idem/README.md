@@ -18,6 +18,8 @@ The app implements the complete verification workflow:
 flutter pub get
 flutter run
 ```
+Building, `flutter test` included, needs CMake on the `PATH`: `opencv_dart` compiles OpenCV from source (see `mrz_capture/README.md`).
+
 `pubspec.lock` was resolved with Flutter 3.38.4, the version `ci_scripts/install_flutter.sh` pins for CI. Running `flutter pub get` on a newer Flutter rewrites the SDK-pinned test packages in it, so check those changes back out if they are not part of your work.
 
 ## Layout

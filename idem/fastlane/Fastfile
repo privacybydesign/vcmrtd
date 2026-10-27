@@ -249,11 +249,13 @@ private_lane :set_provisioning_profile do |options|
   if options[:certificate_path]
     keychain_path = File.absolute_path("profiles/fastlane.keychain")
     certificate_password = options[:certificate_password] || ""
+    # No timeout: once the keychain locks, codesign waits for a password
+    # prompt nobody can answer on CI, and the build hangs until it is killed.
     create_keychain(
       path: keychain_path,
       password: certificate_password,
       unlock: true,
-      timeout: 600
+      timeout: 0
     )
     import_certificate(
       certificate_path: File.absolute_path(options[:certificate_path]),

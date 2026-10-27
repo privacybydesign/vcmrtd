@@ -216,6 +216,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get docPhotoBackInstructions => 'Turn your document over and place the back inside the frame.';
 
   @override
+  String get docPhotoBackPassport => 'Now place the back of the page with your photo inside the frame.';
+
+  @override
   String get docPhotoSideFront => 'Front';
 
   @override
@@ -227,16 +230,47 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get docPhotoNoBack => 'My document has no back';
+  String get docPhotoTakeAnyway => 'Take photo anyway';
 
   @override
-  String get docPhotoTake => 'Take photo';
+  String get docPhotoShowTips => 'Show tips';
+
+  @override
+  String get docPhotoHintNoDocument => 'Place the whole document inside the frame, on a plain surface.';
+
+  @override
+  String get docPhotoHintNoPortrait => 'Place the side with your photo inside the frame.';
+
+  @override
+  String get docPhotoHintNoMrz => 'Place the side with the machine-readable lines (<<<) inside the frame.';
+
+  @override
+  String get docPhotoHintGlare => 'Reflection on the document. Tilt it slightly.';
+
+  @override
+  String get docPhotoHintTilted => 'Hold your phone straight above the document.';
+
+  @override
+  String get docPhotoHintUnreadable => 'The text on the document isn\'t readable yet. Hold it still, in good light.';
+
+  @override
+  String get docPhotoHintTooDark => 'Too dark. Move to a place with more light.';
+
+  @override
+  String get docPhotoHintBlurry => 'Not sharp yet. Hold your phone still.';
+
+  @override
+  String get docPhotoHoldStill => 'Hold still…';
 
   @override
   String get docPhotoReviewTitle => 'Check the photo';
 
   @override
   String get docPhotoReviewMessage => 'Are all details sharp and readable, without glare or anything covering them?';
+
+  @override
+  String get docPhotoReviewAnywayMessage =>
+      'This photo didn\'t pass the checks. Retake it, or use it if all details are sharp and readable.';
 
   @override
   String get docPhotoReviewScannedMessage =>
@@ -247,6 +281,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get docPhotoUse => 'Use photo';
+
+  @override
+  String get docPhotoPreparing => 'Preparing the photo…';
 
   @override
   String get docPhotoErrorNoCamera => 'No camera available';

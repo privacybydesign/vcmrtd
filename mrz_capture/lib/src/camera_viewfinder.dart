@@ -38,7 +38,7 @@ class OcrFrame {
 
   /// Returns a copy of this frame with bytes cropped to the overlay ROI.
   OcrFrame cropToRoi() {
-    final roi = _roiRect();
+    final roi = sensorRoi;
     if (isNv21) {
       final (cropped, w, h) = _cropNv21(roi.x, roi.y, roi.w, roi.h);
       return _withCrop(cropped, w, h, w);
@@ -61,9 +61,8 @@ class OcrFrame {
     isNv21: isNv21,
   );
 
-  // Converts screen-space ROI fractions to sensor-space pixel rect,
-  // matching the rotation transform in TesseractOcrEngine.kt.
-  ({int x, int y, int w, int h}) _roiRect() => switch (rotation) {
+  /// The ROI in the frame's own (sensor) pixels.
+  ({int x, int y, int w, int h}) get sensorRoi => switch (rotation) {
     90 => (
       x: (roiTop * width).toInt(),
       y: ((1.0 - roiLeft - roiWidth) * height).toInt(),

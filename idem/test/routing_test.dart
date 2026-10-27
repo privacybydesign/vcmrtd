@@ -17,8 +17,10 @@ import 'package:idem/widgets/pages/face_verification_entry_screen.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/routing.dart';
 import 'package:idem/widgets/pages/guided_manual_entry_screen.dart';
+import 'package:idem/services/document_photo_quality.dart';
 import 'package:idem/services/face_verification_outcome.dart';
 import 'package:mrz_capture/mrz_capture.dart';
+import 'package:idem/widgets/pages/choose_document_screen.dart';
 import 'package:idem/widgets/pages/document_photo_screen.dart';
 import 'package:idem/widgets/pages/document_selection_screen.dart';
 import 'package:idem/widgets/pages/driving_licence_data_screen.dart';
@@ -31,6 +33,7 @@ import 'package:idem/widgets/pages/nfc_reading_screen.dart';
 import 'package:idem/widgets/pages/proofing_session_consent_screen.dart';
 import 'package:idem/widgets/pages/settings_screen.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
+import 'package:idem/providers/wallet_provider.dart';
 import 'package:idem/services/proofing_session_client.dart';
 import 'package:idem/services/proofing_session_watcher.dart';
 
@@ -115,20 +118,44 @@ class _FakeWorker implements FaceVerificationWorker {
 }
 
 class _FakeDocumentPhotoCamera implements DocumentPhotoCamera {
+  /// The preview shows the document readable, so the photo can be taken.
   @override
-  Future<void> open() async {}
+  Future<void> open({
+    required double frameRatio,
+    required SideContent content,
+    required ValueChanged<Set<DocumentPhotoIssue>> onFrameChecked,
+  }) async {
+    for (var i = 0; i < DocumentPhotoQuality.framesToAgree; i++) {
+      onFrameChecked(const {});
+    }
+  }
 
   @override
   Widget buildPreview(BuildContext context) => const SizedBox.expand();
 
   @override
-  Future<Uint8List> takePicture({required double frameRatio}) async => _jpeg();
+  Future<TakenPicture> takePicture({required double frameRatio}) async {
+    final jpeg = _jpeg();
+    return (
+      shot: DocumentPicture(jpeg: jpeg, frame: const Rect.fromLTRB(0, 0, 1, 1), previewAspectRatio: 1),
+      photo: Future.value(jpeg),
+    );
+  }
 
   @override
   Future<Uint8List> prepare(DocumentPicture picture) async => picture.jpeg;
 
   @override
+  void lookFor(SideContent content) {}
+
+  @override
+  bool get mrzShown => false;
+
+  @override
   Future<void> close() async {}
+
+  @override
+  Future<void> dispose() async {}
 }
 
 Uint8List _jpeg() {
@@ -190,8 +217,9 @@ ScannerWidgetBuilder _scannerBuilder() {
   };
 }
 
-Widget _routerApp(GoRouter router) {
+Widget _routerApp(GoRouter router, {List<WalletCard> saved = const []}) {
   return ProviderScope(
+    overrides: [walletProvider.overrideWith(() => _SeededWallet(saved))],
     child: MaterialApp.router(
       routerConfig: router,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -199,6 +227,25 @@ Widget _routerApp(GoRouter router) {
     ),
   );
 }
+
+class _SeededWallet extends WalletNotifier {
+  _SeededWallet(this.seed);
+  final List<WalletCard> seed;
+  @override
+  List<WalletCard> build() => seed;
+}
+
+WalletCard _savedPassport() => WalletCard(
+  id: 'saved',
+  documentType: DocumentType.passport,
+  holderName: 'Anna Maria Eriksson',
+  documentNumber: 'L898902C3',
+  photoImageData: _jpeg(),
+  photoImageType: ImageType.jpeg,
+  addedAt: DateTime(2026, 9, 12),
+  document: _passportData(),
+  rawData: _rawDocument(),
+);
 
 class _RouteExtensionHarness extends StatelessWidget {
   const _RouteExtensionHarness();
@@ -962,20 +1009,20 @@ void main() {
           // Part of the document scan: its number, not one of its own.
           expect(screen.stepNumber, 1);
           expect(screen.totalSteps, 1);
-          // The scan says it's a passport: only its front is asked for.
           expect(screen.documentType, DocumentType.passport);
           expect(find.byType(NfcReadingScreen), findsNothing);
           expect(submitRequests, 0);
 
           final photo = _jpeg();
-          unawaited(screen.onPhotosTaken(photo, null));
+          final back = Uint8List.fromList([...photo, 0]);
+          unawaited(screen.onPhotosTaken(photo, back));
           await _pumpStepSubmission(tester);
           await _pumpStepSubmission(tester);
 
-          // Sent without a back or a bsnRegion: nothing locates the printed
-          // BSN yet.
+          // Sent without a bsnRegion: nothing locates the printed BSN yet.
           expect(photoStepBodies.single, {
             'front': {'image': base64Encode(photo), 'mimeType': 'image/jpeg'},
+            'back': {'image': base64Encode(back), 'mimeType': 'image/jpeg'},
           });
           expect(submitRequests, 1);
           expect(events.single, isA<ProofingSessionCompleted>());
@@ -1049,11 +1096,13 @@ void main() {
             expect(screen.documentType, documentType);
             expect(photoStepBodies, isEmpty);
             if (documentType == DocumentType.passport) {
-              // The MRZ is on the photo page: that is the whole photo.
-              unawaited(screen.onPhotosTaken(mrzSide, null));
+              // The MRZ is on the photo page, the front: its back follows.
+              final back = Uint8List.fromList([...mrzSide, 0]);
+              unawaited(screen.onPhotosTaken(mrzSide, back));
               await _pumpStepSubmission(tester);
               expect(photoStepBodies.single, {
                 'front': {'image': base64Encode(mrzSide), 'mimeType': 'image/jpeg'},
+                'back': {'image': base64Encode(back), 'mimeType': 'image/jpeg'},
               });
             } else {
               // A card's MRZ is on its back: the front follows.
@@ -1372,7 +1421,7 @@ void main() {
         expiresAt: DateTime.now().add(const Duration(minutes: 10)),
       );
 
-      await tester.pumpWidget(_routerApp(router));
+      await tester.pumpWidget(_routerApp(router, saved: [_savedPassport()]));
       router.push('/proofing_consent', extra: {'ref': sessionRef, 'info': info});
       await tester.pump();
       await tester.pump();
@@ -1389,6 +1438,39 @@ void main() {
       expect(pinned, isNotNull);
       expect(pinned!.ref.token, 'tok');
       expect(pinned.info.relyingParty, 'acme-tenant');
+      expect(tester.widget<ChooseDocumentScreen>(find.byType(ChooseDocumentScreen)).savedDocuments, hasLength(1));
+    });
+
+    testWidgets('proofing consent route: Continue on a flow that only takes a document photo asks which '
+        'document first, offers no saved document, and photographs the one picked', (tester) async {
+      final router = createRouter(scannerBuilder: _scannerBuilder(), documentPhotoCamera: _FakeDocumentPhotoCamera());
+      addTearDown(router.dispose);
+      final sessionRef = const ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok');
+      final info = ProofingSessionInfo(
+        id: 'sess1',
+        relyingParty: 'acme-tenant',
+        requestedAttributes: const ['document_image'],
+        expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+        steps: const [stepDocumentPhoto],
+        currentStep: stepDocumentPhoto,
+      );
+
+      await tester.pumpWidget(_routerApp(router, saved: [_savedPassport()]));
+      router.push('/proofing_consent', extra: {'ref': sessionRef, 'info': info});
+      await tester.pump();
+      await tester.pump();
+
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(DocumentPhotoScreen), findsNothing);
+      expect(tester.widget<ChooseDocumentScreen>(find.byType(ChooseDocumentScreen)).savedDocuments, isEmpty);
+      tester.widget<ChooseDocumentScreen>(find.byType(ChooseDocumentScreen)).onAddNew(DocumentType.passport);
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byType(ScannerWrapper), findsNothing);
+      expect(tester.widget<DocumentPhotoScreen>(find.byType(DocumentPhotoScreen)).documentType, DocumentType.passport);
     });
 
     testWidgets('proofing consent route: Continue on a document_capture-less flow skips straight to face '
@@ -1460,7 +1542,9 @@ void main() {
     });
 
     testWidgets('proofing consent route: Continue on a document_capture-less flow listing document_photo before '
-        'its face step starts with the photo, even from a server that names no current step', (tester) async {
+        'its face step starts with the choice of document, even from a server that names no current step', (
+      tester,
+    ) async {
       final router = createRouter(scannerBuilder: _scannerBuilder(), documentPhotoCamera: _FakeDocumentPhotoCamera());
       addTearDown(router.dispose);
       final info = ProofingSessionInfo(
@@ -1485,8 +1569,8 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      // Nothing on this device says which document it is: both sides.
-      expect(tester.widget<DocumentPhotoScreen>(find.byType(DocumentPhotoScreen)).documentType, isNull);
+      expect(find.byType(DocumentTypeSelectionScreen), findsOneWidget);
+      expect(find.byType(DocumentPhotoScreen), findsNothing);
       expect(find.byType(FaceVerificationEntryScreen), findsNothing);
     });
 

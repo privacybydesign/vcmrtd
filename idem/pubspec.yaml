@@ -55,6 +55,7 @@ dependencies:
   flutter_face_api: ^8.2.1149
   flutter_face_core_basic: ^8.2.461
   google_mlkit_barcode_scanning: ^0.16.1
+  google_mlkit_text_recognition: ^0.17.1
 
 dev_dependencies:
   flutter_lints: ^6.0.0
@@ -62,6 +63,7 @@ dev_dependencies:
     sdk: flutter
   lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
+  camera_platform_interface: ^2.13.1
 
 flutter_launcher_icons:
   android: true
@@ -154,3 +156,16 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
+
+# mrz_capture's opencv_dart compiles OpenCV from source in its build hook (CMake needed);
+# only imgproc is used, so the rest is left out of the app.
+hooks:
+  user_defines:
+    dartcv4:
+      include_modules:
+        - imgproc
+      # Xcode 27 rejects the iOS 13 target Flutter < 3.47.7 passes to the hook,
+      # and there is no CMake on PATH for iOS builds without this.
+      ios:
+        deployment_target: "16.0"
+        prefer_android_cmake: true

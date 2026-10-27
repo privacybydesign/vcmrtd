@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
@@ -13,6 +14,7 @@ import 'document_picture.dart';
 import 'mrz_helper.dart';
 import 'ocr_engine.dart';
 import 'scanned_mrz.dart';
+import 'tesseract_image.dart';
 
 /// Called with the MRZ that was read, the MRZ lines it was parsed from and,
 /// when [MRZScanner.scanPicture] asked for one, the camera's picture of the
@@ -211,17 +213,12 @@ class MRZScannerState extends State<MRZScanner> with RouteAware {
     if (!_canProcess) return;
 
     try {
+      final image = await compute(tesseractImage, frame);
       final String? res = await _ocrChannel.invokeMethod<String>('processImage', {
-        'bytes': frame.bytes,
-        'width': frame.width,
-        'height': frame.height,
-        'stride': frame.width,
-        'rotation': frame.rotation,
+        'pixels': image.pixels,
+        'width': image.width,
+        'height': image.height,
         'lang': 'ocrb',
-        'roiLeft': frame.roiLeft,
-        'roiTop': frame.roiTop,
-        'roiWidth': frame.roiWidth,
-        'roiHeight': frame.roiHeight,
       });
 
       final text = res ?? '';
