@@ -210,6 +210,9 @@ const _plainLetters = {
 
 /// "12.08.1974", "12/08/74", or the United States' "08/12/1974" - and as
 /// text recognition reads them: "1505 1975", "19,01.2018", "15. 10.91".
+/// ICAO 9303-3 (3.8) prints a passport's or card's date day first, numeric
+/// ones separated by a space or a period, as the EU does a licence's
+/// (2011/94/EU): month first only with a slash, as AAMVA does.
 final _dayFirstDate = RegExp(r'(?<!\d)(\d{1,2})([.\-/,]? ?)(\d{1,2})([.\-/,]? ?)(\d{4}|\d{2}(?![\-/]\d))(?![\d.,:]\d)');
 
 /// "1974-08-12", "1974.08.12.": Hungary, Lithuania, Sweden, much of Asia.
@@ -717,8 +720,8 @@ bool _looksLikeNumber(String token) =>
 String _matchKey(String number) =>
     number.toUpperCase().replaceAll('<', '').split('').map((c) => _lookalikes[c] ?? c).join();
 
-/// The dates printed in [line], each as all its readings: day or month
-/// first, either century of a two-digit year. Matching against the
+/// The dates printed in [line], each as all its readings: day or, with a
+/// slash, month first, either century of a two-digit year. Matching against the
 /// document's dates picks the one.
 Iterable<List<DateTime>> _datesIn(String line) => _dateMatchesIn(line).map((date) => date.$2);
 
@@ -741,10 +744,11 @@ Iterable<(Match, List<DateTime>)> _dayFirstDatesIn(String line) sync* {
     // One gap may be lost, between two digits each: "1505 1975", not "12345678".
     if (firstGap.isEmpty && (secondGap.isEmpty || first.length < 2 || second.length < 2)) continue;
     if (secondGap.isEmpty && (second.length < 2 || year.length < 4)) continue;
+    final monthFirst = '$firstGap$secondGap'.contains('/');
     final readings = <DateTime>{
       for (final y in _years(year)) ...[
         ?_date(y, int.parse(second), int.parse(first)),
-        ?_date(y, int.parse(first), int.parse(second)),
+        if (monthFirst) ?_date(y, int.parse(first), int.parse(second)),
       ],
     };
     if (readings.isNotEmpty) yield (m, readings.toList());

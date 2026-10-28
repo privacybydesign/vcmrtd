@@ -120,6 +120,12 @@ void main() {
       expect(SideText.read(['12 JUIL 1974']).vizDates, contains(DateTime(1974, 7, 12)));
     });
 
+    test('a date with a space or a period is day first only, as ICAO 9303 and the EU print it', () {
+      expect(SideText.read(['05.03.1985']).vizDates, {DateTime(1985, 3, 5)});
+      expect(SideText.read(['05 03 1985']).vizDates, {DateTime(1985, 3, 5)});
+      expect(SideText.read(['05/03/1985']).vizDates, {DateTime(1985, 3, 5), DateTime(1985, 5, 3)});
+    });
+
     test('not a time or a height', () {
       expect(SideText.read(['16:41', '1,75 m']).vizDates, isEmpty);
     });
@@ -512,7 +518,7 @@ void main() {
     });
 
     test('without an MRZ, one date read day or month first is one shared date', () {
-      final check = checkSides(SideText.read(['RIJBEWIJS', '05.03.1985']), SideText.read(['Supermarkt 05.03.1985']));
+      final check = checkSides(SideText.read(['RIJBEWIJS', '05/03/1985']), SideText.read(['Supermarkt 05/03/1985']));
 
       expect(check.match, SidesMatch.unknown);
     });
@@ -540,17 +546,8 @@ void main() {
     });
 
     test('a validity range without spaces is two dates', () {
-      expect(SideText.read(['01.03.2011-01.01.2050']).vizDates, {
-        DateTime(2011, 3, 1),
-        DateTime(2011, 1, 3),
-        DateTime(2050, 1, 1),
-      });
-      expect(SideText.read(['12.08.1974/12.08.2030']).vizDates, {
-        DateTime(1974, 8, 12),
-        DateTime(1974, 12, 8),
-        DateTime(2030, 8, 12),
-        DateTime(2030, 12, 8),
-      });
+      expect(SideText.read(['01.03.2011-01.01.2050']).vizDates, {DateTime(2011, 3, 1), DateTime(2050, 1, 1)});
+      expect(SideText.read(['12.08.1974/12.08.2030']).vizDates, {DateTime(1974, 8, 12), DateTime(2030, 8, 12)});
     });
 
     test('an eight-digit number that reads as a date still ties a side to the document', () {
