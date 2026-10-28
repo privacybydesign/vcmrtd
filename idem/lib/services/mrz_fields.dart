@@ -24,7 +24,8 @@ final _td1Middle = RegExp(r'^([0-9A-Z]{6})([0-9A-Z])[MFX<]([0-9A-Z]{6})([0-9A-Z]
 final _nameTop = RegExp(r'^([PIACV])[A-Z<][A-Z0-9<]{3}([A-Z<]*?)<<([A-Z<]*)');
 
 /// TD1, line 3: the holder's surname, '<<', the given names.
-final _td1Name = RegExp(r'^([A-Z]+(?:<[A-Z]+)*)<<([A-Z<]*)$');
+/// Its first word has two letters at least: no passport's "P<D<<" or "P<UTO".
+final _td1Name = RegExp(r'^([A-Z]{2,}(?:<[A-Z]+)*)<<([A-Z<]*)$');
 
 /// TD3 and TD2, line 2: document number, nationality, date of birth, sex,
 /// date of expiry, and what follows: TD3's personal number.
@@ -67,8 +68,9 @@ typedef MrzFields = ({
 MrzFields? readMrzFields(Iterable<String> lines, {DateTime? now}) {
   final reading = _MrzReading(now ?? DateTime.now());
   for (final line in lines.map(_normalise)) {
-    if (!reading.nameTop(line)) reading.td1Name(line);
-    if (reading.numberLine(line) || reading.td1Top(line) || reading.td1Middle(line)) continue;
+    reading.nameTop(line);
+    reading.td1Name(line);
+    if (reading.numberLine(line) || reading.readTd1Top(line) || reading.readTd1Middle(line)) continue;
     reading.licenceLine(line);
   }
 
@@ -82,6 +84,9 @@ class _MrzReading {
 
   final DateTime today;
   DocumentType? type;
+  bool td1Top = false;
+  bool td1Middle = false;
+  bool nameTopMayBeTd1Name = false;
   String? number;
   DateTime? birth;
   DateTime? expiry;
@@ -92,13 +97,13 @@ class _MrzReading {
   String? td1Surname;
   String? td1GivenNames;
 
-  bool nameTop(String line) {
+  void nameTop(String line) {
     final match = _nameTop.firstMatch(line);
-    if (match == null) return false;
+    if (match == null) return;
     type ??= match[1] == _passportType ? DocumentType.passport : DocumentType.identityCard;
     surname ??= _name(match[2]!);
     givenNames ??= _name(match[3]!);
-    return true;
+    nameTopMayBeTd1Name |= _td1Name.hasMatch(line);
   }
 
   /// Kept only for a TD1, once its other lines have shown it is one.
@@ -122,24 +127,26 @@ class _MrzReading {
     return true;
   }
 
-  bool td1Top(String line) {
+  bool readTd1Top(String line) {
     final match = _td1Top.firstMatch(line);
     // A name the check digit happens to fit has no digits.
     if (match == null || !_anyDigit.hasMatch(match[1]!)) return false;
     final checkedNumber = _checked(match[1]!, match[2]!);
     if (checkedNumber == null) return false;
     type ??= DocumentType.identityCard;
+    td1Top = true;
     number ??= _documentNumber(checkedNumber);
     return true;
   }
 
-  bool td1Middle(String line) {
+  bool readTd1Middle(String line) {
     final match = _td1Middle.firstMatch(line);
     if (match == null) return false;
     final checkedBirth = _checkedDate(match[1]!, match[2]!);
     final checkedExpiry = _checkedDate(match[3]!, match[4]!);
     if (checkedBirth == null || checkedExpiry == null) return false;
     type ??= DocumentType.identityCard;
+    td1Middle = true;
     birth ??= _birthDate(checkedBirth, today);
     expiry ??= _expiryDate(checkedExpiry);
     return true;
@@ -153,9 +160,19 @@ class _MrzReading {
     }
   }
 
+  /// A TD1's name line can look like a first line ("PAUL<<ANNA"), and a
+  /// passport's number line split by text recognition like a TD1's middle
+  /// line: a TD1 by its first line, or its middle line and a name line.
+  bool get td1 => td1Top || (td1Middle && nameTopMayBeTd1Name);
+
   MrzFields? get fields {
-    // A document number line without its first line: most are passports.
-    final type = this.type ?? (number != null && birth != null ? DocumentType.passport : null);
+    final type = switch (this.type) {
+      DocumentType.drivingLicence => DocumentType.drivingLicence,
+      _ when td1 => DocumentType.identityCard,
+      final type? => type,
+      // A document number line without its first line: most are passports.
+      null => number != null && birth != null ? DocumentType.passport : null,
+    };
     if (type == null) return null;
     if (number == null && birth == null && licenceData == null) return null;
     return (
@@ -165,8 +182,8 @@ class _MrzReading {
       dateOfExpiry: expiry,
       personalNumber: personal,
       licenceData: licenceData,
-      surname: surname ?? (type == DocumentType.identityCard ? td1Surname : null),
-      givenNames: givenNames ?? (type == DocumentType.identityCard ? td1GivenNames : null),
+      surname: td1 ? td1Surname : surname ?? (type == DocumentType.identityCard ? td1Surname : null),
+      givenNames: td1 ? td1GivenNames : givenNames ?? (type == DocumentType.identityCard ? td1GivenNames : null),
     );
   }
 }

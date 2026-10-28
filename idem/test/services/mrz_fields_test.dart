@@ -129,6 +129,28 @@ void main() {
     );
   });
 
+  test("a card's name line is no passport's first line, whatever the surname starts with", () {
+    for (final lines in [
+      ['I<UTOD231458907<<<<<<<<<<<<<<<', '7408122F1204159UTO<<<<<<<<<<<6', 'PAUL<<ANNA<MARIA<<<<<<<<<<<<<<'],
+      ['PAUL<<ANNA<MARIA<<<<<<<<<<<<<<', '7408122F1204159UTO<<<<<<<<<<<6'],
+    ]) {
+      final mrz = readMrzFields(lines, now: now)!;
+
+      expect((mrz.type, mrz.surname, mrz.givenNames), (DocumentType.identityCard, 'PAUL', 'ANNA MARIA'));
+    }
+  });
+
+  test("a passport whose number line text recognition split is no card", () {
+    final mrz = readMrzFields([
+      'P<D<<MUSTERMANN<<ERIKA<<<<<',
+      'L898902C36D',
+      '<<',
+      '7408122F1204159<<<<<<<<<<<<<<04',
+    ], now: now)!;
+
+    expect((mrz.type, mrz.surname, mrz.givenNames), (DocumentType.passport, 'MUSTERMANN', 'ERIKA'));
+  });
+
   test('a surname without given names has none', () {
     expect(readMrzFields(['P<UTOERIKSSON<<<<<<<<<', _passportNumberLine], now: now)?.givenNames, isNull);
   });
