@@ -151,17 +151,6 @@ void main() {
     expect((mrz.type, mrz.surname, mrz.givenNames), (DocumentType.passport, 'MUSTERMANN', 'ERIKA'));
   });
 
-  test("a passport's first line with a second letter to its type is no card's name line", () {
-    final mrz = readMrzFields([
-      'POCHNZHANG<<SAN<<<<<<<<<<<<<<<<',
-      'L898902C3',
-      '<<',
-      '7408122F1204159<<<<<<<<<<<<<<04',
-    ], now: now)!;
-
-    expect((mrz.type, mrz.surname, mrz.givenNames), (DocumentType.passport, 'ZHANG', 'SAN'));
-  });
-
   test('a surname without given names has none', () {
     expect(readMrzFields(['P<UTOERIKSSON<<<<<<<<<', _passportNumberLine], now: now)?.givenNames, isNull);
   });

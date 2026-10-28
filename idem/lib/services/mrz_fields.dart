@@ -21,7 +21,7 @@ final _td1Middle = RegExp(r'^([0-9A-Z]{6})([0-9A-Z])[MFX<]([0-9A-Z]{6})([0-9A-Z]
 /// The first line of a passport (TD3), or of a card (TD2) or visa that
 /// starts with the holder's name: type, country, the surname, '<<', the
 /// given names.
-final _nameTop = RegExp(r'^([PIACV])[A-Z<]([A-Z0-9<]{3})([A-Z<]*?)<<([A-Z<]*)');
+final _nameTop = RegExp(r'^([PIACV])[A-Z<][A-Z0-9<]{3}([A-Z<]*?)<<([A-Z<]*)');
 
 /// TD1, line 3: the holder's surname, '<<', the given names.
 /// Its first word has two letters at least: no passport's "P<D<<" or "P<UTO".
@@ -41,31 +41,6 @@ final _leadingCharacters = RegExp('^[A-Z0-9]{1,$_personalNumberLength}');
 final _drivingLicence = RegExp(r'^(D[A-Z0-9<][A-Z<]{3}[A-Z0-9])([A-Z0-9<]{10})([A-Z0-9<]{13})([0-9A-Z])$');
 
 const _licenceDataStart = 5;
-
-/// The countries an MRZ names: ISO 3166-1's, and those ICAO 9303-3 (5)
-/// adds - Germany's "D", British nationals', organisations', stateless
-/// persons' and refugees', and the specimens' Utopia.
-const _countryCodes = {
-  'ABW', 'AFG', 'AGO', 'AIA', 'ALA', 'ALB', 'AND', 'ARE', 'ARG', 'ARM', 'ASM', 'ATA', 'ATF', 'ATG', 'AUS', 'AUT',
-  'AZE', 'BDI', 'BEL', 'BEN', 'BES', 'BFA', 'BGD', 'BGR', 'BHR', 'BHS', 'BIH', 'BLM', 'BLR', 'BLZ', 'BMU', 'BOL',
-  'BRA', 'BRB', 'BRN', 'BTN', 'BVT', 'BWA', 'CAF', 'CAN', 'CCK', 'CHE', 'CHL', 'CHN', 'CIV', 'CMR', 'COD', 'COG',
-  'COK', 'COL', 'COM', 'CPV', 'CRI', 'CUB', 'CUW', 'CXR', 'CYM', 'CYP', 'CZE', 'DEU', 'DJI', 'DMA', 'DNK', 'DOM',
-  'DZA', 'ECU', 'EGY', 'ERI', 'ESH', 'ESP', 'EST', 'ETH', 'FIN', 'FJI', 'FLK', 'FRA', 'FRO', 'FSM', 'GAB', 'GBR',
-  'GEO', 'GGY', 'GHA', 'GIB', 'GIN', 'GLP', 'GMB', 'GNB', 'GNQ', 'GRC', 'GRD', 'GRL', 'GTM', 'GUF', 'GUM', 'GUY',
-  'HKG', 'HMD', 'HND', 'HRV', 'HTI', 'HUN', 'IDN', 'IMN', 'IND', 'IOT', 'IRL', 'IRN', 'IRQ', 'ISL', 'ISR', 'ITA',
-  'JAM', 'JEY', 'JOR', 'JPN', 'KAZ', 'KEN', 'KGZ', 'KHM', 'KIR', 'KNA', 'KOR', 'KWT', 'LAO', 'LBN', 'LBR', 'LBY',
-  'LCA', 'LIE', 'LKA', 'LSO', 'LTU', 'LUX', 'LVA', 'MAC', 'MAF', 'MAR', 'MCO', 'MDA', 'MDG', 'MDV', 'MEX', 'MHL',
-  'MKD', 'MLI', 'MLT', 'MMR', 'MNE', 'MNG', 'MNP', 'MOZ', 'MRT', 'MSR', 'MTQ', 'MUS', 'MWI', 'MYS', 'MYT', 'NAM',
-  'NCL', 'NER', 'NFK', 'NGA', 'NIC', 'NIU', 'NLD', 'NOR', 'NPL', 'NRU', 'NZL', 'OMN', 'PAK', 'PAN', 'PCN', 'PER',
-  'PHL', 'PLW', 'PNG', 'POL', 'PRI', 'PRK', 'PRT', 'PRY', 'PSE', 'PYF', 'QAT', 'REU', 'ROU', 'RUS', 'RWA', 'SAU',
-  'SDN', 'SEN', 'SGP', 'SGS', 'SHN', 'SJM', 'SLB', 'SLE', 'SLV', 'SMR', 'SOM', 'SPM', 'SRB', 'SSD', 'STP', 'SUR',
-  'SVK', 'SVN', 'SWE', 'SWZ', 'SXM', 'SYC', 'SYR', 'TCA', 'TCD', 'TGO', 'THA', 'TJK', 'TKL', 'TKM', 'TLS', 'TON',
-  'TTO', 'TUN', 'TUR', 'TUV', 'TWN', 'TZA', 'UGA', 'UKR', 'UMI', 'URY', 'USA', 'UZB', 'VAT', 'VCT', 'VEN', 'VGB',
-  'VIR', 'VNM', 'VUT', 'WLF', 'WSM', 'YEM', 'ZAF', 'ZMB', 'ZWE',
-  // ICAO 9303-3, 5 A to H
-  'D<<', 'GBD', 'GBN', 'GBO', 'GBP', 'GBS', 'RKS', 'EUE', 'UNO', 'UNA', 'UNK', 'XBA', 'XIM', 'XCC', 'XCE', 'XCO',
-  'XEC', 'XPO', 'XES', 'XMP', 'XOM', 'XDC', 'XXA', 'XXB', 'XXC', 'XXX', 'ANT', 'NTZ', 'UTO', 'IAO',
-};
 
 final _whitespace = RegExp(r'\s+');
 final _anyDigit = RegExp(r'[0-9]');
@@ -126,11 +101,9 @@ class _MrzReading {
     final match = _nameTop.firstMatch(line);
     if (match == null) return;
     type ??= match[1] == _passportType ? DocumentType.passport : DocumentType.identityCard;
-    surname ??= _name(match[3]!);
-    givenNames ??= _name(match[4]!);
-    // No first line names a country that isn't one: "PAUL<<ANNA" is a TD1's
-    // name line, "POCHNZHANG<<SAN" a Chinese passport's first line.
-    nameTopMayBeTd1Name |= _td1Name.hasMatch(line) && !_countryCodes.contains(match[2]);
+    surname ??= _name(match[2]!);
+    givenNames ??= _name(match[3]!);
+    nameTopMayBeTd1Name |= _td1Name.hasMatch(line);
   }
 
   /// Kept only for a TD1, once its other lines have shown it is one.
