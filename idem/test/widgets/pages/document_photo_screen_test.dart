@@ -6,8 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
+import 'package:logging/logging.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/services/document_photo_quality.dart';
+import 'package:idem/services/document_text_reader.dart';
+import 'package:idem/services/document_viz.dart';
 import 'package:idem/theme/app_theme.dart';
 import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:idem/widgets/pages/document_photo_screen.dart';
@@ -114,13 +117,17 @@ Widget _screen(
   Uint8List? scanned,
   Future<void> Function(Uint8List front, Uint8List back)? onPhotosTaken,
   VoidCallback? onBack,
-  Future<List<String>> Function(Uint8List photo)? readPhotoText,
+  KnownDocument? known,
+  bool retakeOnMismatch = false,
+  Future<PhotoText> Function(Uint8List photo)? readPhotoText,
 }) => _app(
   DocumentPhotoScreen(
     camera: camera,
     documentType: documentType,
     scanned: scanned,
-    readPhotoText: readPhotoText ?? (_) async => const <String>[],
+    known: known,
+    retakeOnMismatch: retakeOnMismatch,
+    readPhotoText: readPhotoText ?? (_) async => (lines: const <String>[], barcodes: const <String>[]),
     stepNumber: 2,
     totalSteps: 3,
     onBack: onBack ?? () {},
@@ -155,6 +162,16 @@ double _frameRatio(WidgetTester tester) {
   );
   final frame = (paint.painter! as GuidedScanFramePainter).frame;
   return frame.width / frame.height;
+}
+
+/// What the VIZ check logs from now on.
+List<String> _vizLogged() {
+  final logged = <String>[];
+  final subscription = Logger.root.onRecord
+      .where((record) => record.loggerName == 'DocumentViz' && record.level == Level.INFO)
+      .listen((record) => logged.add(record.message));
+  addTearDown(subscription.cancel);
+  return logged;
 }
 
 void main() {
@@ -306,7 +323,7 @@ void main() {
                 home: DocumentPhotoScreen(
                   camera: camera,
                   documentType: type,
-                  readPhotoText: (_) async => const <String>[],
+                  readPhotoText: (_) async => (lines: const <String>[], barcodes: const <String>[]),
                   stepNumber: 2,
                   totalSteps: 3,
                   onBack: () {},
@@ -589,7 +606,9 @@ void main() {
       _FakeCamera? camera,
     }) async {
       camera ??= _FakeCamera();
-      await tester.pumpWidget(_screen(camera, documentType: type, readPhotoText: (_) async => frontText));
+      await tester.pumpWidget(
+        _screen(camera, documentType: type, readPhotoText: (_) async => (lines: frontText, barcodes: const <String>[])),
+      );
       await tester.pump();
       await _takeAndReview(tester);
       await _usePhoto(tester);
@@ -656,7 +675,7 @@ void main() {
         camera,
         readPhotoText: (photo) async {
           read.add(photo);
-          return const <String>[];
+          return (lines: const <String>[], barcodes: const <String>[]);
         },
       ),
     );
@@ -678,6 +697,204 @@ void main() {
     expect(find.text('Use photo'), findsOneWidget);
     expect(tester.widget<Image>(find.byType(Image)).image, isA<MemoryImage>());
     expect(read, [camera.taken.single]);
+  });
+
+  testWidgets("the last side's review compares the text on both sides with the document the MRZ scan read", (
+    tester,
+  ) async {
+    final camera = _FakeCamera();
+    final scanned = _scannedPhoto();
+    final read = <Uint8List>[];
+    final logged = _vizLogged();
+    await tester.pumpWidget(
+      _screen(
+        camera,
+        documentType: DocumentType.identityCard,
+        scanned: scanned,
+        known: (
+          documentNumber: 'D23145890',
+          dateOfBirth: DateTime(1974, 8, 12),
+          dateOfExpiry: DateTime(2012, 4, 15),
+          surname: null,
+          givenNames: null,
+        ),
+        readPhotoText: (photo) async {
+          read.add(photo);
+          final lines = identical(photo, scanned)
+              ? const [
+                  'I<UTOD231458907<<<<<<<<<<<<<<<',
+                  '7408122F1204159UTO<<<<<<<<<<<6',
+                  'ERIKSSON<<ANNA<MARIA<<<<<<<<<<',
+                ]
+              : const ['Documentnummer', 'D23145890', '12 AUG/AUG 1974', '15.04.2012'];
+          return (lines: lines, barcodes: const <String>[]);
+        },
+      ),
+    );
+    await tester.pump();
+    expect(logged, isEmpty);
+
+    await _usePhoto(tester);
+    await _takeAndReview(tester);
+    await tester.pump();
+
+    expect(read, [scanned, camera.taken.single]);
+    expect(logged.single, contains('match=same'));
+    expect(logged.single, contains('frontDocument=true'));
+  });
+
+  testWidgets('sides of different documents are taken again once, then sent', (tester) async {
+    final camera = _FakeCamera();
+    final logged = _vizLogged();
+    final sent = <(Uint8List, Uint8List)>[];
+    await tester.pumpWidget(
+      _screen(
+        camera,
+        documentType: DocumentType.identityCard,
+        retakeOnMismatch: true,
+        onPhotosTaken: (front, back) async => sent.add((front, back)),
+        readPhotoText: (photo) async {
+          final front = camera.taken.indexWhere((taken) => identical(taken, photo)).isEven;
+          final lines = front
+              ? const ['Eriksson', 'D23145890', '12 AUG/AUG 1974', '15.04.2012']
+              : const [
+                  'I<UTOXR98765434<<<<<<<<<<<<<<<',
+                  '8503013F3001019UTO<<<<<<<<<<<2',
+                  'JANSEN<<EVA<<<<<<<<<<<<<<<<<<<',
+                ];
+          return (lines: lines, barcodes: const <String>[]);
+        },
+      ),
+    );
+    await tester.pump();
+
+    await _takeAndReview(tester);
+    await _usePhoto(tester);
+    await _takeAndReview(tester);
+    await _usePhoto(tester);
+
+    expect(sent, isEmpty);
+    expect(logged.single, contains('match=different'));
+    expect(find.text('Front · 1 of 2'), findsOneWidget);
+    expect(find.textContaining("The sides don't seem to be of the same document"), findsOneWidget);
+
+    await _takeAndReview(tester);
+    await _usePhoto(tester);
+    expect(find.textContaining("The sides don't seem to be of the same document"), findsNothing);
+    await _takeAndReview(tester);
+    await _usePhoto(tester);
+
+    expect(sent, [(camera.taken[2], camera.taken[3])]);
+  });
+
+  testWidgets('Back waits while the sides are being compared', (tester) async {
+    final camera = _FakeCamera();
+    final sent = <(Uint8List, Uint8List)>[];
+    final backRead = Completer<PhotoText>();
+    await tester.pumpWidget(
+      _screen(
+        camera,
+        documentType: DocumentType.identityCard,
+        retakeOnMismatch: true,
+        onPhotosTaken: (front, back) async => sent.add((front, back)),
+        readPhotoText: (photo) => identical(camera.taken.first, photo)
+            ? Future.value((lines: const ['D23145890'], barcodes: const <String>[]))
+            : backRead.future,
+      ),
+    );
+    await tester.pump();
+
+    await _takeAndReview(tester);
+    await _usePhoto(tester);
+    await _takeAndReview(tester);
+    await _usePhoto(tester);
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pump();
+    backRead.complete((lines: const ['Supermarkt'], barcodes: const <String>[]));
+    await tester.pump();
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(sent, [(camera.taken[0], camera.taken[1])]);
+  });
+
+  testWidgets('a scan photo retaken is taken again with the other side', (tester) async {
+    final camera = _FakeCamera();
+    final scanned = _scannedPhoto();
+    await tester.pumpWidget(
+      _screen(
+        camera,
+        documentType: DocumentType.identityCard,
+        scanned: scanned,
+        retakeOnMismatch: true,
+        readPhotoText: (photo) async {
+          final lines = identical(camera.taken.first, photo)
+              ? const [
+                  'I<UTOXR98765434<<<<<<<<<<<<<<<',
+                  '8503013F3001019UTO<<<<<<<<<<<2',
+                  'JANSEN<<EVA<<<<<<<<<<<<<<<<<<<',
+                ]
+              : const ['Eriksson', 'D23145890', '12 AUG/AUG 1974', '15.04.2012'];
+          return (lines: lines, barcodes: const <String>[]);
+        },
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text('Retake'));
+    await tester.pump();
+    await _takeAndReview(tester);
+    await _usePhoto(tester);
+    await _takeAndReview(tester);
+    await _usePhoto(tester);
+
+    expect(find.text('Back · 1 of 2'), findsOneWidget);
+    expect(find.textContaining("The sides don't seem to be of the same document"), findsOneWidget);
+  });
+
+  testWidgets('without retakeOnMismatch, sides of different documents are sent', (tester) async {
+    final camera = _FakeCamera();
+    final sent = <(Uint8List, Uint8List)>[];
+    await tester.pumpWidget(
+      _screen(
+        camera,
+        documentType: DocumentType.identityCard,
+        onPhotosTaken: (front, back) async => sent.add((front, back)),
+        readPhotoText: (photo) async {
+          final front = identical(camera.taken.first, photo);
+          final lines = front
+              ? const ['Eriksson', 'D23145890', '12 AUG/AUG 1974', '15.04.2012']
+              : const [
+                  'I<UTOXR98765434<<<<<<<<<<<<<<<',
+                  '8503013F3001019UTO<<<<<<<<<<<2',
+                  'JANSEN<<EVA<<<<<<<<<<<<<<<<<<<',
+                ];
+          return (lines: lines, barcodes: const <String>[]);
+        },
+      ),
+    );
+    await tester.pump();
+
+    await _takeAndReview(tester);
+    await _usePhoto(tester);
+    await _takeAndReview(tester);
+    await _usePhoto(tester);
+
+    expect(sent, hasLength(1));
+  });
+
+  testWidgets('a photo whose text cannot be read leaves the sides unknown', (tester) async {
+    final camera = _FakeCamera();
+    final logged = _vizLogged();
+    await tester.pumpWidget(_screen(camera, readPhotoText: (_) async => throw Exception('no recognizer')));
+    await tester.pump();
+
+    await _takeAndReview(tester);
+    await _usePhoto(tester);
+    await _takeAndReview(tester);
+    await tester.pump();
+
+    expect(logged.single, contains('match=unknown'));
   });
 
   testWidgets('the hint follows the issue the preview frames agree on', (tester) async {
@@ -830,6 +1047,18 @@ void main() {
       final prepared = img.decodeJpg(prepareDocumentPhoto(_whole(picture, 3200 / 2000)))!;
       expect(prepared.width, documentPhotoMaxLongEdge);
       expect(prepared.height, 1000);
+    });
+
+    test('in the background, keeps a grey copy of the same pixels for reading their text', () async {
+      final picture = Uint8List.fromList(img.encodeJpg(img.Image(width: 3200, height: 2000)));
+
+      final jpeg = await preparePhotoInBackground(_whole(picture, 3200 / 2000));
+
+      final grey = rememberedGrey(jpeg)!;
+      expect(
+        (grey.width, grey.height, grey.pixels.length),
+        (documentPhotoMaxLongEdge, 1000, documentPhotoMaxLongEdge * 1000),
+      );
     });
 
     test('bakes in the EXIF orientation and drops the EXIF', () {

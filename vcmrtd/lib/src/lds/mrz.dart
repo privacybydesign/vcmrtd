@@ -224,12 +224,10 @@ class PassportMRZ {
   }
 
   void _setNames(List<String> nameIds) {
-    if (nameIds.isNotEmpty) {
-      lastName = nameIds[0];
-    }
-    if (nameIds.length > 1) {
-      firstName = nameIds.sublist(1).join(' ');
-    }
+    // Empty for a name field of fillers only.
+    lastName = nameIds.isNotEmpty ? nameIds[0] : '';
+    // Empty for a holder with a surname only.
+    firstName = nameIds.length > 1 ? nameIds.sublist(1).join(' ') : '';
   }
 
   void _parseExtendedDocumentNumber(String strCdDocNum) {

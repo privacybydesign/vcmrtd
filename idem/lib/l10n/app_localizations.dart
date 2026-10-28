@@ -530,6 +530,12 @@ abstract class AppLocalizations {
   /// **'Hold still…'**
   String get docPhotoHoldStill;
 
+  /// No description provided for @docPhotoSidesMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'The sides don\'t seem to be of the same document. Take the photos again, of one document.'**
+  String get docPhotoSidesMismatch;
+
   /// No description provided for @docPhotoReviewTitle.
   ///
   /// In en, this message translates to:
