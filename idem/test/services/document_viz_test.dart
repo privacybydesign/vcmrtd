@@ -126,6 +126,15 @@ void main() {
       expect(SideText.read(['05/03/1985']).vizDates, {DateTime(1985, 3, 5), DateTime(1985, 5, 3)});
     });
 
+    test('a date read in two turns of the photo is one date', () {
+      expect(SideText.read(['15.04.2012', '', '15.04.2012']).printedDates, 1);
+      expect(SideText.read(['12.03.90', '', '12.03.1990']).printedDates, 1);
+    });
+
+    test('a number printed with periods is a number', () {
+      expect(SideText.read(['Persoonsnummer', '9999.99.990']).carries('999999990'), isTrue);
+    });
+
     test('not a time or a height', () {
       expect(SideText.read(['16:41', '1,75 m']).vizDates, isEmpty);
     });
@@ -584,6 +593,12 @@ void main() {
 
         expect(check.match, SidesMatch.unknown, reason: line);
       }
+    });
+
+    test('without an MRZ, a date read as six digits is no shared number', () {
+      final check = checkSides(SideText.read(['RIJBEWIJS', '12 .03.90']), SideText.read(['12 .03.90']));
+
+      expect(check.match, SidesMatch.unknown);
     });
 
     test('a word misread with a digit on both sides is no shared number', () {

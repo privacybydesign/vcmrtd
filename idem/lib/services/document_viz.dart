@@ -310,7 +310,11 @@ class SideText {
     return SideText._(
       vizNumbers: vizNumbers,
       vizDates: {for (final dates in datesPerLine) ...dates.expand((readings) => readings)},
-      printedDates: datesPerLine.fold(0, (count, dates) => count + dates.length),
+      // Each turn of the photo reads the side again: a date read in two counts once.
+      printedDates: {
+        for (final dates in datesPerLine)
+          for (final readings in dates) (readings.map(_dayKey).toSet().toList()..sort()).join(','),
+      }.length,
       mrz: readMrzFields(lines),
       barcode: barcodes.map(readAamvaBarcode).nonNulls.firstOrNull,
       title: printed.map(_titleIn).nonNulls.firstOrNull,
@@ -684,9 +688,12 @@ DateTime? _firstDateIn(String value) => _datesIn(value).firstOrNull?.firstOrNull
 String? _licenceNumberIn(String value) =>
     _datesIn(value).isNotEmpty ? null : _tokensIn(value).where(_looksLikeNumber).firstOrNull;
 
-/// The words in [line], and the whole line without its spaces: text
-/// recognition can put a space in a number.
-List<String> _tokensIn(String line) => [..._wordsIn(line), line.replaceAll(' ', '')];
+/// The words in [line], and the whole line without its spaces and periods:
+/// text recognition can put a space in a number, and ICAO 9303-3 (3.1) lets
+/// a document print it with periods ("9999.99.990").
+List<String> _tokensIn(String line) => [..._wordsIn(line), line.replaceAll(_numberGaps, '')];
+
+final _numberGaps = RegExp('[ .]');
 
 Iterable<String> _wordsIn(String line) => _token.allMatches(line).map((m) => m[0]!);
 
@@ -698,17 +705,25 @@ String _withoutDates(String line, List<(Match, List<DateTime>)> dates) {
   return kept.join();
 }
 
-/// Eight digits that are a valid date day, month or year first:
-/// "12031990", "19900312". Both sides printing it may share one date only;
-/// a Lithuanian document number can be one, though.
-final _eightDigits = RegExp(r'^\d{8}$');
+/// Six or eight digits that are a valid date day, month or year first:
+/// "120390", "12031990", "19900312" - a date the date patterns missed, or
+/// read with its periods ("12 .03.90"). Both sides printing it may share one
+/// date only; a Lithuanian document number can be one, though.
+final _compactDate = RegExp(r'^(\d{6}|\d{8})$');
 
 bool _isCompactDate(String token) {
-  if (!_eightDigits.hasMatch(token)) return false;
-  int part(int start, int end) => int.parse(token.substring(start, end));
-  return _date(part(4, 8), part(2, 4), part(0, 2)) != null ||
-      _date(part(4, 8), part(0, 2), part(2, 4)) != null ||
-      _date(part(0, 4), part(4, 6), part(6, 8)) != null;
+  if (!_compactDate.hasMatch(token)) return false;
+  final yearLength = token.length - 4;
+  int part(int start, int length) => int.parse(token.substring(start, start + length));
+  final (dayFirstYear, yearFirstYear) = (part(4, yearLength), part(0, yearLength));
+  return [
+    for (final y in yearLength == 4 ? [dayFirstYear] : [for (final c in _twoDigitYearCenturies) c + dayFirstYear]) ...[
+      _date(y, part(2, 2), part(0, 2)),
+      _date(y, part(0, 2), part(2, 2)),
+    ],
+    for (final y in yearLength == 4 ? [yearFirstYear] : [for (final c in _twoDigitYearCenturies) c + yearFirstYear])
+      _date(y, part(yearLength, 2), part(yearLength + 2, 2)),
+  ].nonNulls.isNotEmpty;
 }
 
 bool _looksLikeNumber(String token) =>
