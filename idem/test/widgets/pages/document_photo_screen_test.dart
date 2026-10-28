@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
+import 'package:logging/logging.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:idem/services/document_photo_quality.dart';
 import 'package:idem/services/document_text_reader.dart';
@@ -161,6 +162,16 @@ double _frameRatio(WidgetTester tester) {
   );
   final frame = (paint.painter! as GuidedScanFramePainter).frame;
   return frame.width / frame.height;
+}
+
+/// What the VIZ check logs from now on.
+List<String> _vizLogged() {
+  final logged = <String>[];
+  final subscription = Logger.root.onRecord
+      .where((record) => record.loggerName == 'DocumentViz' && record.level == Level.INFO)
+      .listen((record) => logged.add(record.message));
+  addTearDown(subscription.cancel);
+  return logged;
 }
 
 void main() {
@@ -694,6 +705,7 @@ void main() {
     final camera = _FakeCamera();
     final scanned = _scannedPhoto();
     final read = <Uint8List>[];
+    final logged = _vizLogged();
     await tester.pumpWidget(
       _screen(
         camera,
@@ -720,20 +732,20 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(find.byKey(const Key('viz check')), findsNothing);
+    expect(logged, isEmpty);
 
     await _usePhoto(tester);
     await _takeAndReview(tester);
     await tester.pump();
 
     expect(read, [scanned, camera.taken.single]);
-    expect(debugVizCheck.value?.match, SidesMatch.same);
-    expect(debugVizCheck.value?.frontLooksLikeDocument, isTrue);
-    expect(find.textContaining('Sides: same'), findsOneWidget);
+    expect(logged.single, contains('match=same'));
+    expect(logged.single, contains('frontDocument=true'));
   });
 
   testWidgets('sides of different documents are taken again once, then sent', (tester) async {
     final camera = _FakeCamera();
+    final logged = _vizLogged();
     final sent = <(Uint8List, Uint8List)>[];
     await tester.pumpWidget(
       _screen(
@@ -762,7 +774,7 @@ void main() {
     await _usePhoto(tester);
 
     expect(sent, isEmpty);
-    expect(debugVizCheck.value?.match, SidesMatch.different);
+    expect(logged.single, contains('match=different'));
     expect(find.text('Front · 1 of 2'), findsOneWidget);
     expect(find.textContaining("The sides don't seem to be of the same document"), findsOneWidget);
 
@@ -808,6 +820,7 @@ void main() {
 
   testWidgets('a photo whose text cannot be read leaves the sides unknown', (tester) async {
     final camera = _FakeCamera();
+    final logged = _vizLogged();
     await tester.pumpWidget(_screen(camera, readPhotoText: (_) async => throw Exception('no recognizer')));
     await tester.pump();
 
@@ -816,7 +829,7 @@ void main() {
     await _takeAndReview(tester);
     await tester.pump();
 
-    expect(debugVizCheck.value?.match, SidesMatch.unknown);
+    expect(logged.single, contains('match=unknown'));
   });
 
   testWidgets('the hint follows the issue the preview frames agree on', (tester) async {

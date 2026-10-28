@@ -83,10 +83,6 @@ Future<Uint8List> preparePhotoInBackground(DocumentPicture picture) async {
 
 final _vizLog = Logger('DocumentViz');
 
-/// What the text on both sides said, shown on the last side's review in
-/// debug builds while the comparison is tuned.
-final debugVizCheck = ValueNotifier<VizCheck?>(null);
-
 const _deviceRotations = {
   DeviceOrientation.portraitUp: 0,
   DeviceOrientation.landscapeLeft: 90,
@@ -817,12 +813,10 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
 
   /// Logged, search the log for `VIZ`; null when the photos changed meanwhile.
   Future<VizCheck?> _compareSides({required Uint8List front, required Uint8List back}) async {
-    debugVizCheck.value = null;
     final texts = await Future.wait([_readSide(front), _readSide(back)]);
     if (!mounted || !(identical(_photo, front) || identical(_photo, back))) return null;
     final check = checkSides(texts[0], texts[1], known: widget.known);
     _vizLog.info('VIZ ${widget.documentType?.name ?? 'unknown'} known=${widget.known != null} $check');
-    debugVizCheck.value = check;
     return check;
   }
 
@@ -1170,9 +1164,8 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
     );
   }
 
-  /// Retake and use, and in debug builds what the checks said: only once
-  /// the photo that is sent is ready. A photo taken anyway leads with
-  /// retake, one the checks passed with use.
+  /// Retake and use: only once the photo that is sent is ready. A photo
+  /// taken anyway leads with retake, one the checks passed with use.
   List<Widget> _buildReviewActions(BuildContext context) {
     final l10n = context.l10n;
     Widget primary(String label, VoidCallback? onPressed) =>
@@ -1189,7 +1182,6 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
     final use = _sending ? null : _usePhoto;
     final retakeFirst = _reviewingTakenAnyway;
     return [
-      if (kDebugMode && _taken.length + 1 == _sideCount) const _VizCheckBanner(),
       Padding(
         padding: guidedBottomButtonPadding,
         child: Row(
@@ -1283,34 +1275,4 @@ class _CropPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_CropPainter old) => old.image != image || old.crop != crop;
-}
-
-class _VizCheckBanner extends StatelessWidget {
-  const _VizCheckBanner();
-
-  @override
-  Widget build(BuildContext context) => ValueListenableBuilder(
-    valueListenable: debugVizCheck,
-    builder: (context, check, _) {
-      if (check == null) return const SizedBox.shrink();
-      return Container(
-        key: const Key('viz check'),
-        margin: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: switch (check.match) {
-            SidesMatch.same => Colors.green.shade700,
-            SidesMatch.different => Colors.red.shade700,
-            SidesMatch.unknown => Colors.grey.shade700,
-          },
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          'Sides: ${check.match.name} · front document ${check.frontLooksLikeDocument} · '
-          'back document ${check.backLooksLikeDocument} (debug)',
-          style: const TextStyle(color: Colors.white, fontSize: 13),
-        ),
-      );
-    },
-  );
 }
