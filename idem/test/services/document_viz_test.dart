@@ -523,6 +523,14 @@ void main() {
       expect(check.match, SidesMatch.unknown);
     });
 
+    test('without an MRZ, a date line with spaces is no shared number', () {
+      for (final line in ['25 03 1985', '15 OCT 2020']) {
+        final check = checkSides(SideText.read(['RIJBEWIJS', line]), SideText.read([line]));
+
+        expect(check.match, SidesMatch.unknown, reason: line);
+      }
+    });
+
     test('a side with nothing to tie it is unknown', () {
       final check = checkSides(SideText.read(_cardFront), SideText.read(['Supermarkt']));
 

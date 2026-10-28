@@ -287,7 +287,12 @@ class SideText {
         if (datesPerLine[i].isEmpty) line,
     ];
     final tokens = printed.expand(_tokensIn);
-    final vizNumbers = {for (final token in tokens.where(_looksLikeNumber)) _matchKey(token)};
+    final vizNumbers = {
+      for (final (i, line) in printed.indexed)
+        // A dated line is no number as a whole: "15 OCT 2020" must not read as "15OCT2020".
+        for (final token in datesPerLine[i].isEmpty ? _tokensIn(line) : _wordsIn(line))
+          if (_looksLikeNumber(token)) _matchKey(token),
+    };
 
     final licence = _licenceFieldsIn(printed);
     final licenceNumber = licence?.number;
@@ -662,7 +667,9 @@ String? _licenceNumberIn(String value) =>
 
 /// The words in [line], and the whole line without its spaces: text
 /// recognition can put a space in a number.
-List<String> _tokensIn(String line) => [..._token.allMatches(line).map((m) => m[0]!), line.replaceAll(' ', '')];
+List<String> _tokensIn(String line) => [..._wordsIn(line), line.replaceAll(' ', '')];
+
+Iterable<String> _wordsIn(String line) => _token.allMatches(line).map((m) => m[0]!);
 
 bool _looksLikeNumber(String token) =>
     token.length >= _minNumberLength &&
