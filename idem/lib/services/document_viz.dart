@@ -478,51 +478,64 @@ VizCheck checkSides(SideText? front, SideText? back, {KnownDocument? known}) {
   if (front == null || back == null) return result(SidesMatch.unknown);
 
   final zones = [...front._machineReadable, ...back._machineReadable];
-  T? fromZones<T extends Object>(T? Function(MrzFields zone) field) => zones.map(field).nonNulls.firstOrNull;
-  final number = known?.documentNumber ?? fromZones((zone) => zone.documentNumber);
-  final birth = known?.dateOfBirth ?? fromZones((zone) => zone.dateOfBirth);
-  final expiry = known?.dateOfExpiry ?? fromZones((zone) => zone.dateOfExpiry);
-  if (number == null && (birth == null || expiry == null)) return result(_matchWithoutReference(front, back));
-
-  final surname = _longEnough(known?.surname ?? fromZones((zone) => zone.surname));
-  final givenNames = _longEnough(known?.givenNames ?? fromZones((zone) => zone.givenNames));
-  final namesAnother = zones.any((zone) => _namesAnother(zone, number, birth, expiry, surname, givenNames));
+  final reference = _reference(zones, known);
+  if (reference.number == null && (reference.birth == null || reference.expiry == null)) {
+    return result(_matchWithoutReference(front, back));
+  }
+  final namesAnother = zones.any((zone) => _namesAnother(zone, reference));
   if (namesAnother || front.printedMatchesMrz == SidesMatch.different) return result(SidesMatch.different);
 
+  final name = _nameMatch(front, reference);
+  if (_tied(front, reference, zones) && _tied(back, reference, zones)) return result(SidesMatch.same, name);
+  // Only the front: a back's dates are often others (issued, categories).
+  if (front._contradicts(reference.birth, reference.expiry)) return result(SidesMatch.different, name);
+  return result(SidesMatch.unknown, name);
+}
+
+typedef _Reference = ({String? number, DateTime? birth, DateTime? expiry, String? surname, String? givenNames});
+
+/// [known], else what [zones] say.
+_Reference _reference(List<MrzFields> zones, KnownDocument? known) {
+  T? fromZones<T extends Object>(T? Function(MrzFields zone) field) => zones.map(field).nonNulls.firstOrNull;
+  return (
+    number: known?.documentNumber ?? fromZones((zone) => zone.documentNumber),
+    birth: known?.dateOfBirth ?? fromZones((zone) => zone.dateOfBirth),
+    expiry: known?.dateOfExpiry ?? fromZones((zone) => zone.dateOfExpiry),
+    surname: _longEnough(known?.surname ?? fromZones((zone) => zone.surname)),
+    givenNames: _longEnough(known?.givenNames ?? fromZones((zone) => zone.givenNames)),
+  );
+}
+
+/// Whether [side] carries the document's number, personal number, licence
+/// data or dates.
+bool _tied(SideText side, _Reference reference, List<MrzFields> zones) {
+  final number = reference.number;
   // Only ever ties: text recognition reads it on one side at most, often only partly.
-  final personal = fromZones((zone) => zone.personalNumber);
+  final personal = zones.map((zone) => zone.personalNumber).nonNulls.firstOrNull;
   final personalNumber = personal != null && _looksLikeNumber(personal) ? personal : null;
-  final licenceData = zones.map((zone) => zone.licenceData).nonNulls;
-  bool tied(SideText side) =>
-      (number != null && side.carries(number)) ||
+  return (number != null && side.carries(number)) ||
       (personalNumber != null && side.carries(personalNumber)) ||
-      licenceData.any(side._printsPartOf) ||
-      side._carriesDates(birth, expiry);
-  // Every document prints its holder's name on its front, next to the number or dates.
+      zones.map((zone) => zone.licenceData).nonNulls.any(side._printsPartOf) ||
+      side._carriesDates(reference.birth, reference.expiry);
+}
+
+/// Every document prints its holder's name on its front, next to the number
+/// or dates: unknown when the front prints neither.
+SidesMatch _nameMatch(SideText front, _Reference reference) {
+  final (:number, :birth, :expiry, :surname, :givenNames) = reference;
+  if (surname == null) return SidesMatch.unknown;
   final printedTied =
       (number != null && front.vizNumbers.contains(_matchKey(number))) || front._printsDates(birth, expiry);
-  final name = surname == null || !printedTied
-      ? SidesMatch.unknown
-      : (front._printsName(surname) && (givenNames == null || front._printsName(givenNames))
-            ? SidesMatch.same
-            : SidesMatch.different);
-  if (tied(front) && tied(back)) return result(SidesMatch.same, name);
-  // Only the front: a back's dates are often others (issued, categories).
-  if (front._contradicts(birth, expiry)) return result(SidesMatch.different, name);
-  return result(SidesMatch.unknown, name);
+  if (!printedTied) return SidesMatch.unknown;
+  final printsNames = front._printsName(surname) && (givenNames == null || front._printsName(givenNames));
+  return printsNames ? SidesMatch.same : SidesMatch.different;
 }
 
 /// [name], when it has letters enough to tell it from another.
 String? _longEnough(String? name) => name != null && _nameKey(name).length >= _minNameLength ? name : null;
 
-bool _namesAnother(
-  MrzFields zone,
-  String? number,
-  DateTime? birth,
-  DateTime? expiry,
-  String? surname,
-  String? givenNames,
-) {
+bool _namesAnother(MrzFields zone, _Reference reference) {
+  final (:number, :birth, :expiry, :surname, :givenNames) = reference;
   bool differs(DateTime? a, DateTime? b) => a != null && b != null && !_sameDay(a, b);
   bool otherName(String? a, String? b) => a != null && b != null && !_sameName(a, b);
   final zoneNumber = zone.documentNumber;
