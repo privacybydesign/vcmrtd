@@ -175,6 +175,12 @@ class _MrzReading {
     };
     if (type == null) return null;
     if (number == null && birth == null && licenceData == null) return null;
+    String? name(String? fromFirstLine, String? fromTd1NameLine) {
+      if (td1) return fromTd1NameLine;
+      if (fromFirstLine != null || type != DocumentType.identityCard) return fromFirstLine;
+      return fromTd1NameLine;
+    }
+
     return (
       type: type,
       documentNumber: number,
@@ -182,8 +188,8 @@ class _MrzReading {
       dateOfExpiry: expiry,
       personalNumber: personal,
       licenceData: licenceData,
-      surname: td1 ? td1Surname : surname ?? (type == DocumentType.identityCard ? td1Surname : null),
-      givenNames: td1 ? td1GivenNames : givenNames ?? (type == DocumentType.identityCard ? td1GivenNames : null),
+      surname: name(surname, td1Surname),
+      givenNames: name(givenNames, td1GivenNames),
     );
   }
 }

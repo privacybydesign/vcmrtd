@@ -295,14 +295,7 @@ class SideText {
         if (datesPerLine[i].isEmpty) line,
     ];
     final tokens = printed.expand(_tokensIn);
-    final vizNumbers = {
-      for (final (i, line) in printed.indexed)
-        // A dated line is no number as a whole, nor are its dates' digits:
-        // "15 OCT 2020" must not read as "15OCT2020", nor "12.031990" as "031990".
-        for (final token
-            in dateMatchesPerLine[i].isEmpty ? _tokensIn(line) : _wordsIn(_withoutDates(line, dateMatchesPerLine[i])))
-          if (_looksLikeNumber(token)) _matchKey(token),
-    };
+    final vizNumbers = _numbersIn(printed, dateMatchesPerLine);
 
     final licence = _licenceFieldsIn(printed);
     final licenceNumber = licence?.number;
@@ -310,11 +303,7 @@ class SideText {
     return SideText._(
       vizNumbers: vizNumbers,
       vizDates: {for (final dates in datesPerLine) ...dates.expand((readings) => readings)},
-      // Each turn of the photo reads the side again: a date read in two counts once.
-      printedDates: {
-        for (final dates in datesPerLine)
-          for (final readings in dates) (readings.map(_dayKey).toSet().toList()..sort()).join(','),
-      }.length,
+      printedDates: _distinctDates(datesPerLine),
       mrz: readMrzFields(lines),
       barcode: barcodes.map(readAamvaBarcode).nonNulls.firstOrNull,
       title: printed.map(_titleIn).nonNulls.firstOrNull,
@@ -451,6 +440,22 @@ class SideText {
     if (mrz != null) 'printedMatchesMrz=${printedMatchesMrz.name}',
   ].join(' ');
 }
+
+/// The number candidates in [printed], whose dates are [dateMatchesPerLine].
+Set<String> _numbersIn(List<String> printed, List<List<(Match, List<DateTime>)>> dateMatchesPerLine) => {
+  for (final (i, line) in printed.indexed)
+    // A dated line is no number as a whole, nor are its dates' digits:
+    // "15 OCT 2020" must not read as "15OCT2020", nor "12.031990" as "031990".
+    for (final token
+        in dateMatchesPerLine[i].isEmpty ? _tokensIn(line) : _wordsIn(_withoutDates(line, dateMatchesPerLine[i])))
+      if (_looksLikeNumber(token)) _matchKey(token),
+};
+
+/// Each turn of the photo reads the side again: a date read in two counts once.
+int _distinctDates(List<List<List<DateTime>>> datesPerLine) => {
+  for (final dates in datesPerLine)
+    for (final readings in dates) (readings.map(_dayKey).toSet().toList()..sort()).join(','),
+}.length;
 
 String _zoneSummary(MrzFields zone) =>
     '${zone.type.name}${zone.documentNumber == null ? '' : '+number'}${zone.dateOfBirth == null ? '' : '+dates'}';
@@ -756,9 +761,7 @@ Iterable<(Match, List<DateTime>)> _yearFirstDatesIn(String line) sync* {
 Iterable<(Match, List<DateTime>)> _dayFirstDatesIn(String line) sync* {
   for (final m in _dayFirstDate.allMatches(line)) {
     final (first, firstGap, second, secondGap, year) = (m[1]!, m[2]!, m[3]!, m[4]!, m[5]!);
-    // One gap may be lost, between two digits each: "1505 1975", not "12345678".
-    if (firstGap.isEmpty && (secondGap.isEmpty || first.length < 2 || second.length < 2)) continue;
-    if (secondGap.isEmpty && (second.length < 2 || year.length < 4)) continue;
+    if (!_gapsHold(first, firstGap, second, secondGap, year)) continue;
     final monthFirst = '$firstGap$secondGap'.contains('/');
     final readings = <DateTime>{
       for (final y in _years(year)) ...[
@@ -768,6 +771,12 @@ Iterable<(Match, List<DateTime>)> _dayFirstDatesIn(String line) sync* {
     };
     if (readings.isNotEmpty) yield (m, readings.toList());
   }
+}
+
+/// One gap may be lost, between two digits each: "1505 1975", not "12345678".
+bool _gapsHold(String first, String firstGap, String second, String secondGap, String year) {
+  if (firstGap.isEmpty) return secondGap.isNotEmpty && first.length == 2 && second.length == 2;
+  return secondGap.isNotEmpty || (second.length == 2 && year.length == 4);
 }
 
 Iterable<(Match, List<DateTime>)> _namedMonthDatesIn(String line) sync* {
