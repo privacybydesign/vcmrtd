@@ -6,6 +6,7 @@ import 'package:vcmrtd/vcmrtd.dart' show DocumentType;
 // the text read off real documents' sides before letting these decide anything.
 
 const _minNumberLength = 6;
+const _minNumberDigits = 2;
 const _maxNumberLength = 12;
 const _minSharedDates = 2;
 const _minLicenceFieldLabels = 2;
@@ -209,10 +210,10 @@ const _plainLetters = {
 
 /// "12.08.1974", "12/08/74", or the United States' "08/12/1974" - and as
 /// text recognition reads them: "1505 1975", "19,01.2018", "15. 10.91".
-final _dayFirstDate = RegExp(r'(?<!\d)(\d{1,2})([.\-/,]? ?)(\d{1,2})([.\-/,]? ?)(\d{4}|\d{2})(?![\d.,:]\d)');
+final _dayFirstDate = RegExp(r'(?<!\d)(\d{1,2})([.\-/,]? ?)(\d{1,2})([.\-/,]? ?)(\d{4}|\d{2}(?![\-/]\d))(?![\d.,:]\d)');
 
 /// "1974-08-12", "1974.08.12.": Hungary, Lithuania, Sweden, much of Asia.
-final _yearFirstDate = RegExp(r'(?<!\d)(\d{4})[.\-/,] ?(\d{1,2})[.\-/,] ?(\d{1,2})(?!\d)');
+final _yearFirstDate = RegExp(r'(?<!\d|\d[.\-/,] ?)(\d{4})[.\-/,] ?(\d{1,2})[.\-/,] ?(\d{1,2})(?!\d)');
 
 /// "12 AUG/AUG 1974", "12 MARS 74", "12. OKT. 1974", "15 OCTOBER 2020" - and
 /// with the slash read as a letter: "23 APR IAPR 56", "01 MARIMAR 2034".
@@ -279,9 +280,13 @@ class SideText {
   factory SideText.read(List<String> lines, {List<String> barcodes = const []}) {
     final printed = [
       for (final line in lines)
-        if (!_mrzLine.hasMatch(line)) _plain(line),
+        // An MRZ line text recognition read with spaces has no '<' left.
+        if (!_mrzLine.hasMatch(line) && readMrzFields([line]) == null) _plain(line),
     ];
-    final datesPerLine = [for (final line in printed) _datesIn(line).toList()];
+    final dateMatchesPerLine = [for (final line in printed) _dateMatchesIn(line).toList()];
+    final datesPerLine = [
+      for (final matches in dateMatchesPerLine) [for (final (_, readings) in matches) readings],
+    ];
     final undatedLines = [
       for (final (i, line) in printed.indexed)
         if (datesPerLine[i].isEmpty) line,
@@ -289,8 +294,10 @@ class SideText {
     final tokens = printed.expand(_tokensIn);
     final vizNumbers = {
       for (final (i, line) in printed.indexed)
-        // A dated line is no number as a whole: "15 OCT 2020" must not read as "15OCT2020".
-        for (final token in datesPerLine[i].isEmpty ? _tokensIn(line) : _wordsIn(line))
+        // A dated line is no number as a whole, nor are its dates' digits:
+        // "15 OCT 2020" must not read as "15OCT2020", nor "12.031990" as "031990".
+        for (final token
+            in dateMatchesPerLine[i].isEmpty ? _tokensIn(line) : _wordsIn(_withoutDates(line, dateMatchesPerLine[i])))
           if (_looksLikeNumber(token)) _matchKey(token),
     };
 
@@ -491,7 +498,9 @@ VizCheck checkSides(SideText? front, SideText? back, {KnownDocument? known}) {
   if (namesAnother || front.printedMatchesMrz == SidesMatch.different) return result(SidesMatch.different);
 
   final name = _nameMatch(front, reference);
-  if (_tied(front, reference, zones) && _tied(back, reference, zones)) return result(SidesMatch.same, name);
+  final tied =
+      _tied(front, reference, zones, back._machineReadable) && _tied(back, reference, zones, front._machineReadable);
+  if (tied) return result(SidesMatch.same, name);
   // Only the front: a back's dates are often others (issued, categories).
   if (front._contradicts(reference.birth, reference.expiry)) return result(SidesMatch.different, name);
   return result(SidesMatch.unknown, name);
@@ -499,28 +508,33 @@ VizCheck checkSides(SideText? front, SideText? back, {KnownDocument? known}) {
 
 typedef _Reference = ({String? number, DateTime? birth, DateTime? expiry, String? surname, String? givenNames});
 
-/// [known], else what [zones] say.
+/// [known], else what [zones] say; names from [zones] when [known] has none.
 _Reference _reference(List<MrzFields> zones, KnownDocument? known) {
   T? fromZones<T extends Object>(T? Function(MrzFields zone) field) => zones.map(field).nonNulls.firstOrNull;
+  // Not a zone's dates to a scan without them: the zone could be another document's.
   return (
-    number: known?.documentNumber ?? fromZones((zone) => zone.documentNumber),
-    birth: known?.dateOfBirth ?? fromZones((zone) => zone.dateOfBirth),
-    expiry: known?.dateOfExpiry ?? fromZones((zone) => zone.dateOfExpiry),
+    number: known != null ? known.documentNumber : fromZones((zone) => zone.documentNumber),
+    birth: known != null ? known.dateOfBirth : fromZones((zone) => zone.dateOfBirth),
+    expiry: known != null ? known.dateOfExpiry : fromZones((zone) => zone.dateOfExpiry),
     surname: _longEnough(known?.surname ?? fromZones((zone) => zone.surname)),
     givenNames: _longEnough(known?.givenNames ?? fromZones((zone) => zone.givenNames)),
   );
 }
 
-/// Whether [side] carries the document's number, personal number, licence
-/// data or dates.
-bool _tied(SideText side, _Reference reference, List<MrzFields> zones) {
+/// Whether [side] carries the document's number, personal number, dates, or
+/// part of the licence data of the [other] side's MRZ: a number it prints
+/// that is part of its own licence MRZ is no proof, but its own licence MRZ
+/// holding the document's number is.
+bool _tied(SideText side, _Reference reference, List<MrzFields> zones, List<MrzFields> other) {
   final number = reference.number;
   // Only ever ties: text recognition reads it on one side at most, often only partly.
   final personal = zones.map((zone) => zone.personalNumber).nonNulls.firstOrNull;
   final personalNumber = personal != null && _looksLikeNumber(personal) ? personal : null;
+  final ownLicenceData = side._machineReadable.map((zone) => zone.licenceData).nonNulls;
   return (number != null && side.carries(number)) ||
+      (number != null && ownLicenceData.any((data) => _matchKey(data).contains(_matchKey(number)))) ||
       (personalNumber != null && side.carries(personalNumber)) ||
-      zones.map((zone) => zone.licenceData).nonNulls.any(side._printsPartOf) ||
+      other.map((zone) => zone.licenceData).nonNulls.any(side._printsPartOf) ||
       side._carriesDates(reference.birth, reference.expiry);
 }
 
@@ -544,7 +558,9 @@ bool _namesAnother(MrzFields zone, _Reference reference) {
   bool differs(DateTime? a, DateTime? b) => a != null && b != null && !_sameDay(a, b);
   bool otherName(String? a, String? b) => a != null && b != null && !_sameName(a, b);
   final zoneNumber = zone.documentNumber;
+  final licenceData = zone.licenceData;
   return (number != null && zoneNumber != null && _matchKey(zoneNumber) != _matchKey(number)) ||
+      (number != null && licenceData != null && !_matchKey(licenceData).contains(_matchKey(number))) ||
       differs(zone.dateOfBirth, birth) ||
       differs(zone.dateOfExpiry, expiry) ||
       otherName(zone.surname, surname) ||
@@ -586,7 +602,7 @@ SidesMatch _matchWithoutReference(SideText front, SideText back) {
   final licenceExpiry = front.licence?.dateOfExpiry;
   if (licenceExpiry != null && back._licenceBack && back.shows(licenceExpiry)) return SidesMatch.same;
 
-  final sharesNumber = front.vizNumbers.intersection(back.vizNumbers).isNotEmpty;
+  final sharesNumber = front.vizNumbers.intersection(back.vizNumbers).any((number) => !_isCompactDate(number));
   final sharedDates = {for (final date in front.vizDates.where(back.shows)) _eitherOrderKey(date)};
   final sharesDates = sharedDates.length >= _minSharedDates;
   return sharesNumber || sharesDates ? SidesMatch.same : SidesMatch.unknown;
@@ -671,10 +687,31 @@ List<String> _tokensIn(String line) => [..._wordsIn(line), line.replaceAll(' ', 
 
 Iterable<String> _wordsIn(String line) => _token.allMatches(line).map((m) => m[0]!);
 
+String _withoutDates(String line, List<(Match, List<DateTime>)> dates) {
+  final kept = line.split('');
+  for (final (match, _) in dates) {
+    kept.fillRange(match.start, match.end, ' ');
+  }
+  return kept.join();
+}
+
+/// Eight digits that are a valid date day, month or year first:
+/// "12031990", "19900312". Both sides printing it may share one date only;
+/// a Lithuanian document number can be one, though.
+final _eightDigits = RegExp(r'^\d{8}$');
+
+bool _isCompactDate(String token) {
+  if (!_eightDigits.hasMatch(token)) return false;
+  int part(int start, int end) => int.parse(token.substring(start, end));
+  return _date(part(4, 8), part(2, 4), part(0, 2)) != null ||
+      _date(part(4, 8), part(0, 2), part(2, 4)) != null ||
+      _date(part(0, 4), part(4, 6), part(6, 8)) != null;
+}
+
 bool _looksLikeNumber(String token) =>
     token.length >= _minNumberLength &&
     token.length <= _maxNumberLength &&
-    _digit.hasMatch(token) &&
+    _digit.allMatches(token).length >= _minNumberDigits &&
     _alphanumeric.hasMatch(token);
 
 String _matchKey(String number) =>
@@ -683,20 +720,22 @@ String _matchKey(String number) =>
 /// The dates printed in [line], each as all its readings: day or month
 /// first, either century of a two-digit year. Matching against the
 /// document's dates picks the one.
-Iterable<List<DateTime>> _datesIn(String line) => [
+Iterable<List<DateTime>> _datesIn(String line) => _dateMatchesIn(line).map((date) => date.$2);
+
+Iterable<(Match, List<DateTime>)> _dateMatchesIn(String line) => [
   ..._yearFirstDatesIn(line),
   ..._dayFirstDatesIn(line),
   ..._namedMonthDatesIn(line),
 ];
 
-Iterable<List<DateTime>> _yearFirstDatesIn(String line) sync* {
+Iterable<(Match, List<DateTime>)> _yearFirstDatesIn(String line) sync* {
   for (final m in _yearFirstDate.allMatches(line)) {
     final date = _date(int.parse(m[1]!), int.parse(m[2]!), int.parse(m[3]!));
-    if (date != null) yield [date];
+    if (date != null) yield (m, [date]);
   }
 }
 
-Iterable<List<DateTime>> _dayFirstDatesIn(String line) sync* {
+Iterable<(Match, List<DateTime>)> _dayFirstDatesIn(String line) sync* {
   for (final m in _dayFirstDate.allMatches(line)) {
     final (first, firstGap, second, secondGap, year) = (m[1]!, m[2]!, m[3]!, m[4]!, m[5]!);
     // One gap may be lost, between two digits each: "1505 1975", not "12345678".
@@ -708,16 +747,16 @@ Iterable<List<DateTime>> _dayFirstDatesIn(String line) sync* {
         ?_date(y, int.parse(first), int.parse(second)),
       ],
     };
-    if (readings.isNotEmpty) yield readings.toList();
+    if (readings.isNotEmpty) yield (m, readings.toList());
   }
 }
 
-Iterable<List<DateTime>> _namedMonthDatesIn(String line) sync* {
+Iterable<(Match, List<DateTime>)> _namedMonthDatesIn(String line) sync* {
   for (final m in _namedMonthDate.allMatches(line)) {
     final month = m[2]!.split(_monthSeparator).map(_month).nonNulls.firstOrNull;
     if (month == null) continue;
     final readings = [for (final y in _years(m[3]!)) ?_date(y, month, int.parse(m[1]!))];
-    if (readings.isNotEmpty) yield readings;
+    if (readings.isNotEmpty) yield (m, readings);
   }
 }
 

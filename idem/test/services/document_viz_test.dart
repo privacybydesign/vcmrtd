@@ -531,6 +531,113 @@ void main() {
       }
     });
 
+    test('without an MRZ, one date written year first is one shared date', () {
+      for (final line in ['2012-10-15', '2005/03/20']) {
+        final check = checkSides(SideText.read(['KORKORT', line]), SideText.read([line]));
+
+        expect(check.match, SidesMatch.unknown, reason: line);
+      }
+    });
+
+    test('a validity range without spaces is two dates', () {
+      expect(SideText.read(['01.03.2011-01.01.2050']).vizDates, {
+        DateTime(2011, 3, 1),
+        DateTime(2011, 1, 3),
+        DateTime(2050, 1, 1),
+      });
+      expect(SideText.read(['12.08.1974/12.08.2030']).vizDates, {
+        DateTime(1974, 8, 12),
+        DateTime(1974, 12, 8),
+        DateTime(2030, 8, 12),
+        DateTime(2030, 12, 8),
+      });
+    });
+
+    test('an eight-digit number that reads as a date still ties a side to the document', () {
+      expect(SideText.read(['ASMENS TAPATYBES KORTELE', '12031990']).carries('12031990'), isTrue);
+    });
+
+    test("a Dutch licence's back ties itself by its own MRZ holding the chip's number", () {
+      final known = (
+        documentNumber: '1234567890',
+        dateOfBirth: DateTime(1974, 8, 12),
+        dateOfExpiry: DateTime(2030, 1, 18),
+        surname: null,
+        givenNames: null,
+      );
+      final check = checkSides(
+        SideText.read(['RIJBEWIJS', '3. 12.08.1974 Utrecht', '4a. 19.01.2020', '4b. 18.01.2030', '5. 1234567890']),
+        SideText.read([
+          '9.',
+          '10.',
+          '11.',
+          'AM 19.01.2020 18.01.2030',
+          'B 19.01.2020 18.01.2030',
+          'D1NLD11234567890ABCDEFGHIJKLM5',
+        ]),
+        known: known,
+      );
+
+      expect(check.match, SidesMatch.same);
+    });
+
+    test('without an MRZ, a date with a separator lost is no shared number', () {
+      for (final line in ['12.031990', '19 122019', '12031990']) {
+        final check = checkSides(SideText.read(['RIJBEWIJS', line]), SideText.read([line]));
+
+        expect(check.match, SidesMatch.unknown, reason: line);
+      }
+    });
+
+    test('a word misread with a digit on both sides is no shared number', () {
+      final check = checkSides(SideText.read(['RIJBEWIJS', 'B0SSCHE']), SideText.read(['8OSSCHE']));
+
+      expect(check.match, SidesMatch.unknown);
+    });
+
+    test("a licence MRZ read with spaces does not tie its own side", () {
+      const otherLicenceBack = ['D1NLD1 1234567890 ABCDEFGHIJKLM5'];
+      final passportPage = SideText.read([
+        'PASPOORT',
+        'P<NLDERIKSSON<<ANNA<<<',
+        'L898902C36NLD7408122F1204159999999990<<',
+      ]);
+
+      expect(checkSides(passportPage, SideText.read(otherLicenceBack)).match, isNot(SidesMatch.same));
+    });
+
+    test("a back whose licence MRZ holds another number than the scan is a different document", () {
+      final known = (
+        documentNumber: '9876543210',
+        dateOfBirth: null,
+        dateOfExpiry: null,
+        surname: null,
+        givenNames: null,
+      );
+      for (final back in ['D1NLD1 1234567890 ABCDEFGHIJKLM5', 'D1NLD11234567890ABCDEFGHIJKLM5']) {
+        final check = checkSides(SideText.read(['RIJBEWIJS', '5. 1234567890']), SideText.read([back]), known: known);
+
+        expect(check.match, SidesMatch.different, reason: back);
+      }
+    });
+
+    test("the scan's number is checked even when it has no dates", () {
+      final known = (
+        documentNumber: 'XR9876543',
+        dateOfBirth: null,
+        dateOfExpiry: null,
+        surname: null,
+        givenNames: null,
+      );
+      final check = checkSides(
+        SideText.read(['IDENTITEITSKAART', '12 AUG/AUG 1974', '15.04.2012']),
+        SideText.read(['7408122F1204159UTO<<']),
+        known: known,
+      );
+
+      expect(check.match, isNot(SidesMatch.same));
+    });
+
     test('a side with nothing to tie it is unknown', () {
       final check = checkSides(SideText.read(_cardFront), SideText.read(['Supermarkt']));
 
