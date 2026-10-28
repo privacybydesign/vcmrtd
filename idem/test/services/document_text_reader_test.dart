@@ -87,6 +87,15 @@ void main() {
       expect((turns.first.width, turns.first.height), (200, 100));
     });
 
+    test('lets go of the grey copy once it has read it', () async {
+      final jpeg = Uint8List.fromList(img.encodeJpg(textPage()));
+      rememberGrey(jpeg, greyPhoto(img.Image(width: 200, height: 100)));
+
+      await levelledTurnsInBackground(jpeg).toList();
+
+      expect(rememberedGrey(jpeg), isNull);
+    });
+
     test('passes on why a photo could not be read', () {
       expect(levelledTurnsInBackground(Uint8List.fromList([1, 2, 3])).toList(), throwsA(isA<RemoteError>()));
     });

@@ -167,11 +167,14 @@ GreyPhoto greyPhoto(img.Image image) {
 /// reading one doesn't wait for the rest.
 @visibleForTesting
 Stream<PhotoTurn> levelledTurnsInBackground(Uint8List jpeg) async* {
+  // Read once: the photo, kept until it is sent, needn't keep its grey copy too.
+  final grey = _greys[jpeg];
+  _greys[jpeg] = null;
   final port = ReceivePort();
   try {
     await Isolate.spawn(
       _sendLevelledTurns,
-      (jpeg: jpeg, grey: _greys[jpeg], bgra: Platform.isIOS, to: port.sendPort),
+      (jpeg: jpeg, grey: grey, bgra: Platform.isIOS, to: port.sendPort),
       onError: port.sendPort,
       onExit: port.sendPort,
     );
