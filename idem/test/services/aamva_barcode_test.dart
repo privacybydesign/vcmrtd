@@ -34,6 +34,18 @@ void main() {
     expect(card?.dateOfBirth, DateTime(1974, 8, 12));
   });
 
+  test('reads a header without the space after ANSI', () {
+    final licence = readAamvaBarcode('@\n\x1e\rANSI636014090102DL00410278ZC03190024DLDAQD1234562\nDBB08121974\n');
+
+    expect(licence?.documentNumber, 'D1234562');
+  });
+
+  test("reads a version 1 header's identity card", () {
+    final card = readAamvaBarcode('@\n\x1e\rANSI 6360100102ID00390187\nIDDAQ1234567\nDBB19900101\nDBA20300101\n');
+
+    expect((card?.type, card?.documentNumber), (DocumentType.identityCard, '1234567'));
+  });
+
   test('is null for a barcode that is not AAMVA', () {
     expect(readAamvaBarcode('https://example.org/ticket/12345'), isNull);
   });

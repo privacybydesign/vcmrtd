@@ -22,14 +22,19 @@ final _element = RegExp(
   '(?:^|DL|ID)($_numberId|$_birthId|$_expiryId|$_surnameId|$_firstNameId|$_oldGivenNamesId)(.+)\$',
 );
 
-/// The header: issuer, versions and entry count, then the first subfile's type.
-final _subfile = RegExp(r'ANSI ?\d{12}(DL|ID)');
+/// The header: issuer, versions (one before AAMVA's version 2) and entry
+/// count, then the first subfile's type.
+final _subfile = RegExp(r'ANSI ?\d{10}(?:\d{2})?(DL|ID)');
+
+/// The header's start, its space at times left out: "ANSI " and the issuer's
+/// six-digit number.
+final _issuer = RegExp(r'ANSI ?\d{6}');
 final _lineBreak = RegExp(r'[\n\r\x1e]+');
 
 /// The licence number, dates and names in a scanned barcode's [raw] text; null
 /// when it isn't an AAMVA one.
 MrzFields? readAamvaBarcode(String raw) {
-  if (!raw.contains('ANSI ') && !raw.contains('AAMVA')) return null;
+  if (!_issuer.hasMatch(raw) && !raw.contains('AAMVA')) return null;
 
   String? number;
   DateTime? birth;
