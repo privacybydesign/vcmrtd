@@ -787,6 +787,71 @@ void main() {
     expect(sent, [(camera.taken[2], camera.taken[3])]);
   });
 
+  testWidgets('Back waits while the sides are being compared', (tester) async {
+    final camera = _FakeCamera();
+    final sent = <(Uint8List, Uint8List)>[];
+    final backRead = Completer<PhotoText>();
+    await tester.pumpWidget(
+      _screen(
+        camera,
+        documentType: DocumentType.identityCard,
+        retakeOnMismatch: true,
+        onPhotosTaken: (front, back) async => sent.add((front, back)),
+        readPhotoText: (photo) => identical(camera.taken.first, photo)
+            ? Future.value((lines: const ['D23145890'], barcodes: const <String>[]))
+            : backRead.future,
+      ),
+    );
+    await tester.pump();
+
+    await _takeAndReview(tester);
+    await _usePhoto(tester);
+    await _takeAndReview(tester);
+    await _usePhoto(tester);
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pump();
+    backRead.complete((lines: const ['Supermarkt'], barcodes: const <String>[]));
+    await tester.pump();
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(sent, [(camera.taken[0], camera.taken[1])]);
+  });
+
+  testWidgets('a scan photo retaken is taken again with the other side', (tester) async {
+    final camera = _FakeCamera();
+    final scanned = _scannedPhoto();
+    await tester.pumpWidget(
+      _screen(
+        camera,
+        documentType: DocumentType.identityCard,
+        scanned: scanned,
+        retakeOnMismatch: true,
+        readPhotoText: (photo) async {
+          final lines = identical(camera.taken.first, photo)
+              ? const [
+                  'I<UTOXR98765434<<<<<<<<<<<<<<<',
+                  '8503013F3001019UTO<<<<<<<<<<<2',
+                  'JANSEN<<EVA<<<<<<<<<<<<<<<<<<<',
+                ]
+              : const ['Eriksson', 'D23145890', '12 AUG/AUG 1974', '15.04.2012'];
+          return (lines: lines, barcodes: const <String>[]);
+        },
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text('Retake'));
+    await tester.pump();
+    await _takeAndReview(tester);
+    await _usePhoto(tester);
+    await _takeAndReview(tester);
+    await _usePhoto(tester);
+
+    expect(find.text('Back · 1 of 2'), findsOneWidget);
+    expect(find.textContaining("The sides don't seem to be of the same document"), findsOneWidget);
+  });
+
   testWidgets('without retakeOnMismatch, sides of different documents are sent', (tester) async {
     final camera = _FakeCamera();
     final sent = <(Uint8List, Uint8List)>[];

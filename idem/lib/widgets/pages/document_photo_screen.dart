@@ -826,18 +826,27 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
     final comparison = _comparison;
     if (!widget.retakeOnMismatch || _retookMismatch || comparison == null) return false;
     setState(() => _sending = true);
-    final check = await comparison;
-    if (mounted) setState(() => _sending = false);
-    return check?.match == SidesMatch.different;
+    try {
+      return (await comparison)?.match == SidesMatch.different;
+    } catch (e) {
+      _vizLog.warning('VIZ sides not compared: $e');
+      return false;
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
   }
 
-  /// Every side again but the one the MRZ scan photographed, which shows the
-  /// document it read.
+  /// Every side again but the MRZ scan's photo, which shows the document it
+  /// read - unless it was retaken.
   void _retakeSides() {
-    final keep = widget.scanned == null ? 0 : 1;
+    final scanned = widget.scanned;
+    final keep = scanned != null && identical(_taken[_sides.first], scanned) ? 1 : 0;
     for (final side in _sides.skip(keep)) {
       final photo = _taken.remove(side);
-      if (photo != null) _sideTexts.remove(photo);
+      if (photo == null) continue;
+      _sideTexts.remove(photo);
+      _mrzPreviewed.remove(photo);
+      _takenAnyway.remove(photo);
     }
     _retookMismatch = true;
     setState(() {
@@ -891,8 +900,9 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
   /// Back on a later side returns to the previous side's review; on the
   /// first it leaves the step.
   void _back() {
-    // A picture being taken or prepared belongs to this side: it finishes first.
-    if (_state == _PhotoState.capturing || _preparing) return;
+    // A picture being taken or prepared belongs to this side, the sides being
+    // compared or sent to the step: it finishes first.
+    if (_state == _PhotoState.capturing || _preparing || _sending) return;
     if (_index > 0) {
       unawaited(_camera.close());
       setState(() {
@@ -931,7 +941,7 @@ class _DocumentPhotoScreenState extends State<DocumentPhotoScreen> with WidgetsB
             icon: Icons.chevron_left,
             tooltip: l10n.docBack,
             backdrop: Backdrop.dark,
-            onPressed: _state == _PhotoState.capturing || _preparing ? null : _back,
+            onPressed: _state == _PhotoState.capturing || _preparing || _sending ? null : _back,
           ),
           center: GuidedTopBarTitle(l10n.docPhotoStepLabel, backdrop: Backdrop.dark),
         ),
