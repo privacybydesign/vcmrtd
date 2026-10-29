@@ -13,6 +13,16 @@ class NfcProviderError extends ComProviderError {
   NfcProviderError([super.message]);
   NfcProviderError.fromException(Exception e) : super(e.toString());
 
+  // The plugin reports a lost tag as a generic "Communication error" and
+  // carries the platform's own text in the details: Android's
+  // TagLostException message and the English iOS description of
+  // NFCReaderError.readerTransceiveErrorTagConnectionLost.
+  static final _tagLostPattern = RegExp(r'tag was lost|tag connection lost', caseSensitive: false);
+
+  // Matches on text because PACE rewraps every exception in a PACEError that
+  // only keeps the original message.
+  static bool isTagLost(Object error) => _tagLostPattern.hasMatch(error.toString());
+
   @override
   String toString() => 'NfcProviderError: $message';
 }
