@@ -11,7 +11,7 @@ description: Idem — read an identity document's chip, verify the holder's face
 # In iOS, build-name is used as CFBundleShortVersionString while build-number used as CFBundleVersion.
 # Read more about iOS versioning at
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-version: 0.2.0+13
+version: 0.2.0+14
 
 environment:
   sdk: ^3.8.0
@@ -165,8 +165,9 @@ hooks:
     dartcv4:
       include_modules:
         - imgproc
-      # Xcode 27 rejects the iOS 13 target Flutter < 3.47.7 passes to the hook,
-      # and there is no CMake on PATH for iOS builds without this.
+      # There is no CMake on PATH for iOS builds without this. Leave the
+      # deployment target to Flutter: it writes its own target into
+      # dartcv.framework's Info.plist, and App Store Connect rejects the upload
+      # (ITMS-90208) when the binary was built for a newer iOS than that.
       ios:
-        deployment_target: "16.0"
         prefer_android_cmake: true
