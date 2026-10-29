@@ -119,6 +119,16 @@ void main() {
       expect(com.sent.first.hex().substring(2, 6), "a402");
     });
 
+    test('readFile reports bytes read after the first chunk and after every further chunk', () async {
+      final file = TLV.encode(0x60, Uint8List.fromList(List.generate(600, (i) => i & 0xFF)));
+      final api = MrtdApi(FakeComProvider(["9000".parseHex(), ..._chunkFile(file)]));
+      final reports = <(int, int)>[];
+
+      await api.readFile(0x011E, onProgress: (bytesRead, total) => reports.add((bytesRead, total)));
+
+      expect(reports, [(8, 604), (264, 604), (520, 604), (604, 604)]);
+    });
+
     test('readFile throws MrtdApiError on fid > 0xFFFF', () async {
       final com = FakeComProvider.fromHex(["9000"]);
       final api = MrtdApi(com);
@@ -185,6 +195,32 @@ void main() {
       // 1 re-select read + 2 remaining chunks = 3 commands (a full re-read
       // would have needed 4: peek + all 3 rest chunks).
       expect(com2.sent.length, 3);
+    });
+
+    test('readFileBySFI reports bytes read after the header and after every chunk', () async {
+      final file = TLV.encode(0x60, Uint8List.fromList(List.generate(600, (i) => i & 0xFF)));
+      final api = MrtdApi(FakeComProvider(_chunkFile(file)));
+      final reports = <(int, int)>[];
+
+      await api.readFileBySFI(0x02, onProgress: (bytesRead, total) => reports.add((bytesRead, total)));
+
+      expect(reports, [(8, 604), (264, 604), (520, 604), (604, 604)]);
+    });
+
+    test('readFileBySFI counts bytes kept from an interrupted attempt as read', () async {
+      final file = TLV.encode(0x60, Uint8List.fromList(List.generate(600, (i) => i & 0xFF)));
+      final chunks = _chunkFile(file);
+      final state = MrtdFileReadState();
+      await expectLater(
+        MrtdApi(FakeComProvider([chunks[0], chunks[1]])).readFileBySFI(0x02, state: state),
+        throwsA(isA<ComProviderError>()),
+      );
+      final reports = <(int, int)>[];
+
+      final api = MrtdApi(FakeComProvider([chunks[0], chunks[2], chunks[3]]));
+      await api.readFileBySFI(0x02, state: state, onProgress: (bytesRead, total) => reports.add((bytesRead, total)));
+
+      expect(reports, [(264, 604), (520, 604), (604, 604)]);
     });
 
     test('readFileBySFI without a state param behaves exactly as before (no resume across calls)', () async {
