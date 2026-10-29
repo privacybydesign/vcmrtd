@@ -1,8 +1,8 @@
 # Status checks, using the shared workflows from privacybydesign/github-workflows.
 # The gate job "Status checks passed" is the one check to require.
 #
-# There is no shared Flutter workflow, so the Flutter lint, tests, SonarQube
-# scan and the development-signed app builds stay local jobs here.
+# There is no shared Flutter workflow, so the Flutter lint, the tests with the
+# SonarQube scan, and the development-signed app builds stay local jobs here.
 name: Status checks
 
 on:
@@ -43,55 +43,11 @@ jobs:
         uses: ./.github/actions/setup-build-environment
       - run: bundle exec fastlane lint
 
-  unit-test:
-    runs-on: ubuntu-24.04
-    needs: lint
-    timeout-minutes: 45
-    permissions:
-      contents: read
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Setup build environment
-        uses: ./.github/actions/setup-build-environment
-      - name: Run vcmrtd tests with coverage
-        working-directory: ./vcmrtd
-        run: flutter test --coverage
-      - name: Run face_verification tests with coverage
-        working-directory: ./face_verification
-        run: flutter test --coverage
-      - name: Run mrz_capture tests with coverage
-        working-directory: ./mrz_capture
-        run: flutter test --coverage
-      - name: Upload vcmrtd coverage to Codecov
-        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
-        with:
-          files: vcmrtd/coverage/lcov.info
-          flags: vcmrtd
-          fail_ci_if_error: true
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      - name: Upload face_verification coverage to Codecov
-        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
-        with:
-          files: face_verification/coverage/lcov.info
-          flags: face_verification
-          fail_ci_if_error: true
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      - name: Upload mrz_capture coverage to Codecov
-        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
-        with:
-          files: mrz_capture/coverage/lcov.info
-          flags: mrz_capture
-          fail_ci_if_error: true
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
-  sonarqube:
-    name: SonarQube
+  # One job runs every test suite once and feeds the coverage to both Codecov
+  # and SonarQube, rather than a separate unit-test job running the same suites
+  # a second time.
+  quality:
+    name: Quality
     runs-on: ubuntu-24.04
     needs: lint
     timeout-minutes: 45
@@ -117,6 +73,33 @@ jobs:
       - name: Run mrz_capture tests with coverage
         working-directory: ./mrz_capture
         run: flutter test --coverage
+      - name: Upload vcmrtd coverage to Codecov
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          files: vcmrtd/coverage/lcov.info
+          disable_search: true
+          flags: vcmrtd
+          fail_ci_if_error: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload face_verification coverage to Codecov
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          files: face_verification/coverage/lcov.info
+          disable_search: true
+          flags: face_verification
+          fail_ci_if_error: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload mrz_capture coverage to Codecov
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          files: mrz_capture/coverage/lcov.info
+          disable_search: true
+          flags: mrz_capture
+          fail_ci_if_error: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       - name: Merge coverage reports
         run: |
           mkdir -p coverage
@@ -246,7 +229,7 @@ jobs:
   passed:
     name: Status checks passed
     if: always()
-    needs: [lint, unit-test, sonarqube, build-app-android, build-app-ios, docs, dependency-review, workflow-lint]
+    needs: [lint, quality, build-app-android, build-app-ios, docs, dependency-review, workflow-lint]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}
