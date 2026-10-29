@@ -128,6 +128,7 @@
   "docPhotoHintTooDark": "Too dark. Move to a place with more light.",
   "docPhotoHintBlurry": "Not sharp yet. Hold your phone still.",
   "docPhotoHoldStill": "Hold still…",
+  "docPhotoSidesMismatch": "The sides don't seem to be of the same document. Take the photos again, of one document.",
   "docPhotoReviewTitle": "Check the photo",
   "docPhotoReviewMessage": "Are all details sharp and readable, without glare or anything covering them?",
   "docPhotoReviewAnywayMessage": "This photo didn't pass the checks. Retake it, or use it if all details are sharp and readable.",

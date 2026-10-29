@@ -21,6 +21,7 @@ import 'package:idem/widgets/pages/nfc_reading_screen.dart';
 import 'package:idem/widgets/pages/passport_data_screen.dart';
 import 'package:idem/providers/branding_provider.dart';
 import 'package:idem/providers/proofing_session_provider.dart';
+import 'package:idem/services/document_viz.dart';
 import 'package:idem/services/face_verification_outcome.dart';
 import 'package:idem/widgets/pages/proofing_session_consent_screen.dart';
 import 'package:idem/services/proofing_chip_evidence.dart';
@@ -1207,6 +1208,15 @@ Widget _buildDocumentPhotoRoute(BuildContext context, GoRouterState state, Docum
       documentType:
           args.collected.documentType ?? providers.read(activeProofingSessionProvider)?.info.chipAccess?.documentType,
       scanned: args.scanned,
+      known: _knownDocument(
+        args.collected.scannedMrz,
+        providers.read(activeProofingSessionProvider)?.info.chipAccess,
+        args.collected.document,
+      ),
+      // With the chip read, the chip shows which document it is.
+      retakeOnMismatch: !(providers.read(activeProofingSessionProvider)?.info.steps ?? _flowlessSteps).contains(
+        stepNfcRead,
+      ),
       onPhotosTaken: (front, back) async {
         final session = providers.read(activeProofingSessionProvider);
         if (session == null) {
@@ -1219,6 +1229,50 @@ Widget _buildDocumentPhotoRoute(BuildContext context, GoRouterState state, Docum
       },
     ),
   );
+}
+
+/// The chip's DG1 when the chip was read on this device - the issuer
+/// signed it - else the MRZ scan's or the chip access key's, without names.
+KnownDocument? _knownDocument(ScannedMRZ? mrz, ProofingChipAccess? chip, DocumentData? read) {
+  String? name(String value) => value.trim().isEmpty ? null : value.trim();
+  return switch ((read, mrz)) {
+    (PassportData(:final mrz), _) => (
+      documentNumber: mrz.documentNumber,
+      dateOfBirth: mrz.dateOfBirth,
+      dateOfExpiry: mrz.dateOfExpiry,
+      surname: name(mrz.lastName),
+      givenNames: name(mrz.firstName),
+    ),
+    (final DrivingLicenceData licence, _) => (
+      documentNumber: licence.documentNumber,
+      dateOfBirth: parseDrivingLicenceDate(licence.dateOfBirth),
+      dateOfExpiry: parseDrivingLicenceDate(licence.dateOfExpiry),
+      surname: name(licence.holderSurname),
+      givenNames: name(licence.holderOtherName),
+    ),
+    (_, final ScannedPassportMRZ mrz) => (
+      documentNumber: mrz.documentNumber,
+      dateOfBirth: mrz.dateOfBirth,
+      dateOfExpiry: mrz.dateOfExpiry,
+      surname: null,
+      givenNames: null,
+    ),
+    (_, final ScannedDriverLicenseMRZ mrz) => (
+      documentNumber: mrz.documentNumber,
+      dateOfBirth: null,
+      dateOfExpiry: null,
+      surname: null,
+      givenNames: null,
+    ),
+    _ when chip != null => (
+      documentNumber: chip.documentNumber,
+      dateOfBirth: chip.dateOfBirth,
+      dateOfExpiry: chip.dateOfExpiry,
+      surname: null,
+      givenNames: null,
+    ),
+    _ => null,
+  };
 }
 
 Widget _buildFaceVerificationRoute(
