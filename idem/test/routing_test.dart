@@ -666,6 +666,91 @@ void main() {
       );
     });
 
+    testWidgets('Share ends the app\'s part without completing the session when the browser decides it', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1200, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final router = createRouter(scannerBuilder: _scannerBuilder());
+      addTearDown(router.dispose);
+      final server = _flowServer(const [stepDocumentCapture, stepNfcRead]);
+
+      await http.runWithClient(
+        () async {
+          await tester.pumpWidget(_routerApp(router));
+          await tester.pump();
+
+          final container = ProviderScope.containerOf(tester.element(find.byType(DocumentTypeSelectionScreen)));
+          container
+              .read(activeProofingSessionProvider.notifier)
+              .set(
+                ActiveProofingSession(
+                  ref: const ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok'),
+                  info: ProofingSessionInfo(
+                    id: 'sess1',
+                    relyingParty: 'acme-tenant',
+                    requestedAttributes: const [],
+                    expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+                    steps: const [stepDocumentCapture, stepNfcRead],
+                  ),
+                ),
+              );
+
+          router.go(
+            Uri(
+              path: '/mrz_reader',
+              queryParameters: MrzReaderRouteParams(documentType: DocumentType.passport).toQueryParams(),
+            ).toString(),
+          );
+          await tester.pump();
+          await tester.pump();
+
+          tester
+              .widget<ScannerWrapper>(find.byType(ScannerWrapper))
+              .onMrzScanned(_scannedPassport(DocumentType.passport));
+          await tester.pump();
+          await tester.pump();
+
+          final events = <ProofingSessionEvent>[];
+          final sub = container.read(proofingSessionCoordinatorProvider).events.listen(events.add);
+          addTearDown(sub.cancel);
+          tester
+              .widgetList<NfcReadingScreen>(find.byType(NfcReadingScreen))
+              .last
+              .onSuccess(_passportData(), _rawDocument());
+          await _pumpStepSubmission(tester);
+          await _pumpStepSubmission(tester);
+
+          await tester.ensureVisible(find.text('Finish with acme-tenant'));
+          await tester.tap(find.text('Finish with acme-tenant'));
+          await _pumpStepSubmission(tester);
+
+          // Unpinned and told to go on in the browser, but not completed:
+          // the listener keeps running until the browser decides.
+          expect(container.read(activeProofingSessionProvider), isNull);
+          expect(events.whereType<ProofingSessionCompleted>(), isEmpty);
+          expect(find.text('Continue in the browser'), findsOneWidget);
+        },
+        () => MockClient((request) async {
+          if (request.url.path.endsWith('/submit')) {
+            // The browser takes the document photo after the app.
+            return http.Response(
+              json.encode({
+                'status': 'in_progress',
+                'completedSteps': [stepDocumentCapture, stepNfcRead],
+                'currentStep': '',
+                'lifecycle': 'ACTIVE',
+              }),
+              200,
+            );
+          }
+          return server(request);
+        }),
+      );
+    });
+
     testWidgets('NFC success still runs face verification when the session steps ask for just one of '
         'selfie/liveness/face_match', (tester) async {
       final engine = FaceVerificationEngine.withWorker(_FakeWorker());
