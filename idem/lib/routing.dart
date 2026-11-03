@@ -656,6 +656,18 @@ Future<bool> _submitProofingSession(BuildContext context, ActiveProofingSession 
     container.read(proofingSessionCoordinatorProvider).reportCompleted(session.ref);
     return true;
   }
+  // The browser decides the session: end this app's part but keep the
+  // listener running, so a reset meanwhile still brings the user back
+  // (see ProofingSessionWatcher).
+  if (response.appPartDone) {
+    container.read(activeBrandingProvider.notifier).endSession(session.ref);
+    _finishProofingSession(
+      context,
+      title: l10n.proofingContinueInBrowserTitle,
+      message: l10n.proofingContinueInBrowserNextStep,
+    );
+    return true;
+  }
   final step = response.currentStep ?? '';
   if (!stepsIncomplete || step.isEmpty) return false;
   _continueAtServerStep(

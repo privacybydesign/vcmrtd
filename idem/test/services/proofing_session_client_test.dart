@@ -144,6 +144,30 @@ void main() {
     });
   });
 
+  group('ProofingStepResponse.appPartDone', () {
+    ProofingStepResponse response({
+      String lifecycle = proofingLifecycleActive,
+      String? currentStep = '',
+      bool ready = false,
+    }) => ProofingStepResponse(
+      status: 'in_progress',
+      lifecycle: lifecycle,
+      currentStep: currentStep,
+      readyToSubmit: ready,
+    );
+
+    test('is done once the server has nothing left for the app and waits for no submit', () {
+      expect(response().appPartDone, isTrue);
+    });
+
+    test('is not done with a step left, a submit to come, a finished session or a server that does not say', () {
+      expect(response(currentStep: 'nfc_read').appPartDone, isFalse);
+      expect(response(ready: true).appPartDone, isFalse);
+      expect(response(lifecycle: proofingLifecycleComplete).appPartDone, isFalse);
+      expect(response(currentStep: null).appPartDone, isFalse);
+    });
+  });
+
   group('ProofingSessionRef.parse', () {
     test('parses the https qr payload (https://{host}/s/{token})', () {
       final ref = ProofingSessionRef.parse('https://proof.example.com/s/abc123');
