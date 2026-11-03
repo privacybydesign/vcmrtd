@@ -623,6 +623,12 @@ class ProofingStepResponse {
   /// (after the last step the session waits for [readyToSubmit]'s submit,
   /// and the server omits currentStep for a session without a flow).
   bool get complete => lifecycle == proofingLifecycleComplete;
+
+  /// Whether this app's part is done while the session still runs: the
+  /// server has no step left for it and waits for no submit, as when the
+  /// browser takes the document photo after the app and then decides.
+  bool get appPartDone =>
+      lifecycle == proofingLifecycleActive && currentStep != null && currentStep!.isEmpty && !readyToSubmit;
 }
 
 /// `POST .../submit` refused because not every step has a result yet (409

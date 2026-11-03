@@ -652,7 +652,9 @@ Future<bool> _submitProofingSession(BuildContext context, ActiveProofingSession 
     },
   );
   if (response == null || !context.mounted) return false;
-  if (response.complete) {
+  // The rest happens in the browser, which decides the session: this app's
+  // part ends as a finished submit's does.
+  if (response.complete || response.appPartDone) {
     container.read(proofingSessionCoordinatorProvider).reportCompleted(session.ref);
     return true;
   }
