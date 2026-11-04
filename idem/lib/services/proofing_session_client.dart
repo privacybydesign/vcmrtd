@@ -160,6 +160,10 @@ class ProofingSessionInfo {
   /// The age "age_over" answers for, so the consent screen can name it; null
   /// when the flow asks none, or from a server that predates it.
   final int? ageOver;
+
+  /// The documents the flow accepts, so only those are offered; null when
+  /// it accepts any, or from a server that predates it.
+  final List<DocumentType>? documentTypes;
   final DateTime expiresAt;
 
   /// The session's Active Authentication challenge (hex-encoded RND.IFD),
@@ -292,6 +296,7 @@ class ProofingSessionInfo {
     required this.relyingParty,
     required this.requestedAttributes,
     this.ageOver,
+    this.documentTypes,
     required this.expiresAt,
     this.aaChallenge,
     this.requiredChecks,
@@ -312,6 +317,13 @@ class ProofingSessionInfo {
     this.faceVerification,
     this.branding,
   });
+
+  /// The document the flow accepts when it is the only one, so the user
+  /// need not pick it.
+  DocumentType? get onlyDocumentType => documentTypes?.length == 1 ? documentTypes!.single : null;
+
+  /// Whether the flow accepts a document of [type].
+  bool acceptsDocumentType(DocumentType type) => documentTypes?.contains(type) ?? true;
 
   /// Whether the chip read must run Active Authentication: exactly when the
   /// flow asks for nfc.chip_auth. A server that doesn't say which checks it
@@ -336,6 +348,7 @@ class ProofingSessionInfo {
     relyingParty: json['relyingParty'] as String,
     requestedAttributes: (json['requestedAttributes'] as List<dynamic>? ?? const []).cast<String>(),
     ageOver: json['ageOver'] as int?,
+    documentTypes: _documentTypesFromJson(json['documentTypes']),
     expiresAt: DateTime.parse(json['expiresAt'] as String),
     aaChallenge: json['aaChallenge'] as String?,
     requiredChecks: (json['requiredChecks'] as List<dynamic>?)?.cast<String>(),
@@ -369,6 +382,21 @@ class ProofingSessionInfo {
       _ => null,
     },
   );
+}
+
+DocumentType? _documentTypeFromWire(Object? value) => switch (value) {
+  'passport' => DocumentType.passport,
+  'identity_card' => DocumentType.identityCard,
+  'residence_permit' => DocumentType.residencePermit,
+  'drivers_license' => DocumentType.drivingLicence,
+  _ => null,
+};
+
+/// Null (any document) when absent, or when it names none this app reads.
+List<DocumentType>? _documentTypesFromJson(Object? value) {
+  if (value is! List<dynamic>) return null;
+  final types = value.map(_documentTypeFromWire).nonNulls.toList();
+  return types.isEmpty ? null : types;
 }
 
 /// A session's branding: the requester's name, its theme's `#rrggbb` colours
@@ -518,13 +546,7 @@ class ProofingChipAccess {
 
   /// Null when the stored key is incomplete (e.g. from another client).
   static ProofingChipAccess? fromJson(Map<String, dynamic> json) {
-    final type = switch (json['documentType']) {
-      'passport' => DocumentType.passport,
-      'identity_card' => DocumentType.identityCard,
-      'residence_permit' => DocumentType.residencePermit,
-      'drivers_license' => DocumentType.drivingLicence,
-      _ => null,
-    };
+    final type = _documentTypeFromWire(json['documentType']);
     final number = json['documentNumber'] as String?;
     if (type == null || number == null || number.isEmpty) return null;
     return ProofingChipAccess(

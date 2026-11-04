@@ -15,6 +15,7 @@ class ChooseDocumentScreen extends StatefulWidget {
     super.key,
     required this.relyingParty,
     required this.savedDocuments,
+    this.documentTypes,
     required this.onUseSaved,
     required this.onAddNew,
     required this.onBack,
@@ -24,6 +25,9 @@ class ChooseDocumentScreen extends StatefulWidget {
 
   /// Saved documents that can be shared again ([WalletCard.canBeReused]).
   final List<WalletCard> savedDocuments;
+
+  /// The documents that may be added; null offers every one.
+  final List<DocumentType>? documentTypes;
   final ValueChanged<WalletCard> onUseSaved;
   final ValueChanged<DocumentType> onAddNew;
   final VoidCallback onBack;
@@ -135,7 +139,7 @@ class _ChooseDocumentScreenState extends State<ChooseDocumentScreen> {
                               (DocumentType.identityCard, Icons.badge_outlined),
                               (DocumentType.residencePermit, Icons.credit_card_outlined),
                               (DocumentType.drivingLicence, Icons.directions_car_outlined),
-                            ].indexed) ...[
+                            ].where((option) => widget.documentTypes?.contains(option.$1) ?? true).indexed) ...[
                               if (i > 0) Divider(height: 1, color: g.subtleBorder),
                               InkWell(
                                 onTap: () => widget.onAddNew(type),

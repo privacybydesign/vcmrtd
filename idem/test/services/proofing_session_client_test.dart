@@ -144,6 +144,34 @@ void main() {
     });
   });
 
+  group('ProofingSessionInfo.documentTypes', () {
+    ProofingSessionInfo info(Object? documentTypes) => ProofingSessionInfo.fromJson({
+      'id': 's1',
+      'relyingParty': 'RP',
+      'expiresAt': '2030-01-01T00:00:00Z',
+      'documentTypes': ?documentTypes,
+    });
+
+    test('offers the documents the flow accepts, and needs no choice of the only one', () {
+      final two = info(['identity_card', 'drivers_license']);
+      expect(two.documentTypes, [DocumentType.identityCard, DocumentType.drivingLicence]);
+      expect(two.acceptsDocumentType(DocumentType.passport), isFalse);
+      expect(two.onlyDocumentType, isNull);
+      expect(info(['residence_permit']).onlyDocumentType, DocumentType.residencePermit);
+    });
+
+    test('offers every document when absent or naming none this app reads', () {
+      for (final view in [
+        info(null),
+        info(['visa']),
+      ]) {
+        expect(view.documentTypes, isNull);
+        expect(view.acceptsDocumentType(DocumentType.passport), isTrue);
+        expect(view.onlyDocumentType, isNull);
+      }
+    });
+  });
+
   group('ProofingStepResponse.appPartDone', () {
     ProofingStepResponse response({
       String lifecycle = proofingLifecycleActive,

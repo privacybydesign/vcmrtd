@@ -342,7 +342,7 @@ void _continueAtServerStep(
   }
 
   if (currentStep == stepDocumentCapture) {
-    context.go(_chooseDocumentPath);
+    _goChooseDocument(context, session);
     return;
   }
 
@@ -353,7 +353,7 @@ void _continueAtServerStep(
 
   if (currentStep == stepDocumentPhoto) {
     if (_needsDocumentChoice(session, collected)) {
-      context.go(_chooseDocumentPath);
+      _goChooseDocument(context, session);
       return;
     }
 
@@ -506,7 +506,7 @@ void _afterConsent(BuildContext context, ActiveProofingSession session) {
   final steps = session.info.steps;
   if (steps == null || steps.contains(stepDocumentCapture)) {
     // The guided flow is QR-first: pick which document to use next.
-    context.go(_chooseDocumentPath);
+    _goChooseDocument(context, session);
     return;
   }
 
@@ -515,7 +515,7 @@ void _afterConsent(BuildContext context, ActiveProofingSession session) {
   final photoAt = steps.indexOf(stepDocumentPhoto);
   final faceAt = steps.indexWhere(faceSteps.contains);
   if (photoAt >= 0 && (faceAt < 0 || photoAt < faceAt)) {
-    context.go(_chooseDocumentPath);
+    _goChooseDocument(context, session);
     return;
   }
 
@@ -544,18 +544,44 @@ bool _needsDocumentChoice(ActiveProofingSession session, CollectedStepData colle
     session.info.chipAccess?.documentType == null;
 
 /// The document [type] the user picked: its MRZ scan, or straight to its
-/// photo in a flow that doesn't scan one.
-void _startDocument(BuildContext context, DocumentType type) {
+/// photo in a flow that doesn't scan one. [replace] replaces the stack
+/// instead of pushing onto it.
+void _startDocument(BuildContext context, DocumentType type, {bool replace = false}) {
   final session = ProviderScope.containerOf(context).read(activeProofingSessionProvider);
   if (_photoWithoutScan(session?.info.steps)) {
-    context.push(
-      _documentPhotoPath,
-      extra: DocumentPhotoRouteArgs(collected: CollectedStepData(documentType: type)),
-    );
+    final args = DocumentPhotoRouteArgs(collected: CollectedStepData(documentType: type));
+    replace ? context.go(_documentPhotoPath, extra: args) : context.push(_documentPhotoPath, extra: args);
     return;
   }
 
-  context.pushMrzReaderScreen(MrzReaderRouteParams(documentType: type));
+  final params = MrzReaderRouteParams(documentType: type);
+  replace
+      ? context.go(Uri(path: _mrzReaderPath, queryParameters: params.toQueryParams()).toString())
+      : context.pushMrzReaderScreen(params);
+}
+
+/// The saved documents [info]'s session can reuse, newest first.
+List<WalletCard> _reusableDocuments(ProofingSessionInfo? info, List<WalletCard> wallet) {
+  // A saved document is shared as an nfc_read step, which a photo-only flow doesn't have.
+  if (_photoWithoutScan(info?.steps)) return [];
+  return wallet
+      .where((c) => c.canBeReused && (info?.acceptsDocumentType(c.documentType) ?? true))
+      .toList()
+      .reversed
+      .toList();
+}
+
+/// The choice of document for [session], or straight to the only document
+/// its flow accepts when no saved one could stand in for it. [push] keeps
+/// the current screen underneath.
+void _goChooseDocument(BuildContext context, ActiveProofingSession? session, {bool push = false}) {
+  final only = session?.info.onlyDocumentType;
+  final wallet = ProviderScope.containerOf(context).read(walletProvider);
+  if (only != null && _reusableDocuments(session?.info, wallet).isEmpty) {
+    _startDocument(context, only, replace: !push);
+    return;
+  }
+  push ? context.push(_chooseDocumentPath) : context.go(_chooseDocumentPath);
 }
 
 Uint8List? _photoBytes(ProofingPhotoInfo? photo) => photo == null ? null : base64Decode(photo.imageBase64);
@@ -965,7 +991,11 @@ GoRouter createRouter({
           return DocumentTypeSelectionScreen(
             onSettingsPressed: context.pushSettingsScreen,
             onScanQrPressed: context.pushQrScannerScreen,
-            onContinueProofingSession: () => context.push(_chooseDocumentPath),
+            onContinueProofingSession: () => _goChooseDocument(
+              context,
+              ProviderScope.containerOf(context).read(activeProofingSessionProvider),
+              push: true,
+            ),
           );
         },
       ),
@@ -1016,13 +1046,11 @@ GoRouter createRouter({
         builder: (context, state) => Consumer(
           builder: (context, ref, _) {
             final session = ref.watch(activeProofingSessionProvider);
-            // A saved document is shared as an nfc_read step, which a photo-only flow doesn't have.
-            final saved = _photoWithoutScan(session?.info.steps)
-                ? <WalletCard>[]
-                : ref.watch(walletProvider).where((c) => c.canBeReused).toList().reversed.toList();
+            final saved = _reusableDocuments(session?.info, ref.watch(walletProvider));
             return ChooseDocumentScreen(
               relyingParty: session?.info.relyingParty ?? context.brand.name,
               savedDocuments: saved,
+              documentTypes: session?.info.documentTypes,
               onBack: () => context.go(selectDocTypePath),
               onAddNew: (type) => _startDocument(context, type),
               onUseSaved: (card) async {
@@ -1081,7 +1109,7 @@ GoRouter createRouter({
               onManualEntry: () {
                 context.pushManualEntryScreen(ManualEntryRouteParams(documentType: params.documentType));
               },
-              onBack: context.pop,
+              onBack: () => _popOrRestart(context),
               scannerBuilder: scannerBuilder,
               stepNumber: plan.documentCaptureStepNumber ?? FlowStepPlan.defaultDocumentCaptureStep,
               totalSteps: plan.totalSteps,
