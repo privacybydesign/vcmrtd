@@ -1526,6 +1526,86 @@ void main() {
       expect(tester.widget<ChooseDocumentScreen>(find.byType(ChooseDocumentScreen)).savedDocuments, hasLength(1));
     });
 
+    testWidgets('proofing consent route: Continue offers only the documents the flow accepts, saved ones too', (
+      tester,
+    ) async {
+      final router = createRouter(scannerBuilder: _scannerBuilder());
+      addTearDown(router.dispose);
+      final sessionRef = const ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok');
+      final info = ProofingSessionInfo(
+        id: 'sess1',
+        relyingParty: 'acme-tenant',
+        requestedAttributes: const [],
+        documentTypes: const [DocumentType.identityCard, DocumentType.drivingLicence],
+        expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+      );
+
+      await tester.pumpWidget(_routerApp(router, saved: [_savedPassport()]));
+      router.push('/proofing_consent', extra: {'ref': sessionRef, 'info': info});
+      await tester.pump();
+      await tester.pump();
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+
+      final screen = tester.widget<ChooseDocumentScreen>(find.byType(ChooseDocumentScreen));
+      expect(screen.savedDocuments, isEmpty);
+      expect(find.text('Passport'), findsNothing);
+      expect(find.text('Identity card'), findsOneWidget);
+      expect(find.text('Residence permit'), findsNothing);
+    });
+
+    testWidgets('proofing consent route: Continue on a flow accepting one document, none saved, scans it '
+        'straight away and back returns to the start', (tester) async {
+      final router = createRouter(scannerBuilder: _scannerBuilder());
+      addTearDown(router.dispose);
+      final sessionRef = const ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok');
+      final info = ProofingSessionInfo(
+        id: 'sess1',
+        relyingParty: 'acme-tenant',
+        requestedAttributes: const [],
+        documentTypes: const [DocumentType.identityCard],
+        expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+      );
+
+      await tester.pumpWidget(_routerApp(router, saved: [_savedPassport()]));
+      router.push('/proofing_consent', extra: {'ref': sessionRef, 'info': info});
+      await tester.pump();
+      await tester.pump();
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ChooseDocumentScreen), findsNothing);
+      expect(tester.widget<ScannerWrapper>(find.byType(ScannerWrapper)).documentType, DocumentType.identityCard);
+
+      tester.widget<ScannerWrapper>(find.byType(ScannerWrapper)).onBack();
+      await tester.pumpAndSettle();
+      expect(router.routeInformationProvider.value.uri.path, selectDocTypePath);
+    });
+
+    testWidgets('proofing consent route: Continue on a flow accepting one document still asks when one is saved', (
+      tester,
+    ) async {
+      final router = createRouter(scannerBuilder: _scannerBuilder());
+      addTearDown(router.dispose);
+      final sessionRef = const ProofingSessionRef(apiBase: 'http://10.0.0.1:8080', token: 'tok');
+      final info = ProofingSessionInfo(
+        id: 'sess1',
+        relyingParty: 'acme-tenant',
+        requestedAttributes: const [],
+        documentTypes: const [DocumentType.passport],
+        expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+      );
+
+      await tester.pumpWidget(_routerApp(router, saved: [_savedPassport()]));
+      router.push('/proofing_consent', extra: {'ref': sessionRef, 'info': info});
+      await tester.pump();
+      await tester.pump();
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<ChooseDocumentScreen>(find.byType(ChooseDocumentScreen)).savedDocuments, hasLength(1));
+    });
+
     testWidgets('proofing consent route: Continue on a flow that only takes a document photo asks which '
         'document first, offers no saved document, and photographs the one picked', (tester) async {
       final router = createRouter(scannerBuilder: _scannerBuilder(), documentPhotoCamera: _FakeDocumentPhotoCamera());
