@@ -32,13 +32,14 @@ void main() {
       );
       expect(issuer.allowedIrmaHosts, {'irma.example', 'irma2.example'});
     });
+  });
 
-    test('refuses to issue a residence permit before any request', () {
-      final issuer = DefaultPassportIssuer(hostName: 'https://issuer.example');
-      expect(
-        () => issuer.startIrmaIssuanceSession(RawDocumentData(dataGroups: {}, efSod: ''), DocumentType.residencePermit),
-        throwsUnsupportedError,
-      );
+  group('DefaultPassportIssuer.issuanceEndpoint', () {
+    test('maps every document type to its issue endpoint', () {
+      expect(DefaultPassportIssuer.issuanceEndpoint(DocumentType.passport), 'issue-passport');
+      expect(DefaultPassportIssuer.issuanceEndpoint(DocumentType.identityCard), 'issue-id-card');
+      expect(DefaultPassportIssuer.issuanceEndpoint(DocumentType.residencePermit), 'issue-residence-permit');
+      expect(DefaultPassportIssuer.issuanceEndpoint(DocumentType.drivingLicence), 'issue-driving-licence');
     });
   });
 

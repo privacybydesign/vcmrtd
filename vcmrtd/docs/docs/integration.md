@@ -47,6 +47,7 @@ The go-passport-issuer backend exposes the following endpoints:
 | `/api/verify-driving-licence` | POST | Verify driving license data |
 | `/api/issue-passport` | POST | Verify and issue passport credential |
 | `/api/issue-id-card` | POST | Verify and issue ID card credential |
+| `/api/issue-residence-permit` | POST | Verify and issue residence permit credential |
 | `/api/issue-driving-licence` | POST | Verify and issue driving license credential |
 | `/api/health` | GET | Health check |
 
