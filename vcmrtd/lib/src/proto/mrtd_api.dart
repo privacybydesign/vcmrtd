@@ -17,6 +17,9 @@ import 'package:logging/logging.dart';
 
 import 'pace.dart';
 
+/// Reports how many of the [total] bytes of a file have been read so far.
+typedef ReadProgressCallback = void Function(int bytesRead, int total);
+
 class MrtdApiError implements Exception {
   final String message;
   final StatusWord? code;
@@ -169,7 +172,9 @@ class MrtdApi {
   /// Can throw [ICCError] in case when file doesn't exist, read errors or
   /// SM session is not established but required to read file.
   /// Can throw [ComProviderError] in case connection with MRTD is lost.
-  Future<Uint8List> readFile(final int fid) async {
+  ///
+  /// [onProgress] is called after every chunk read from the file.
+  Future<Uint8List> readFile(final int fid, {ReadProgressCallback? onProgress}) async {
     _log.debug("Reading file fid=0x${Utils.intToBin(fid).hex()}");
     if (fid > 0xFFFF) {
       throw MrtdApiError("Invalid fid=0x${Utils.intToBin(fid).hex()}");
@@ -186,7 +191,13 @@ class MrtdApi {
 
     // Read the rest of the file
     final length = dtl.length.value - (chunk1.data!.length - dtl.encodedLen);
-    final chunk2 = await _readBinary(offset: chunk1.data!.length, length: length);
+    final total = dtl.encodedLen + dtl.length.value;
+    onProgress?.call(chunk1.data!.length, total);
+    final chunk2 = await _readBinary(
+      offset: chunk1.data!.length,
+      length: length,
+      onProgress: (dataSoFar) => onProgress?.call(chunk1.data!.length + dataSoFar.length, total),
+    );
 
     final rawFile = Uint8List.fromList(chunk1.data! + chunk2);
     assert(rawFile.length == dtl.encodedLen + dtl.length.value);
@@ -204,7 +215,10 @@ class MrtdApi {
   /// mutated in place as bytes are read, so the caller can still see how far
   /// the read got even if this call throws (e.g. because the connection to
   /// the chip was lost) - resulting in a smaller read on the next attempt.
-  Future<Uint8List> readFileBySFI(int sfi, {MrtdFileReadState? state}) async {
+  ///
+  /// [onProgress] is called after every chunk read from the file, counting
+  /// the bytes carried over in [state] as read.
+  Future<Uint8List> readFileBySFI(int sfi, {MrtdFileReadState? state, ReadProgressCallback? onProgress}) async {
     _log.debug("Reading file sfi=0x${sfi.hex()}");
     sfi |= 0x80;
     if (sfi > 0x9F) {
@@ -224,6 +238,9 @@ class MrtdApi {
       await icc.readBinaryBySFI(sfi: sfi, offset: 0, ne: _readAheadLength);
     }
 
+    final total = st._header!.length + st._remainingAfterHeader;
+    onProgress?.call(st._header!.length + st.content.length, total);
+
     if (st._remaining > 0) {
       // _readBinary only knows about the bytes read within this call, so its
       // progress must be appended to whatever content was already cached
@@ -232,7 +249,10 @@ class MrtdApi {
       await _readBinary(
         offset: st._header!.length + contentBeforeThisCall.length,
         length: st._remaining,
-        onProgress: (dataSoFar) => st.content = Uint8List.fromList(contentBeforeThisCall + dataSoFar),
+        onProgress: (dataSoFar) {
+          st.content = Uint8List.fromList(contentBeforeThisCall + dataSoFar);
+          onProgress?.call(st._header!.length + st.content.length, total);
+        },
       );
     }
 

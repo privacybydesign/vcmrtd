@@ -41,6 +41,19 @@ void main() {
       expect(com.sent.first.hex().substring(2, 6), "a404");
     });
 
+    test('readDG2 reports the bytes read through onProgress', () async {
+      final com = FakeComProvider([
+        "9000".parseHex(), // select DF1
+        ...sfiReadResponses(0x75, 10), // DG2 EF (12 bytes total)
+      ]);
+      final reader = DataGroupReader(com, aid);
+      final reports = <(int, int)>[];
+
+      await reader.readDG2(onProgress: (bytesRead, total) => reports.add((bytesRead, total)));
+
+      expect(reports, [(8, 12), (12, 12)]);
+    });
+
     test('second DG read reuses cached DF1 (no extra SELECT)', () async {
       final com = FakeComProvider([
         "9000".parseHex(), // select DF1 (once)
