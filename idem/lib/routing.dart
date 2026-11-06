@@ -83,6 +83,10 @@ const _qrScannerPath = '/qr_scanner';
 /// The screens that belong to no session: back on one of them without a
 /// session, the app wears its own look again.
 const sessionlessPaths = {selectDocTypePath, _qrScannerPath};
+
+/// Screens that use the camera or the NFC chip: the phone must not sleep
+/// while one is on top.
+const scanningPaths = {_qrScannerPath, _mrzReaderPath, _nfcReadingPath, _documentPhotoPath, _faceVerificationPath};
 const _proofingConsentPath = '/proofing_consent';
 
 /// Where a claimed QR or deep link shows the session for consent (see
