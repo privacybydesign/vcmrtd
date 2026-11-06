@@ -157,15 +157,21 @@ class DefaultPassportIssuer implements PassportIssuer {
     );
   }
 
-  // Starts the issuance session with the irma server with passport scan result
-  @override
-  Future<IrmaSessionPointer> startIrmaIssuanceSession(RawDocumentData documentDataResult, DocumentType docType) async {
-    final endpoint = switch (docType) {
+  /// The passport issuer endpoint that issues the credential for [docType].
+  @visibleForTesting
+  static String issuanceEndpoint(DocumentType docType) {
+    return switch (docType) {
       DocumentType.drivingLicence => "issue-driving-licence",
       DocumentType.passport => "issue-passport",
       DocumentType.identityCard => "issue-id-card",
-      DocumentType.residencePermit => throw UnsupportedError('The passport issuer cannot issue a residence permit'),
+      DocumentType.residencePermit => "issue-residence-permit",
     };
+  }
+
+  // Starts the issuance session with the irma server with passport scan result
+  @override
+  Future<IrmaSessionPointer> startIrmaIssuanceSession(RawDocumentData documentDataResult, DocumentType docType) async {
+    final endpoint = issuanceEndpoint(docType);
     // Create secure data payload
     final payload = documentDataResult.toJson();
     // Get the signed IRMA JWT from the passport issuer
