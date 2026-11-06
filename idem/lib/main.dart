@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:mrz_capture/mrz_capture.dart' show MrzCaptureLocalizations;
 import 'package:vcmrtd/extensions.dart';
 import 'package:idem/l10n/l10n.dart';
@@ -69,6 +70,8 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
   /// The settings from before the pinned session overwrote them.
   UserSettingsSnapshot? _userSettings;
 
+  bool _screenKeptOn = false;
+
   @override
   void initState() {
     super.initState();
@@ -95,6 +98,7 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
     });
     _sessionEvents = _sessions.events.listen(_onProofingSessionEvent);
     _router.routerDelegate.addListener(_resetBrandingOutsideSession);
+    _router.routerDelegate.addListener(_keepScreenOnWhileScanning);
     // Tell the server when this device stops/resumes working on the
     // session, and re-check with it before continuing after a resume.
     _lifecycle = AppLifecycleListener(onStateChange: _sessions.appLifecycleChanged);
@@ -119,6 +123,18 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
     if (sessionlessPaths.contains(path) && ref.read(activeProofingSessionProvider) == null) {
       ref.read(activeBrandingProvider.notifier).reset();
     }
+  }
+
+  void _keepScreenOnWhileScanning() {
+    final routes = _router.routerDelegate.currentConfiguration;
+    final scanning = routes.isNotEmpty && scanningPaths.contains(routes.last.matchedLocation);
+    if (scanning == _screenKeptOn) return;
+    _screenKeptOn = scanning;
+    _setScreenKeptOn(scanning);
+  }
+
+  void _setScreenKeptOn(bool on) {
+    WakelockPlus.toggle(enable: on).catchError((Object e) => debugPrint('[wakelock] $e'));
   }
 
   /// Claims the session a vcmrtd:// deep link points at (a session link or a
@@ -237,6 +253,7 @@ class _VcMrtdAppState extends ConsumerState<VcMrtdApp> {
   @override
   void dispose() {
     _sessionEvents?.cancel();
+    if (_screenKeptOn) _setScreenKeptOn(false);
     _lifecycle.dispose();
     _router.dispose();
     super.dispose();
