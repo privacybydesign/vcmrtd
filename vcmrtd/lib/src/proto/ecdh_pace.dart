@@ -104,7 +104,10 @@ class ECDHPace {
     return forReturn;
   }
 
-  static PublicKeyPACEeCDH ecPointToList({required ECPoint point}) {
+  // Byte length of a field element of the selected curve.
+  int get coordLen => (selectedDomainParameter.size + 7) ~/ 8;
+
+  static PublicKeyPACEeCDH ecPointToList({required ECPoint point, int coordLen = 0}) {
     BigInt? x = point.x!.toBigInteger();
     BigInt? y = point.y!.toBigInteger();
 
@@ -112,7 +115,7 @@ class ECDHPace {
       _log.error("Public key has no parameters (as BigInteger). Something went wrong in PC library.");
       throw ECDHPaceError("Public key has no parameters(as BigInteger). Something went wrong in PC library.");
     }
-    return PublicKeyPACEeCDH(x: x, y: y);
+    return PublicKeyPACEeCDH(x: x, y: y, coordLen: coordLen);
   }
 
   void generateKeyPairFromPriv({required Uint8List privKey}) {
@@ -240,7 +243,6 @@ class ECDHPace {
       _log.error("Public key has no parameters (as BigInteger). Something went wrong in PC library.");
       throw ECDHPaceError("Public key has no parameters(as BigInteger). Something went wrong in PC library.");
     }
-    final coordLen = (selectedDomainParameter.size + 7) ~/ 8;
     return PublicKeyPACEeCDH(x: x, y: y, coordLen: coordLen);
   }
 
@@ -260,7 +262,6 @@ class ECDHPace {
       _log.error("Public ephemeral key has no parameters (as BigInteger). Something went wrong in PC library.");
       throw ECDHPaceError("Public ephemeral key has no parameters(as BigInteger). Something went wrong in PC library.");
     }
-    final coordLen = (selectedDomainParameter.size + 7) ~/ 8;
     return PublicKeyPACEeCDH(x: x, y: y, coordLen: coordLen);
   }
 

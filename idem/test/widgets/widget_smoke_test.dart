@@ -48,7 +48,7 @@ void main() {
         ),
       );
       await tester.pump();
-      await tester.tap(find.byType(IconButton).first);
+      await tester.tap(find.byTooltip('Back'));
       expect(called, isTrue);
     });
   });

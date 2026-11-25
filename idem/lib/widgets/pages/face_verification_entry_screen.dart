@@ -2,7 +2,6 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:face_verification/face_verification.dart';
-import 'package:vcmrtd/vcmrtd.dart' show FaceMatch;
 import 'package:idem/providers/face_engine_provider.dart';
 import 'package:idem/services/face_verification_outcome.dart';
 import 'package:idem/services/proofing_session_client.dart';
@@ -38,9 +37,6 @@ class FaceVerificationEntryScreen extends StatelessWidget {
   /// The session's Regula announcement, if any.
   final ProofingFaceVerification? faceVerification;
 
-  /// Standalone Regula: the passport issuer's match (see RegulaFaceVerificationScreen).
-  final Future<FaceMatch?> Function(String livenessTransactionId)? matchFace;
-
   // Test-only: injects a pre-built on-device engine.
   @visibleForTesting
   final FaceVerificationEngine? testEngine;
@@ -61,7 +57,6 @@ class FaceVerificationEntryScreen extends StatelessWidget {
     required this.engineChoice,
     required this.livenessMode,
     this.faceVerification,
-    this.matchFace,
     this.photoIssueDate,
     this.stepNumber = FlowStepPlan.defaultFaceVerificationStep,
     this.totalSteps = FlowStepPlan.defaultTotalSteps,
@@ -103,7 +98,6 @@ class FaceVerificationEntryScreen extends StatelessWidget {
       case FaceEngineChoice.regula:
         return RegulaFaceVerificationScreen(
           faceVerification: faceVerification!,
-          matchFace: matchFace,
           onBackPressed: onBackPressed,
           onVerified: onVerified,
           stepNumber: stepNumber,

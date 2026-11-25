@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mrz_capture/mrz_capture.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'package:idem/services/proofing_chip_evidence.dart';
 import 'package:idem/services/proofing_session_client.dart';
 
 void main() {
@@ -30,9 +31,72 @@ void main() {
       expect([mrz.documentNumber, mrz.version, mrz.randomData, mrz.configuration], ['DL123', '1', 'RND', 'CFG']);
     });
 
+    test('round-trips a residence permit key as a residence permit', () {
+      final key = ProofingChipAccess.fromScannedMrz(
+        ScannedPassportMRZ(
+          documentNumber: 'D23145890',
+          countryCode: 'NLD',
+          dateOfBirth: DateTime(1974, 8, 12),
+          dateOfExpiry: DateTime(2032, 4, 15),
+          documentType: DocumentType.residencePermit,
+        ),
+        DocumentType.residencePermit,
+      );
+      final json = key.toJson();
+      expect(json['documentType'], 'residence_permit');
+      final mrz = ProofingChipAccess.fromJson(json)!.toScannedMrz() as ScannedPassportMRZ;
+      expect(mrz.documentType, DocumentType.residencePermit);
+      expect(mrz.documentNumber, 'D23145890');
+      expect(mrz.dateOfExpiry, DateTime(2032, 4, 15));
+    });
+
+    test('a key of a type this app does not know opens nothing', () {
+      expect(ProofingChipAccess.fromJson({'documentType': 'visa', 'documentNumber': 'X1'}), isNull);
+    });
+
     test('an incomplete key opens nothing', () {
       expect(ProofingChipAccess.fromJson({'documentType': 'passport'}), isNull);
       expect(ProofingChipAccess.fromJson({'documentType': 'passport', 'documentNumber': 'X1'})!.toScannedMrz(), isNull);
+    });
+  });
+
+  group('ProofingBranding', () {
+    Map<String, dynamic> view(Object? branding) => {
+      'id': 'sess-1',
+      'relyingParty': 'CM.com B.V.',
+      'expiresAt': '2030-01-01T00:00:00Z',
+      'branding': ?branding,
+    };
+
+    test('parses the requester\'s theme, leaving out what it does not set', () {
+      final info = ProofingSessionInfo.fromJson(
+        view({
+          'name': 'CM Tickets',
+          'primaryColor': '#036BD2',
+          'fontFamily': '"Alexandria", sans-serif',
+          'hasLogo': true,
+        }),
+      );
+      expect(info.relyingParty, 'CM.com B.V.');
+      expect(
+        info.branding,
+        const ProofingBranding(
+          name: 'CM Tickets',
+          primaryColor: '#036BD2',
+          fontFamily: '"Alexandria", sans-serif',
+          hasLogo: true,
+        ),
+      );
+    });
+
+    test('is absent from a session without one', () {
+      expect(ProofingSessionInfo.fromJson(view(null)).branding, isNull);
+    });
+
+    test('without a name is left out instead of failing the session', () {
+      final info = ProofingSessionInfo.fromJson(view({'primaryColor': '#036BD2'}));
+      expect(info.relyingParty, 'CM.com B.V.');
+      expect(info.branding, isNull);
     });
   });
 
@@ -80,6 +144,58 @@ void main() {
     });
   });
 
+  group('ProofingSessionInfo.documentTypes', () {
+    ProofingSessionInfo info(Object? documentTypes) => ProofingSessionInfo.fromJson({
+      'id': 's1',
+      'relyingParty': 'RP',
+      'expiresAt': '2030-01-01T00:00:00Z',
+      'documentTypes': ?documentTypes,
+    });
+
+    test('offers the documents the flow accepts, and needs no choice of the only one', () {
+      final two = info(['identity_card', 'drivers_license']);
+      expect(two.documentTypes, [DocumentType.identityCard, DocumentType.drivingLicence]);
+      expect(two.acceptsDocumentType(DocumentType.passport), isFalse);
+      expect(two.onlyDocumentType, isNull);
+      expect(info(['residence_permit']).onlyDocumentType, DocumentType.residencePermit);
+    });
+
+    test('offers every document when absent or naming none this app reads', () {
+      for (final view in [
+        info(null),
+        info(['visa']),
+      ]) {
+        expect(view.documentTypes, isNull);
+        expect(view.acceptsDocumentType(DocumentType.passport), isTrue);
+        expect(view.onlyDocumentType, isNull);
+      }
+    });
+  });
+
+  group('ProofingStepResponse.appPartDone', () {
+    ProofingStepResponse response({
+      String lifecycle = proofingLifecycleActive,
+      String? currentStep = '',
+      bool ready = false,
+    }) => ProofingStepResponse(
+      status: 'in_progress',
+      lifecycle: lifecycle,
+      currentStep: currentStep,
+      readyToSubmit: ready,
+    );
+
+    test('is done once the server has nothing left for the app and waits for no submit', () {
+      expect(response().appPartDone, isTrue);
+    });
+
+    test('is not done with a step left, a submit to come, a finished session or a server that does not say', () {
+      expect(response(currentStep: 'nfc_read').appPartDone, isFalse);
+      expect(response(ready: true).appPartDone, isFalse);
+      expect(response(lifecycle: proofingLifecycleComplete).appPartDone, isFalse);
+      expect(response(currentStep: null).appPartDone, isFalse);
+    });
+  });
+
   group('ProofingSessionRef.parse', () {
     test('parses the https qr payload (https://{host}/s/{token})', () {
       final ref = ProofingSessionRef.parse('https://proof.example.com/s/abc123');
@@ -106,6 +222,43 @@ void main() {
       expect(ProofingSessionRef.parse('https://example.com/some/other/path'), isNull);
       expect(ProofingSessionRef.parse('not a url at all'), isNull);
       expect(ProofingSessionRef.parse('vcmrtd://verify?token=onlytoken'), isNull);
+    });
+  });
+
+  group('ProofingSessionLink.parse', () {
+    test('parses the https App Link as a handover claim', () {
+      final link = ProofingSessionLink.parse(
+        'https://idem.yivi.app/verify?handover=h-1&api=${Uri.encodeQueryComponent('https://proof.example.com')}',
+      );
+      expect(
+        link,
+        isA<ProofingHandoverLink>()
+            .having((l) => l.handoverToken, 'handoverToken', 'h-1')
+            .having((l) => l.apiBase, 'apiBase', 'https://proof.example.com'),
+      );
+    });
+
+    test('parses the staging https App Link as a handover claim', () {
+      final link = ProofingSessionLink.parse(
+        'https://idem.staging.yivi.app/verify?handover=h-1&api=${Uri.encodeQueryComponent('https://proof.example.com')}',
+      );
+      expect(
+        link,
+        isA<ProofingHandoverLink>()
+            .having((l) => l.handoverToken, 'handoverToken', 'h-1')
+            .having((l) => l.apiBase, 'apiBase', 'https://proof.example.com'),
+      );
+    });
+
+    test('rejects the https App Link without an api', () {
+      expect(ProofingSessionLink.parse('https://idem.yivi.app/verify?handover=h-1'), isNull);
+    });
+
+    test('keeps another host\'s https handover link a browser handover', () {
+      expect(
+        ProofingSessionLink.parse('https://proof.example.com/verify?handover=h-1&api=https://proof.example.com'),
+        isA<ProofingBrowserHandoverLink>(),
+      );
     });
   });
 
@@ -196,6 +349,17 @@ void main() {
       expect(ProofingPhotoInfo.fromSelfie(jpeg).toJson()['mimeType'], 'image/jpeg');
       expect(ProofingPhotoInfo.fromSelfie(Uint8List(0)).toJson()['mimeType'], 'image/jpeg');
     });
+  });
+
+  test('a residence permit chip read is sent as ICAO evidence, its type taken from the MRZ', () {
+    final data = _fakePassportData();
+    final evidence = ProofingChipEvidence.from(
+      data,
+      RawDocumentData(dataGroups: {'DG1': '1122'}, efSod: 'aabb'),
+      DocumentType.residencePermit,
+    );
+    expect(evidence.mrtdEvidence.toJson()['documentType'], 'icao');
+    expect(evidence.document.toJson()['type'], data.mrz.documentCode);
   });
 
   group('ProofingMrtdEvidence', () {

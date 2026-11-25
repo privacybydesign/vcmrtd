@@ -2,10 +2,10 @@
 // Allows users to enter passport data manually: DOB, expiry date, document number
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:intl/intl.dart';
 import 'package:vcmrtd/vcmrtd.dart';
+import 'manual_entry_rules.dart';
 import '../l10n/mrz_capture_localizations.dart';
 import 'scanned_mrz.dart';
 import 'step_badge.dart';
@@ -153,6 +153,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
           Text(switch (widget.documentType) {
             DocumentType.drivingLicence => _l10n.mrzHelpDrivingLicence,
             DocumentType.identityCard => _l10n.mrzHelpIdentityCard,
+            DocumentType.residencePermit => _l10n.mrzHelpResidencePermit,
             DocumentType.passport => _l10n.mrzHelpPassport,
           }, style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280), height: 1.4)),
         ],
@@ -170,20 +171,14 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
           controller: _docNumberController,
           keyboardType: TextInputType.text,
           textCapitalization: TextCapitalization.characters,
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(RegExp(r'[A-Z0-9]')),
-            LengthLimitingTextInputFormatter(15),
-          ],
+          inputFormatters: ManualEntryRules.documentNumberFormatters,
           hintText: _l10n.mrzDocNumberExample,
-          validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return _l10n.mrzDocNumberRequired(_docType);
-            }
-            if (value.trim().length < 6) {
-              return _l10n.mrzDocNumberTooShort(_docType);
-            }
-            return null;
-          },
+          validator: (value) => ManualEntryRules.documentNumber(
+            value,
+            documentName: widget.documentType.displayName,
+            l10n: _l10n,
+            docType: _docType,
+          ),
         ),
       ),
       const SizedBox(height: 16),
@@ -196,15 +191,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
           readOnly: true,
           hintText: _l10n.mrzTapToSelectDate,
           onTap: () => _selectDate(context, isDateOfBirth: true),
-          validator: (value) {
-            if (_selectedDob == null) {
-              return _l10n.mrzDobRequired;
-            }
-            if (_selectedDob!.isAfter(DateTime.now())) {
-              return _l10n.mrzDobInFuture;
-            }
-            return null;
-          },
+          validator: (_) => ManualEntryRules.dateOfBirth(_selectedDob, l10n: _l10n),
         ),
       ),
       const SizedBox(height: 16),
@@ -217,18 +204,13 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
           readOnly: true,
           hintText: _l10n.mrzTapToSelectDate,
           onTap: () => _selectDate(context, isDateOfBirth: false),
-          validator: (value) {
-            if (_selectedExpiry == null) {
-              return _l10n.mrzExpiryRequired;
-            }
-            if (_selectedExpiry!.isBefore(DateTime.now())) {
-              return _l10n.mrzDocumentExpired(_docType);
-            }
-            if (_selectedDob != null && _selectedExpiry!.isBefore(_selectedDob!)) {
-              return _l10n.mrzExpiryBeforeDob;
-            }
-            return null;
-          },
+          validator: (_) => ManualEntryRules.dateOfExpiry(
+            _selectedExpiry,
+            documentName: widget.documentType.displayName,
+            dateOfBirth: _selectedDob,
+            l10n: _l10n,
+            docType: _docType,
+          ),
         ),
       ),
     ];
@@ -248,24 +230,10 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
               keyboardType: TextInputType.text,
               textCapitalization: TextCapitalization.characters,
               maxLines: 1,
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[A-Z0-9<]')),
-                LengthLimitingTextInputFormatter(30),
-              ],
+              inputFormatters: ManualEntryRules.mrzLineFormatters,
               hintText: 'D1NLD15094962111659VW87Z78NB84',
               style: const TextStyle(fontFamily: 'Courier', fontSize: 14),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return _l10n.mrzStringRequired;
-                }
-                if (value.trim().length != 30) {
-                  return _l10n.mrzStringLength;
-                }
-                if (!value.startsWith('D1') && !value.startsWith('D2') && !value.startsWith('DL')) {
-                  return _l10n.mrzStringPrefix;
-                }
-                return null;
-              },
+              validator: (value) => ManualEntryRules.mrzLine(value, l10n: _l10n),
             ),
             const SizedBox(height: 8),
             Row(
@@ -383,7 +351,7 @@ class _ManualEntryScreenState extends State<ManualEntryScreen> {
     }
 
     final scannedMrz = switch (widget.documentType) {
-      DocumentType.passport || DocumentType.identityCard => _createScannedPassport(),
+      DocumentType.passport || DocumentType.identityCard || DocumentType.residencePermit => _createScannedPassport(),
       DocumentType.drivingLicence => _createScannedDriverLicense(),
     };
 

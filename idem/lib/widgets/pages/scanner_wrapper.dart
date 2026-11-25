@@ -2,9 +2,10 @@
 // Provides callbacks for the scanner page to integrate with navigation
 
 import 'package:flutter/material.dart';
-import 'package:flutter_platform_widgets/flutter_platform_widgets.dart';
 import 'package:idem/l10n/l10n.dart';
 import 'package:mrz_capture/mrz_capture.dart';
+import 'package:idem/theme/brand_theme.dart';
+import 'package:idem/widgets/guided/guided_widgets.dart';
 
 import '../../routing.dart';
 import 'scan_screen.dart';
@@ -20,6 +21,7 @@ typedef ScannerWidgetBuilder =
       required DocumentType documentType,
       required MrzScanPicture scanPicture,
       required MrzScannedWithPicture onSuccess,
+      required ValueChanged<DocumentType> onWrongDocument,
     });
 
 class MrzReaderRouteParams {
@@ -75,6 +77,9 @@ class ScannerWrapper extends StatefulWidget {
 class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
   bool _hasNavigated = false;
 
+  /// What the last MRZ read showed when it was the other card type.
+  DocumentType? _wrongDocument;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -91,108 +96,177 @@ class _ScannerWrapperState extends State<ScannerWrapper> with RouteAware {
   @override
   void didPopNext() => _hasNavigated = false;
 
+  void _onScanned(ScannedMRZ scannedMrz, DocumentPicture? picture) {
+    if (_hasNavigated) return;
+
+    _hasNavigated = true;
+    widget.onMrzScanned(scannedMrz, picture);
+  }
+
+  void _onWrongDocument(DocumentType found) {
+    if (_wrongDocument != found) setState(() => _wrongDocument = found);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final scannerBuilder = widget.scannerBuilder ?? _defaultScannerBuilder;
-
-    return Scaffold(
-      body: Stack(
-        children: [
-          scannerBuilder(
-            documentType: widget.documentType,
-            scanPicture: widget.scanPicture,
-            onSuccess: (scannedMrz, picture) {
-              if (!_hasNavigated) {
-                _hasNavigated = true;
-                widget.onMrzScanned(scannedMrz, picture);
-              }
-            },
-          ),
-          Positioned(left: 0, right: 0, top: 0, child: _buildTopOverlay(context)),
-          Positioned(left: 0, right: 0, bottom: 0, child: _buildBottomControls(context)),
-        ],
-      ),
-    );
+    return _buildGuided(context, context.guided);
   }
 
-  Widget _buildTopOverlay(BuildContext context) {
-    return SafeArea(
-      bottom: false,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            height: 48,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: IconButton(
-                    icon: Icon(PlatformIcons(context).back, color: Colors.white),
-                    onPressed: widget.onBack,
+  /// Guided layout: a dark scrim with a card-shaped cut-out and the
+  /// instructions in a sheet at the bottom. The scanner's own frame is off;
+  /// [guidedScanFrame] draws one in the same place as the area it reads.
+  Widget _buildGuided(BuildContext context, GuidedStyle g) {
+    final scannerBuilder = widget.scannerBuilder ?? _guidedScannerBuilder;
+    return GuidedStatusBar(
+      backdrop: Backdrop.dark,
+      bottomBackdrop: Backdrop.light,
+      child: Scaffold(
+        backgroundColor: g.header,
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: scannerBuilder(
+                documentType: widget.documentType,
+                scanPicture: widget.scanPicture,
+                onSuccess: _onScanned,
+                onWrongDocument: _onWrongDocument,
+              ),
+            ),
+            Positioned.fill(
+              child: IgnorePointer(
+                child: LayoutBuilder(
+                  builder: (context, box) => CustomPaint(
+                    painter: GuidedScanFramePainter(
+                      frame: guidedScanFrame(box.biggest, widget.documentType),
+                      mrzLines: _mrzLineCount(widget.documentType),
+                      scrim: g.ink.withValues(alpha: 0.8),
+                      highlight: g.heroAccent,
+                    ),
                   ),
                 ),
-                StepBadge(
-                  current: widget.stepNumber,
-                  total: widget.totalSteps,
-                  label: context.l10n.proofingScanDocument(widget.documentType.name),
-                ),
-              ],
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Padding(padding: const EdgeInsets.fromLTRB(30, 0, 24, 0), child: _buildOverlayCard(context)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOverlayCard(BuildContext context) {
-    // The inset a Card's default margin used to give it.
-    return Padding(
-      padding: const EdgeInsets.all(4),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            context.l10n.proofingPositionDocument(widget.documentType.name),
-            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-          Text(
-            widget.scanPicture == MrzScanPicture.capture
-                ? context.l10n.proofingScanMrzPhotoInstructions
-                : context.l10n.proofingScanMrzInstructions,
-            style: TextStyle(color: Colors.white70, fontSize: 14),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomControls(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(30, 24, 24, 32),
-      child: SafeArea(
-        top: false,
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black),
-          onPressed: widget.onManualEntry,
-          child: Text(
-            context.l10n.proofingEnterDetailsManually(widget.documentType.name),
-            style: const TextStyle(color: Colors.black),
-          ),
+            Positioned.fill(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SafeArea(
+                    bottom: false,
+                    child: Column(
+                      children: [
+                        GuidedTopBar(
+                          leading: GuidedRoundButton(
+                            icon: Icons.close,
+                            tooltip: context.l10n.scanClose,
+                            backdrop: Backdrop.dark,
+                            onPressed: widget.onBack,
+                          ),
+                          center: GuidedTopBarTitle(
+                            context.l10n.proofingScanDocument(widget.documentType.name),
+                            backdrop: Backdrop.dark,
+                          ),
+                        ),
+                        GuidedStepBar(step: widget.stepNumber, total: widget.totalSteps, backdrop: Backdrop.dark),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                  _GuidedScanSheet(
+                    documentType: widget.documentType,
+                    wrongDocument: _wrongDocument,
+                    onManualEntry: widget.onManualEntry,
+                    stepNumber: widget.stepNumber,
+                    totalSteps: widget.totalSteps,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-Widget _defaultScannerBuilder({
+/// Where the guided scan screen draws the document frame for a view of [size]:
+/// the same rectangle the MRZ scanner reads text from (see
+/// `MRZCameraViewState._overlayRect` in mrz_capture), so what the user lines up
+/// with the frame is what gets read.
+@visibleForTesting
+Rect guidedScanFrame(Size size, DocumentType type) => MRZCameraOverlay.frameRect(
+  size,
+  type == DocumentType.passport ? MRZCameraOverlay.passportFrameRatio : MRZCameraOverlay.cardFrameRatio,
+);
+
+int _mrzLineCount(DocumentType type) => switch (type) {
+  DocumentType.passport => 2,
+  DocumentType.identityCard || DocumentType.residencePermit => 3,
+  DocumentType.drivingLicence => 1,
+};
+
+/// The instructions under the scan frame: a card that shows only the step
+/// and what to do, and opens (tap, or swipe up) to the tip and manual entry.
+/// Kept closed it leaves the whole frame, and the text read along its bottom,
+/// in view on smaller phones.
+class _GuidedScanSheet extends StatelessWidget {
+  const _GuidedScanSheet({
+    required this.documentType,
+    required this.wrongDocument,
+    required this.onManualEntry,
+    required this.stepNumber,
+    required this.totalSteps,
+  });
+
+  final DocumentType documentType;
+  final DocumentType? wrongDocument;
+  final VoidCallback onManualEntry;
+  final int stepNumber;
+  final int totalSteps;
+
+  @override
+  Widget build(BuildContext context) {
+    final g = context.guided;
+    final l10n = context.l10n;
+    final docType = documentType.name;
+    return GuidedSheet(
+      label: GuidedStepLabel(step: stepNumber, total: totalSteps),
+      title: l10n.scanSheetTitle(docType),
+      showTip: l10n.scanShowTips,
+      hideTip: l10n.scanHideTips,
+      notice: switch (wrongDocument) {
+        final found? => Text(
+          '${l10n.wrongDocumentTitle(found.name)}. ${l10n.wrongDocumentHint(found.name)}',
+          style: TextStyle(fontSize: 15, height: 1.4, color: g.error),
+        ),
+        null => null,
+      },
+      tip: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(l10n.scanSheetTip(docType), style: TextStyle(fontSize: 15, height: 1.5, color: g.bodyText)),
+          const SizedBox(height: 16),
+          GuidedButton(
+            label: l10n.scanEnterDetailsManually,
+            kind: GuidedButtonKind.secondary,
+            onPressed: onManualEntry,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+Widget _guidedScannerBuilder({
   required DocumentType documentType,
   required MrzScanPicture scanPicture,
   required MrzScannedWithPicture onSuccess,
+  required ValueChanged<DocumentType> onWrongDocument,
 }) {
-  return ScannerPage(documentType: documentType, scanPicture: scanPicture, onSuccess: onSuccess);
+  return ScannerPage(
+    documentType: documentType,
+    scanPicture: scanPicture,
+    onSuccess: onSuccess,
+    onWrongDocument: onWrongDocument,
+    frame: ScanFrame.caller,
+  );
 }

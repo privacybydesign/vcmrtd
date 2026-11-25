@@ -91,6 +91,16 @@ void main() {
       expect(crop, isNotNull);
     });
 
+    test('detectFaceBox gives the face and its score in fractions of the image; none on a blank one', () {
+      final found = pipeline.detectFaceBox(face)!;
+      expect(found.box.contains(const Offset(0.5, 0.5)), isTrue);
+      expect(found.score, greaterThanOrEqualTo(0.5));
+
+      final blank = img.Image(width: 128, height: 128);
+      img.fill(blank, color: img.ColorRgb8(200, 200, 200));
+      expect(pipeline.detectFaceBox(blank), isNull);
+    });
+
     test('runDetectorStage (selfie) detects a face and returns a finite crop', () {
       final crop = pipeline.runDetectorStage(face, mode: FaceAlignmentMode.selfie);
       expect(crop, isNotNull);

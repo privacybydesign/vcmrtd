@@ -27,7 +27,8 @@ class PublicKeyPACEeCDH extends PublicKeyPACE {
   final BigInt _x;
   final BigInt _y;
   // Coordinate byte length for the curve (0 = no padding). Must be set for
-  // terminal-generated keys so coordinates are padded to the curve field size.
+  // every key or shared secret that is encoded again (auth token input, KDF
+  // seed), so a coordinate with leading zero bytes keeps the curve field size.
   final int _coordLen;
 
   PublicKeyPACEeCDH({required BigInt x, required BigInt y, int coordLen = 0})
@@ -64,7 +65,9 @@ class PublicKeyPACEeCDH extends PublicKeyPACE {
   PublicKeyPACEeCDH.fromHex({required Uint8List hexKey})
     : _x = Utils.uint8ListToBigInt(hexKey.sublist(0, hexKey.length ~/ 2)),
       _y = Utils.uint8ListToBigInt(hexKey.sublist(hexKey.length ~/ 2)),
-      _coordLen = 0,
+      // The chip sends X || Y at full field size; keep that length so
+      // toBytes() returns the received bytes, leading zeros included.
+      _coordLen = hexKey.length ~/ 2,
       super(algo: TOKEN_AGREEMENT_ALGO.ECDH);
 
   @override

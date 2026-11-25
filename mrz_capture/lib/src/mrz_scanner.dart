@@ -1,6 +1,7 @@
-﻿import 'dart:io';
+import 'dart:io';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
@@ -13,6 +14,7 @@ import 'document_picture.dart';
 import 'mrz_helper.dart';
 import 'ocr_engine.dart';
 import 'scanned_mrz.dart';
+import 'tesseract_image.dart';
 
 /// Called with the MRZ that was read, the MRZ lines it was parsed from and,
 /// when [MRZScanner.scanPicture] asked for one, the camera's picture of the
@@ -34,6 +36,7 @@ class MRZScanner extends StatefulWidget {
     Key? controller,
     required this.onSuccess,
     required this.engine,
+    this.onWrongDocument,
     this.routeObserver,
     this.initialDirection = CameraLensDirection.back,
     this.showOverlay = true,
@@ -44,6 +47,11 @@ class MRZScanner extends StatefulWidget {
   }) : super(key: controller);
 
   final MrzScannedCallback onSuccess;
+
+  /// Called with what the MRZ shows when it is the other card than
+  /// [documentType]: an identity card where a residence permit was asked for,
+  /// or the other way round. Scanning goes on.
+  final ValueChanged<DocumentType>? onWrongDocument;
 
   /// The OCR engine to read frames with. It is read per frame, so a caller can
   /// hand the scanner a value it rebuilds on and the change takes effect on the
@@ -205,17 +213,12 @@ class MRZScannerState extends State<MRZScanner> with RouteAware {
     if (!_canProcess) return;
 
     try {
+      final image = await compute(tesseractImage, frame);
       final String? res = await _ocrChannel.invokeMethod<String>('processImage', {
-        'bytes': frame.bytes,
-        'width': frame.width,
-        'height': frame.height,
-        'stride': frame.width,
-        'rotation': frame.rotation,
+        'pixels': image.pixels,
+        'width': image.width,
+        'height': image.height,
         'lang': 'ocrb',
-        'roiLeft': frame.roiLeft,
-        'roiTop': frame.roiTop,
-        'roiWidth': frame.roiWidth,
-        'roiHeight': frame.roiHeight,
       });
 
       final text = res ?? '';
@@ -242,21 +245,23 @@ class MRZScannerState extends State<MRZScanner> with RouteAware {
 
   bool _tryParseAndNotify(List<String> lines) {
     final parsedRaw = _parseScannedText(lines);
-    if (parsedRaw != null) {
-      _canProcess = false;
-      _notify(parsedRaw, lines);
-      return true;
-    }
+    if (parsedRaw != null) return _accept(parsedRaw, lines);
     final correctedStrict = MRZHelper.fixForDocType(widget.documentType, lines);
     if (correctedStrict != null) {
       final parsedStrict = _parseScannedText(correctedStrict);
-      if (parsedStrict != null) {
-        _canProcess = false;
-        _notify(parsedStrict, correctedStrict);
-        return true;
-      }
+      if (parsedStrict != null) return _accept(parsedStrict, correctedStrict);
     }
     return false;
+  }
+
+  bool _accept(ScannedMRZ mrz, List<String> lines) {
+    if (mrz.documentType != widget.documentType) {
+      widget.onWrongDocument?.call(mrz.documentType);
+      return false;
+    }
+    _canProcess = false;
+    _notify(mrz, lines);
+    return true;
   }
 
   void _notify(ScannedMRZ mrz, List<String> lines) {
@@ -303,11 +308,8 @@ class MRZScannerState extends State<MRZScanner> with RouteAware {
             PassportMrzParser().parse(lines),
             documentType: DocumentType.passport,
           );
-        case DocumentType.identityCard:
-          return ScannedPassportMRZ.fromMRZResult(
-            IdCardMrzParser().parse(lines),
-            documentType: DocumentType.identityCard,
-          );
+        case DocumentType.identityCard || DocumentType.residencePermit:
+          return ScannedPassportMRZ.fromMRZResult(IdCardMrzParser().parse(lines), documentType: widget.documentType);
         case DocumentType.drivingLicence:
           return ScannedDriverLicenseMRZ.fromMRZResult(DrivingLicenceMrzParser().parse(lines));
       }

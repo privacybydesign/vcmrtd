@@ -8,6 +8,7 @@
 import 'dart:typed_data';
 
 import 'package:test/test.dart';
+import 'package:vcmrtd/extensions.dart';
 import 'package:vcmrtd/src/proto/public_key_pace.dart';
 
 void main() {
@@ -101,6 +102,17 @@ void main() {
       expect(encoded.length, 65); // 1 + 32 + 32
       expect(encoded[0], 0x04);
       expect(encoded[1], 0x00); // leading-zero byte preserved in X
+    });
+
+    test('fromHex keeps leading zero bytes of a received key in toBytes()', () {
+      // A chip key is re-encoded for the auth token input, which the chip
+      // computes over the exact bytes it sent.
+      final received = '00${'AB' * 31}00${'CD' * 31}'.parseHex();
+
+      final pubKey = PublicKeyPACEeCDH.fromHex(hexKey: received);
+
+      expect(pubKey.toBytes(), received);
+      expect(pubKey.toRelavantBytes(), received.sublist(0, 32));
     });
   });
 }

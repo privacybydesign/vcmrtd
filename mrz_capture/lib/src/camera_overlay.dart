@@ -35,9 +35,14 @@ class MRZCameraOverlay extends StatelessWidget {
 
   static const _frameRadius = Radius.circular(8);
 
-  /// Where the frame lies in a view of [size]: centred, 90% of the width in
-  /// portrait and 75% of the height in landscape. The camera view reads text
-  /// and cuts pictures to this same rectangle.
+  /// How far above the centre the frame sits, so it stays clear of the
+  /// instructions and buttons along the bottom of the scan screens.
+  static const frameLift = 60.0;
+
+  /// Where the frame lies in a view of [size]: centred across, [frameLift]
+  /// above the middle, 90% of the width in portrait and 75% of the height in
+  /// landscape. The camera view reads text and cuts pictures to this same
+  /// rectangle.
   static Rect frameRect(Size size, double frameRatio) {
     double width, height;
     if (size.height > size.width) {
@@ -47,7 +52,8 @@ class MRZCameraOverlay extends StatelessWidget {
       height = size.height * 0.75;
       width = height * frameRatio;
     }
-    return Rect.fromLTWH((size.width - width) / 2, (size.height - height) / 2, width, height);
+    final top = ((size.height - height) / 2 - frameLift).clamp(0.0, double.infinity);
+    return Rect.fromLTWH((size.width - width) / 2, top, width, height);
   }
 }
 

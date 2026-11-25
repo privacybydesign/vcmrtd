@@ -49,6 +49,26 @@ void main() {
       });
     });
 
+    test('round-trips a residence permit', () {
+      final params = NfcReadingRouteParams(
+        scannedMRZ: ScannedPassportMRZ(
+          documentNumber: 'D23145890',
+          countryCode: 'NLD',
+          dateOfBirth: testDateOfBirth,
+          dateOfExpiry: testDateOfExpiry,
+          documentType: DocumentType.residencePermit,
+        ),
+        documentType: DocumentType.residencePermit,
+      );
+
+      final queryParams = params.toQueryParams();
+      expect(queryParams['document_type'], 'residence_permit');
+      final reconstructed = NfcReadingRouteParams.fromQueryParams(queryParams);
+      expect(reconstructed.documentType, DocumentType.residencePermit);
+      expect(reconstructed.scannedMRZ.documentType, DocumentType.residencePermit);
+      expect((reconstructed.scannedMRZ as ScannedPassportMRZ).dateOfExpiry, testDateOfExpiry);
+    });
+
     group('toQueryParams and fromQueryParams - Identity Card', () {
       test('should serialize and deserialize identity card correctly', () {
         final scannedMRZ = ScannedPassportMRZ(

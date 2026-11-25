@@ -5,7 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
+import 'package:idem/widgets/common/face_verification_views.dart';
+import 'package:idem/widgets/guided/guided_widgets.dart';
 import 'package:idem/widgets/pages/iris_face_verification_screen.dart';
+import 'package:mrz_capture/mrz_capture.dart' show StepBadge;
 
 Uint8List _fakePortraitPng() {
   final image = img.Image(width: 2, height: 2);
@@ -13,8 +16,8 @@ Uint8List _fakePortraitPng() {
 }
 
 Future<void> _startVerification(WidgetTester tester) async {
-  expect(find.text('Start Verification'), findsOneWidget);
-  await tester.tap(find.text('Start Verification'));
+  expect(find.text('Start selfie check'), findsOneWidget);
+  await tester.tap(find.text('Start selfie check'));
   await tester.pump();
 }
 
@@ -37,7 +40,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Start Verification'), findsOneWidget);
+    expect(find.text('Start selfie check'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
@@ -59,37 +62,14 @@ void main() {
     await _startVerification(tester);
 
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.descendant(of: find.byType(FaceStepScaffold), matching: find.byType(FaceBusyView)), findsOneWidget);
+    expect(find.byType(GuidedStepBar), findsOneWidget);
 
-    completer.complete({'outcome': 'matched', 'face': Uint8List(0)});
+    completer.complete({'outcome': 'failed', 'face': null});
     await tester.pumpAndSettle();
   });
 
-  testWidgets('renders a success result when the SDK reports a match', (tester) async {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async {
-      return {'outcome': 'matched', 'face': _fakePortraitPng()};
-    });
-
-    await tester.pumpWidget(
-      MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: IrisFaceVerificationScreen(nfcImageBytes: _fakePortraitPng(), onBackPressed: () {}, onVerified: (_) {}),
-      ),
-    );
-    await tester.pump();
-    await _startVerification(tester);
-    await tester.pumpAndSettle();
-
-    expect(find.text('Identity Verified'), findsOneWidget);
-    expect(find.text('Document photo'), findsOneWidget);
-    expect(find.text('Live capture'), findsOneWidget);
-    // A matched result auto-continues, so there's no retry button — just a
-    // brief "Continuing…" hint before onVerified fires.
-    expect(find.text('Try Again'), findsNothing);
-    expect(find.text('Continuing…'), findsOneWidget);
-  });
-
-  testWidgets('a matched result auto-continues to onVerified after a short delay, not onBackPressed', (tester) async {
+  testWidgets('a match continues straight away under a spinner, no result screen', (tester) async {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async {
       return {'outcome': 'matched', 'face': _fakePortraitPng()};
     });
@@ -109,12 +89,14 @@ void main() {
     );
     await tester.pump();
     await _startVerification(tester);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump();
 
-    expect(verifiedCount, 0);
-    await tester.pump(const Duration(seconds: 2));
     expect(verifiedCount, 1);
     expect(backCount, 0);
+    expect(find.text('Continuing…'), findsOneWidget);
+    expect(find.text('Live capture'), findsNothing);
+    expect(find.text('Try Again'), findsNothing);
   });
 
   testWidgets('renders a failure result when the SDK reports no match', (tester) async {
@@ -136,6 +118,10 @@ void main() {
     expect(find.text('Verification Failed'), findsOneWidget);
     expect(find.text('Document photo'), findsOneWidget);
     expect(find.text('Live capture'), findsNothing);
+    // The result keeps the guided layout of the intro.
+    expect(find.descendant(of: find.byType(FaceStepScaffold), matching: find.byType(FaceResultView)), findsOneWidget);
+    expect(find.byType(GuidedStepBar), findsOneWidget);
+    expect(find.byType(StepBadge), findsNothing);
   });
 
   testWidgets('renders a cancelled result when the user cancels the SDK flow', (tester) async {
@@ -231,9 +217,10 @@ void main() {
     );
     await tester.pump();
     await _startVerification(tester);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump();
 
-    expect(find.text('Identity Verified'), findsOneWidget);
+    expect(find.text('Continuing…'), findsOneWidget);
     expect(verifiedPortrait, isNotNull);
   });
 

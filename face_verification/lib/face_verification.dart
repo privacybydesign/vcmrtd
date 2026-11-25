@@ -2,7 +2,7 @@
 
 export 'src/face_verification_engine.dart';
 export 'src/face_verification_tuning.dart';
-export 'src/face_verification_worker.dart';
+export 'src/face_verification_worker.dart' hide tryDecodeImage;
 export 'src/tflite_tensor_utils.dart';
 export 'src/worker_result_types.dart';
 

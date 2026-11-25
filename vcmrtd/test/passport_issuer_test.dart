@@ -34,6 +34,15 @@ void main() {
     });
   });
 
+  group('DefaultPassportIssuer.issuanceEndpoint', () {
+    test('maps every document type to its issue endpoint', () {
+      expect(DefaultPassportIssuer.issuanceEndpoint(DocumentType.passport), 'issue-passport');
+      expect(DefaultPassportIssuer.issuanceEndpoint(DocumentType.identityCard), 'issue-id-card');
+      expect(DefaultPassportIssuer.issuanceEndpoint(DocumentType.residencePermit), 'issue-residence-permit');
+      expect(DefaultPassportIssuer.issuanceEndpoint(DocumentType.drivingLicence), 'issue-driving-licence');
+    });
+  });
+
   group('DefaultPassportIssuer.parseStartValidationResponse', () {
     test('parses the nonce and session id', () {
       final result = DefaultPassportIssuer.parseStartValidationResponse({'session_id': 'sess-1', 'nonce': 'nonce-1'});

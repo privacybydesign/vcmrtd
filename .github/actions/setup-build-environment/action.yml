@@ -3,16 +3,16 @@ description: This action installs all build tools needed for vcmrtd and caches t
 runs:
   using: composite
   steps:
-    - uses: actions/setup-java@v4
+    - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
       with:
         distribution: temurin
         java-version: 17
-    - uses: ruby/setup-ruby@v1
+    - uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
       id: setup-ruby
       with:
         ruby-version: 3.4
     - name: Check Ruby cache
-      uses: actions/cache@v4
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       env:
         SEGMENT_DOWNLOAD_TIMEOUT_MINS: "1"
       with:
@@ -24,17 +24,18 @@ runs:
       shell: bash
       working-directory: ./idem
     - name: Set environment variables
-      run: |
+      # Only fixed paths under $HOME are written here, nothing from the event or the repository.
+      run: | # zizmor: ignore[github-env]
         ANDROID_HOME=~/android-sdk
         FLUTTER_HOME=~/flutter
-        echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
-        echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk-bundle" >> $GITHUB_ENV
-        echo "FLUTTER_HOME=$FLUTTER_HOME" >> $GITHUB_ENV
-        echo "$ANDROID_HOME/cmdline-tools/bin" >> $GITHUB_PATH
-        echo "$FLUTTER_HOME/bin" >> $GITHUB_PATH
+        echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+        echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk-bundle" >> "$GITHUB_ENV"
+        echo "FLUTTER_HOME=$FLUTTER_HOME" >> "$GITHUB_ENV"
+        echo "$ANDROID_HOME/cmdline-tools/bin" >> "$GITHUB_PATH"
+        echo "$FLUTTER_HOME/bin" >> "$GITHUB_PATH"
       shell: bash
     - name: Check ci_scripts cache
-      uses: actions/cache@v4
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       env:
         SEGMENT_DOWNLOAD_TIMEOUT_MINS: "5"
       with:
@@ -55,10 +56,14 @@ runs:
       # Xcode 26 or later. 16.4 is the image default, so this must be explicit.
       run: sudo xcode-select --switch /Applications/Xcode_26.3.app
       shell: bash
+    - name: Use prebuilt OpenCV for iOS
+      if: runner.os == 'macOS'
+      run: ./ci_scripts/install_opencv_ios.sh
+      shell: bash
     - name: Check Cocoapods cache
       id: cocoapods-cache
       if: runner.os == 'macOS'
-      uses: actions/cache@v4
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       env:
         SEGMENT_DOWNLOAD_TIMEOUT_MINS: "1"
       with:

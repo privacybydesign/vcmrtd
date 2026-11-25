@@ -155,7 +155,7 @@ class MRZHelper {
       case DocumentType.passport:
         return _fixTd3(lines);
 
-      case DocumentType.identityCard:
+      case DocumentType.identityCard || DocumentType.residencePermit:
         return _fixTd1(lines);
 
       case DocumentType.drivingLicence:

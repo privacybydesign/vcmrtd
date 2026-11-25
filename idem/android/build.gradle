@@ -2,8 +2,11 @@ allprojects {
     repositories {
         google()
         mavenCentral()
-        maven { url "https://artifactory.appodeal.com/appodeal-public" }
-        maven { url 'https://jitpack.io' }
+        // Only for mrz_capture's Tesseract4Android, which is not on Maven Central.
+        maven {
+            url 'https://jitpack.io'
+            content { includeGroup 'cz.adaptech.tesseract4android' }
+        }
     }
 }
 

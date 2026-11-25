@@ -33,7 +33,6 @@ android {
 
 dependencies {
     // Tesseract4Android is the free software OCR engine, kept for F-Droid
-    // interoperability. OpenCV is used by the MRZ zone detector that feeds it.
+    // interoperability. The MRZ it reads is cut out in Dart, with opencv_dart.
     implementation "cz.adaptech.tesseract4android:tesseract4android:4.9.0"
-    implementation "org.opencv:opencv:4.9.0"
 }

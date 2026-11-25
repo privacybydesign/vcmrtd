@@ -101,6 +101,16 @@ Verify ID card and initiate Verifiable Credential issuance.
 
 ---
 
+### Issue Residence Permit Credential
+
+Verify residence permit and initiate Verifiable Credential issuance. The issuer only accepts the document codes of residence permits (such as `IR`, `AR` or `RP`) for a holder who is not a national of the issuing state.
+
+**POST** `/api/issue-residence-permit`
+
+**Request/Response**: Same format as issue-passport
+
+---
+
 ### Issue Driving Licence Credential
 
 Verify driving licence and initiate Verifiable Credential issuance.

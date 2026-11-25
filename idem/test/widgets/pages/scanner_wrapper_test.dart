@@ -47,6 +47,7 @@ Widget _buildWrapper({
   void Function(MrzScanPicture scanPicture)? onBuildScanner,
   DocumentPicture? picture,
   ValueChanged<DocumentPicture?>? onPicture,
+  ValueChanged<ValueChanged<DocumentType>>? reportWrongDocument,
 }) {
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -60,8 +61,9 @@ Widget _buildWrapper({
       onManualEntry: onManualEntry ?? () {},
       onBack: onBack ?? () {},
       scanPicture: scanPicture,
-      scannerBuilder: ({required documentType, required scanPicture, required onSuccess}) {
+      scannerBuilder: ({required documentType, required scanPicture, required onSuccess, required onWrongDocument}) {
         onBuildScanner?.call(scanPicture);
+        reportWrongDocument?.call(onWrongDocument);
         return _FakeScanner(documentType: documentType, onSuccess: onSuccess, picture: picture);
       },
     ),
@@ -98,12 +100,11 @@ void main() {
   });
 
   group('ScannerWrapper', () {
-    testWidgets('renders the step badge and document-specific manual entry copy', (tester) async {
+    testWidgets('renders the document-specific title and scan card', (tester) async {
       await tester.pumpWidget(_buildWrapper(documentType: DocumentType.drivingLicence));
 
-      expect(find.text('1 of 4 · Scan driving licence'), findsOneWidget);
-      expect(find.text('Position the driving licence'), findsOneWidget);
-      expect(find.text('Enter driving licence details manually'), findsOneWidget);
+      expect(find.text('Scan driving licence'), findsOneWidget);
+      expect(find.text('Place the back of your driving licence in the frame'), findsOneWidget);
       expect(find.text('fake scanner ${DocumentType.drivingLicence.name}'), findsOneWidget);
     });
 
@@ -112,25 +113,25 @@ void main() {
       var manualCount = 0;
       await tester.pumpWidget(_buildWrapper(onBack: () => backCount++, onManualEntry: () => manualCount++));
 
-      await tester.tap(find.byType(IconButton));
+      await tester.tap(find.byTooltip('Close'));
       await tester.pump();
-      await tester.tap(find.text('Enter passport details manually'));
+      await tester.tap(find.text('Place the photo page in the frame'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Enter details manually'));
       await tester.pump();
 
       expect(backCount, 1);
       expect(manualCount, 1);
     });
 
-    testWidgets('asks the scanner for no picture by default, and says to align the MRZ', (tester) async {
+    testWidgets('asks the scanner for no picture by default', (tester) async {
       final asked = <MrzScanPicture>[];
       await tester.pumpWidget(_buildWrapper(onBuildScanner: asked.add));
 
       expect(asked.last, MrzScanPicture.none);
-      expect(find.textContaining('Align the Machine Readable Zone'), findsOneWidget);
     });
 
-    testWidgets('a capture asks the scanner for a picture, says the side is photographed too, and forwards the '
-        'picture with the scan', (tester) async {
+    testWidgets('a capture asks the scanner for a picture and forwards the picture with the scan', (tester) async {
       final asked = <MrzScanPicture>[];
       final pictures = <DocumentPicture?>[];
       final picture = DocumentPicture(
@@ -148,7 +149,6 @@ void main() {
       );
 
       expect(asked.last, MrzScanPicture.capture);
-      expect(find.textContaining('this side is photographed too'), findsOneWidget);
 
       await tester.tap(find.text('fake scanner ${DocumentType.passport.name}'));
       await tester.pump();
@@ -181,9 +181,10 @@ void main() {
             onMrzScanned: (mrz, [_]) => scanned.add(mrz),
             onManualEntry: () {},
             onBack: () {},
-            scannerBuilder: ({required documentType, required scanPicture, required onSuccess}) {
-              return _FakeScanner(documentType: documentType, onSuccess: onSuccess);
-            },
+            scannerBuilder:
+                ({required documentType, required scanPicture, required onSuccess, required onWrongDocument}) {
+                  return _FakeScanner(documentType: documentType, onSuccess: onSuccess);
+                },
           ),
         ),
       );
@@ -206,6 +207,18 @@ void main() {
       await tester.pump();
 
       expect(scanned, hasLength(2));
+    });
+
+    testWidgets('says which card it is when the other card type is scanned', (tester) async {
+      late ValueChanged<DocumentType> wrongDocument;
+      await tester.pumpWidget(
+        _buildWrapper(documentType: DocumentType.residencePermit, reportWrongDocument: (f) => wrongDocument = f),
+      );
+
+      wrongDocument(DocumentType.identityCard);
+      await tester.pump();
+
+      expect(find.text('This is an ID card. Go back and choose ID card.'), findsOneWidget);
     });
   });
 }

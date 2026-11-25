@@ -2,13 +2,11 @@ package foundation.privacybydesign.mrzcapture
 
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import org.opencv.android.OpenCVLoader
 
 class TesseractOcrPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
@@ -18,11 +16,6 @@ class TesseractOcrPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private var ocrExecutor: ExecutorService? = null
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
-        // OpenCV backs the MRZ zone detection this engine runs before Tesseract.
-        if (!OpenCVLoader.initLocal()) {
-            Log.e("OpenCV", "OpenCV initialization failed")
-        }
-
         engine = TesseractOcrEngine(binding.applicationContext)
         ocrExecutor = Executors.newSingleThreadExecutor()
         channel = MethodChannel(binding.binaryMessenger, "tesseract_ocr")
@@ -42,18 +35,12 @@ class TesseractOcrPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             return
         }
 
-        val bytes = call.argument<ByteArray>("bytes")
+        val pixels = call.argument<ByteArray>("pixels")
         val width = call.argument<Int>("width")
         val height = call.argument<Int>("height")
-        val stride = call.argument<Int>("stride")
-        val rotation = call.argument<Int>("rotation") ?: 0
         val lang = call.argument<String>("lang") ?: "ocrb"
-        val roiLeft = call.argument<Double>("roiLeft") ?: 0.0
-        val roiTop = call.argument<Double>("roiTop") ?: 0.0
-        val roiWidth = call.argument<Double>("roiWidth") ?: 1.0
-        val roiHeight = call.argument<Double>("roiHeight") ?: 1.0
 
-        if (bytes == null || width == null || height == null || stride == null) {
+        if (pixels == null || width == null || height == null) {
             result.error("ARG", "Missing required arguments", null)
             return
         }
@@ -66,15 +53,7 @@ class TesseractOcrPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
         executor.execute {
             try {
-                val text = engine.ocrYPlane(
-                    bytes = bytes,
-                    width = width,
-                    height = height,
-                    stride = stride,
-                    rotation = rotation,
-                    lang = lang,
-                    roi = RoiParams(roiLeft, roiTop, roiWidth, roiHeight),
-                )
+                val text = engine.ocr(pixels, width, height, lang)
                 main.post { result.success(text) }
             } catch (e: Exception) {
                 main.post { result.error("OCR", e.message, null) }
